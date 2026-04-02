@@ -5,6 +5,7 @@ add_library(calcyx_engine STATIC
     types/frac.c
     types/val.c
     parser/lexer.c
+    parser/parser.c
 )
 
 target_include_directories(calcyx_engine PUBLIC . ${MPDECIMAL_INCLUDE})
