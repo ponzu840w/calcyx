@@ -77,6 +77,33 @@ bool real_is_zero(const real_t *a) {
     return mpd_iszero((mpd_t *)&a->mpd);
 }
 
+/* --- 判定 --- */
+
+bool real_is_integer(const real_t *a) {
+    real_t fl;
+    real_floor(&fl, a);
+    return real_eq(a, &fl);
+}
+
+int real_sign(const real_t *a) {
+    real_t zero;
+    real_from_i64(&zero, 0);
+    return real_cmp(a, &zero);
+}
+
+/* ユークリッド互除法 (a, b は整数) */
+void real_gcd(real_t *out, const real_t *a, const real_t *b) {
+    real_t aa, bb, rem;
+    real_abs(&aa, a);
+    real_abs(&bb, b);
+    while (!real_is_zero(&bb)) {
+        real_rem(&rem, &aa, &bb);
+        real_copy(&aa, &bb);
+        real_copy(&bb, &rem);
+    }
+    real_copy(out, &aa);
+}
+
 /* --- 算術 --- */
 
 void real_neg(real_t *out, const real_t *a) {

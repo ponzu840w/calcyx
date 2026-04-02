@@ -2,6 +2,7 @@ add_library(calcyx_engine STATIC
     types/ufixed113.c
     types/real.c
     types/quad.c
+    types/frac.c
 )
 
 target_include_directories(calcyx_engine PUBLIC . ${MPDECIMAL_INCLUDE})

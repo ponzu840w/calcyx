@@ -43,6 +43,11 @@ int  real_cmp(const real_t *a, const real_t *b);
 bool real_eq (const real_t *a, const real_t *b);
 bool real_is_zero(const real_t *a);
 
+/* 判定 */
+bool real_is_integer(const real_t *a);
+int  real_sign      (const real_t *a);   /* -1 / 0 / 1 */
+void real_gcd       (real_t *out, const real_t *a, const real_t *b);
+
 /* 算術 (out に結果を書く) */
 void real_neg   (real_t *out, const real_t *a);
 void real_add   (real_t *out, const real_t *a, const real_t *b);
