@@ -3,6 +3,7 @@ add_library(calcyx_engine STATIC
     types/real.c
     types/quad.c
     types/frac.c
+    types/val.c
 )
 
 target_include_directories(calcyx_engine PUBLIC . ${MPDECIMAL_INCLUDE})
