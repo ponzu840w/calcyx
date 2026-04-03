@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(calcyx C)
+project(calcyx C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -12,3 +12,4 @@ if(NOT MPDECIMAL_LIB OR NOT MPDECIMAL_INCLUDE)
 endif()
 
 add_subdirectory(engine)
+add_subdirectory(ui)
