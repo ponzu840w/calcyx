@@ -34,6 +34,27 @@ val_fmt_t val_fmt_select(val_fmt_t a, val_fmt_t b);
  * 値型
  * ====================================================== */
 
+/* ======================================================
+ * 関数値 (FuncVal / FuncDef 相当)
+ * ====================================================== */
+
+/* val.h は parser.h を include しないので body は void* で保持する */
+typedef struct func_def_s {
+    char    name[256];
+    char  **param_names;    /* n_params 個の strdup 文字列 (owned) */
+    int     n_params;       /* -1: variadic */
+    int     vec_arg_idx;    /* -1: ベクタ化引数なし */
+    bool    variadic;
+    void   *body;           /* expr_t* (ユーザ定義) / NULL (組み込み) */
+    void  (*free_body)(void *body);
+    void *(*dup_body) (const void *body);
+    /* 組み込み関数 (ユーザ定義は NULL) */
+    struct val_s *(*builtin)(struct val_s **args, int n_args, void *ctx);
+} func_def_t;
+
+void       func_def_free(func_def_t *f);       /* param_names と body を解放 */
+func_def_t *func_def_dup (const func_def_t *f);
+
 typedef enum {
     VAL_REAL  = 0,
     VAL_FRAC  = 1,
@@ -41,6 +62,7 @@ typedef enum {
     VAL_STR   = 3,
     VAL_NULL  = 4,
     VAL_ARRAY = 5,
+    VAL_FUNC  = 6,  /* 関数値 (FuncVal 相当) */
 } val_type_t;
 
 /* val_t は常にヒープ確保。値渡し禁止。
@@ -55,9 +77,10 @@ struct val_s {
     real_t   real_v;      /* VAL_REAL */
     frac_t   frac_v;      /* VAL_FRAC */
     bool     bool_v;      /* VAL_BOOL */
-    char    *str_v;       /* VAL_STR:  malloc 済み NUL 終端文字列、所有 */
-    val_t  **arr_items;   /* VAL_ARRAY: malloc 済み val_t* 配列、所有 */
-    int      arr_len;     /* VAL_ARRAY: 要素数 */
+    char    *str_v;        /* VAL_STR:  malloc 済み NUL 終端文字列、所有 */
+    val_t  **arr_items;    /* VAL_ARRAY: malloc 済み val_t* 配列、所有 */
+    int      arr_len;      /* VAL_ARRAY: 要素数 */
+    func_def_t *func_v;   /* VAL_FUNC: 関数定義 (owned) */
 };
 
 /* --- 生成 --- */
@@ -69,6 +92,7 @@ val_t *val_new_null   (void);
 val_t *val_new_i64    (int64_t v, val_fmt_t fmt);
 val_t *val_new_double (double v, val_fmt_t fmt);
 val_t *val_new_array  (val_t **items, int len, val_fmt_t fmt);
+val_t *val_new_func   (func_def_t *fd);  /* fd の所有権を移転 */
 
 /* --- コピー / 解放 --- */
 val_t *val_dup  (const val_t *src);

@@ -106,6 +106,50 @@ void expr_free(expr_t *e) {
 }
 
 /* ======================================================
+ * expr_t のディープコピー
+ * ====================================================== */
+
+expr_t *expr_dup(const expr_t *src) {
+    if (!src) return NULL;
+    expr_t *e = expr_new(src->type, &src->tok);
+    if (!e) return NULL;
+    if (src->val) {
+        e->val = val_dup(src->val);
+        if (!e->val) { expr_free(e); return NULL; }
+    }
+    strncpy(e->name, src->name, TOK_TEXT_MAX - 1);
+    e->op      = src->op;
+    e->child_a = expr_dup(src->child_a);
+    e->child_b = expr_dup(src->child_b);
+    e->child_c = expr_dup(src->child_c);
+    if (src->n_args > 0) {
+        e->args = (expr_t **)malloc((size_t)src->n_args * sizeof(expr_t *));
+        if (!e->args) { expr_free(e); return NULL; }
+        e->n_args = src->n_args;
+        for (int i = 0; i < src->n_args; i++)
+            e->args[i] = expr_dup(src->args[i]);
+    }
+    e->body = expr_dup(src->body);
+    if (src->arg_defs) {
+        e->arg_defs = (arg_def_list_t *)calloc(1, sizeof(arg_def_list_t));
+        if (!e->arg_defs) { expr_free(e); return NULL; }
+        e->arg_defs->n           = src->arg_defs->n;
+        e->arg_defs->vec_arg_idx = src->arg_defs->vec_arg_idx;
+        e->arg_defs->variadic    = src->arg_defs->variadic;
+        if (src->arg_defs->n > 0 && src->arg_defs->names) {
+            e->arg_defs->names = (char **)calloc((size_t)src->arg_defs->n,
+                                                  sizeof(char *));
+            if (!e->arg_defs->names) { expr_free(e); return NULL; }
+            for (int i = 0; i < src->arg_defs->n; i++)
+                e->arg_defs->names[i] = src->arg_defs->names[i]
+                                        ? strdup(src->arg_defs->names[i])
+                                        : NULL;
+        }
+    }
+    return e;
+}
+
+/* ======================================================
  * パーサー初期化
  * ====================================================== */
 

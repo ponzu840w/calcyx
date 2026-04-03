@@ -107,6 +107,54 @@ val_t *val_new_array(val_t **items, int len, val_fmt_t fmt) {
 }
 
 /* ======================================================
+ * func_def_t (関数定義)
+ * ====================================================== */
+
+val_t *val_new_func(func_def_t *fd) {
+    val_t *v = alloc_val(VAL_FUNC, FMT_REAL);
+    if (!v) return NULL;
+    v->func_v = fd;
+    return v;
+}
+
+void func_def_free(func_def_t *f) {
+    if (!f) return;
+    if (f->param_names) {
+        for (int i = 0; i < f->n_params; i++) free(f->param_names[i]);
+        free(f->param_names);
+        f->param_names = NULL;
+    }
+    if (f->free_body && f->body) {
+        f->free_body(f->body);
+        f->body = NULL;
+    }
+}
+
+func_def_t *func_def_dup(const func_def_t *src) {
+    if (!src) return NULL;
+    func_def_t *d = (func_def_t *)malloc(sizeof(func_def_t));
+    if (!d) return NULL;
+    *d = *src;  /* 関数ポインタを含む浅いコピー */
+    /* param_names のディープコピー */
+    if (src->n_params > 0 && src->param_names) {
+        d->param_names = (char **)calloc((size_t)src->n_params, sizeof(char *));
+        if (!d->param_names) { free(d); return NULL; }
+        for (int i = 0; i < src->n_params; i++) {
+            d->param_names[i] = src->param_names[i] ? strdup(src->param_names[i]) : NULL;
+        }
+    } else {
+        d->param_names = NULL;
+    }
+    /* body のディープコピー */
+    if (src->dup_body && src->body) {
+        d->body = src->dup_body(src->body);
+    } else {
+        d->body = NULL;
+    }
+    return d;
+}
+
+/* ======================================================
  * コピー / 解放
  * ====================================================== */
 
@@ -130,6 +178,11 @@ val_t *val_dup(const val_t *src) {
             v->arr_len = src->arr_len;
             return v;
         }
+        case VAL_FUNC: {
+            func_def_t *fd = func_def_dup(src->func_v);
+            if (!fd) return NULL;
+            return val_new_func(fd);
+        }
     }
     return NULL;
 }
@@ -144,6 +197,12 @@ void val_free(val_t *v) {
             for (int i = 0; i < v->arr_len; i++)
                 val_free(v->arr_items[i]);
             free(v->arr_items);
+            break;
+        case VAL_FUNC:
+            if (v->func_v) {
+                func_def_free(v->func_v);
+                free(v->func_v);
+            }
             break;
         default:
             break;
@@ -568,5 +627,9 @@ void val_to_str(const val_t *v, char *buf, size_t buflen) {
             buf[pos] = '\0';
             break;
         }
+        case VAL_FUNC:
+            snprintf(buf, buflen, "<func:%s>",
+                     (v->func_v && v->func_v->name[0]) ? v->func_v->name : "?");
+            break;
     }
 }

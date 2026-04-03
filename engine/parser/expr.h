@@ -116,6 +116,7 @@ struct expr_s {
     expr_t         *body;            /* LAMBDA, DEF */
 };
 
-void expr_free(expr_t *e);
+void    expr_free(expr_t *e);
+expr_t *expr_dup (const expr_t *e);  /* ディープコピー */
 
 #endif /* EXPR_H */
