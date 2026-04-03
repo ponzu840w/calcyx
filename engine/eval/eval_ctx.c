@@ -1,6 +1,8 @@
 /* 移植元: Calctus/Model/Evaluations/EvalContext.cs */
 
 #include "eval_ctx.h"
+#include "builtin.h"
+#include "../types/real.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,6 +42,7 @@ static void add_const_i64(eval_ctx_t *ctx, const char *name,
  * ====================================================== */
 
 void eval_ctx_init(eval_ctx_t *ctx) {
+    real_ctx_init();  /* mpdecimal コンテキストを初期化 */
     memset(ctx, 0, sizeof(*ctx));
     ctx->settings.fraction_enabled  = true;
     ctx->settings.accuracy_priority = true;
@@ -65,6 +68,10 @@ void eval_ctx_init(eval_ctx_t *ctx) {
         "-79228162514264337593543950335", FMT_REAL);
     add_const_real_str(ctx, "DECIMAL_MAX",
         "79228162514264337593543950335",  FMT_REAL);
+
+    /* 組み込み関数を登録 */
+    builtin_register_all(ctx);
+    builtin_register_extra(ctx);
 }
 
 void eval_ctx_free(eval_ctx_t *ctx) {

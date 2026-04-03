@@ -426,6 +426,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
         }
         /* 組み込み関数を直接検索 */
         func_def_t *fd = builtin_find(e->name, n);
+        if (!fd) fd = builtin_find_extra(e->name, n);
         if (fd) {
             val_t *result = call_func(fd, args, n, ctx);
             func_def_free(fd); free(fd);

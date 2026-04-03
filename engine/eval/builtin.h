@@ -11,4 +11,10 @@ void builtin_register_all(eval_ctx_t *ctx);
 /* 組み込み関数を名前で検索する (context に依存しないグローバルテーブル) */
 func_def_t *builtin_find(const char *name, int n_args);
 
+/* 追加組み込み関数 (配列・文字列操作等) を ctx に登録する */
+void builtin_register_extra(eval_ctx_t *ctx);
+
+/* 追加組み込み関数を名前で検索する */
+func_def_t *builtin_find_extra(const char *name, int n_args);
+
 #endif /* BUILTIN_H */

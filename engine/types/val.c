@@ -262,6 +262,12 @@ double val_as_double(const val_t *v) {
 
 bool val_as_bool(const val_t *v) {
     if (v->type == VAL_BOOL) return v->bool_v;
+    if (v->type == VAL_REAL) {
+        /* 非ゼロなら真 */
+        real_t zero; real_from_i64(&zero, 0);
+        return !real_eq(&v->real_v, &zero);
+    }
+    if (v->type == VAL_NULL) return false;
     return false;
 }
 
@@ -398,6 +404,19 @@ val_t *val_sub(const val_t *a, const val_t *b) {
 }
 
 val_t *val_mul(const val_t *a, const val_t *b) {
+    /* 文字列繰り返し: "abc" * 3 = "abcabcabc" */
+    if (a->type == VAL_STR && b->type == VAL_REAL) {
+        int n = (int)real_to_i64(&b->real_v);
+        if (n <= 0) return val_new_str("");
+        size_t slen = strlen(a->str_v);
+        char *buf = (char *)malloc(slen * (size_t)n + 1);
+        if (!buf) return NULL;
+        buf[0] = '\0';
+        for (int i = 0; i < n; i++) strcat(buf, a->str_v);
+        val_t *r = val_new_str(buf);
+        free(buf);
+        return r;
+    }
     val_t *ua = val_upconvert(a, b);
     if (!ua) return NULL;
     val_fmt_t fmt = val_fmt_select(a->fmt, b->fmt);
