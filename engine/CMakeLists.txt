@@ -27,6 +27,8 @@ target_include_directories(test_eval PRIVATE . ${MPDECIMAL_INCLUDE})
 
 enable_testing()
 
+add_test(NAME Test_Types COMMAND test_types)
+
 # 各 Test_*.txt ファイルを ctest ターゲットとして登録
 file(GLOB SAMPLE_TEST_FILES "${SAMPLES_DIR}/Test_*.txt")
 foreach(TXT ${SAMPLE_TEST_FILES})

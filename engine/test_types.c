@@ -11,6 +11,7 @@
 #include "types/real.h"
 #include "types/ufixed113.h"
 #include "types/quad.h"
+#include "types/val.h"
 
 static int g_failures = 0;
 
@@ -208,11 +209,157 @@ static void test_quad(void) {
     printf("[quad] done\n");
 }
 
+/* --- QMath テスト ---
+ * 移植元: Calctus/Model/Mathematics/QMath.cs - QMath.Test() */
+
+static void test_qmath_log2(void) {
+    real_t r;
+    quad_t got, expected;
+
+#define ASSERT_LOG2(input_str, expected_str) \
+    do { \
+        real_from_str(&r, input_str); \
+        got = quad_log2(quad_from_real(&r)); \
+        real_from_str(&r, expected_str); \
+        expected = quad_from_real(&r); \
+        assert_quad_eq("[QMath.Log2] " input_str, got, expected); \
+    } while (0)
+
+    ASSERT_LOG2("1",     "0");
+    ASSERT_LOG2("2",     "1");
+    ASSERT_LOG2("4",     "2");
+    ASSERT_LOG2("8",     "3");
+    ASSERT_LOG2("0.5",   "-1");
+    ASSERT_LOG2("0.25",  "-2");
+    ASSERT_LOG2("0.125", "-3");
+
+#undef ASSERT_LOG2
+
+    printf("[QMath.Log2] done\n");
+}
+
+/* --- NumberFormatter テスト ---
+ * 移植元: Calctus/Model/Formats/NumberFormatter.cs - NumberFormatter.Test() */
+
+static void nf_assert(const fmt_settings_t *fs, const char *input, const char *expected) {
+    real_t r;
+    real_from_str(&r, input);
+    char buf[256];
+    real_to_str_with_settings(&r, fs, buf, sizeof(buf));
+    if (strcmp(buf, expected) != 0) {
+        fprintf(stderr, "FAIL: [NumberFormatter] input=%s expected=\"%s\" got=\"%s\"\n",
+                input, expected, buf);
+        g_failures++;
+    }
+}
+
+static void test_number_formatter(void) {
+    /* Group 1: ENotationEnabled=false */
+    {
+        fmt_settings_t fs = { 28, false, 4, -3, false };
+        nf_assert(&fs, "0",    "0");
+        nf_assert(&fs, "1",    "1");
+        nf_assert(&fs, "12345",              "12345");
+        nf_assert(&fs, "1234500000000000",   "1234500000000000");
+        nf_assert(&fs, "-1",   "-1");
+        nf_assert(&fs, "-10",  "-10");
+        nf_assert(&fs, "-12345",             "-12345");
+        nf_assert(&fs, "-1234500000000000",  "-1234500000000000");
+        nf_assert(&fs, "0.1",  "0.1");
+        nf_assert(&fs, "0.01", "0.01");
+        nf_assert(&fs, "0.001","0.001");
+        nf_assert(&fs, "0.0000000000000012345", "0.0000000000000012345");
+        nf_assert(&fs, "-0.1",  "-0.1");
+        nf_assert(&fs, "-0.01", "-0.01");
+        nf_assert(&fs, "-0.001","-0.001");
+        nf_assert(&fs, "-0.0000000000000012345", "-0.0000000000000012345");
+    }
+    /* Group 2: ENotationEnabled=true, ENotationAlignment=false */
+    {
+        fmt_settings_t fs = { 28, true, 4, -3, false };
+        nf_assert(&fs, "0",    "0");
+        nf_assert(&fs, "1",    "1");
+        nf_assert(&fs, "1000", "1000");
+        nf_assert(&fs, "9999", "9999");
+        nf_assert(&fs, "10000",            "1e4");
+        nf_assert(&fs, "1234500000000000", "1.2345e15");
+        nf_assert(&fs, "-1",   "-1");
+        nf_assert(&fs, "-10",  "-10");
+        nf_assert(&fs, "-1000","-1000");
+        nf_assert(&fs, "-9999","-9999");
+        nf_assert(&fs, "-10000",           "-1e4");
+        nf_assert(&fs, "-1234500000000000","-1.2345e15");
+        nf_assert(&fs, "0.1",  "0.1");
+        nf_assert(&fs, "0.01", "0.01");
+        nf_assert(&fs, "0.00999",  "9.99e-3");
+        nf_assert(&fs, "0.001",    "1e-3");
+        nf_assert(&fs, "0.0000000000000012345", "1.2345e-15");
+        nf_assert(&fs, "-0.1",  "-0.1");
+        nf_assert(&fs, "-0.01", "-0.01");
+        nf_assert(&fs, "-0.00999", "-9.99e-3");
+        nf_assert(&fs, "-0.001",   "-1e-3");
+        nf_assert(&fs, "-0.0000000000000012345", "-1.2345e-15");
+    }
+    /* Group 3: ENotationEnabled=true, ENotationAlignment=true */
+    {
+        fmt_settings_t fs = { 28, true, 4, -3, true };
+        nf_assert(&fs, "0",    "0");
+        nf_assert(&fs, "1",    "1");
+        nf_assert(&fs, "1000", "1000");
+        nf_assert(&fs, "9999", "9999");
+        nf_assert(&fs, "10000",   "10e3");
+        nf_assert(&fs, "12345",   "12.345e3");
+        nf_assert(&fs, "123456",  "123.456e3");
+        nf_assert(&fs, "1234567", "1.234567e6");
+        nf_assert(&fs, "1234500000000000", "1.2345e15");
+        nf_assert(&fs, "-1",    "-1");
+        nf_assert(&fs, "-1000", "-1000");
+        nf_assert(&fs, "-9999", "-9999");
+        nf_assert(&fs, "-10000",   "-10e3");
+        nf_assert(&fs, "-12345",   "-12.345e3");
+        nf_assert(&fs, "-123456",  "-123.456e3");
+        nf_assert(&fs, "-1234567", "-1.234567e6");
+        nf_assert(&fs, "-1234500000000000", "-1.2345e15");
+        nf_assert(&fs, "0.1",   "0.1");
+        nf_assert(&fs, "0.01",  "0.01");
+        nf_assert(&fs, "0.00999",    "9.99e-3");
+        nf_assert(&fs, "0.001",      "1e-3");
+        nf_assert(&fs, "0.0012345",  "1.2345e-3");
+        nf_assert(&fs, "0.00012345", "123.45e-6");
+        nf_assert(&fs, "0.000012345","12.345e-6");
+        nf_assert(&fs, "0.0000000000000012345", "1.2345e-15");
+        nf_assert(&fs, "-0.1",   "-0.1");
+        nf_assert(&fs, "-0.01",  "-0.01");
+        nf_assert(&fs, "-0.00999",    "-9.99e-3");
+        nf_assert(&fs, "-0.001",      "-1e-3");
+        nf_assert(&fs, "-0.0012345",  "-1.2345e-3");
+        nf_assert(&fs, "-0.00012345", "-123.45e-6");
+        nf_assert(&fs, "-0.000012345","-12.345e-6");
+        nf_assert(&fs, "-0.0000000000000012345", "-1.2345e-15");
+    }
+    /* Group 4: DecimalLengthToDisplay=5, ENotationEnabled=false (丸め確認) */
+    {
+        fmt_settings_t fs = { 5, false, 4, -3, false };
+        nf_assert(&fs, "10000",   "10000");
+        nf_assert(&fs, "100000",  "100000");
+        nf_assert(&fs, "1000000", "1000000");
+        nf_assert(&fs, "0.0001",  "0.0001");
+        nf_assert(&fs, "0.00001", "0.00001");
+        nf_assert(&fs, "0.000009",    "0.00001");
+        nf_assert(&fs, "0.000005",    "0.00001");
+        nf_assert(&fs, "0.000004999", "0");
+    }
+
+    printf("[NumberFormatter] done\n");
+}
+
 int main(void) {
     real_ctx_init();
 
     test_ufixed113();
     test_quad();
+    test_qmath_log2();
+    test_number_formatter();
 
     if (g_failures == 0) {
         printf("All tests passed.\n");
