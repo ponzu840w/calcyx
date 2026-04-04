@@ -22,6 +22,8 @@ public:
 
     // フォーカス行のフォーマットを変更
     void apply_fmt(val_fmt_t fmt);
+    // リアルタイム評価 (SheetLineInput から呼ばれる)
+    void live_eval();
 
     void draw()   override;
     int  handle(int event) override;

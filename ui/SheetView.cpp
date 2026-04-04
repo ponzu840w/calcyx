@@ -16,7 +16,38 @@ static const Fl_Color C_ERROR   = fl_rgb_color(255, 100, 100);
 static const Fl_Color C_SEP     = fl_rgb_color( 55,  55,  65);
 static const Fl_Color C_ROWLINE = fl_rgb_color( 32,  32,  36);
 
-// ----------------------------------------------------------------
+// ================================================================
+// SheetLineInput: Up/Down/Enter を親 SheetView に委譲する Fl_Input
+// ================================================================
+class SheetLineInput : public Fl_Input {
+public:
+    SheetLineInput(int x, int y, int w, int h) : Fl_Input(x, y, w, h) {}
+
+    int handle(int event) override {
+        if (event == FL_KEYBOARD) {
+            int key  = Fl::event_key();
+            bool ctrl = Fl::event_state(FL_CTRL) != 0;
+            // 行ナビゲーション系は親 (SheetView) に任せる
+            if (key == FL_Up || key == FL_Down ||
+                key == FL_Enter || key == FL_KP_Enter ||
+                (ctrl && (key == FL_Delete || key == FL_BackSpace))) {
+                return 0;  // 0 を返すと FLTK が親に伝播
+            }
+        }
+        int ret = Fl_Input::handle(event);
+        // キー入力を消費したらリアルタイム評価 + 全体再描画
+        if (ret && (event == FL_KEYBOARD || event == FL_PASTE)) {
+            if (parent())
+                static_cast<SheetView *>(parent())->live_eval();
+        }
+        return ret;
+    }
+};
+
+// ================================================================
+// SheetView
+// ================================================================
+
 SheetView::SheetView(int x, int y, int w, int h)
     : Fl_Group(x, y, w, h)
 {
@@ -35,14 +66,14 @@ SheetView::SheetView(int x, int y, int w, int h)
     }, this);
 
     // 行エディタ（フォーカス行の式を編集する Fl_Input オーバーレイ）
-    editor_ = new Fl_Input(x, y, expr_w(), ROW_H);
+    editor_ = new SheetLineInput(x, y, expr_w(), ROW_H);
     editor_->box(FL_FLAT_BOX);
     editor_->color(C_SEL);
     editor_->textcolor(C_EXPR);
     editor_->textfont(FL_COURIER);
     editor_->textsize(13);
     editor_->cursor_color(C_EXPR);
-    editor_->when(0);   // コールバック不要; キーイベントで制御
+    editor_->when(0);
 
     end();
 
@@ -116,7 +147,7 @@ void SheetView::eval_all() {
                 val_to_str(fv ? fv : v, buf, sizeof(buf));
                 if (fv) val_free(fv);
             } else {
-                val_to_str(v, buf, sizeof(buf));   // 自然フォーマットを維持
+                val_to_str(v, buf, sizeof(buf));
             }
             row.result = buf;
             row.error  = false;
@@ -128,6 +159,15 @@ void SheetView::eval_all() {
             ctx_.error_msg[0] = '\0';
         }
     }
+}
+
+// リアルタイム評価: 入力途中に呼ばれる
+void SheetView::live_eval() {
+    if (focused_row_ >= 0 && focused_row_ < (int)rows_.size()) {
+        rows_[focused_row_].expr = editor_->value();
+    }
+    eval_all();
+    redraw();
 }
 
 void SheetView::commit() {
@@ -187,9 +227,13 @@ void SheetView::apply_fmt(val_fmt_t fmt) {
 
 // ----------------------------------------------------------------
 void SheetView::draw() {
+    // FLTK はダメージ更新時にクリップ領域を損傷エリアのみに絞る。
+    // それでは背景が再描画されず入力テキストが溶けて見えるため、
+    // fl_push_no_clip() でいったんクリップを解除し、
+    // ウィジェット領域全体を再描画する。
+    fl_push_no_clip();
     fl_push_clip(x(), y(), w(), h());
 
-    // 背景
     fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), C_BG);
 
     const int ew = expr_w();
@@ -234,24 +278,24 @@ void SheetView::draw() {
         fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
     }
 
-    fl_pop_clip();
-
     // 子ウィジェット（editor_, vscroll_）を描画
     draw_children();
+
+    fl_pop_clip();  // push_clip 分
+    fl_pop_clip();  // push_no_clip 分
 }
 
 // ----------------------------------------------------------------
 int SheetView::handle(int event) {
-    // キーボードイベント: 特殊キーを横取り
-    if (event == FL_KEYBOARD && Fl::focus() == editor_) {
+    // キーボードイベント: SheetLineInput が return 0 したものが親に届く
+    if (event == FL_KEYBOARD) {
         int key   = Fl::event_key();
-        int shift = Fl::event_state(FL_SHIFT) != 0;
-        int ctrl  = Fl::event_state(FL_CTRL)  != 0;
+        bool shift = Fl::event_state(FL_SHIFT) != 0;
+        bool ctrl  = Fl::event_state(FL_CTRL)  != 0;
 
         if (key == FL_Enter && !ctrl) {
             rows_[focused_row_].expr = editor_->value();
             if (shift) {
-                // Shift+Enter: 下に新規行を挿入
                 insert_row(focused_row_);
             } else {
                 eval_all();
@@ -264,12 +308,12 @@ int SheetView::handle(int event) {
             redraw();
             return 1;
         }
-        if (key == FL_Up && !ctrl) {
+        if (key == FL_Up) {
             commit();
             if (focused_row_ > 0) focus_row(focused_row_ - 1);
             return 1;
         }
-        if (key == FL_Down && !ctrl) {
+        if (key == FL_Down) {
             commit();
             if (focused_row_ + 1 >= (int)rows_.size()) {
                 rows_.push_back(Row{});
@@ -278,8 +322,7 @@ int SheetView::handle(int event) {
             focus_row(focused_row_ + 1);
             return 1;
         }
-        // Ctrl+Delete: 現在行を削除
-        if ((key == FL_Delete || key == FL_BackSpace) && ctrl) {
+        if (ctrl && (key == FL_Delete || key == FL_BackSpace)) {
             delete_row(focused_row_);
             return 1;
         }
@@ -289,15 +332,12 @@ int SheetView::handle(int event) {
     if (event == FL_PUSH) {
         int ex = Fl::event_x();
         int ey = Fl::event_y();
-        // スクロールバー領域はスキップ
         if (ex < x() + sheet_w()) {
             int clicked = row_at_y(ey - y());
-            if (clicked >= 0 && clicked < (int)rows_.size()) {
-                if (clicked != focused_row_) {
-                    commit();
-                    focus_row(clicked);
-                    return 1;
-                }
+            if (clicked >= 0 && clicked < (int)rows_.size() && clicked != focused_row_) {
+                commit();
+                focus_row(clicked);
+                return 1;
             }
         }
     }
