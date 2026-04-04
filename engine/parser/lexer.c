@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <time.h>
 
 /* ======================================================
  * token_t
@@ -88,7 +89,7 @@ static int try_hex(const char *s, val_t **out) {
     if (dlen == 0) return 0;
     int total = 2 + dlen;
     char digits[64]; strip_underscores(s + 2, dlen, digits, sizeof(digits));
-    int64_t v = (int64_t)strtoll(digits, NULL, 16);
+    int64_t v = (int64_t)strtoull(digits, NULL, 16);
     *out = val_new_i64(v, FMT_HEX);
     return total;
 }
@@ -100,7 +101,7 @@ static int try_bin(const char *s, val_t **out) {
     if (dlen == 0) return 0;
     int total = 2 + dlen;
     char digits[128]; strip_underscores(s + 2, dlen, digits, sizeof(digits));
-    int64_t v = (int64_t)strtoll(digits, NULL, 2);
+    int64_t v = (int64_t)strtoull(digits, NULL, 2);
     *out = val_new_i64(v, FMT_BIN);
     return total;
 }
@@ -308,6 +309,40 @@ static int try_webcolor(const char *s, val_t **out) {
     return total;
 }
 
+/* DateTime: #yyyy/m/d[ h:m:s]# (移植元: DateTimeFormatter.cs) */
+static int try_datetime(const char *s, val_t **out) {
+    if (s[0] != '#') return 0;
+    /* 閉じ # を探す */
+    const char *end = strchr(s + 1, '#');
+    if (!end) return 0;
+    int inner_len = (int)(end - s - 1);
+    if (inner_len < 8 || inner_len > 30) return 0;
+    char inner[32];
+    memcpy(inner, s + 1, (size_t)inner_len);
+    inner[inner_len] = '\0';
+    /* 数字と / : . スペースのみ許可 */
+    for (int i = 0; i < inner_len; i++) {
+        char c = inner[i];
+        if (!isdigit((unsigned char)c) && c!='/' && c!=':' && c!='.' && c!=' ') return 0;
+    }
+    int yr=0, mo=0, dy=0, hr=0, mi=0, sc=0;
+    int parsed = sscanf(inner, "%d/%d/%d %d:%d:%d", &yr, &mo, &dy, &hr, &mi, &sc);
+    if (parsed < 3) return 0;  /* 日付のみでも可 */
+    struct tm t; memset(&t, 0, sizeof(t));
+    t.tm_year = yr - 1900;
+    t.tm_mon  = mo - 1;
+    t.tm_mday = dy;
+    t.tm_hour = hr;
+    t.tm_min  = mi;
+    t.tm_sec  = sc;
+    t.tm_isdst = -1;
+    time_t ts = mktime(&t);
+    real_t r;
+    real_from_i64(&r, (int64_t)ts);
+    *out = val_new_real(&r, FMT_DATETIME);
+    return inner_len + 2;  /* #...# 全体の長さ */
+}
+
 /* ======================================================
  * 演算子記号テーブル
  * ====================================================== */
@@ -385,7 +420,7 @@ void lexer_pop(lexer_t *lx, token_t *t) {
         typedef int (*try_fn)(const char *, val_t **);
         try_fn fns[] = {
             try_hex, try_bin, try_oct, try_real, try_int,
-            try_si, try_binpfx, try_char, try_string, try_webcolor,
+            try_si, try_binpfx, try_char, try_string, try_datetime, try_webcolor,
             NULL
         };
         int best_len = 0;

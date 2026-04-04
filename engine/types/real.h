@@ -58,5 +58,9 @@ void real_rem   (real_t *out, const real_t *a, const real_t *b);
 void real_abs   (real_t *out, const real_t *a);
 void real_floor (real_t *out, const real_t *a);
 void real_divint(real_t *out, const real_t *a, const real_t *b);
+void real_exp   (real_t *out, const real_t *a);
+void real_ln    (real_t *out, const real_t *a);
+void real_pow   (real_t *out, const real_t *base, const real_t *exp);
+void real_pown  (real_t *out, const real_t *base, int64_t n); /* 整数べき乗 (正確) */
 
 #endif /* REAL_H */

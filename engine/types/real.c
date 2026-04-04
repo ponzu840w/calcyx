@@ -150,3 +150,91 @@ void real_divint(real_t *out, const real_t *a, const real_t *b) {
     real_init(out);
     mpd_divint(&out->mpd, (mpd_t *)&a->mpd, (mpd_t *)&b->mpd, &real_ctx);
 }
+
+/* 整数べき乗 (正確な反復乗算, 移植元: RMath.PowN) */
+void real_pown(real_t *out, const real_t *base, int64_t n) {
+    real_t ret, x, tmp;
+    real_init(&ret); real_init(&x); real_init(&tmp);
+    real_from_i64(&ret, 1);
+    real_copy(&x, base);
+    bool neg = (n < 0);
+    if (neg) n = -n;
+    while (n > 0) {
+        if (n & 1) {
+            real_mul(&tmp, &ret, &x);
+            real_copy(&ret, &tmp);
+        }
+        n >>= 1;
+        if (n > 0) {
+            real_mul(&tmp, &x, &x);
+            real_copy(&x, &tmp);
+        }
+    }
+    if (neg) {
+        real_from_i64(&tmp, 1);
+        real_div(out, &tmp, &ret);
+    } else {
+        real_copy(out, &ret);
+    }
+}
+
+/* E の定数値 (遅延初期化) */
+static real_t s_E_const;
+static bool   s_E_init = false;
+static void ensure_E_const(void) {
+    if (!s_E_init) {
+        real_from_str(&s_E_const, "2.7182818284590452353602874714");
+        s_E_init = true;
+    }
+}
+
+/* exp(x): RMath.Exp と同じ方式 — s=round(x), t=x-s, E^s * exp_series(t)
+ * これにより exp(10) == E^10 (整数べき乗が一致) */
+void real_exp(real_t *out, const real_t *a) {
+    ensure_E_const();
+
+    /* s = round(a) → 整数 */
+    real_t s_real, t_real, exp_t, tmp;
+    real_init(&s_real); real_init(&t_real);
+    real_init(&exp_t); real_init(&tmp);
+
+    /* s = floor(a + 0.5) */
+    real_t half;
+    real_init(&half);
+    real_from_str(&half, "0.5");
+    real_add(&tmp, a, &half);
+    real_floor(&s_real, &tmp);
+
+    /* t = a - s */
+    real_sub(&t_real, a, &s_real);
+
+    /* exp_series(t) = mpd_exp(t) (|t| ≤ 0.5 なので精度十分) */
+    real_init(&exp_t);
+    mpd_exp(&exp_t.mpd, &t_real.mpd, &real_ctx);
+    exp_t.mpd.data = exp_t.data;  /* data ポインタ修正 */
+
+    /* E^s (整数べき乗) */
+    int64_t s_int = real_to_i64(&s_real);
+    real_t E_s;
+    real_init(&E_s);
+    real_pown(&E_s, &s_E_const, s_int);
+
+    /* out = E^s * exp_series(t) */
+    real_mul(out, &E_s, &exp_t);
+}
+
+void real_ln(real_t *out, const real_t *a) {
+    real_init(out);
+    mpd_ln(&out->mpd, (mpd_t *)&a->mpd, &real_ctx);
+}
+
+/* pow(base, exp): 整数指数なら real_pown を使用 (正確) */
+void real_pow(real_t *out, const real_t *base, const real_t *exp) {
+    if (real_is_integer(exp)) {
+        int64_t n = real_to_i64(exp);
+        real_pown(out, base, n);
+    } else {
+        real_init(out);
+        mpd_pow(&out->mpd, (mpd_t *)&base->mpd, (mpd_t *)&exp->mpd, &real_ctx);
+    }
+}

@@ -3,6 +3,7 @@
 
 #include "eval.h"
 #include "../parser/parser.h"
+#include "../types/real.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,10 +60,12 @@ static val_t *scalar_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
         case OP_LOGIC_AND: return val_logic_and(a, b);
         case OP_LOGIC_OR:  return val_logic_or (a, b);
         case OP_POW: {
-            /* pow は double 経由 (将来 mpdecimal に切り替え可) */
-            double da = val_as_double(a);
-            double db = val_as_double(b);
-            return val_new_double(pow(da, db), a->fmt);
+            real_t ra, rb, rout;
+            real_init(&ra); real_init(&rb); real_init(&rout);
+            val_as_real(&ra, a);
+            val_as_real(&rb, b);
+            real_pow(&rout, &ra, &rb);
+            return val_new_real(&rout, a->fmt);
         }
         default:
             return NULL;
@@ -143,6 +146,29 @@ static val_t *make_range(val_t *a, val_t *b, bool inclusive) {
 /* func_def_t を使って引数を束縛し、本体を評価する */
 static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
                          eval_ctx_t *ctx) {
+    /* vec_arg_idx ブロードキャスト: 指定インデックスの引数が配列なら element-wise 呼び出し */
+    if (fd->vec_arg_idx >= 0 && fd->vec_arg_idx < n_args
+            && args[fd->vec_arg_idx]->type == VAL_ARRAY) {
+        val_t *arr = args[fd->vec_arg_idx];
+        int len = arr->arr_len;
+        val_t **res = (val_t **)malloc((size_t)len * sizeof(val_t *));
+        if (!res) return NULL;
+        for (int i = 0; i < len; i++) {
+            val_t *tmp_args[64];
+            for (int j = 0; j < n_args; j++) tmp_args[j] = args[j];
+            tmp_args[fd->vec_arg_idx] = arr->arr_items[i];
+            res[i] = call_func(fd, tmp_args, n_args, ctx);
+            if (!res[i] || ctx->has_error) {
+                for (int j = 0; j < i; j++) val_free(res[j]);
+                free(res);
+                return NULL;
+            }
+        }
+        val_t *out = val_new_array(res, len, arr->fmt);
+        for (int i = 0; i < len; i++) val_free(res[i]);
+        free(res);
+        return out;
+    }
     /* 組み込み */
     if (fd->builtin) {
         return fd->builtin(args, n_args, ctx);
@@ -159,8 +185,14 @@ static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
     for (int i = 0; i < bind_n && i < n_args; i++) {
         const char *pname = (fd->param_names && fd->param_names[i])
                             ? fd->param_names[i] : "";
-        if (pname[0])
-            eval_ctx_set_var(&child, pname, val_dup(args[i]));
+        if (pname[0] && child.n_vars < EVAL_VAR_MAX) {
+            /* 親コンテキストを検索せず子に直接作成 (同名の外側変数を上書きしない) */
+            eval_var_t *nv = &child.vars[child.n_vars++];
+            memset(nv, 0, sizeof(*nv));
+            strncpy(nv->name, pname, TOK_TEXT_MAX - 1);
+            nv->value    = val_dup(args[i]);
+            nv->readonly = false;
+        }
     }
     val_t *result = expr_eval((expr_t *)fd->body, &child);
     /* 子コンテキストのエラーを親に伝播 */
@@ -232,7 +264,30 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
 
         val_t *target = var->value;
 
-        if (target->type == VAL_ARRAY) {
+        if (target->type == VAL_STR) {
+            /* 文字列スライス置換: s[from:to] = str */
+            const char *s = target->str_v;
+            int len = (int)strlen(s);
+            if (from < 0) from += len;
+            if (to   < 0) to   += len;
+            const char *rep = (rval->type == VAL_STR) ? rval->str_v : "";
+            int rep_len = (int)strlen(rep);
+            /* prefix: s[0..from), suffix: s[to..end) */
+            int pre = (int)from;
+            int suf_start = (int)to;
+            int suf_len = len - suf_start;
+            if (suf_len < 0) suf_len = 0;
+            char *nbuf = (char *)malloc((size_t)(pre + rep_len + suf_len + 1));
+            if (!nbuf) { val_free(rval); return NULL; }
+            memcpy(nbuf, s, (size_t)pre);
+            memcpy(nbuf + pre, rep, (size_t)rep_len);
+            memcpy(nbuf + pre + rep_len, s + suf_start, (size_t)suf_len);
+            nbuf[pre + rep_len + suf_len] = '\0';
+            val_t *new_str = val_new_str(nbuf);
+            free(nbuf);
+            var->value = new_str;
+            val_free(target);
+        } else if (target->type == VAL_ARRAY) {
             /* 配列要素の書き換え */
             int len = target->arr_len;
             if (from < 0) from += len;
