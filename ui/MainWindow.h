@@ -1,46 +1,22 @@
 // calcyx メインウィンドウ
-// 移植元の MainForm.cs + SheetView.cs の簡略版
+// 移植元: Calctus/UI/MainForm.cs (簡略版)
 
 #pragma once
 
 #include <FL/Fl_Double_Window.H>
-#include <FL/Fl_Input.H>
-#include <FL/Fl_Browser.H>
-#include <FL/Fl_Box.H>
-#include <string>
-#include <vector>
-
-extern "C" {
-#include "eval/eval.h"
-#include "eval/builtin.h"
-}
-
-// 1行分の履歴エントリ
-struct HistoryEntry {
-    std::string expr;    // 入力式
-    std::string result;  // 評価結果
-    bool        is_error;
-};
+#include <FL/Fl_Button.H>
+#include "SheetView.h"
 
 class MainWindow : public Fl_Double_Window {
 public:
     MainWindow(int w, int h, const char *title);
-    ~MainWindow();
 
 private:
-    Fl_Browser *history_browser_;  // 式と結果の履歴リスト
-    Fl_Input   *input_;            // 入力行
+    SheetView  *sheet_;
+    Fl_Button  *fmt_btns_[8];   // Auto / Dec / Hex / Bin / Oct / SI / Kibi / Char
 
-    eval_ctx_t  ctx_;
-    std::vector<HistoryEntry> history_;
-    int history_cursor_;           // 履歴ナビゲーション用
+    static const int FMT_BAR_H = 28;
+    static const int PAD       = 4;
 
-    void eval_current();
-    void update_browser();
-    void nav_history(int delta);
-
-    static void input_cb (Fl_Widget *w, void *data);
-    static void browser_cb(Fl_Widget *w, void *data);
-
-    int handle(int event) override;
+    static void fmt_cb(Fl_Widget *w, void *data);
 };

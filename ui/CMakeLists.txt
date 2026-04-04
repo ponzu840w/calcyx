@@ -17,6 +17,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(calcyx_ui
     main.cpp
     MainWindow.cpp
+    SheetView.cpp
 )
 
 target_include_directories(calcyx_ui PRIVATE
