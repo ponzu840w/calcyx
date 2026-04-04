@@ -6,6 +6,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <time.h>
+#include <math.h>
 
 /* ======================================================
  * フォーマット選択 (FormatHint.Select)
@@ -568,6 +570,9 @@ val_t *val_ne(const val_t *a, const val_t *b) {
 }
 
 val_t *val_gt(const val_t *a, const val_t *b) {
+    /* 文字列比較 */
+    if (a->type == VAL_STR && b->type == VAL_STR)
+        return val_new_bool(strcmp(a->str_v, b->str_v) > 0);
     val_t *ua = val_upconvert(a, b);
     if (!ua) return val_new_bool(false);
     bool result = false;
@@ -613,11 +618,105 @@ val_t *val_logic_not(const val_t *a) {
  * 文字列変換
  * ====================================================== */
 
+/* 実数値を fmt に従ってフォーマット */
+static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t buflen) {
+    int64_t iv;
+    switch (fmt) {
+        case FMT_HEX:
+            if (real_is_integer(r)) {
+                iv = real_to_i64(r);
+                if (iv < 0)       snprintf(buf, buflen, "-0x%llX", (unsigned long long)(-iv));
+                else              snprintf(buf, buflen, "0x%llX",  (unsigned long long)iv);
+            } else { real_to_str(r, buf, buflen); }
+            break;
+        case FMT_BIN:
+            if (real_is_integer(r)) {
+                iv = real_to_i64(r);
+                if (iv == 0) { snprintf(buf, buflen, "0b0"); break; }
+                char tmp[70]; int pos = 0;
+                uint64_t uv = (iv < 0) ? (uint64_t)(-iv) : (uint64_t)iv;
+                while (uv) { tmp[pos++] = '0' + (int)(uv & 1); uv >>= 1; }
+                size_t p = 0;
+                if (iv < 0 && p < buflen-1) buf[p++] = '-';
+                if (p + 2 < buflen) { buf[p++] = '0'; buf[p++] = 'b'; }
+                for (int i = pos-1; i >= 0 && p < buflen-1; i--) buf[p++] = tmp[i];
+                buf[p] = '\0';
+            } else { real_to_str(r, buf, buflen); }
+            break;
+        case FMT_OCT:
+            if (real_is_integer(r)) {
+                iv = real_to_i64(r);
+                if (iv < 0) snprintf(buf, buflen, "-0%llo", (unsigned long long)(-iv));
+                else        snprintf(buf, buflen, "0%llo",  (unsigned long long)iv);
+            } else { real_to_str(r, buf, buflen); }
+            break;
+        case FMT_CHAR:
+            if (real_is_integer(r)) {
+                iv = real_to_i64(r);
+                /* UTF-8 エンコード */
+                size_t p = 0;
+                if      (iv < 0x80)   { buf[p++] = (char)iv; }
+                else if (iv < 0x800)  { buf[p++] = (char)(0xC0|(iv>>6)); buf[p++] = (char)(0x80|(iv&0x3F)); }
+                else if (iv < 0x10000){ buf[p++] = (char)(0xE0|(iv>>12)); buf[p++] = (char)(0x80|((iv>>6)&0x3F)); buf[p++] = (char)(0x80|(iv&0x3F)); }
+                else                  { buf[p++] = (char)(0xF0|(iv>>18)); buf[p++] = (char)(0x80|((iv>>12)&0x3F)); buf[p++] = (char)(0x80|((iv>>6)&0x3F)); buf[p++] = (char)(0x80|(iv&0x3F)); }
+                buf[p] = '\0';
+            } else { real_to_str(r, buf, buflen); }
+            break;
+        case FMT_SI_PREFIX: {
+            double d = real_to_double(r);
+            static const char *si_pfx[] = { "R","Y","Z","E","P","T","G","M","k","","m","u","n","p","f","a","z","y","r" };
+            static const int   si_exp[] = { 27,24,21,18,15,12, 9, 6, 3, 0,-3,-6,-9,-12,-15,-18,-21,-24,-27 };
+            double ad = d < 0 ? -d : d;
+            for (int i = 0; i < 19; i++) {
+                double base = 1.0; for (int j=0; j<(si_exp[i]<0?-si_exp[i]:si_exp[i]); j++) { if(si_exp[i]>0) base*=10; else base/=10; }
+                if (ad >= base * 0.999999 || i == 9) {
+                    double v = d / base;
+                    if (v == (int64_t)v) snprintf(buf, buflen, "%lld%s", (long long)(int64_t)v, si_pfx[i]);
+                    else                snprintf(buf, buflen, "%.6g%s", v, si_pfx[i]);
+                    /* 末尾の余分な0を除去 */
+                    break;
+                }
+            }
+            if (!buf[0]) real_to_str(r, buf, buflen);
+            break;
+        }
+        case FMT_BIN_PREFIX: {
+            double d = real_to_double(r);
+            static const char *bi_pfx[] = { "Yi","Zi","Ei","Pi","Ti","Gi","Mi","Ki","" };
+            static const int   bi_shft[] = {  80,  70,  60,  50,  40,  30,  20,  10,  0 };
+            double ad = d < 0 ? -d : d;
+            for (int i = 0; i < 9; i++) {
+                double base = 1.0; for (int j=0; j<bi_shft[i]; j++) base*=2;
+                if (ad >= base * 0.999999 || i == 8) {
+                    double v = d / base;
+                    if (v == (int64_t)v) snprintf(buf, buflen, "%lld%s", (long long)(int64_t)v, bi_pfx[i]);
+                    else                snprintf(buf, buflen, "%.6g%s", v, bi_pfx[i]);
+                    break;
+                }
+            }
+            if (!buf[0]) real_to_str(r, buf, buflen);
+            break;
+        }
+        case FMT_DATETIME: {
+            time_t ts = (time_t)real_to_i64(r);
+            struct tm *t = localtime(&ts);
+            snprintf(buf, buflen, "#%04d/%02d/%02d %02d:%02d:%02d#",
+                     t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+                     t->tm_hour, t->tm_min, t->tm_sec);
+            break;
+        }
+        default:
+            real_to_str(r, buf, buflen);
+            break;
+    }
+}
+
 void val_to_str(const val_t *v, char *buf, size_t buflen) {
     if (!v || buflen == 0) return;
+    if (buflen > 0) buf[0] = '\0';
     switch (v->type) {
         case VAL_REAL: {
-            real_to_str(&v->real_v, buf, buflen);
+            real_to_str_fmt(&v->real_v, v->fmt, buf, buflen);
             break;
         }
         case VAL_FRAC: {
@@ -654,5 +753,74 @@ void val_to_str(const val_t *v, char *buf, size_t buflen) {
             snprintf(buf, buflen, "<func:%s>",
                      (v->func_v && v->func_v->name[0]) ? v->func_v->name : "?");
             break;
+    }
+}
+
+/* ======================================================
+ * NumberFormatter
+ * 移植元: Calctus/Model/Formats/NumberFormatter.cs - RealToString()
+ * ====================================================== */
+
+/* C# decimal.ToString("0.###...#") 相当。
+ * decimal_len 桁で HALF_UP 丸め (C# MidpointRounding.AwayFromZero) した後、
+ * 末尾ゼロを除去する。 */
+static void format_plain(const real_t *r, int decimal_len, char *buf, size_t buflen) {
+    mpd_context_t fmt_ctx = real_ctx;
+    fmt_ctx.round = MPD_ROUND_HALF_UP;
+
+    char fmt_str[32];
+    snprintf(fmt_str, sizeof(fmt_str), ".%df", decimal_len < 0 ? 0 : decimal_len);
+
+    char *s = mpd_format((mpd_t *)&r->mpd, fmt_str, &fmt_ctx);
+    if (!s) { real_to_str(r, buf, buflen); return; }
+
+    /* 小数部の末尾ゼロを除去し、末尾の '.' も除去 */
+    char *dot = strchr(s, '.');
+    if (dot) {
+        int i = (int)strlen(s) - 1;
+        while (i > (int)(dot - s) && s[i] == '0') i--;
+        if (s[i] == '.') i--;
+        s[i + 1] = '\0';
+    }
+
+    strncpy(buf, s, buflen - 1);
+    buf[buflen - 1] = '\0';
+    mpd_free(s);
+}
+
+/* 10^n (n >= 0) を out に書く */
+static void real_pow10_pos(real_t *out, int n) {
+    real_t base;
+    real_from_i64(&base, 10);
+    real_pown(out, &base, (int64_t)n);
+}
+
+/* 移植元: NumberFormatter.cs - NumberFormatter.RealToString() */
+void real_to_str_with_settings(const real_t *r, const fmt_settings_t *fs,
+                                char *buf, size_t buflen) {
+    if (real_is_zero(r)) { snprintf(buf, buflen, "0"); return; }
+
+    int exp = (int)mpd_adjexp((mpd_t *)&r->mpd);
+
+    char frac_buf[512];
+
+    if (fs->e_notation && exp >= fs->e_positive_min) {
+        int eexp = exp;
+        if (fs->e_alignment) eexp = (int)floor(eexp / 3.0) * 3;
+        real_t pow_ten, frac;
+        real_pow10_pos(&pow_ten, eexp);
+        real_div(&frac, r, &pow_ten);
+        format_plain(&frac, fs->decimal_len, frac_buf, sizeof(frac_buf));
+        snprintf(buf, buflen, "%se%d", frac_buf, eexp);
+    } else if (fs->e_notation && exp <= fs->e_negative_max) {
+        int eexp = exp;
+        if (fs->e_alignment) eexp = (int)floor(eexp / 3.0) * 3;
+        real_t pow_ten, frac;
+        real_pow10_pos(&pow_ten, -eexp);
+        real_mul(&frac, r, &pow_ten);
+        format_plain(&frac, fs->decimal_len, frac_buf, sizeof(frac_buf));
+        snprintf(buf, buflen, "%se%d", frac_buf, eexp);
+    } else {
+        format_plain(r, fs->decimal_len, buf, buflen);
     }
 }

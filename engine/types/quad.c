@@ -254,3 +254,29 @@ bool quad_gt(quad_t a, quad_t b) {
 bool quad_lt(quad_t a, quad_t b) { return quad_gt(b, a); }
 bool quad_ge(quad_t a, quad_t b) { return quad_gt(a, b) || quad_eq(a, b); }
 bool quad_le(quad_t a, quad_t b) { return quad_lt(a, b) || quad_eq(a, b); }
+
+/* --- 数学関数 ---
+ * 移植元: Calctus/Model/Mathematics/QMath.cs - QMath.Log2() */
+quad_t quad_log2(quad_t a) {
+    quad_t q2  = { false, (uint16_t)(QUAD_EXP_BIAS + 1), UFIXED113_ONE }; /* 2.0 */
+    quad_t q1  = { false, (uint16_t)QUAD_EXP_BIAS,       UFIXED113_ONE }; /* 1.0 */
+
+    /* 整数部: a を [1,2) に収める */
+    quad_t iLog = QUAD_POS_ZERO;
+    while (quad_ge(a, q2)) { a = quad_div(a, q2); iLog = quad_inc(iLog); }
+    while (quad_lt(a, q1)) { a = quad_mul(a, q2); iLog = quad_dec(iLog); }
+
+    /* 小数部: binary squaring algorithm */
+    quad_t fLog = QUAD_POS_ZERO;
+    quad_t p    = q1;
+    for (int i = 0; i < UFIXED113_NUM_BITS; i++) {
+        a = quad_mul(a, a);
+        p = quad_div(p, q2);
+        if (quad_ge(a, q2)) {
+            a = quad_div(a, q2);
+            fLog = quad_add(fLog, p);
+        }
+    }
+
+    return quad_add(iLog, fLog);
+}

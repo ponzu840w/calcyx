@@ -51,4 +51,7 @@ bool    quad_lt(quad_t a, quad_t b);
 bool    quad_ge(quad_t a, quad_t b);
 bool    quad_le(quad_t a, quad_t b);
 
+/* 数学関数 */
+quad_t  quad_log2(quad_t a);
+
 #endif /* QUAD_H */

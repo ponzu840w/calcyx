@@ -153,4 +153,16 @@ val_t *val_logic_not (const val_t *a);
 /* buf に NUL 終端文字列を書く。足りなければ切り詰める。 */
 void val_to_str(const val_t *v, char *buf, size_t buflen);
 
+/* --- NumberFormatter (移植元: NumberFormatter.cs - FormatSettings / RealToString) --- */
+typedef struct {
+    int  decimal_len;       /* DecimalLengthToDisplay */
+    bool e_notation;        /* ENotationEnabled */
+    int  e_positive_min;    /* ENotationExpPositiveMin */
+    int  e_negative_max;    /* ENotationExpNegativeMax */
+    bool e_alignment;       /* ENotationAlignment */
+} fmt_settings_t;
+
+void real_to_str_with_settings(const real_t *r, const fmt_settings_t *fs,
+                                char *buf, size_t buflen);
+
 #endif /* VAL_H */
