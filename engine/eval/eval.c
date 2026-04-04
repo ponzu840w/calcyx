@@ -416,13 +416,15 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
                 return NULL;
             }
         }
-        /* 変数テーブルで関数値を探す */
+        /* 変数テーブルで関数値を探す (n_params が一致する場合のみ) */
         eval_var_t *var = eval_ctx_ref_var(ctx, e->name, false);
         if (var && var->value && var->value->type == VAL_FUNC) {
             func_def_t *fd = var->value->func_v;
-            val_t *result = call_func(fd, args, n, ctx);
-            for (int i = 0; i < n; i++) val_free(args[i]);
-            return result;
+            if (fd->n_params == -1 || fd->n_params == n) {
+                val_t *result = call_func(fd, args, n, ctx);
+                for (int i = 0; i < n; i++) val_free(args[i]);
+                return result;
+            }
         }
         /* 組み込み関数を直接検索 */
         func_def_t *fd = builtin_find(e->name, n);
@@ -536,8 +538,24 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             if (from < 0) from += len;
             if (to   < 0) to   += len;
             if (from == to) {
-                char ch[2] = { s[from], '\0' };
-                result = val_new_str(ch);
+                /* 単一インデックス: UTF-8 コードポイントを数値で返す */
+                unsigned char c = (unsigned char)s[from];
+                int64_t code;
+                if (c < 0x80) {
+                    code = c;
+                } else if (c < 0xE0 && from + 1 < len) {
+                    code = ((c & 0x1F) << 6) | ((unsigned char)s[from+1] & 0x3F);
+                } else if (c < 0xF0 && from + 2 < len) {
+                    code = ((c & 0x0F) << 12) | (((unsigned char)s[from+1] & 0x3F) << 6)
+                           | ((unsigned char)s[from+2] & 0x3F);
+                } else if (from + 3 < len) {
+                    code = ((c & 0x07) << 18) | (((unsigned char)s[from+1] & 0x3F) << 12)
+                           | (((unsigned char)s[from+2] & 0x3F) << 6)
+                           | ((unsigned char)s[from+3] & 0x3F);
+                } else {
+                    code = c;
+                }
+                result = val_new_i64(code, FMT_CHAR);
             } else {
                 int w = (int)(to - from);
                 char *buf = (char *)malloc((size_t)w + 1);

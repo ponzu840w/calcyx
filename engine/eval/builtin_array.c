@@ -453,35 +453,31 @@ static val_t *bi_unique1(val_t **a, int n, void *ctx) {
     return out;
 }
 
-/* unique(array, func): func(a)==func(b) なら同一 */
+/* unique(array, comparator): comparator(a,b)==true なら重複とみなす */
 static val_t *bi_unique2(val_t **a, int n, void *ctx) {
     (void)n;
     if (a[0]->type != VAL_ARRAY) return val_dup(a[0]);
     func_def_t *fd = get_fd(a[1]);
     if (!fd) return val_dup(a[0]);
-    val_t **tmp   = (val_t **)malloc((size_t)a[0]->arr_len * sizeof(val_t *));
-    val_t **keys  = (val_t **)malloc((size_t)a[0]->arr_len * sizeof(val_t *));
+    int len = a[0]->arr_len;
+    val_t **tmp = (val_t **)malloc((size_t)len * sizeof(val_t *));
+    if (!tmp) return NULL;
     int cnt = 0;
-    for (int i = 0; i < a[0]->arr_len; i++) {
-        val_t *ki = call_fd_1(fd, a[0]->arr_items[i], (eval_ctx_t *)ctx);
+    for (int i = 0; i < len; i++) {
         bool dup = false;
         for (int j = 0; j < cnt; j++) {
-            val_t *eq = val_eq(keys[j], ki);
+            val_t *eq = call_fd_2(fd, tmp[j], a[0]->arr_items[i], (eval_ctx_t *)ctx);
             dup = eq && val_as_bool(eq);
             val_free(eq);
             if (dup) break;
         }
         if (!dup) {
-            tmp[cnt]  = val_dup(a[0]->arr_items[i]);
-            keys[cnt] = ki;
-            cnt++;
-        } else {
-            val_free(ki);
+            tmp[cnt++] = val_dup(a[0]->arr_items[i]);
         }
     }
     val_t *out = val_new_array(tmp, cnt, a[0]->fmt);
-    for (int i = 0; i < cnt; i++) { val_free(tmp[i]); val_free(keys[i]); }
-    free(tmp); free(keys);
+    for (int i = 0; i < cnt; i++) val_free(tmp[i]);
+    free(tmp);
     return out;
 }
 

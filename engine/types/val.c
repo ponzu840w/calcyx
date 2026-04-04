@@ -273,6 +273,7 @@ bool val_as_bool(const val_t *v) {
 
 /* UpConvert: 精度を右辺に合わせる (RealVal.OnUpConvert) */
 val_t *val_upconvert(const val_t *a, const val_t *b) {
+    if (!a || !b) return NULL;
     if (a->type == VAL_REAL && b->type == VAL_REAL) return val_dup(a);
     if (a->type == VAL_REAL && b->type == VAL_FRAC) {
         /* REAL → FRAC: new frac(a_raw, 1) */
@@ -550,7 +551,10 @@ val_t *val_eq(const val_t *a, const val_t *b) {
     } else if (ua->type == VAL_BOOL) {
         result = (ua->bool_v == val_as_bool(b));
     } else if (ua->type == VAL_STR) {
-        result = (strcmp(ua->str_v, b->str_v) == 0);
+        if (b->type == VAL_STR) {
+            result = (strcmp(ua->str_v, b->str_v) == 0);
+        }
+        /* 型が一致しない場合は false のまま */
     }
     val_free(ua);
     return val_new_bool(result);

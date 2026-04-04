@@ -61,6 +61,7 @@ static int read_exponent(const char *s) {
 static const char SI_PREFIXES[] = "ryzafpnum_kMGTPEZYR";
 #define SI_OFFSET 9
 static int si_prefix_index(char c) {
+    if (c == '\0') return INT32_MIN;  /* strchr が null terminator にマッチするのを防ぐ */
     const char *p = strchr(SI_PREFIXES, c);
     if (!p) return INT32_MIN;
     return (int)(p - SI_PREFIXES) - SI_OFFSET;
