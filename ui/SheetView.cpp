@@ -356,3 +356,40 @@ int SheetView::handle(int event) {
 
     return Fl_Group::handle(event);
 }
+
+// ----------------------------------------------------------------
+bool SheetView::load_file(const char *path) {
+    FILE *fp = fopen(path, "r");
+    if (!fp) return false;
+
+    rows_.clear();
+    char line[4096];
+    while (fgets(line, sizeof(line), fp)) {
+        int len = (int)strlen(line);
+        while (len > 0 && (line[len-1] == '\n' || line[len-1] == '\r'))
+            line[--len] = '\0';
+        Row row;
+        row.expr = line;
+        rows_.push_back(row);
+    }
+    fclose(fp);
+
+    if (rows_.empty()) rows_.push_back(Row{});
+
+    eval_all();
+    scroll_top_  = 0;
+    focused_row_ = 0;
+    sync_scroll();
+    focus_row(0);
+    redraw();
+    return true;
+}
+
+bool SheetView::save_file(const char *path) {
+    FILE *fp = fopen(path, "w");
+    if (!fp) return false;
+    for (const auto &row : rows_)
+        fprintf(fp, "%s\n", row.expr.c_str());
+    fclose(fp);
+    return true;
+}
