@@ -665,5 +665,10 @@ val_t *eval_str(const char *src, eval_ctx_t *ctx,
         val_free(result);
         return NULL;
     }
+    /* ans: 直前の評価結果を保持する特殊変数 */
+    if (result) {
+        val_t *ans_copy = val_dup(result);
+        eval_ctx_set_var(ctx, "ans", ans_copy);
+    }
     return result;
 }

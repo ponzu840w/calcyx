@@ -256,8 +256,28 @@ static int try_char(const char *s, val_t **out) {
             default: return 0;
         }
     } else if (s[i] != '\'' && s[i] != '\0') {
-        code = (unsigned char)s[i];
-        i++;
+        /* UTF-8 デコード: マルチバイト文字を Unicode コードポイントに変換 */
+        unsigned char c0 = (unsigned char)s[i];
+        if (c0 < 0x80) {
+            code = c0; i++;
+        } else if ((c0 & 0xE0) == 0xC0) {  /* 2バイト */
+            code = (c0 & 0x1F);
+            if ((unsigned char)s[i+1] != '\0') { code = (code << 6) | ((unsigned char)s[i+1] & 0x3F); i += 2; }
+            else i++;
+        } else if ((c0 & 0xF0) == 0xE0) {  /* 3バイト */
+            code = (c0 & 0x0F);
+            if ((unsigned char)s[i+1] != '\0') { code = (code << 6) | ((unsigned char)s[i+1] & 0x3F); i++; }
+            if ((unsigned char)s[i+1] != '\0') { code = (code << 6) | ((unsigned char)s[i+1] & 0x3F); i++; }
+            i++;
+        } else if ((c0 & 0xF8) == 0xF0) {  /* 4バイト */
+            code = (c0 & 0x07);
+            for (int b = 0; b < 3; b++) {
+                if ((unsigned char)s[i+1] != '\0') { code = (code << 6) | ((unsigned char)s[i+1] & 0x3F); i++; }
+            }
+            i++;
+        } else {
+            code = c0; i++;
+        }
     } else {
         return 0;
     }
