@@ -1,24 +1,28 @@
 cmake_minimum_required(VERSION 3.15)
 
 # ---- FLTK の検索 ----
-# Mac (Homebrew), Linux (system), Windows (vcpkg / MSYS2 / 手動)
-find_library(FLTK_LIB fltk
-    HINTS
-        /opt/homebrew/lib
-        /usr/local/lib
-        /usr/lib
-        /usr/lib/x86_64-linux-gnu
-)
-find_path(FLTK_INCLUDE_DIR FL/Fl.H
-    HINTS
-        /opt/homebrew/include
-        /usr/local/include
-        /usr/include
-)
-
-if(NOT FLTK_LIB OR NOT FLTK_INCLUDE_DIR)
-    message(STATUS "FLTK not found — skipping UI target")
-    return()
+if(WIN32 AND CMAKE_CROSSCOMPILING)
+    set(MINGW_DEPS_DIR "${CMAKE_SOURCE_DIR}/deps/mingw64")
+    set(FLTK_LIB        "${MINGW_DEPS_DIR}/lib/libfltk.a")
+    set(FLTK_INCLUDE_DIR "${MINGW_DEPS_DIR}/include")
+else()
+    find_library(FLTK_LIB fltk
+        HINTS
+            /opt/homebrew/lib
+            /usr/local/lib
+            /usr/lib
+            /usr/lib/x86_64-linux-gnu
+    )
+    find_path(FLTK_INCLUDE_DIR FL/Fl.H
+        HINTS
+            /opt/homebrew/include
+            /usr/local/include
+            /usr/include
+    )
+    if(NOT FLTK_LIB OR NOT FLTK_INCLUDE_DIR)
+        message(STATUS "FLTK not found — skipping UI target")
+        return()
+    endif()
 endif()
 
 message(STATUS "Found FLTK: ${FLTK_LIB}")
@@ -36,7 +40,8 @@ if(APPLE)
     )
 elseif(WIN32)
     list(APPEND PLATFORM_LIBS
-        comctl32 gdi32 ole32 uuid ws2_32 imm32
+        comctl32 gdi32 ole32 uuid ws2_32 imm32 gdiplus
+        -static -static-libgcc -static-libstdc++
     )
 else()
     # Linux
@@ -70,6 +75,7 @@ elseif(WIN32)
         main.cpp
         MainWindow.cpp
         SheetView.cpp
+        calcyx.rc
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
 else()
@@ -94,6 +100,14 @@ target_link_libraries(calcyx_ui PRIVATE
     m
 )
 
+# ExternalProject のビルド完了を待ってからリンクする
+if(TARGET dep_mpdecimal)
+    add_dependencies(calcyx_ui dep_mpdecimal)
+endif()
+if(TARGET dep_fltk)
+    add_dependencies(calcyx_ui dep_fltk)
+endif()
+
 # ---- test_undo ----
 add_executable(test_undo
     test_undo.cpp
@@ -112,3 +126,10 @@ target_link_libraries(test_undo PRIVATE
     ${PLATFORM_LIBS}
     m
 )
+
+if(TARGET dep_mpdecimal)
+    add_dependencies(test_undo dep_mpdecimal)
+endif()
+if(TARGET dep_fltk)
+    add_dependencies(test_undo dep_fltk)
+endif()

@@ -10,7 +10,12 @@ set(CMAKE_CXX_COMPILER x86_64-w64-mingw32-g++)
 set(CMAKE_RC_COMPILER  x86_64-w64-mingw32-windres)
 
 # クロスコンパイル対象のルートパス
-set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32)
+# deps/mingw64/ はプロジェクト内にビルドした依存ライブラリ (FLTK, mpdecimal) の配置先
+set(MINGW_DEPS_DIR "${CMAKE_CURRENT_LIST_DIR}/../deps/mingw64")
+set(CMAKE_FIND_ROOT_PATH /usr/x86_64-w64-mingw32 "${MINGW_DEPS_DIR}")
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+
+# .a を .dll.a より優先して静的リンクにする (DLL 依存を避ける)
+set(CMAKE_FIND_LIBRARY_SUFFIXES ".a" ".dll.a")

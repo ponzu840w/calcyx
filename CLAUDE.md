@@ -33,24 +33,45 @@ https://github.com/shapoco/calctus (C# / .NET)
 ## ビルド
 
 ```sh
-cmake -S . -B build
-cmake --build build
+cmake --preset default
+cmake --build --preset default
 ```
 
 Mac では `brew install mpdecimal` が必要。
 
 ### Windows 向けクロスコンパイル（WSL 上）
 
-`cmake/toolchain-mingw64.cmake` を使う：
+#### 初回セットアップ
 
 ```sh
 sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
-cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw64.cmake
-cmake --build build-win
 ```
 
-FLTK と mpdecimal は `/usr/x86_64-w64-mingw32/` 以下に MinGW-w64 向けのものが必要。
-apt にない場合はソースからクロスコンパイルする。
+#### ビルド（初回も2回目以降も同じ）
+
+```sh
+cmake --preset windows
+cmake --build --preset windows
+```
+
+初回ビルド時は FLTK と mpdecimal を自動ダウンロード・クロスビルドして `deps/mingw64/` に配置する（`cmake/deps-mingw64.cmake` の `ExternalProject_Add` による）。  
+`deps/` は `.gitignore` 対象だが、手動操作は不要。2回目以降は `deps/mingw64/` が存在する限りスキップされる。
+
+
+### アイコンの更新 (Windows)
+
+`ui/icon.svg` を編集後、以下で `ui/icon.ico` を再生成する（WSL 上; `librsvg2-bin` と ImageMagick が必要）:
+
+```sh
+for size in 16 32 48 64 128 256; do
+    rsvg-convert -w $size -h $size ui/icon.svg -o /tmp/icon_${size}.png
+done
+magick /tmp/icon_16.png /tmp/icon_32.png /tmp/icon_48.png \
+       /tmp/icon_64.png /tmp/icon_128.png /tmp/icon_256.png \
+       ui/icon.ico
+```
+
+`ui/icon.ico` はリポジトリに含める（`ui/calcyx.rc` から参照される）。
 
 ### アイコンの更新 (macOS)
 
@@ -75,7 +96,10 @@ iconutil -c icns ui/icon.iconset -o ui/icon.icns
 
 | パス | 内容 |
 |---|---|
-| `./build/ui/calcyx` | GUI アプリ本体 |
+| `./build/ui/calcyx` | GUI アプリ本体 (macOS/Linux) |
 | `./build/engine/test_types` | エンジン型システムのテスト |
 | `./build/engine/test_eval` | エンジン評価器のテスト |
 | `./build/ui/test_undo` | SheetView Undo/Redo テスト |
+| `./build-win/ui/calcyx.exe` | GUI アプリ本体 (Windows) |
+| `./build-win/engine/test_types.exe` | エンジン型システムのテスト (Windows) |
+| `./build-win/engine/test_eval.exe` | エンジン評価器のテスト (Windows) |

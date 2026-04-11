@@ -8,111 +8,54 @@
 
 式を複数行並べて逐次評価できるスクラッチパッド型の計算機。前の行の結果を後の行で参照でき、行を編集するとその場でリアルタイム再評価される。
 
-## インストール（macOS）
+## ビルド&インストール
 
-### 前提条件
+### 依存パッケージ
 
-- macOS 12 以降
-- [Homebrew](https://brew.sh/)
-- Xcode Command Line Tools（`xcode-select --install`）
+| プラットフォーム | コマンド |
+|---|---|
+| macOS | `brew install cmake fltk mpdecimal` |
+| Linux | `sudo apt install cmake libfltk1.4-dev libmpdec-dev` |
+| Windows (WSL) | `sudo apt install cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64` |
 
-### 依存ライブラリのインストール
-
-```sh
-brew install cmake fltk mpdecimal
-```
-
-### ビルドとインストール
-
-```sh
-git clone https://github.com/ponzu840w/calcyx.git
-cd calcyx
-cmake -S . -B build
-cmake --build build
-cp -r build/ui/calcyx.app /Applications/
-```
-
-Launchpad や Spotlight から起動できます。
-
-## ビルド（Windows 向け .exe、WSL 上でクロスコンパイル）
-
-WSL (Ubuntu) 上で MinGW-w64 を使って Windows 用バイナリをビルドします。
-
-### 依存ライブラリのインストール
-
-```sh
-sudo apt install cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
-```
-
-FLTK と mpdecimal は MinGW-w64 向けに別途クロスコンパイルが必要です（詳細は [Wiki](../../wiki) 参照）。
+Windows 向けは FLTK・mpdecimal の MinGW-w64 版を初回ビルド時に自動取得。
 
 ### ビルド
 
 ```sh
 git clone https://github.com/ponzu840w/calcyx.git
 cd calcyx
-cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw64.cmake
-cmake --build build-win
+cmake --preset default    # macOS / Linux
+cmake --preset windows    # Windows (WSL)
+cmake --build --preset <preset>
 ```
 
-生成された `build-win/ui/calcyx.exe` を Windows にコピーして実行できます。
+### インストール
 
-## インストール（Linux）
-
-### 依存ライブラリのインストール
-
-```sh
-sudo apt install cmake libfltk1.3-dev libmpdec-dev
-```
-
-### ビルドとインストール
-
-```sh
-git clone https://github.com/ponzu840w/calcyx.git
-cd calcyx
-cmake -S . -B build
-cmake --build build
-sudo cp build/ui/calcyx /usr/local/bin/
-```
-
-## ビルドについてより詳しく（開発者向け）
-
-### ビルド手順
-
-```sh
-cmake -S . -B build
-cmake --build build
-```
-
-| プラットフォーム | 起動方法 |
+| プラットフォーム | 方法 |
 |---|---|
-| macOS | `open build/ui/calcyx.app` |
-| Windows | `build/ui/calcyx.exe` |
-| Linux | `./build/ui/calcyx` |
-
-テストのみ実行する場合:
-
-```sh
-./build/engine/test_types
-./build/engine/test_eval
-```
+| macOS | `cp -r build/ui/calcyx.app /Applications/` |
+| Linux | `sudo cp build/ui/calcyx /usr/local/bin/` |
+| Windows | `build-win/ui/calcyx.exe` をコピーして実行 |
 
 ## アーキテクチャ
 
 ```
-engine/          C99 計算エンジン
-  types/         値型 (real, frac, quad, ufixed113, val)
-  parser/        字句解析・構文解析
-  eval/          評価器・組み込み関数
-ui/              FLTK GUI (Mac / Linux / Windows)
-samples/         サンプルファイル (Examples.txt, Test_*.txt)
+engine/   C99 計算エンジン（types / parser / eval）
+ui/       FLTK GUI（macOS / Linux / Windows )
 ```
 
-エンジンは C99 のみで実装されており、GUI・Android など複数のフロントエンドから共有する設計。
+エンジンは C99 のみで実装されており、複数のフロントエンドから共有する設計。
+
+## テスト
+
+```sh
+cmake --build --preset default
+./build/engine/test_types
+./build/engine/test_eval
+```
 
 ## 移植元
-
-https://github.com/shapoco/calctus
 
 このソフトウェアは [Calctus](https://github.com/shapoco/calctus) (Copyright (c) 2022 shapoco, MIT License) をもとに開発されています。
 
