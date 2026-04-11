@@ -1,4 +1,5 @@
-build/
+build*/
+Testing/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
@@ -11,3 +12,6 @@ Makefile
 ~$*
 *~
 /tmp
+.DS_Store
+debug.sh
+ui/icon.iconset/

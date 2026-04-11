@@ -39,6 +39,25 @@ cmake --build build
 
 Mac では `brew install mpdecimal` が必要。
 
+### アイコンの更新 (macOS)
+
+`ui/icon.svg` を編集後、以下で `ui/icon.icns` を再生成する（`librsvg` が必要: `brew install librsvg`）:
+
+```sh
+mkdir -p ui/icon.iconset
+for size in 16 32 64 128 256 512 1024; do
+    rsvg-convert -w $size -h $size ui/icon.svg -o ui/icon.iconset/icon_${size}x${size}.png
+done
+cp ui/icon.iconset/icon_32x32.png    ui/icon.iconset/icon_16x16@2x.png
+cp ui/icon.iconset/icon_64x64.png    ui/icon.iconset/icon_32x32@2x.png
+cp ui/icon.iconset/icon_256x256.png  ui/icon.iconset/icon_128x128@2x.png
+cp ui/icon.iconset/icon_512x512.png  ui/icon.iconset/icon_256x256@2x.png
+cp ui/icon.iconset/icon_1024x1024.png ui/icon.iconset/icon_512x512@2x.png
+iconutil -c icns ui/icon.iconset -o ui/icon.icns
+```
+
+`ui/icon.iconset/` は中間成果物なので `.gitignore` に含まれている。
+
 ### 実行ファイル
 
 | パス | 内容 |
