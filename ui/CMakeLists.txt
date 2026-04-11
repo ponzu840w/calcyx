@@ -63,6 +63,12 @@ elseif(WIN32)
         calcyx.rc
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
+    # exe の隣に samples/ をコピー (File > Examples が参照する)
+    add_custom_command(TARGET calcyx_ui POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/samples"
+            "$<TARGET_FILE_DIR:calcyx_ui>/samples"
+    )
 else()
     add_executable(calcyx_ui
         main.cpp
@@ -70,6 +76,12 @@ else()
         SheetView.cpp
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
+    # Linux: exe の隣に samples/ をコピー
+    add_custom_command(TARGET calcyx_ui POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_SOURCE_DIR}/samples"
+            "$<TARGET_FILE_DIR:calcyx_ui>/samples"
+    )
 endif()
 
 target_include_directories(calcyx_ui PRIVATE
