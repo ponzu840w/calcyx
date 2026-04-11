@@ -1,31 +1,10 @@
 cmake_minimum_required(VERSION 3.15)
 
-# ---- FLTK の検索 ----
-if(WIN32 AND CMAKE_CROSSCOMPILING)
-    set(MINGW_DEPS_DIR "${CMAKE_SOURCE_DIR}/deps/mingw64")
-    set(FLTK_LIB        "${MINGW_DEPS_DIR}/lib/libfltk.a")
-    set(FLTK_INCLUDE_DIR "${MINGW_DEPS_DIR}/include")
-else()
-    find_library(FLTK_LIB fltk
-        HINTS
-            /opt/homebrew/lib
-            /usr/local/lib
-            /usr/lib
-            /usr/lib/x86_64-linux-gnu
-    )
-    find_path(FLTK_INCLUDE_DIR FL/Fl.H
-        HINTS
-            /opt/homebrew/include
-            /usr/local/include
-            /usr/include
-    )
-    if(NOT FLTK_LIB OR NOT FLTK_INCLUDE_DIR)
-        message(STATUS "FLTK not found — skipping UI target")
-        return()
-    endif()
-endif()
+# ---- FLTK (DEPS_DIR は親の CMakeLists.txt で deps.cmake により設定済み) ----
+set(FLTK_LIB        "${DEPS_DIR}/lib/libfltk.a")
+set(FLTK_INCLUDE_DIR "${DEPS_DIR}/include")
 
-message(STATUS "Found FLTK: ${FLTK_LIB}")
+message(STATUS "FLTK: ${FLTK_LIB}")
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -45,11 +24,12 @@ elseif(WIN32)
     )
 else()
     # Linux
-    list(APPEND PLATFORM_LIBS pthread)
-    find_package(X11)
-    if(X11_FOUND)
-        list(APPEND PLATFORM_LIBS ${X11_LIBRARIES})
-    endif()
+    find_package(X11 REQUIRED)
+    list(APPEND PLATFORM_LIBS
+        pthread
+        ${X11_LIBRARIES}
+        Xfixes Xrender Xcursor Xft Xinerama fontconfig
+    )
 endif()
 
 # ---- calcyx (App Bundle on macOS, 通常バイナリ on Windows/Linux) ----

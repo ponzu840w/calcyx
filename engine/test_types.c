@@ -73,7 +73,7 @@ static void test_ufixed113(void) {
 /* --- quad テスト ---
  * 移植元: Calctus/Model/Types/quad.cs - quad.Test() */
 
-static void assert_quad_eq(const char *label, quad_t got, quad_t expected) {
+static void assert_quad_eq(const char *label, cx_quad_t got, cx_quad_t expected) {
     if (!quad_eq(got, expected)) {
         real_t rg, re;
         quad_to_real(&rg, got);
@@ -91,9 +91,9 @@ static void quad_assert_add(const char *as, const char *bs, const char *qs) {
     char label[128];
     real_t ra, rb, rq;
     real_from_str(&ra, as); real_from_str(&rb, bs); real_from_str(&rq, qs);
-    quad_t qa = quad_from_real(&ra);
-    quad_t qb = quad_from_real(&rb);
-    quad_t qq = quad_from_real(&rq);
+    cx_quad_t qa = quad_from_real(&ra);
+    cx_quad_t qb = quad_from_real(&rb);
+    cx_quad_t qq = quad_from_real(&rq);
     snprintf(label, sizeof(label), "[quad] %s+%s", as, bs);
     assert_quad_eq(label, quad_add(qa, qb), qq);
 }
@@ -103,9 +103,9 @@ static void quad_assert_sub(const char *as, const char *bs, const char *qs) {
     char label[128];
     real_t ra, rb, rq;
     real_from_str(&ra, as); real_from_str(&rb, bs); real_from_str(&rq, qs);
-    quad_t qa = quad_from_real(&ra);
-    quad_t qb = quad_from_real(&rb);
-    quad_t qq = quad_from_real(&rq);
+    cx_quad_t qa = quad_from_real(&ra);
+    cx_quad_t qb = quad_from_real(&rb);
+    cx_quad_t qq = quad_from_real(&rq);
     snprintf(label, sizeof(label), "[quad] %s-%s", as, bs);
     assert_quad_eq(label, quad_sub(qa, qb), qq);
 }
@@ -115,9 +115,9 @@ static void quad_assert_mul(const char *as, const char *bs, const char *qs) {
     char label[128];
     real_t ra, rb, rq;
     real_from_str(&ra, as); real_from_str(&rb, bs); real_from_str(&rq, qs);
-    quad_t qa = quad_from_real(&ra);
-    quad_t qb = quad_from_real(&rb);
-    quad_t qq = quad_from_real(&rq);
+    cx_quad_t qa = quad_from_real(&ra);
+    cx_quad_t qb = quad_from_real(&rb);
+    cx_quad_t qq = quad_from_real(&rq);
     snprintf(label, sizeof(label), "[quad] %s*%s", as, bs);
     assert_quad_eq(label, quad_mul(qa, qb), qq);
 }
@@ -127,8 +127,8 @@ static void quad_assert_trunc(const char *as, const char *qs) {
     char label[128];
     real_t ra, rq;
     real_from_str(&ra, as); real_from_str(&rq, qs);
-    quad_t qa = quad_from_real(&ra);
-    quad_t qq = quad_from_real(&rq);
+    cx_quad_t qa = quad_from_real(&ra);
+    cx_quad_t qq = quad_from_real(&rq);
     snprintf(label, sizeof(label), "[quad] Truncate(%s)", as);
     assert_quad_eq(label, quad_truncate(qa), qq);
 }
@@ -138,7 +138,7 @@ static void quad_assert_roundtrip(const char *as) {
     char label[128];
     real_t ra, back;
     real_from_str(&ra, as);
-    quad_t qa = quad_from_real(&ra);
+    cx_quad_t qa = quad_from_real(&ra);
     quad_to_real(&back, qa);
     char buf_got[64], buf_exp[64];
     real_to_str(&back, buf_got, sizeof(buf_got));
@@ -214,7 +214,7 @@ static void test_quad(void) {
 
 static void test_qmath_log2(void) {
     real_t r;
-    quad_t got, expected;
+    cx_quad_t got, expected;
 
 #define ASSERT_LOG2(input_str, expected_str) \
     do { \

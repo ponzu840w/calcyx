@@ -3,27 +3,27 @@
 #include "quad.h"
 #include <string.h>
 
-const quad_t QUAD_POS_ZERO = { false, 0, {{ 0,0,0,0,0 }} };
-const quad_t QUAD_NEG_ZERO = { true,  0, {{ 0,0,0,0,0 }} };
+const cx_quad_t QUAD_POS_ZERO = { false, 0, {{ 0,0,0,0,0 }} };
+const cx_quad_t QUAD_NEG_ZERO = { true,  0, {{ 0,0,0,0,0 }} };
 
 /* --- 基本述語 --- */
 
-bool quad_is_zero(quad_t q) {
+bool quad_is_zero(cx_quad_t q) {
     return (q.exp == 0) && ufixed113_eq(q.coe, UFIXED113_ZERO);
 }
 
-bool quad_is_normalized(quad_t q) {
+bool quad_is_normalized(cx_quad_t q) {
     return q.exp != 0 && q.exp != 0x7fff;
 }
 
 /* --- 正規化 ---
  * quad.cs: public static quad Normalize(bool neg, int exp, ufixed113 coe) */
-quad_t quad_normalize(bool neg, int exp, ufixed113_t coe) {
+cx_quad_t quad_normalize(bool neg, int exp, ufixed113_t coe) {
     if (exp >= 0x7fff)
-        return (quad_t){ neg, 0x7ffe, UFIXED113_ONE };
+        return (cx_quad_t){ neg, 0x7ffe, UFIXED113_ONE };
 
     if (ufixed113_eq(coe, UFIXED113_ZERO))
-        return (quad_t){ neg, 0, UFIXED113_ZERO };
+        return (cx_quad_t){ neg, 0, UFIXED113_ZERO };
 
     int shift;
     coe = ufixed113_align(coe, &shift);
@@ -34,13 +34,13 @@ quad_t quad_normalize(bool neg, int exp, ufixed113_t coe) {
         exp = 0;
     }
 
-    return (quad_t){ neg, (uint16_t)exp, coe };
+    return (cx_quad_t){ neg, (uint16_t)exp, coe };
 }
 
 /* --- 変換 --- */
 
 /* quad.cs: public static explicit operator quad(decimal d) */
-quad_t quad_from_real(const real_t *d) {
+cx_quad_t quad_from_real(const real_t *d) {
     real_t zero, one, two, abs_d, di, df, mod, tmp;
     real_from_i64(&zero, 0);
     real_from_i64(&one,  1);
@@ -52,7 +52,7 @@ quad_t quad_from_real(const real_t *d) {
     real_sub(&df, &abs_d, &di);
 
     /* 整数部 */
-    quad_t qi;
+    cx_quad_t qi;
     if (!real_is_zero(&di)) {
         uint16_t ei = QUAD_EXP_BIAS - 1;
         ufixed113_t ci = UFIXED113_ZERO;
@@ -63,13 +63,13 @@ quad_t quad_from_real(const real_t *d) {
             ei++;
             real_divint(&tmp, &di, &two); real_copy(&di, &tmp);
         }
-        qi = (quad_t){ neg, ei, ci };
+        qi = (cx_quad_t){ neg, ei, ci };
     } else {
         qi = neg ? QUAD_NEG_ZERO : QUAD_POS_ZERO;
     }
 
     /* 小数部 */
-    quad_t qf;
+    cx_quad_t qf;
     if (!real_is_zero(&df)) {
         uint16_t ef = (uint16_t)(QUAD_EXP_BIAS + UFIXED113_NUM_BITS - 1);
         ufixed113_t cf = UFIXED113_ZERO;
@@ -81,7 +81,7 @@ quad_t quad_from_real(const real_t *d) {
             ef--;
             real_t df3; real_sub(&df3, &df, &tmp); real_copy(&df, &df3);
         }
-        qf = (quad_t){ neg, ef, cf };
+        qf = (cx_quad_t){ neg, ef, cf };
     } else {
         qf = neg ? QUAD_NEG_ZERO : QUAD_POS_ZERO;
     }
@@ -90,7 +90,7 @@ quad_t quad_from_real(const real_t *d) {
 }
 
 /* quad.cs: public static explicit operator ulong(quad a) */
-uint64_t quad_to_ulong(quad_t a) {
+uint64_t quad_to_ulong(cx_quad_t a) {
     if (quad_is_zero(a) || a.exp == 0) return 0;
     ufixed113_t coe = a.coe;
     int shifts = ((int)QUAD_EXP_BIAS - (int)a.exp) + UFIXED113_NUM_BITS - 1;
@@ -100,9 +100,9 @@ uint64_t quad_to_ulong(quad_t a) {
 }
 
 /* quad.cs: public quad Truncate() */
-quad_t quad_truncate(quad_t q) {
+cx_quad_t quad_truncate(cx_quad_t q) {
     if (q.exp == 0)
-        return (quad_t){ q.neg, 0, UFIXED113_ZERO };
+        return (cx_quad_t){ q.neg, 0, UFIXED113_ZERO };
     int trunc_bits = ((int)QUAD_EXP_BIAS - (int)q.exp) + UFIXED113_NUM_BITS - 1;
     ufixed113_t coe = q.coe;
     if (trunc_bits > 0)
@@ -111,7 +111,7 @@ quad_t quad_truncate(quad_t q) {
 }
 
 /* quad.cs: public static explicit operator decimal(quad q) */
-void quad_to_real(real_t *out, quad_t q) {
+void quad_to_real(real_t *out, cx_quad_t q) {
     real_t zero, one, two, sign, di, df, p, fp, sum;
     real_from_i64(&zero, 0);
     real_from_i64(&one,  1);
@@ -122,11 +122,11 @@ void quad_to_real(real_t *out, quad_t q) {
     real_from_i64(&sign, q.neg ? -1 : 1);
     if (q.neg) q = quad_neg(q);
 
-    quad_t qi = quad_truncate(q);
-    quad_t qf = quad_sub(q, qi);
+    cx_quad_t qi = quad_truncate(q);
+    cx_quad_t qf = quad_sub(q, qi);
 
     /* 整数部 */
-    quad_t q2 = { false, (uint16_t)(QUAD_EXP_BIAS + 1), UFIXED113_ONE }; /* 2.0 */
+    cx_quad_t q2 = { false, (uint16_t)(QUAD_EXP_BIAS + 1), UFIXED113_ONE }; /* 2.0 */
     real_copy(&di, &zero);
     real_copy(&p,  &one);
     while (quad_gt(qi, QUAD_POS_ZERO)) {
@@ -138,7 +138,7 @@ void quad_to_real(real_t *out, quad_t q) {
     }
 
     /* 小数部 */
-    quad_t q1 = { false, (uint16_t)QUAD_EXP_BIAS, UFIXED113_ONE }; /* 1.0 */
+    cx_quad_t q1 = { false, (uint16_t)QUAD_EXP_BIAS, UFIXED113_ONE }; /* 1.0 */
     real_copy(&df, &zero);
     real_copy(&fp, &one);
     while (!quad_is_zero(qf)) {
@@ -156,10 +156,10 @@ void quad_to_real(real_t *out, quad_t q) {
 
 /* --- 算術 --- */
 
-quad_t quad_neg(quad_t a) { return (quad_t){ !a.neg, a.exp, a.coe }; }
+cx_quad_t quad_neg(cx_quad_t a) { return (cx_quad_t){ !a.neg, a.exp, a.coe }; }
 
 /* quad.cs: public static quad operator +(quad a, quad b) */
-quad_t quad_add(quad_t a, quad_t b) {
+cx_quad_t quad_add(cx_quad_t a, cx_quad_t b) {
     if (quad_is_zero(a)) return b;
     if (quad_is_zero(b)) return a;
 
@@ -200,20 +200,20 @@ quad_t quad_add(quad_t a, quad_t b) {
     return quad_normalize(q_neg, q_exp, q_coe);
 }
 
-quad_t quad_sub(quad_t a, quad_t b) { return quad_add(a, quad_neg(b)); }
+cx_quad_t quad_sub(cx_quad_t a, cx_quad_t b) { return quad_add(a, quad_neg(b)); }
 
-quad_t quad_inc(quad_t a) {
-    quad_t one = { false, (uint16_t)QUAD_EXP_BIAS, UFIXED113_ONE };
+cx_quad_t quad_inc(cx_quad_t a) {
+    cx_quad_t one = { false, (uint16_t)QUAD_EXP_BIAS, UFIXED113_ONE };
     return quad_add(a, one);
 }
 
-quad_t quad_dec(quad_t a) {
-    quad_t one = { false, (uint16_t)QUAD_EXP_BIAS, UFIXED113_ONE };
+cx_quad_t quad_dec(cx_quad_t a) {
+    cx_quad_t one = { false, (uint16_t)QUAD_EXP_BIAS, UFIXED113_ONE };
     return quad_sub(a, one);
 }
 
 /* quad.cs: public static quad operator *(quad a, quad b) */
-quad_t quad_mul(quad_t a, quad_t b) {
+cx_quad_t quad_mul(cx_quad_t a, cx_quad_t b) {
     bool neg = a.neg ^ b.neg;
     int  exp = (int)a.exp + (int)b.exp - (int)QUAD_EXP_BIAS;
     uint32_t carry;
@@ -223,7 +223,7 @@ quad_t quad_mul(quad_t a, quad_t b) {
 }
 
 /* quad.cs: public static quad operator /(quad a, quad b) */
-quad_t quad_div(quad_t a, quad_t b) {
+cx_quad_t quad_div(cx_quad_t a, cx_quad_t b) {
     bool neg = a.neg ^ b.neg;
     int  exp = (int)a.exp - (int)b.exp + (int)QUAD_EXP_BIAS;
     ufixed113_t q, r;
@@ -233,15 +233,15 @@ quad_t quad_div(quad_t a, quad_t b) {
 
 /* --- 比較 --- */
 
-bool quad_eq(quad_t a, quad_t b) {
+bool quad_eq(cx_quad_t a, cx_quad_t b) {
     if (quad_is_zero(a)) return quad_is_zero(b);
     if (quad_is_zero(b)) return quad_is_zero(a);
     return (a.neg == b.neg) && (a.exp == b.exp) && ufixed113_eq(a.coe, b.coe);
 }
 
-bool quad_ne(quad_t a, quad_t b) { return !quad_eq(a, b); }
+bool quad_ne(cx_quad_t a, cx_quad_t b) { return !quad_eq(a, b); }
 
-bool quad_gt(quad_t a, quad_t b) {
+bool quad_gt(cx_quad_t a, cx_quad_t b) {
     if (quad_is_zero(a) && quad_is_zero(b)) return false;
     if ( a.neg && !b.neg) return false;
     if (!a.neg &&  b.neg) return true;
@@ -251,24 +251,24 @@ bool quad_gt(quad_t a, quad_t b) {
     return false;
 }
 
-bool quad_lt(quad_t a, quad_t b) { return quad_gt(b, a); }
-bool quad_ge(quad_t a, quad_t b) { return quad_gt(a, b) || quad_eq(a, b); }
-bool quad_le(quad_t a, quad_t b) { return quad_lt(a, b) || quad_eq(a, b); }
+bool quad_lt(cx_quad_t a, cx_quad_t b) { return quad_gt(b, a); }
+bool quad_ge(cx_quad_t a, cx_quad_t b) { return quad_gt(a, b) || quad_eq(a, b); }
+bool quad_le(cx_quad_t a, cx_quad_t b) { return quad_lt(a, b) || quad_eq(a, b); }
 
 /* --- 数学関数 ---
  * 移植元: Calctus/Model/Mathematics/QMath.cs - QMath.Log2() */
-quad_t quad_log2(quad_t a) {
-    quad_t q2  = { false, (uint16_t)(QUAD_EXP_BIAS + 1), UFIXED113_ONE }; /* 2.0 */
-    quad_t q1  = { false, (uint16_t)QUAD_EXP_BIAS,       UFIXED113_ONE }; /* 1.0 */
+cx_quad_t quad_log2(cx_quad_t a) {
+    cx_quad_t q2  = { false, (uint16_t)(QUAD_EXP_BIAS + 1), UFIXED113_ONE }; /* 2.0 */
+    cx_quad_t q1  = { false, (uint16_t)QUAD_EXP_BIAS,       UFIXED113_ONE }; /* 1.0 */
 
     /* 整数部: a を [1,2) に収める */
-    quad_t iLog = QUAD_POS_ZERO;
+    cx_quad_t iLog = QUAD_POS_ZERO;
     while (quad_ge(a, q2)) { a = quad_div(a, q2); iLog = quad_inc(iLog); }
     while (quad_lt(a, q1)) { a = quad_mul(a, q2); iLog = quad_dec(iLog); }
 
     /* 小数部: binary squaring algorithm */
-    quad_t fLog = QUAD_POS_ZERO;
-    quad_t p    = q1;
+    cx_quad_t fLog = QUAD_POS_ZERO;
+    cx_quad_t p    = q1;
     for (int i = 0; i < UFIXED113_NUM_BITS; i++) {
         a = quad_mul(a, a);
         p = quad_div(p, q2);

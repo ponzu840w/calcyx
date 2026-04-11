@@ -33,11 +33,12 @@ https://github.com/shapoco/calctus (C# / .NET)
 ## ビルド
 
 ```sh
-cmake --preset default
-cmake --build --preset default
+cmake --preset unix
+cmake --build --preset unix
 ```
 
-Mac では `brew install mpdecimal` が必要。
+FLTK・mpdecimal は初回ビルド時に自動取得。macOS では `brew install cmake` のみ必要。  
+Linux では X11 系パッケージが必要: `sudo apt install cmake libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev`
 
 ### Windows 向けクロスコンパイル（WSL 上）
 

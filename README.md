@@ -12,20 +12,21 @@
 
 ### 依存パッケージ
 
+FLTK・mpdecimal は初回ビルド時に自動取得・ビルドされます。  
+X11 まわりなど OS に密着した依存のみ手動インストールが必要です。
+
 | プラットフォーム | コマンド |
 |---|---|
-| macOS | `brew install cmake fltk mpdecimal` |
-| Linux | `sudo apt install cmake libfltk1.4-dev libmpdec-dev` |
+| macOS | `brew install cmake` |
+| Linux | `sudo apt install cmake libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev` |
 | Windows (WSL) | `sudo apt install cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64` |
-
-Windows 向けは FLTK・mpdecimal の MinGW-w64 版を初回ビルド時に自動取得。
 
 ### ビルド
 
 ```sh
 git clone https://github.com/ponzu840w/calcyx.git
 cd calcyx
-cmake --preset default    # macOS / Linux
+cmake --preset unix    # macOS / Linux
 cmake --preset windows    # Windows (WSL)
 cmake --build --preset <preset>
 ```
@@ -50,7 +51,7 @@ ui/       FLTK GUI（macOS / Linux / Windows )
 ## テスト
 
 ```sh
-cmake --build --preset default
+cmake --build --preset unix
 ./build/engine/test_types
 ./build/engine/test_eval
 ```
