@@ -58,20 +58,21 @@ https://github.com/shapoco/calctus
 
 ### 計算関数
 
-| カテゴリ | 未実装の主な関数 |
+| カテゴリ | 未実装の関数 |
 |---|---|
-| 配列操作 | `range`, `map`, `filter`, `sort`, `sum`, `ave`, `invSum`, `harMean`, `geoMean`, `indexOf`, `contains`, `unique`, `except`, `intersect`, `union`, `extend`, `aggregate` 等 |
-| ビット・バイト操作 | `pack/unpack`, `swap2/4/8`, `swapNib`, `reverseBits`, `reverseBytes`, `rotateL/R`, `count1` 等 |
+| 絶対値・符号 | `mag` |
+| 配列操作 | `len`, `range`, `rangeInclusive`, `reverseArray`, `map`, `filter`, `count`, `sort`, `extend`, `aggregate`, `concat`, `unique`, `except`, `intersect`, `union`, `indexOf`, `lastIndexOf`, `contains`、`all`/`any` の述語関数付き2引数版 |
 | 文字列操作 | `trim`, `trimStart`, `trimEnd`, `replace`, `toLower`, `toUpper`, `startsWith`, `endsWith`, `split`, `join` |
-| 色変換 | `rgb`, `hsv2rgb`, `rgb2hsv`, `hsl2rgb`, `rgb2hsl`, `yuv2rgb`, `rgb2yuv`, `rgbTo565`, `rgbFrom565`, `pack565`, `unpack565` |
-| エンコーディング | `utf8Enc/Dec`, `urlEnc/Dec`, `base64Enc/Dec`, `base64EncBytes/DecBytes` |
-| E系列 | `esFloor`, `esCeil`, `esRound`, `esRatio` |
+| 統計 | `sum`, `ave`, `invSum`, `harMean`, `geoMean` |
 | 素数 | `prime`, `isPrime`, `primeFact` |
+| キャスト | `real`, `rat`, `array`, `str` |
+| ビット・バイト操作 | `pack`, `unpack`, `swapNib`, `swap2`, `swap4`, `swap8`, `reverseBits`, `reverseBytes`, `rotateL`, `rotateR`, `count1` |
 | グレイコード | `toGray`, `fromGray` |
-| ECC / パリティ | `xorReduce`, `oddParity`, `eccWidth`, `eccEnc`, `eccDec` |
-| キャスト | `rat` (有理数近似), `array` (文字列→配列), `str` (配列→文字列) |
+| 色変換 | `rgb`, `hsv2rgb`, `rgb2hsv`, `hsl2rgb`, `rgb2hsl`, `yuv2rgb`, `rgb2yuv`, `rgbTo565`, `rgbFrom565`, `pack565`, `unpack565` |
 | 方程式解法 | `solve` (ニュートン法) |
-| 日時 | `now` 等の日時関数 |
+| ECC / パリティ | `xorReduce`, `oddParity`, `eccWidth`, `eccEnc`, `eccDec` |
+| E系列 | `esFloor`, `esCeil`, `esRound`, `esRatio` |
+| エンコーディング | `utf8Enc`, `utf8Dec`, `urlEnc`, `urlDec`, `base64Enc`, `base64Dec`, `base64EncBytes`, `base64DecBytes` |
 
 ### UI 機能
 
