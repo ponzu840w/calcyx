@@ -2,6 +2,8 @@
 
 [Calctus](https://github.com/shapoco/calctus) (C# / .NET) の C + FLTK 移植版。
 
+ほぼ全てClaudeCodeによる作業。
+
 ## 概要
 
 式を複数行並べて逐次評価できるスクラッチパッド型の計算機。前の行の結果を後の行で参照でき、行を編集するとその場でリアルタイム再評価される。
