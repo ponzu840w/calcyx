@@ -4,6 +4,7 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Native_File_Chooser.H>
 #include <FL/fl_ask.H>
+#include <cstdio>
 #include <cstring>
 
 // フォーマット定義 (移植元: RepresentaionFuncs.cs)
@@ -35,7 +36,29 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->box(FL_FLAT_BOX);
     menu_->add("&File/&Open...\t",    FL_COMMAND + 'o', menu_cb, (void*)"open");
     menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save");
-    menu_->add("&File/&Examples",     0,                menu_cb, (void*)"examples");
+    menu_->add("&File/&Examples/Examples",            0, menu_cb, (void*)"Examples.txt");
+    menu_->add("&File/&Examples/Test_Abs_Sign",       0, menu_cb, (void*)"Test_Abs_Sign.txt");
+    menu_->add("&File/&Examples/Test_Array",          0, menu_cb, (void*)"Test_Array.txt");
+    menu_->add("&File/&Examples/Test_Assign",         0, menu_cb, (void*)"Test_Assign.txt");
+    menu_->add("&File/&Examples/Test_BitByteOps",     0, menu_cb, (void*)"Test_BitByteOps.txt");
+    menu_->add("&File/&Examples/Test_Cast",           0, menu_cb, (void*)"Test_Cast.txt");
+    menu_->add("&File/&Examples/Test_Color",          0, menu_cb, (void*)"Test_Color.txt");
+    menu_->add("&File/&Examples/Test_DateTime",       0, menu_cb, (void*)"Test_DateTime.txt");
+    menu_->add("&File/&Examples/Test_ECC",            0, menu_cb, (void*)"Test_ECC.txt");
+    menu_->add("&File/&Examples/Test_Encoding",       0, menu_cb, (void*)"Test_Encoding.txt");
+    menu_->add("&File/&Examples/Test_Exponential",    0, menu_cb, (void*)"Test_Exponential.txt");
+    menu_->add("&File/&Examples/Test_Functions",      0, menu_cb, (void*)"Test_Functions.txt");
+    menu_->add("&File/&Examples/Test_GCD_LCM",        0, menu_cb, (void*)"Test_GCD_LCM.txt");
+    menu_->add("&File/&Examples/Test_GrayCode",       0, menu_cb, (void*)"Test_GrayCode.txt");
+    menu_->add("&File/&Examples/Test_MinMax",         0, menu_cb, (void*)"Test_MinMax.txt");
+    menu_->add("&File/&Examples/Test_PrimeNumber",    0, menu_cb, (void*)"Test_PrimeNumber.txt");
+    menu_->add("&File/&Examples/Test_Representation", 0, menu_cb, (void*)"Test_Representation.txt");
+    menu_->add("&File/&Examples/Test_Rounding",       0, menu_cb, (void*)"Test_Rounding.txt");
+    menu_->add("&File/&Examples/Test_Solve",          0, menu_cb, (void*)"Test_Solve.txt");
+    menu_->add("&File/&Examples/Test_String",         0, menu_cb, (void*)"Test_String.txt");
+    menu_->add("&File/&Examples/Test_Sum_Average",    0, menu_cb, (void*)"Test_Sum_Average.txt");
+    menu_->add("&File/&Examples/Test_Trigonometric",  0, menu_cb, (void*)"Test_Trigonometric.txt");
+    menu_->add("&File/&Examples/Test_eSeries",        0, menu_cb, (void*)"Test_eSeries.txt");
 
     // フォーマット選択ドロップダウン (メニューバー右端)
     fmt_choice_ = new Fl_Choice(w - CHOICE_W, 0, CHOICE_W, MENU_H);
@@ -104,16 +127,24 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
                 fl_alert("Cannot save file:\n%s", fc.filename());
         }
 
-    } else if (strcmp(cmd, "examples") == 0) {
-        static const char *candidates[] = {
-            "tmp/calctus-linux/Samples/Examples.txt",
-            "../tmp/calctus-linux/Samples/Examples.txt",
-            "../../tmp/calctus-linux/Samples/Examples.txt",
-        };
-        for (auto *p : candidates)
-            if (win->sheet_->load_file(p)) return;
-        fl_alert("Examples.txt not found.\nUse File > Open to select it manually.");
+    } else {
+        open_sample_file(win, cmd);
     }
+}
+
+bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
+    static const char *bases[] = {
+        "samples/",
+        "../samples/",
+        "../../samples/",
+    };
+    char path[512];
+    for (auto *base : bases) {
+        snprintf(path, sizeof(path), "%s%s", base, filename);
+        if (win->sheet_->load_file(path)) return true;
+    }
+    fl_alert("File not found:\n%s", filename);
+    return false;
 }
 
 void MainWindow::choice_cb(Fl_Widget *w, void *data) {

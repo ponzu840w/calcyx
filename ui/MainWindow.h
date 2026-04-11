@@ -28,4 +28,5 @@ private:
     static void menu_cb  (Fl_Widget *w, void *data);
     static void choice_cb(Fl_Widget *w, void *data);
     static void row_change_cb(void *data);  // SheetView からのコールバック
+    static bool open_sample_file(MainWindow *win, const char *filename);
 };
