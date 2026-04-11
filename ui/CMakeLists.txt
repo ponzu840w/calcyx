@@ -36,11 +36,16 @@ endif()
 if(APPLE)
     set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")
     set_source_files_properties(${ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+
+    file(GLOB SAMPLE_FILES "${CMAKE_SOURCE_DIR}/samples/*.txt")
+    set_source_files_properties(${SAMPLE_FILES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/samples")
+
     add_executable(calcyx_ui MACOSX_BUNDLE
         main.cpp
         MainWindow.cpp
         SheetView.cpp
         ${ICON_FILE}
+        ${SAMPLE_FILES}
     )
     set_target_properties(calcyx_ui PROPERTIES
         MACOSX_BUNDLE_BUNDLE_NAME          "calcyx"

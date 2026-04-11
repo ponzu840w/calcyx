@@ -6,6 +6,10 @@
 #include <FL/fl_ask.H>
 #include <cstdio>
 #include <cstring>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#include <libgen.h>
+#endif
 
 // フォーマット定義 (移植元: RepresentaionFuncs.cs)
 static const struct { const char *label; const char *func_name; } FMT_DEFS[] = {
@@ -152,12 +156,28 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
 }
 
 bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
+    char path[1024];
+
+#ifdef __APPLE__
+    // App Bundle: 実行ファイルは Contents/MacOS/ にあり、
+    // サンプルは Contents/Resources/samples/ に置かれる
+    {
+        uint32_t size = sizeof(path);
+        if (_NSGetExecutablePath(path, &size) == 0) {
+            // path = .../calcyx.app/Contents/MacOS/calcyx
+            char *dir = dirname(path);  // .../calcyx.app/Contents/MacOS
+            char candidate[1024];
+            snprintf(candidate, sizeof(candidate), "%s/../Resources/samples/%s", dir, filename);
+            if (win->sheet_->load_file(candidate)) return true;
+        }
+    }
+#endif
+
     static const char *bases[] = {
         "samples/",
         "../samples/",
         "../../samples/",
     };
-    char path[512];
     for (auto *base : bases) {
         snprintf(path, sizeof(path), "%s%s", base, filename);
         if (win->sheet_->load_file(path)) return true;
