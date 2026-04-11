@@ -14,12 +14,56 @@ message(STATUS "Found FLTK: ${FLTK_LIB}")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(calcyx_ui
-    main.cpp
-    MainWindow.cpp
-    SheetView.cpp
+set(FLTK_FRAMEWORKS "")
+if(APPLE)
+    list(APPEND FLTK_FRAMEWORKS
+        "-framework Cocoa"
+        "-weak_framework UniformTypeIdentifiers"
+        "-weak_framework ScreenCaptureKit"
+    )
+endif()
+
+# ---- calcyx (App Bundle on macOS) ----
+if(APPLE)
+    set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")
+    set_source_files_properties(${ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    add_executable(calcyx_ui MACOSX_BUNDLE
+        main.cpp
+        MainWindow.cpp
+        SheetView.cpp
+        ${ICON_FILE}
+    )
+    set_target_properties(calcyx_ui PROPERTIES
+        MACOSX_BUNDLE_BUNDLE_NAME          "calcyx"
+        MACOSX_BUNDLE_BUNDLE_VERSION       "0.1"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+        MACOSX_BUNDLE_ICON_FILE            "icon.icns"
+        MACOSX_BUNDLE_GUI_IDENTIFIER       "com.ponzu840w.calcyx"
+        OUTPUT_NAME                        "calcyx"
+    )
+else()
+    add_executable(calcyx_ui
+        main.cpp
+        MainWindow.cpp
+        SheetView.cpp
+    )
+endif()
+
+target_include_directories(calcyx_ui PRIVATE
+    ${FLTK_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/engine
+    ${MPDECIMAL_INCLUDE}
 )
 
+target_link_libraries(calcyx_ui PRIVATE
+    calcyx_engine
+    ${FLTK_LIB}
+    ${FLTK_FRAMEWORKS}
+    m
+    pthread
+)
+
+# ---- test_undo ----
 add_executable(test_undo
     test_undo.cpp
     SheetView.cpp
@@ -32,29 +76,6 @@ target_include_directories(test_undo PRIVATE
 )
 
 target_link_libraries(test_undo PRIVATE
-    calcyx_engine
-    ${FLTK_LIB}
-    ${FLTK_FRAMEWORKS}
-    m
-    pthread
-)
-
-target_include_directories(calcyx_ui PRIVATE
-    ${FLTK_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/engine
-    ${MPDECIMAL_INCLUDE}
-)
-
-set(FLTK_FRAMEWORKS "")
-if(APPLE)
-    list(APPEND FLTK_FRAMEWORKS
-        "-framework Cocoa"
-        "-weak_framework UniformTypeIdentifiers"
-        "-weak_framework ScreenCaptureKit"
-    )
-endif()
-
-target_link_libraries(calcyx_ui PRIVATE
     calcyx_engine
     ${FLTK_LIB}
     ${FLTK_FRAMEWORKS}

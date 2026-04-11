@@ -8,7 +8,33 @@
 
 式を複数行並べて逐次評価できるスクラッチパッド型の計算機。前の行の結果を後の行で参照でき、行を編集するとその場でリアルタイム再評価される。
 
-## ビルド
+## インストール（macOS）
+
+### 前提条件
+
+- macOS 12 以降
+- [Homebrew](https://brew.sh/)
+- Xcode Command Line Tools（`xcode-select --install`）
+
+### 依存ライブラリのインストール
+
+```sh
+brew install cmake fltk mpdecimal
+```
+
+### ビルドとインストール
+
+```sh
+git clone https://github.com/ponzu840w/calcyx.git
+cd calcyx
+cmake -S . -B build
+cmake --build build
+cp -r build/ui/calcyx.app /Applications/
+```
+
+Launchpad や Spotlight から起動できます。
+
+## ビルドについてより詳しく（開発者向け）
 
 ### 依存
 
@@ -23,6 +49,8 @@ cmake -S . -B build
 cmake --build build
 ./build/ui/calcyx
 ```
+
+macOS では `open build/ui/calcyx.app` で起動。
 
 テストのみ実行する場合:
 
@@ -79,7 +107,6 @@ https://github.com/shapoco/calctus
 | 機能 | 備考 |
 |---|---|
 | グラフ表示 | 関数プロット・軸設定ウィンドウ |
-| Undo / Redo | 現在未実装 |
 | 入力補完ポップアップ | 関数名・変数名の候補表示 |
 | フォーマットホットキー | F8=Auto, F9=Dec, F10=Hex, F11=Bin, F12=SI 等 |
 | 設定ダイアログ | フォント・DPI・ホットキー設定 |
