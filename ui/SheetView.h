@@ -36,6 +36,20 @@ public:
     // 現在フォーカス行のフォーマッタ関数名 (nullptr = Auto)
     const char *current_fmt_name() const;
 
+    // Undo / Redo
+    void undo();
+    void redo();
+    bool can_undo() const { return undo_idx_ > 0; }
+    bool can_redo() const { return undo_idx_ < (int)undo_buf_.size(); }
+
+    // テスト用ヘルパー
+    int         row_count() const { return (int)rows_.size(); }
+    std::string row_expr(int i) const { return (i >= 0 && i < (int)rows_.size()) ? rows_[i].expr : ""; }
+    int         focused_row() const { return focused_row_; }
+    void        test_type_and_commit(const char *expr);  // editor に入力してコミット
+    void        test_insert_row(int after) { insert_row(after); }
+    void        test_delete_row(int idx)   { delete_row(idx); }
+
     void draw()   override;
     int  handle(int event) override;
     void resize(int x, int y, int w, int h) override;
@@ -48,6 +62,31 @@ private:
         bool        wrapped     = false;     // 式幅が eq_pos_ を超える場合に2行レイアウト
         val_fmt_t   result_fmt  = FMT_REAL;  // 結果値の実際のフォーマット (ハイライト用)
     };
+
+    // ---- Undo / Redo ----
+    enum class UndoOpType { Insert, Delete, ChangeExpr };
+    struct UndoOp {
+        UndoOpType  type;
+        int         index;
+        std::string expr;
+    };
+    struct UndoViewState {
+        int focused_row;
+        int cursor_pos;
+    };
+    struct UndoEntry {
+        UndoViewState       view_state;
+        std::vector<UndoOp> undo_ops;
+        std::vector<UndoOp> redo_ops;
+    };
+    static const int UNDO_DEPTH = 1000;
+    std::vector<UndoEntry> undo_buf_;
+    int                    undo_idx_ = 0;
+    std::string            original_expr_;  // focus_row() 時点の式 (Undo 比較用)
+
+    UndoViewState capture_view_state() const;
+    void          apply_ops(const std::vector<UndoOp> &ops);
+    void          commit_undo_entry(UndoEntry entry);
 
     std::vector<Row> rows_;
     int focused_row_ = 0;

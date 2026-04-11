@@ -242,6 +242,7 @@ public:
         if (event == FL_KEYBOARD) {
             int key  = Fl::event_key();
             bool ctrl = Fl::event_state(FL_CTRL) != 0;
+            bool meta = Fl::event_state(FL_COMMAND) != 0;
             // Up/Down/Enter は左右どちらの欄からも SheetView::handle() に委譲
             if (key == FL_Up || key == FL_Down ||
                 key == FL_Enter || key == FL_KP_Enter) {
@@ -249,6 +250,10 @@ public:
             }
             // Ctrl+Delete/BackSpace は左辺のみ (行削除)
             if (editor_mode_ && ctrl && (key == FL_Delete || key == FL_BackSpace)) {
+                return 0;
+            }
+            // Cmd+Z / Cmd+Y / Cmd+Shift+Z は SheetView::handle() に委譲 (Undo/Redo)
+            if (meta && (key == 'z' || key == 'y')) {
                 return 0;
             }
         }
@@ -543,7 +548,16 @@ void SheetView::live_eval() {
 
 void SheetView::commit() {
     if (focused_row_ >= 0 && focused_row_ < (int)rows_.size()) {
-        rows_[focused_row_].expr = editor_->value();
+        const std::string new_expr(editor_->value());
+        if (new_expr != original_expr_) {
+            UndoEntry e;
+            e.view_state = capture_view_state();
+            e.undo_ops.push_back({ UndoOpType::ChangeExpr, focused_row_, original_expr_ });
+            e.redo_ops.push_back({ UndoOpType::ChangeExpr, focused_row_, new_expr });
+            original_expr_ = new_expr;  // 二重登録防止
+            commit_undo_entry(std::move(e));
+            return;
+        }
     }
     eval_all();
     place_editor();
@@ -556,6 +570,7 @@ void SheetView::focus_row(int idx) {
     if (idx < 0) idx = 0;
     if (idx >= (int)rows_.size()) idx = (int)rows_.size() - 1;
     focused_row_ = idx;
+    original_expr_ = rows_[idx].expr;  // Undo 比較用に記録
     editor_->value(rows_[idx].expr.c_str());
     editor_->insert_position(editor_->size());
 
@@ -610,25 +625,37 @@ const char *SheetView::current_fmt_name() const {
 }
 
 void SheetView::insert_row(int after) {
+    // 現在の編集内容を rows_ に反映してから view_state をキャプチャ
+    if (focused_row_ >= 0 && focused_row_ < (int)rows_.size())
+        rows_[focused_row_].expr = editor_->value();
     int ins = std::min(after + 1, (int)rows_.size());
-    rows_.insert(rows_.begin() + ins, Row{});
-    eval_all();
-    sync_scroll();
+    UndoEntry e;
+    e.view_state = capture_view_state();
+    e.undo_ops.push_back({ UndoOpType::Delete,  ins, "" });
+    e.redo_ops.push_back({ UndoOpType::Insert,  ins, "" });
+    commit_undo_entry(std::move(e));
     focus_row(ins);
 }
 
 void SheetView::delete_row(int idx) {
+    if (focused_row_ >= 0 && focused_row_ < (int)rows_.size())
+        rows_[focused_row_].expr = editor_->value();
     if ((int)rows_.size() <= 1) {
-        rows_[0] = Row{};
-        editor_->value("");
-        eval_all();
-        update_result_display();
-        redraw();
+        if (rows_[0].expr.empty()) return;
+        UndoEntry e;
+        e.view_state = capture_view_state();
+        e.undo_ops.push_back({ UndoOpType::ChangeExpr, 0, rows_[0].expr });
+        e.redo_ops.push_back({ UndoOpType::ChangeExpr, 0, "" });
+        commit_undo_entry(std::move(e));
+        focus_row(0);
         return;
     }
-    rows_.erase(rows_.begin() + idx);
-    eval_all();
-    sync_scroll();
+    const std::string deleted_expr = rows_[idx].expr;
+    UndoEntry e;
+    e.view_state = capture_view_state();
+    e.undo_ops.push_back({ UndoOpType::Insert, idx, deleted_expr });
+    e.redo_ops.push_back({ UndoOpType::Delete, idx, "" });
+    commit_undo_entry(std::move(e));
     focus_row(std::min(idx, (int)rows_.size() - 1));
 }
 
@@ -664,9 +691,9 @@ void SheetView::apply_fmt(const char *func_name) {
     std::string new_expr = (func_name && func_name[0])
                            ? std::string(func_name) + "(" + body + ")"
                            : body;
+    // rows_ はまだ更新しない → commit() が original_expr_ との差分を検出して Undo エントリを作る
     editor_->value(new_expr.c_str());
     editor_->insert_position(editor_->size());
-    rows_[focused_row_].expr = new_expr;
     commit();
 }
 
@@ -802,17 +829,20 @@ int SheetView::handle(int event) {
         bool shift = Fl::event_state(FL_SHIFT) != 0;
         bool ctrl  = Fl::event_state(FL_CTRL)  != 0;
 
+        bool meta = Fl::event_state(FL_COMMAND) != 0;
+        if (meta && key == 'z' && !shift) { undo(); return 1; }
+        if (meta && (key == 'y' || (key == 'z' && shift))) { redo(); return 1; }
+
         if (key == FL_Enter && !ctrl) {
-            rows_[focused_row_].expr = editor_->value();
+            commit();  // 式変更があれば Undo エントリを作成
             if (shift) {
                 insert_row(focused_row_);
             } else {
-                eval_all();
                 if (focused_row_ + 1 >= (int)rows_.size()) {
-                    rows_.push_back(Row{});
-                    sync_scroll();
+                    insert_row(focused_row_);
+                } else {
+                    focus_row(focused_row_ + 1);
                 }
-                focus_row(focused_row_ + 1);
             }
             redraw();
             return 1;
@@ -825,10 +855,10 @@ int SheetView::handle(int event) {
         if (key == FL_Down) {
             commit();
             if (focused_row_ + 1 >= (int)rows_.size()) {
-                rows_.push_back(Row{});
-                sync_scroll();
+                insert_row(focused_row_);
+            } else {
+                focus_row(focused_row_ + 1);
             }
-            focus_row(focused_row_ + 1);
             return 1;
         }
         if (ctrl && (key == FL_Delete || key == FL_BackSpace)) {
@@ -880,6 +910,9 @@ bool SheetView::load_file(const char *path) {
 
     if (rows_.empty()) rows_.push_back(Row{});
 
+    undo_buf_.clear();
+    undo_idx_ = 0;
+
     eval_all();
     scroll_top_  = 0;
     focused_row_ = 0;
@@ -896,4 +929,102 @@ bool SheetView::save_file(const char *path) {
         fprintf(fp, "%s\n", row.expr.c_str());
     fclose(fp);
     return true;
+}
+
+// ----------------------------------------------------------------
+// Undo / Redo (移植元: Calctus/UI/SheetOperator.cs)
+// ----------------------------------------------------------------
+
+SheetView::UndoViewState SheetView::capture_view_state() const {
+    return { focused_row_, editor_->insert_position() };
+}
+
+void SheetView::apply_ops(const std::vector<UndoOp> &ops) {
+    for (const auto &op : ops) {
+        switch (op.type) {
+            case UndoOpType::Insert: {
+                Row r; r.expr = op.expr;
+                rows_.insert(rows_.begin() + op.index, r);
+                break;
+            }
+            case UndoOpType::Delete:
+                rows_.erase(rows_.begin() + op.index);
+                if (rows_.empty()) rows_.push_back(Row{});
+                break;
+            case UndoOpType::ChangeExpr:
+                rows_[op.index].expr = op.expr;
+                break;
+        }
+    }
+}
+
+void SheetView::commit_undo_entry(UndoEntry entry) {
+    // カーソル以降の Redo 履歴を消去
+    undo_buf_.resize(undo_idx_);
+    // redo_ops を実際に rows_ へ適用
+    apply_ops(entry.redo_ops);
+    undo_buf_.push_back(std::move(entry));
+    undo_idx_++;
+    // 深さ制限
+    if ((int)undo_buf_.size() > UNDO_DEPTH) {
+        undo_buf_.erase(undo_buf_.begin());
+        undo_idx_--;
+    }
+    eval_all();
+    sync_scroll();
+    place_editor();
+    update_result_display();
+    redraw();
+    if (row_change_cb_) row_change_cb_(row_change_data_);
+}
+
+void SheetView::undo() {
+    if (focused_row_ >= 0 && focused_row_ < (int)rows_.size()) {
+        const std::string current(editor_->value());
+        if (current != original_expr_) {
+            // 未コミット編集がある → まずそれだけを取り消す (スタックは消費しない)
+            rows_[focused_row_].expr = original_expr_;
+            editor_->value(original_expr_.c_str());
+            editor_->insert_position((int)original_expr_.size());
+            eval_all();
+            place_editor();
+            update_result_display();
+            redraw();
+            return;
+        }
+        rows_[focused_row_].expr = editor_->value();
+    }
+    if (!can_undo()) return;
+    undo_idx_--;
+    const auto &entry = undo_buf_[undo_idx_];
+    apply_ops(entry.undo_ops);
+    eval_all();
+    sync_scroll();
+    int r = std::clamp(entry.view_state.focused_row, 0, (int)rows_.size() - 1);
+    focus_row(r);
+    editor_->insert_position(std::min(entry.view_state.cursor_pos, (int)editor_->size()));
+    redraw();
+}
+
+void SheetView::test_type_and_commit(const char *expr) {
+    editor_->value(expr);
+    commit();
+}
+
+void SheetView::redo() {
+    if (!can_redo()) return;
+    if (focused_row_ >= 0 && focused_row_ < (int)rows_.size())
+        rows_[focused_row_].expr = editor_->value();
+    const auto &entry = undo_buf_[undo_idx_];
+    apply_ops(entry.redo_ops);
+    undo_idx_++;
+    // 次 entry の view_state (またはなければ現 entry) に基づいてフォーカスを復元
+    int r = (undo_idx_ < (int)undo_buf_.size())
+            ? undo_buf_[undo_idx_].view_state.focused_row
+            : entry.view_state.focused_row;
+    r = std::clamp(r, 0, (int)rows_.size() - 1);
+    eval_all();
+    sync_scroll();
+    focus_row(r);
+    redraw();
 }

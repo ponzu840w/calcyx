@@ -20,6 +20,25 @@ add_executable(calcyx_ui
     SheetView.cpp
 )
 
+add_executable(test_undo
+    test_undo.cpp
+    SheetView.cpp
+)
+
+target_include_directories(test_undo PRIVATE
+    ${FLTK_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/engine
+    ${MPDECIMAL_INCLUDE}
+)
+
+target_link_libraries(test_undo PRIVATE
+    calcyx_engine
+    ${FLTK_LIB}
+    ${FLTK_FRAMEWORKS}
+    m
+    pthread
+)
+
 target_include_directories(calcyx_ui PRIVATE
     ${FLTK_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/engine

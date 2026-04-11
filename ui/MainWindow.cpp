@@ -36,6 +36,8 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->box(FL_FLAT_BOX);
     menu_->add("&File/&Open...\t",    FL_COMMAND + 'o', menu_cb, (void*)"open");
     menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save");
+    menu_->add("&Edit/&Undo\t",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
+    menu_->add("&Edit/&Redo\t",       FL_COMMAND + 'y', menu_cb, (void*)"redo");
     menu_->add("&File/&Examples/Examples",            0, menu_cb, (void*)"Examples.txt");
     menu_->add("&File/&Examples/Test_Abs_Sign",       0, menu_cb, (void*)"Test_Abs_Sign.txt");
     menu_->add("&File/&Examples/Test_Array",          0, menu_cb, (void*)"Test_Array.txt");
@@ -127,6 +129,10 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
                 fl_alert("Cannot save file:\n%s", fc.filename());
         }
 
+    } else if (strcmp(cmd, "undo") == 0) {
+        win->sheet_->undo();
+    } else if (strcmp(cmd, "redo") == 0) {
+        win->sheet_->redo();
     } else {
         open_sample_file(win, cmd);
     }
