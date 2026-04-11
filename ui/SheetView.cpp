@@ -383,6 +383,10 @@ void SheetView::place_editor() {
         editor_->resize(x(), ry, sheet_w(), ROW_H);
         update_result_display();
         result_display_->resize(result_x(), ry + ROW_H, result_w(), ROW_H);
+    } else if (row.result.empty()) {
+        // 結果なし: エディタは全幅
+        editor_->resize(x(), ry, sheet_w(), ROW_H);
+        update_result_display();  // result_display_ を hide する
     } else {
         editor_->resize(x(), ry, expr_w(), ROW_H);
         update_result_display();
@@ -498,24 +502,27 @@ void SheetView::update_layout() {
 
     int max_expr_w = 0;
     int max_ans_w  = 0;
+    bool has_result = false;
     for (const auto &row : rows_) {
         if (row.result.empty()) continue;
+        has_result = true;
         if (!row.expr.empty())
-            max_expr_w = std::max(max_expr_w, (int)fl_width(row.expr.c_str()));
-        max_ans_w = std::max(max_ans_w, (int)fl_width(row.result.c_str()));
+            max_expr_w = std::max(max_expr_w, (int)fl_width(row.expr.c_str()) + PAD * 2);
+        max_ans_w = std::max(max_ans_w, (int)fl_width(row.result.c_str()) + PAD * 2);
     }
 
-    int new_eq_pos;
-    if (max_expr_w + max_ans_w + eq_w_ < avail) {
-        new_eq_pos = std::max(min_eq_pos, max_expr_w);
-    } else {
-        new_eq_pos = std::max(min_eq_pos, avail - max_ans_w - eq_w_);
+    // 結果が1行もない場合は eq_pos_ を変更しない (オリジナル: itemsHaveAns が空なら何もしない)
+    if (has_result) {
+        int new_eq_pos;
+        if (max_expr_w + max_ans_w + eq_w_ < avail) {
+            new_eq_pos = std::max(min_eq_pos, max_expr_w);
+        } else {
+            new_eq_pos = std::max(min_eq_pos, avail - max_ans_w - eq_w_);
+        }
+        new_eq_pos = std::min(new_eq_pos, avail - eq_w_ * 2);
+        new_eq_pos = std::max(new_eq_pos, min_eq_pos);
+        eq_pos_ = new_eq_pos;
     }
-    // 結果列に最低でも eq_w_ 分の幅を確保
-    new_eq_pos = std::min(new_eq_pos, avail - eq_w_ * 2);
-    new_eq_pos = std::max(new_eq_pos, min_eq_pos);
-
-    eq_pos_ = new_eq_pos;
 
     // 式幅が eq_pos_ を超える行は2行レイアウト (移植元: SheetViewItem.GetPreferredSize)
     for (auto &row : rows_) {
@@ -542,6 +549,7 @@ void SheetView::commit() {
     place_editor();
     update_result_display();
     redraw();
+    if (row_change_cb_) row_change_cb_(row_change_data_);
 }
 
 void SheetView::focus_row(int idx) {
@@ -574,6 +582,31 @@ void SheetView::focus_row(int idx) {
     place_editor();
     redraw();
     Fl::focus(editor_);
+    if (row_change_cb_) row_change_cb_(row_change_data_);
+}
+
+void SheetView::set_row_change_cb(void (*cb)(void *), void *data) {
+    row_change_cb_  = cb;
+    row_change_data_ = data;
+}
+
+// 移植元: SheetViewItem.ReplaceFormatterFunction の逆: 現在の式のラッパー関数名を返す
+const char *SheetView::current_fmt_name() const {
+    static const char *const FMTFUNCS[] = {
+        "dec","hex","bin","oct","si","kibi","char", nullptr
+    };
+    if (focused_row_ < 0 || focused_row_ >= (int)rows_.size()) return nullptr;
+    const std::string &expr = rows_[focused_row_].expr;
+    size_t start = expr.find_first_not_of(' ');
+    if (start == std::string::npos) return nullptr;
+    for (int i = 0; FMTFUNCS[i]; i++) {
+        size_t fnlen = strlen(FMTFUNCS[i]);
+        if (expr.compare(start, fnlen, FMTFUNCS[i]) != 0) continue;
+        size_t p = start + fnlen;
+        while (p < expr.size() && expr[p] == ' ') p++;
+        if (p < expr.size() && expr[p] == '(') return FMTFUNCS[i];
+    }
+    return nullptr;
 }
 
 void SheetView::insert_row(int after) {
@@ -707,15 +740,11 @@ void SheetView::draw() {
             fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
 
             // 下段: "=" + 結果
-            fl_color(C_SEP);
-            fl_line(eqx, ry2, eqx, ry2 + ROW_H);
             if (!row.result.empty() && !row.error) {
                 fl_font(FL_COURIER, 13);
                 fl_color(C_SYMBOL);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, bl_bot);
             }
-            fl_color(C_SEP);
-            fl_line(rx, ry2, rx, ry2 + ROW_H);
 
             // 下段の結果 (フォーカス行は result_display_ が上書き)
             draw_result_at(row, ry2, bl_bot);
@@ -725,27 +754,28 @@ void SheetView::draw() {
             fl_line(x(), ry2 + ROW_H - 1, x() + sheet_w(), ry2 + ROW_H - 1);
 
         } else {
-            // ---- 通常1行レイアウト: 式 | "=" | 結果 ----
+            // ---- 通常1行レイアウト ----
             int baseline = ry + (ROW_H + fl_height() - fl_descent() * 2) / 2;
+            bool has_result = !row.result.empty();
 
-            // フォーカス行の背景（式＋"="カラムのみ; 結果カラムは result_display_ が描画）
+            // フォーカス行の背景: 結果なしなら全幅、あれば式+"="カラムのみ (結果は result_display_ が担当)
             if (i == focused_row_)
-                fl_draw_box(FL_FLAT_BOX, x(), ry, ew + eq_w_, ROW_H, C_SEL);
+                fl_draw_box(FL_FLAT_BOX, x(), ry, has_result ? ew + eq_w_ : sheet_w(), ROW_H, C_SEL);
 
-            // 左カラム: 式テキスト
-            if (!row.expr.empty())
-                draw_expr_highlighted(row.expr.c_str(), x() + PAD, x(), ry, ew, ROW_H);
+            // 式テキスト: 結果なしなら全幅で描画
+            if (!row.expr.empty()) {
+                if (has_result)
+                    draw_expr_highlighted(row.expr.c_str(), x() + PAD, x(), ry, ew, ROW_H);
+                else
+                    draw_expr_highlighted(row.expr.c_str(), x() + PAD, x(), ry, sheet_w(), ROW_H);
+            }
 
-            // 中カラム: "="
-            fl_color(C_SEP);
-            fl_line(eqx, ry, eqx, ry + ROW_H);
-            if (!row.result.empty() && !row.error) {
+            // "=" 記号 (縦線なし)
+            if (has_result && !row.error) {
                 fl_font(FL_COURIER, 13);
                 fl_color(C_SYMBOL);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, baseline);
             }
-            fl_color(C_SEP);
-            fl_line(rx, ry, rx, ry + ROW_H);
 
             // 右カラム: 結果値 (フォーカス行は result_display_ が上書き)
             draw_result_at(row, ry, baseline);
@@ -821,11 +851,8 @@ int SheetView::handle(int event) {
     }
 
     if (event == FL_MOUSEWHEEL) {
-        int dy  = Fl::event_dy();
-        int vis = std::max(1, h() / ROW_H);
-        int max_top = std::max(0, (int)rows_.size() - vis);
-        scroll_top_ = std::max(0, std::min(scroll_top_ + dy * 3, max_top));
-        vscroll_->value(scroll_top_);
+        scroll_top_ = std::max(0, scroll_top_ + Fl::event_dy() * 3);
+        sync_scroll();   // max_top を正しく計算してクランプ・スクロールバー同期
         place_editor();
         redraw();
         return 1;

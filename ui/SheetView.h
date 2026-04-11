@@ -31,6 +31,11 @@ public:
     // テキストファイルに保存
     bool save_file(const char *path);
 
+    // フォーカス行変更時に呼ばれるコールバックを設定
+    void set_row_change_cb(void (*cb)(void *), void *data);
+    // 現在フォーカス行のフォーマッタ関数名 (nullptr = Auto)
+    const char *current_fmt_name() const;
+
     void draw()   override;
     int  handle(int event) override;
     void resize(int x, int y, int w, int h) override;
@@ -52,6 +57,9 @@ private:
     Fl_Input     *result_display_;  // フォーカス行の結果表示 (read-only)
     Fl_Scrollbar *vscroll_;
     eval_ctx_t    ctx_;
+
+    void (*row_change_cb_)(void *) = nullptr;
+    void  *row_change_data_        = nullptr;
 
     static const int ROW_H = 24;
     static const int SB_W  = 14;
