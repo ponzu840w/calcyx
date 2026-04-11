@@ -34,31 +34,28 @@ cp -r build/ui/calcyx.app /Applications/
 
 Launchpad や Spotlight から起動できます。
 
-## インストール（Windows）
+## ビルド（Windows 向け .exe、WSL 上でクロスコンパイル）
 
-### 前提条件
-
-- Windows 10 以降
-- [MSYS2](https://www.msys2.org/) (MinGW-w64 環境)
+WSL (Ubuntu) 上で MinGW-w64 を使って Windows 用バイナリをビルドします。
 
 ### 依存ライブラリのインストール
 
-MSYS2 MinGW 64-bit シェルで：
-
 ```sh
-pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-fltk mingw-w64-x86_64-mpdecimal
+sudo apt install cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
 ```
 
-### ビルドとインストール
+FLTK と mpdecimal は MinGW-w64 向けに別途クロスコンパイルが必要です（詳細は [Wiki](../../wiki) 参照）。
+
+### ビルド
 
 ```sh
 git clone https://github.com/ponzu840w/calcyx.git
 cd calcyx
-cmake -S . -B build -G "MinGW Makefiles"
-cmake --build build
+cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw64.cmake
+cmake --build build-win
 ```
 
-`build/ui/calcyx.exe` を任意の場所にコピーして実行できます。
+生成された `build-win/ui/calcyx.exe` を Windows にコピーして実行できます。
 
 ## インストール（Linux）
 

@@ -39,6 +39,19 @@ cmake --build build
 
 Mac では `brew install mpdecimal` が必要。
 
+### Windows 向けクロスコンパイル（WSL 上）
+
+`cmake/toolchain-mingw64.cmake` を使う：
+
+```sh
+sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw64.cmake
+cmake --build build-win
+```
+
+FLTK と mpdecimal は `/usr/x86_64-w64-mingw32/` 以下に MinGW-w64 向けのものが必要。
+apt にない場合はソースからクロスコンパイルする。
+
 ### アイコンの更新 (macOS)
 
 `ui/icon.svg` を編集後、以下で `ui/icon.icns` を再生成する（`librsvg` が必要: `brew install librsvg`）:
