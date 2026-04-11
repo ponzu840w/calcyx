@@ -38,6 +38,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save");
     menu_->add("&Edit/&Undo\t",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
     menu_->add("&Edit/&Redo\t",       FL_COMMAND + 'y', menu_cb, (void*)"redo");
+    menu_->add("&Help/&About calcyx", 0,                menu_cb, (void*)"about");
     menu_->add("&File/&Examples/Examples",            0, menu_cb, (void*)"Examples.txt");
     menu_->add("&File/&Examples/Test_Abs_Sign",       0, menu_cb, (void*)"Test_Abs_Sign.txt");
     menu_->add("&File/&Examples/Test_Array",          0, menu_cb, (void*)"Test_Array.txt");
@@ -133,6 +134,18 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         win->sheet_->undo();
     } else if (strcmp(cmd, "redo") == 0) {
         win->sheet_->redo();
+    } else if (strcmp(cmd, "about") == 0) {
+        fl_message(
+            "calcyx\n"
+            "\n"
+            "A programmable calculator based on Calctus.\n"
+            "\n"
+            "Based on Calctus by shapoco\n"
+            "(https://github.com/shapoco/calctus)\n"
+            "Copyright (c) 2022 shapoco, MIT License\n"
+            "\n"
+            "Copyright (c) 2026 ponzu840w, MIT License"
+        );
     } else {
         open_sample_file(win, cmd);
     }
