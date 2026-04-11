@@ -1,8 +1,20 @@
 cmake_minimum_required(VERSION 3.15)
 
-# FLTK を手動で検索（Homebrew / システム）
-find_library(FLTK_LIB fltk HINTS /opt/homebrew/lib /usr/local/lib)
-find_path(FLTK_INCLUDE_DIR FL/Fl.H HINTS /opt/homebrew/include /usr/local/include)
+# ---- FLTK の検索 ----
+# Mac (Homebrew), Linux (system), Windows (vcpkg / MSYS2 / 手動)
+find_library(FLTK_LIB fltk
+    HINTS
+        /opt/homebrew/lib
+        /usr/local/lib
+        /usr/lib
+        /usr/lib/x86_64-linux-gnu
+)
+find_path(FLTK_INCLUDE_DIR FL/Fl.H
+    HINTS
+        /opt/homebrew/include
+        /usr/local/include
+        /usr/include
+)
 
 if(NOT FLTK_LIB OR NOT FLTK_INCLUDE_DIR)
     message(STATUS "FLTK not found — skipping UI target")
@@ -14,16 +26,28 @@ message(STATUS "Found FLTK: ${FLTK_LIB}")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(FLTK_FRAMEWORKS "")
+# ---- プラットフォーム別リンクフラグ ----
+set(PLATFORM_LIBS "")
 if(APPLE)
-    list(APPEND FLTK_FRAMEWORKS
+    list(APPEND PLATFORM_LIBS
         "-framework Cocoa"
         "-weak_framework UniformTypeIdentifiers"
         "-weak_framework ScreenCaptureKit"
     )
+elseif(WIN32)
+    list(APPEND PLATFORM_LIBS
+        comctl32 gdi32 ole32 uuid ws2_32 imm32
+    )
+else()
+    # Linux
+    list(APPEND PLATFORM_LIBS pthread)
+    find_package(X11)
+    if(X11_FOUND)
+        list(APPEND PLATFORM_LIBS ${X11_LIBRARIES})
+    endif()
 endif()
 
-# ---- calcyx (App Bundle on macOS) ----
+# ---- calcyx (App Bundle on macOS, 通常バイナリ on Windows/Linux) ----
 if(APPLE)
     set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")
     set_source_files_properties(${ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
@@ -41,12 +65,20 @@ if(APPLE)
         MACOSX_BUNDLE_GUI_IDENTIFIER       "com.ponzu840w.calcyx"
         OUTPUT_NAME                        "calcyx"
     )
+elseif(WIN32)
+    add_executable(calcyx_ui WIN32
+        main.cpp
+        MainWindow.cpp
+        SheetView.cpp
+    )
+    set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
 else()
     add_executable(calcyx_ui
         main.cpp
         MainWindow.cpp
         SheetView.cpp
     )
+    set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
 endif()
 
 target_include_directories(calcyx_ui PRIVATE
@@ -58,9 +90,8 @@ target_include_directories(calcyx_ui PRIVATE
 target_link_libraries(calcyx_ui PRIVATE
     calcyx_engine
     ${FLTK_LIB}
-    ${FLTK_FRAMEWORKS}
+    ${PLATFORM_LIBS}
     m
-    pthread
 )
 
 # ---- test_undo ----
@@ -78,7 +109,6 @@ target_include_directories(test_undo PRIVATE
 target_link_libraries(test_undo PRIVATE
     calcyx_engine
     ${FLTK_LIB}
-    ${FLTK_FRAMEWORKS}
+    ${PLATFORM_LIBS}
     m
-    pthread
 )

@@ -16,13 +16,13 @@ target_include_directories(calcyx_engine PUBLIC . ${MPDECIMAL_INCLUDE})
 target_link_libraries(calcyx_engine PUBLIC ${MPDECIMAL_LIB})
 
 add_executable(test_types test_types.c)
-target_link_libraries(test_types PRIVATE calcyx_engine m)
+target_link_libraries(test_types PRIVATE calcyx_engine $<$<NOT:$<BOOL:${WIN32}>>:m>)
 
 # ===== eval テストハーネス =====
 set(SAMPLES_DIR "${CMAKE_SOURCE_DIR}/tmp/calctus-linux/Samples")
 
 add_executable(test_eval test_eval.c)
-target_link_libraries(test_eval PRIVATE calcyx_engine m)
+target_link_libraries(test_eval PRIVATE calcyx_engine $<$<NOT:$<BOOL:${WIN32}>>:m>)
 target_include_directories(test_eval PRIVATE . ${MPDECIMAL_INCLUDE})
 
 enable_testing()

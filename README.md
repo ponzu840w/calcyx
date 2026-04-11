@@ -34,23 +34,64 @@ cp -r build/ui/calcyx.app /Applications/
 
 Launchpad や Spotlight から起動できます。
 
+## インストール（Windows）
+
+### 前提条件
+
+- Windows 10 以降
+- [MSYS2](https://www.msys2.org/) (MinGW-w64 環境)
+
+### 依存ライブラリのインストール
+
+MSYS2 MinGW 64-bit シェルで：
+
+```sh
+pacman -S mingw-w64-x86_64-cmake mingw-w64-x86_64-fltk mingw-w64-x86_64-mpdecimal
+```
+
+### ビルドとインストール
+
+```sh
+git clone https://github.com/ponzu840w/calcyx.git
+cd calcyx
+cmake -S . -B build -G "MinGW Makefiles"
+cmake --build build
+```
+
+`build/ui/calcyx.exe` を任意の場所にコピーして実行できます。
+
+## インストール（Linux）
+
+### 依存ライブラリのインストール
+
+```sh
+sudo apt install cmake libfltk1.3-dev libmpdec-dev
+```
+
+### ビルドとインストール
+
+```sh
+git clone https://github.com/ponzu840w/calcyx.git
+cd calcyx
+cmake -S . -B build
+cmake --build build
+sudo cp build/ui/calcyx /usr/local/bin/
+```
+
 ## ビルドについてより詳しく（開発者向け）
-
-### 依存
-
-- CMake 3.15+
-- FLTK 1.3+
-- mpdecimal（Mac: `brew install mpdecimal`）
 
 ### ビルド手順
 
 ```sh
 cmake -S . -B build
 cmake --build build
-./build/ui/calcyx
 ```
 
-macOS では `open build/ui/calcyx.app` で起動。
+| プラットフォーム | 起動方法 |
+|---|---|
+| macOS | `open build/ui/calcyx.app` |
+| Windows | `build/ui/calcyx.exe` |
+| Linux | `./build/ui/calcyx` |
 
 テストのみ実行する場合:
 
