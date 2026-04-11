@@ -48,6 +48,8 @@ samples/         サンプルファイル (Examples.txt, Test_*.txt)
 
 https://github.com/shapoco/calctus
 
+このソフトウェアは [Calctus](https://github.com/shapoco/calctus) (Copyright (c) 2022 shapoco, MIT License) をもとに開発されています。
+
 ---
 
 ## 未実装機能メモ
