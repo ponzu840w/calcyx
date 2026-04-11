@@ -317,14 +317,21 @@ static int try_string(const char *s, val_t **out) {
     return i;
 }
 
-/* WebColor: #[0-9a-fA-F]{3,8} */
+/* WebColor: #rgb (3桁) または #rrggbb (6桁) */
 static int try_webcolor(const char *s, val_t **out) {
     if (s[0] != '#') return 0;
     int dlen = read_digits(s + 1, 16);
-    if (dlen < 3) return 0;
+    if (dlen != 3 && dlen != 6) return 0;
     int total = 1 + dlen;
-    char digits[16]; strip_underscores(s + 1, dlen, digits, sizeof(digits));
+    char digits[8]; strip_underscores(s + 1, dlen, digits, sizeof(digits));
     int64_t v = (int64_t)strtoll(digits, NULL, 16);
+    if (dlen == 3) {
+        /* #rgb → #rrggbb: 各ニブルを複製 */
+        int r = (int)((v >> 8) & 0xF); r |= r << 4;
+        int g = (int)((v >> 4) & 0xF); g |= g << 4;
+        int b = (int)( v       & 0xF); b |= b << 4;
+        v = ((int64_t)r << 16) | ((int64_t)g << 8) | b;
+    }
     *out = val_new_i64(v, FMT_WEB_COLOR);
     return total;
 }

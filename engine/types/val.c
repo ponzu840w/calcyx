@@ -705,6 +705,18 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
                      t->tm_hour, t->tm_min, t->tm_sec);
             break;
         }
+        case FMT_WEB_COLOR:
+            if (real_is_integer(r)) {
+                iv = real_to_i64(r);
+                if (iv < 0 || iv > 0xFFFFFF) {
+                    /* RGB 範囲外は 16 進数 */
+                    if (iv < 0) snprintf(buf, buflen, "-0x%llX", (unsigned long long)(-iv));
+                    else        snprintf(buf, buflen,  "0x%llX", (unsigned long long)iv);
+                } else {
+                    snprintf(buf, buflen, "#%06X", (unsigned int)iv);
+                }
+            } else { real_to_str(r, buf, buflen); }
+            break;
         default:
             real_to_str(r, buf, buflen);
             break;

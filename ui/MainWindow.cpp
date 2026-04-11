@@ -7,16 +7,17 @@
 #include <cstring>
 #include <cstdio>
 
-// フォーマットボタンの定義
-static const struct { const char *label; val_fmt_t fmt; } FMT_DEFS[] = {
-    { "Auto",  FMT_REAL       },
-    { "Dec",   FMT_INT        },
-    { "Hex",   FMT_HEX        },
-    { "Bin",   FMT_BIN        },
-    { "Oct",   FMT_OCT        },
-    { "SI",    FMT_SI_PREFIX  },
-    { "Kibi",  FMT_BIN_PREFIX },
-    { "Char",  FMT_CHAR       },
+// フォーマットボタンの定義 (移植元: RepresentaionFuncs.cs)
+// func_name: nullptr = Auto (ラッパー除去)
+static const struct { const char *label; const char *func_name; } FMT_DEFS[] = {
+    { "Auto",  nullptr  },
+    { "Dec",   "dec"    },
+    { "Hex",   "hex"    },
+    { "Bin",   "bin"    },
+    { "Oct",   "oct"    },
+    { "SI",    "si"     },
+    { "Kibi",  "kibi"   },
+    { "Char",  "char"   },
 };
 
 static const Fl_Color C_WIN_BG  = fl_rgb_color( 30,  30,  30);
@@ -57,8 +58,9 @@ MainWindow::MainWindow(int w, int h, const char *title)
         fmt_btns_[i]->box(FL_FLAT_BOX);
         fmt_btns_[i]->labelfont(FL_HELVETICA);
         fmt_btns_[i]->labelsize(12);
-        fmt_btns_[i]->user_data(reinterpret_cast<void *>(static_cast<intptr_t>(i)));
-        fmt_btns_[i]->callback(fmt_cb, this);
+        // callback(cb, data) で data = インデックス。user_data() は callback() と同じ格納先を
+        // 使うため、callback() の後に user_data() を呼ぶと上書きされる点に注意。
+        fmt_btns_[i]->callback(fmt_cb, reinterpret_cast<void *>(static_cast<intptr_t>(i)));
     }
 
     end();
@@ -115,7 +117,13 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
 }
 
 void MainWindow::fmt_cb(Fl_Widget *w, void *data) {
-    auto *win = static_cast<MainWindow *>(data);
-    intptr_t idx = reinterpret_cast<intptr_t>(w->user_data());
-    win->sheet_->apply_fmt(FMT_DEFS[idx].fmt);
+    (void)w;
+    intptr_t idx = reinterpret_cast<intptr_t>(data);
+    if (idx < 0 || idx >= 8) return;
+    // callback の data はインデックス。MainWindow は first_window から取得する。
+    MainWindow *win = nullptr;
+    for (Fl_Window *fw = Fl::first_window(); fw; fw = Fl::next_window(fw))
+        if ((win = dynamic_cast<MainWindow *>(fw))) break;
+    if (!win) return;
+    win->sheet_->apply_fmt(FMT_DEFS[idx].func_name);
 }

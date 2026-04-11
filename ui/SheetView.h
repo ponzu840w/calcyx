@@ -13,6 +13,7 @@ extern "C" {
 #include "eval/eval.h"
 #include "eval/builtin.h"
 #include "types/val.h"
+#include "parser/lexer.h"
 }
 
 class SheetView : public Fl_Group {
@@ -20,8 +21,9 @@ public:
     SheetView(int x, int y, int w, int h);
     ~SheetView();
 
-    // フォーカス行のフォーマットを変更
-    void apply_fmt(val_fmt_t fmt);
+    // フォーカス行のフォーマットを変更 (移植元: SheetViewItem.ReplaceFormatterFunction)
+    // func_name: "hex"/"bin"/"oct"/"dec"/"si"/"kibi"/"char"、nullptr で Auto (ラッパー除去)
+    void apply_fmt(const char *func_name);
     // リアルタイム評価 (SheetLineInput から呼ばれる)
     void live_eval();
     // テキストファイルを読み込んで全行を置き換え
@@ -37,8 +39,9 @@ private:
     struct Row {
         std::string expr;
         std::string result;
-        bool        error = false;
-        val_fmt_t   fmt   = FMT_REAL;   // FMT_REAL = Auto (自然フォーマット)
+        bool        error       = false;
+        bool        wrapped     = false;     // 式幅が eq_pos_ を超える場合に2行レイアウト
+        val_fmt_t   result_fmt  = FMT_REAL;  // 結果値の実際のフォーマット (ハイライト用)
     };
 
     std::vector<Row> rows_;
@@ -46,6 +49,7 @@ private:
     int scroll_top_  = 0;
 
     Fl_Input     *editor_;
+    Fl_Input     *result_display_;  // フォーカス行の結果表示 (read-only)
     Fl_Scrollbar *vscroll_;
     eval_ctx_t    ctx_;
 
@@ -53,16 +57,27 @@ private:
     static const int SB_W  = 14;
     static const int PAD   = 3;
 
-    int sheet_w()   const { return w() - SB_W; }
-    int expr_w()    const { return sheet_w() * 3 / 5; }
-    int vis_rows()  const { return h() / ROW_H + 1; }
+    // "=" カラム位置・幅 (update_layout() が動的に設定)
+    int eq_pos_ = 0;   // sheet 左端からの "=" カラム開始 x オフセット
+    int eq_w_   = 22;  // "=" カラム幅 (フォントから算出)
+
+    int sheet_w()    const { return w() - SB_W; }
+    int expr_w()     const { return eq_pos_; }
+    int eq_col_x()   const { return x() + eq_pos_; }
+    int result_x()   const { return x() + eq_pos_ + eq_w_; }
+    int result_w()   const { return sheet_w() - eq_pos_ - eq_w_; }
+
+    // 行 i の高さ: 折り返しなら ROW_H*2、そうでなければ ROW_H
+    int row_h(int i) const { return (i >= 0 && i < (int)rows_.size() && rows_[i].wrapped) ? ROW_H * 2 : ROW_H; }
 
     void eval_all();
-    void commit();                          // editor → rows_[focused_row_].expr, then eval_all
+    void update_layout();                  // 全行を走査して eq_pos_ / eq_w_ を算出
+    void commit();
     void focus_row(int idx);
     void insert_row(int after);
     void delete_row(int idx);
     void sync_scroll();
     void place_editor();
-    int  row_at_y(int fy) const;           // fy = y座標 relative to widget top
+    void update_result_display();
+    int  row_at_y(int fy) const;
 };
