@@ -560,6 +560,33 @@ document.getElementById('btn-save').addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
+// ---- Examples ----
+
+document.getElementById('example-select').addEventListener('change', async e => {
+  const filename = e.target.value;
+  e.target.value = '';  // 選択をリセット（再選択できるように）
+  if (!filename) return;
+  try {
+    const res = await fetch(`samples/${filename}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    commitCurrentInput();
+    pushUndo();
+    const lines = text.replace(/\r\n|\r/g, '\n').split('\n');
+    // 末尾の空行を除去
+    while (lines.length > 1 && lines[lines.length - 1].trim() === '') lines.pop();
+    rows = lines.map(l => ({ expr: l, result: '', error: false }));
+    if (rows.length === 0) rows = [{ expr: '', result: '', error: false }];
+    focusedRow = 0;
+    fileName = filename;
+    renderAll();
+    focusInput();
+    evalAll();
+  } catch (err) {
+    console.error('[calcyx] サンプルロード失敗:', filename, err);
+  }
+});
+
 // ---- Undo/Redo ボタン ----
 
 document.getElementById('btn-undo').addEventListener('click', () => { commitCurrentInput(); undo(); });
