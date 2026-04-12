@@ -66,7 +66,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 
 .menu-label { font-size: 11px; color: #aaa; margin-right: 4px; }
 
-#fmt-select {
+#fmt-select, #example-select {
   background: #2e2e38;
   color: var(--text);
   border: none;
@@ -90,12 +90,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 #sheet::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
 
 /* ---- 行 ---- */
-/* expr-col-w は JS から #sheet に設定される CSS 変数。
-   式列幅 = 最長式テキスト幅、結果列 = 残り全体 (1fr)。
-   ネイティブ版 update_layout() と同じロジック。 */
+/* expr-col-w, eq-col-w は JS から設定される CSS 変数。
+   ネイティブ版 update_layout() と同じロジックで計算。 */
 .row {
   display: grid;
-  grid-template-columns: var(--expr-col-w, 200px) 28px 1fr;
+  grid-template-columns: var(--expr-col-w, 200px) var(--eq-col-w, 24px) 1fr;
   align-items: center;
   min-height: var(--row-h);
   border-bottom: 1px solid var(--row-line);
@@ -103,16 +102,66 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 }
 .row.focused { background: var(--sel-bg); }
 
-/* 式入力セル */
+/* 折り返し行: 式が全幅 (上段)、= + 結果が下段 */
+.row.wrapped {
+  grid-template-rows: var(--row-h) var(--row-h);
+  min-height: calc(var(--row-h) * 2);
+}
+.row.wrapped .expr-cell,
+.row.wrapped .expr-hl {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.row.wrapped .eq-cell {
+  grid-column: 2;
+  grid-row: 2;
+}
+.row.wrapped .result-cell {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+/* 式入力セル (フォーカス行) */
 .expr-cell {
-  display: flex;
-  align-items: center;
+  position: relative;      /* オーバーレイの基準点 */
   overflow: hidden;
   padding: 1px 4px;
   min-width: 0;
+  min-height: var(--row-h);
 }
 
-/* ハイライト付き表示レイヤー（非フォーカス行） */
+/* ハイライトオーバーレイ (フォーカス行・入力欄の背後に重ねる) */
+.expr-hl-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  font-family: var(--font);
+  font-size: var(--font-size);
+  padding: 1px 4px;
+  white-space: pre;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* 入力フィールド (テキストを透明にしてオーバーレイを見せる) */
+.expr-input {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  background: transparent;
+  color: transparent;        /* 入力テキストは非表示 */
+  border: none;
+  outline: none;
+  font-family: var(--font);
+  font-size: var(--font-size);
+  caret-color: var(--cursor);
+  padding: 0;
+  line-height: var(--row-h);
+}
+
+/* ハイライト付き表示レイヤー (非フォーカス行) */
 .expr-hl {
   font-family: var(--font);
   font-size: var(--font-size);
@@ -126,23 +175,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
   overflow: hidden;
 }
 
-/* 入力フィールド（フォーカス行） */
-.expr-input {
-  width: 100%;
-  background: transparent;
-  color: var(--text);
-  border: none;
-  outline: none;
-  font-family: var(--font);
-  font-size: var(--font-size);
-  caret-color: var(--cursor);
-  padding: 0;
-  line-height: var(--row-h);
-}
-
 /* = 記号 */
 .eq-cell {
-  padding: 0 6px;
+  padding: 0 3px;
   color: var(--eq);
   font-family: var(--font);
   font-size: var(--font-size);
@@ -151,14 +186,19 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 }
 .row.empty .eq-cell { visibility: hidden; }
 
-/* 結果セル — ネイティブ版と同様に左揃え */
+/* 結果セル — ネイティブ版と同様に左揃え。Tab / クリックで選択可能。 */
 .result-cell {
   padding: 0 4px;
   font-family: var(--font);
   font-size: var(--font-size);
   white-space: nowrap;
-  color: var(--result);
   overflow: hidden;
+  user-select: text;
+  cursor: text;
+  outline: none;
+}
+.result-cell:focus {
+  background: rgba(100, 140, 200, 0.15);
 }
 .result-cell.error { color: var(--error); }
 

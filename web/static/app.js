@@ -17,9 +17,8 @@ const wasm = {
 wasm.init();
 
 // WASM クラッシュ後の状態管理
-// RuntimeError が発生したらモジュール全体を再初期化して回復する。
-let wasmBroken   = false;  // クラッシュ済みフラグ
-let wasmReiniting = false; // 再初期化中フラグ
+let wasmBroken   = false;
+let wasmReiniting = false;
 
 async function reinitWasm() {
   console.info('[calcyx] WASM 再初期化開始...');
@@ -35,7 +34,6 @@ async function reinitWasm() {
     console.info('[calcyx] WASM 再初期化完了');
   } catch (e) {
     console.error('[calcyx] WASM 再初期化失敗:', e);
-    // wasmBroken のまま維持
   }
 }
 
@@ -95,29 +93,19 @@ function updateUndoButtons() {
 
 // ---- エンジン評価 ----
 
-// デバッグログ (常に出力)
-function dbg(...args) { console.log('[calcyx]', ...args); }
-
 function evalAll() {
-  // 常に現在の入力値を rows に同期してから評価する
   const input = sheetEl.querySelector('.expr-input');
   if (input && focusedRow >= 0 && focusedRow < rows.length) {
     rows[focusedRow].expr = input.value;
   }
 
-  // WASM がクラッシュ済みなら再初期化をスケジュールして待機
   if (wasmBroken) {
     if (!wasmReiniting) {
       wasmReiniting = true;
-      reinitWasm().finally(() => {
-        wasmReiniting = false;
-        evalAll();  // 再初期化後に再評価
-      });
+      reinitWasm().finally(() => { wasmReiniting = false; evalAll(); });
     }
-    return;  // 再初期化が完了するまで評価しない
+    return;
   }
-
-  dbg('evalAll', rows.map(r => r.expr));
 
   try {
     wasm.reset();
@@ -128,44 +116,82 @@ function evalAll() {
     updateResultCells();
     return;
   }
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (!row.expr.trim()) {
-      row.result = '';
-      row.error  = false;
-      continue;
-    }
+    if (!row.expr.trim()) { row.result = ''; row.error = false; continue; }
     let ok = false;
     try {
       ok = wasm.eval_line(row.expr);
     } catch (e) {
-      // WASM RuntimeError (memory access out of bounds など) からの回復。
-      // クラッシュ後はヒープが破壊されているため wasm.reset() も呼ばない。
-      // wasmBroken = true にして次の evalAll 呼び出し時に再初期化する。
       console.error('[calcyx] wasm.eval_line() クラッシュ:', JSON.stringify(row.expr), e.message);
-      console.error('[calcyx] スタック:', e.stack);
       wasmBroken = true;
-      row.result = 'internal error';
-      row.error  = true;
-      // クラッシュ後の行は g_ctx が不整合なので評価できない → 結果をクリア
-      for (let j = i + 1; j < rows.length; j++) {
-        rows[j].result = '';
-        rows[j].error  = false;
-      }
+      row.result = 'internal error'; row.error = true;
+      for (let j = i + 1; j < rows.length; j++) { rows[j].result = ''; rows[j].error = false; }
       updateResultCells();
       return;
     }
-    if (ok) {
-      row.result = wasm.get_result();
-      row.error  = false;
-    } else {
-      row.result = wasm.get_error();
-      row.error  = true;
-    }
-    dbg(' ', JSON.stringify(row.expr), '->', row.result, row.error ? '(err)' : '');
+    if (ok) { row.result = wasm.get_result(); row.error = false; }
+    else    { row.result = wasm.get_error();  row.error = true;  }
   }
   updateResultCells();
 }
+
+// ---- レイアウト計算 ----
+
+// キャンバスでテキスト幅を計測 (ネイティブの fl_width() 相当)
+const _measureCanvas = document.createElement('canvas');
+const _measureCtx    = _measureCanvas.getContext('2d');
+_measureCtx.font = `${getComputedStyle(document.documentElement)
+  .getPropertyValue('--font-size').trim() || '13px'} "Courier New", Courier, monospace`;
+
+function measureText(text) {
+  return _measureCtx.measureText(text).width;
+}
+
+// ネイティブ SheetView.h と合わせる
+const PAD = 3;
+const eqW = Math.ceil(measureText('==')) + 4;   // fl_width("==") + 4
+let eqPos = 200;   // update_layout() で更新。結果がない間は変更しない。
+
+// ネイティブ SheetView::update_layout() の完全移植
+// eq_pos_ = "=" 列の x 座標 (= 式列幅)
+function updateLayout() {
+  const avail      = sheetEl.clientWidth || 600;
+  const minEqPos   = Math.min(eqW, Math.floor(avail / 5));
+
+  let maxExprW = 0, maxAnsW = 0, hasResult = false;
+  for (const row of rows) {
+    if (!row.result) continue;
+    hasResult = true;
+    if (row.expr)
+      maxExprW = Math.max(maxExprW, Math.ceil(measureText(row.expr)) + PAD * 2);
+    if (!row.error)
+      maxAnsW = Math.max(maxAnsW, Math.ceil(measureText(row.result)) + PAD * 2);
+  }
+
+  if (hasResult) {
+    let newEq;
+    if (maxExprW + maxAnsW + eqW < avail)
+      newEq = Math.max(minEqPos, maxExprW);
+    else
+      newEq = Math.max(minEqPos, avail - maxAnsW - eqW);
+    newEq = Math.min(newEq, avail - eqW * 2);
+    newEq = Math.max(newEq, minEqPos);
+    eqPos = newEq;
+  }
+
+  // 式幅が eqPos を超える行は折り返し (native: row.wrapped)
+  for (const row of rows) {
+    row.wrapped = !!(row.result && row.expr &&
+                     Math.ceil(measureText(row.expr)) > eqPos);
+  }
+
+  sheetEl.style.setProperty('--expr-col-w', eqPos + 'px');
+  sheetEl.style.setProperty('--eq-col-w',   eqW   + 'px');
+}
+
+window.addEventListener('resize', () => { updateLayout(); renderAll(); });
 
 // ---- レンダリング ----
 
@@ -175,43 +201,62 @@ function renderAll() {
     sheetEl.appendChild(buildRowEl(i));
   }
   updateLayout();
+  syncFmtSelect();
 }
 
 function buildRowEl(i) {
   const row = rows[i];
   const div = document.createElement('div');
-  div.className = 'row' + (i === focusedRow ? ' focused' : '') +
-                  (row.expr === '' ? ' empty' : '');
+  div.className = 'row' +
+    (i === focusedRow ? ' focused' : '') +
+    (row.expr === ''  ? ' empty'   : '') +
+    (row.wrapped      ? ' wrapped' : '');
   div.dataset.row = i;
 
+  // ---- 式列 ----
   if (i === focusedRow) {
+    // フォーカス行: ハイライトオーバーレイ + 透明入力欄
     const exprCell = document.createElement('div');
     exprCell.className = 'expr-cell';
+
+    const hlDiv = document.createElement('div');
+    hlDiv.className = 'expr-hl-overlay';
+    hlDiv.innerHTML = highlight(row.expr) || '&ZeroWidthSpace;';
+
     const input = document.createElement('input');
     input.type = 'text';
     input.className = 'expr-input';
     input.value = row.expr;
     input.setAttribute('spellcheck', 'false');
     input.setAttribute('autocomplete', 'off');
+
+    exprCell.appendChild(hlDiv);
     exprCell.appendChild(input);
     div.appendChild(exprCell);
   } else {
+    // 非フォーカス行: ハイライト表示のみ
     const exprCell = document.createElement('div');
     exprCell.className = 'expr-hl';
     exprCell.innerHTML = highlight(row.expr) || '&ZeroWidthSpace;';
-    exprCell.dataset.clickRow = i;
     div.appendChild(exprCell);
   }
 
+  // ---- = 列 ----
   const eqCell = document.createElement('div');
   eqCell.className = 'eq-cell';
   eqCell.textContent = '=';
   div.appendChild(eqCell);
 
+  // ---- 結果列 ----
   const resCell = document.createElement('div');
   resCell.className = 'result-cell' + (row.error ? ' error' : '');
   resCell.dataset.result = i;
-  resCell.textContent = row.result;
+  resCell.tabIndex = -1;  // フォーカス可能 (Tab で移動できる)
+  if (row.error) {
+    resCell.textContent = row.result;
+  } else {
+    resCell.innerHTML = highlight(row.result);
+  }
   div.appendChild(resCell);
 
   return div;
@@ -219,77 +264,57 @@ function buildRowEl(i) {
 
 function updateResultCells() {
   for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
+    const row  = rows[i];
     const cell = sheetEl.querySelector(`[data-result="${i}"]`);
     if (!cell) continue;
-    cell.textContent = row.result;
-    cell.className   = 'result-cell' + (row.error ? ' error' : '');
+    if (row.error) {
+      cell.textContent = row.result;
+    } else {
+      cell.innerHTML = highlight(row.result);
+    }
+    cell.className = 'result-cell' + (row.error ? ' error' : '');
     const rowEl = cell.closest('.row');
     if (rowEl) {
-      if (row.expr === '') rowEl.classList.add('empty');
-      else                 rowEl.classList.remove('empty');
+      rowEl.classList.toggle('empty',   row.expr === '');
+      rowEl.classList.toggle('wrapped', !!row.wrapped);
     }
   }
   updateLayout();
 }
 
-// キャンバスでテキスト幅を計測 (ネイティブの fl_width() 相当)
-const _measureCanvas = document.createElement('canvas');
-const _measureCtx = _measureCanvas.getContext('2d');
-_measureCtx.font = `${getComputedStyle(document.documentElement)
-  .getPropertyValue('--font-size').trim() || '13px'} "Courier New", Courier, monospace`;
+// ---- フォーカス管理 ----
 
-function measureText(text) {
-  return _measureCtx.measureText(text).width;
+// 入力欄のシンタックスハイライトオーバーレイを input の scroll に同期する
+function syncOverlay() {
+  const input = sheetEl.querySelector('.expr-input');
+  if (!input) return;
+  const hlDiv = input.closest('.expr-cell')?.querySelector('.expr-hl-overlay');
+  if (!hlDiv) return;
+  hlDiv.innerHTML = highlight(input.value) || '&ZeroWidthSpace;';
+  hlDiv.style.transform = `translateX(${-input.scrollLeft}px)`;
 }
 
-const PAD = 8;   // 左右パディング合計
-const EQ_W = 28; // = 列幅
-
-// ネイティブの update_layout() 相当:
-//   式列幅 = 最長の式テキスト幅 (ウィンドウ幅に依存しない)
-//   結果列 = 残り全体 (CSS 側で 1fr)
-// 収まらない場合は結果幅を確保して、式列を縮める。
-function updateLayout() {
-  let maxExprW = 60;
-  let maxResW  = 60;
-  for (const row of rows) {
-    if (row.expr) {
-      const w = Math.ceil(measureText(row.expr)) + PAD;
-      if (w > maxExprW) maxExprW = w;
-    }
-    if (!row.error && row.result) {
-      const w = Math.ceil(measureText(row.result)) + PAD;
-      if (w > maxResW) maxResW = w;
-    }
-  }
-
-  const avail = sheetEl.clientWidth || 600;
-  let exprColW;
-  if (maxExprW + EQ_W + maxResW <= avail) {
-    // 全て収まる → 式列はコンテンツ幅
-    exprColW = maxExprW;
-  } else {
-    // 収まらない → 結果列を確保して残りを式列に
-    exprColW = Math.max(60, avail - EQ_W - maxResW);
-  }
-
-  sheetEl.style.setProperty('--expr-col-w', exprColW + 'px');
-}
-
-// ウィンドウリサイズ時も再計算
-window.addEventListener('resize', updateLayout);
-
-// focusInput: requestAnimationFrame で <select> 等からのフォーカス奪還を確実にする
 function focusInput() {
   requestAnimationFrame(() => {
     const input = sheetEl.querySelector('.expr-input');
     if (input) {
       input.focus();
       input.setSelectionRange(input.value.length, input.value.length);
+      input.closest('.row')?.scrollIntoView({ block: 'nearest' });
+      syncOverlay();
     }
   });
 }
+
+// ウィンドウがフォーカスを取り戻したら input に戻す
+window.addEventListener('focus', focusInput);
+
+// メニューバーのボタンクリックでフォーカスを奪われないようにする
+document.getElementById('menubar').addEventListener('mousedown', e => {
+  if (e.target.tagName !== 'SELECT' && e.target.tagName !== 'INPUT') {
+    e.preventDefault();
+  }
+});
 
 function commitCurrentInput() {
   const input = sheetEl.querySelector('.expr-input');
@@ -298,19 +323,77 @@ function commitCurrentInput() {
   }
 }
 
-// ---- イベントデリゲーション（#sheet 全体で受け取る）----
-// renderAll のたびにリスナーを付け直す必要がなく、常に安定して動作する。
+// ---- フォーマット選択 ----
+
+const FMT_FUNCS = ['dec','hex','bin','oct','si','kibi','char'];
+
+function stripFormatter(expr) {
+  const trimmed = expr.trimStart();
+  for (const fn of FMT_FUNCS) {
+    if (!trimmed.startsWith(fn)) continue;
+    let p = fn.length;
+    while (p < trimmed.length && trimmed[p] === ' ') p++;
+    if (p >= trimmed.length || trimmed[p] !== '(') continue;
+    const last = trimmed.trimEnd();
+    if (!last.endsWith(')')) continue;
+    return last.slice(p, last.length - 1).trim();
+  }
+  return expr;
+}
+
+function detectFormatter(expr) {
+  const trimmed = expr.trimStart();
+  for (const fn of FMT_FUNCS) {
+    if (!trimmed.startsWith(fn)) continue;
+    let p = fn.length;
+    while (p < trimmed.length && trimmed[p] === ' ') p++;
+    if (p >= trimmed.length || trimmed[p] !== '(') continue;
+    const last = trimmed.trimEnd();
+    if (last.endsWith(')')) return fn;
+  }
+  return '';
+}
+
+function syncFmtSelect() {
+  fmtSelect.value = detectFormatter(rows[focusedRow]?.expr ?? '');
+}
+
+function applyFmt(fmtName) {
+  commitCurrentInput();
+  const body = stripFormatter(rows[focusedRow].expr);
+  rows[focusedRow].expr = fmtName ? `${fmtName}(${body})` : body;
+  pushUndo();
+  renderAll();
+  evalAll();
+  focusInput();
+}
+
+const fmtSelect = document.getElementById('fmt-select');
+fmtSelect.addEventListener('change', e => {
+  fmtSelect.blur();
+  applyFmt(e.target.value);
+});
+fmtSelect.addEventListener('blur', focusInput);
+
+// ---- イベントデリゲーション ----
 
 sheetEl.addEventListener('input', e => {
   if (!e.target.classList.contains('expr-input')) return;
-  dbg('input event value=', e.target.value, 'focusedRow=', focusedRow);
   rows[focusedRow].expr = e.target.value;
+  syncOverlay();
   evalAll();
 });
 
 sheetEl.addEventListener('keydown', e => {
-  if (!e.target.classList.contains('expr-input')) return;
-  handleKeyDown(e);
+  if (e.target.classList.contains('expr-input')) {
+    handleKeyDown(e);
+    // カーソル移動後に rAF でオーバーレイを同期
+    requestAnimationFrame(syncOverlay);
+    return;
+  }
+  if (e.target.dataset.result !== undefined) {
+    handleResultKeyDown(e);
+  }
 });
 
 sheetEl.addEventListener('paste', e => {
@@ -319,43 +402,68 @@ sheetEl.addEventListener('paste', e => {
 });
 
 sheetEl.addEventListener('pointerdown', e => {
-  const clickRowEl = e.target.closest('[data-click-row]');
-  if (!clickRowEl) return;
-  const i = parseInt(clickRowEl.dataset.clickRow, 10);
-  if (isNaN(i) || i === focusedRow) return;
-  commitCurrentInput();
-  focusedRow = i;
-  renderAll();
-  focusInput();
-  evalAll();
+  const rowEl = e.target.closest('[data-row]');
+  if (!rowEl) return;
+  const i = parseInt(rowEl.dataset.row, 10);
+  if (isNaN(i)) return;
+  if (i !== focusedRow) {
+    commitCurrentInput();
+    focusedRow = i;
+    renderAll();
+    evalAll();
+  }
+  // input 自体のクリックはブラウザのカーソル配置に任せる
+  if (e.target.tagName !== 'INPUT') {
+    e.preventDefault();
+    focusInput();
+  }
 });
 
 // ---- キーボードハンドラ ----
 
 function handleKeyDown(e) {
-  const key   = e.key;
-  const ctrl  = e.ctrlKey || e.metaKey;
+  const key  = e.key;
+  const ctrl = e.ctrlKey || e.metaKey;
   const shift = e.shiftKey;
 
   // Undo / Redo
   if (ctrl && !shift && key === 'z') { e.preventDefault(); commitCurrentInput(); pushUndo(); undo(); return; }
   if (ctrl && (key === 'y' || (shift && key === 'z'))) { e.preventDefault(); redo(); return; }
 
-  // Enter: 次行へ（末尾なら追加）
+  // Tab: 左辺 → 右辺へ (native: focus_result)
+  if (key === 'Tab' && !shift && !ctrl) {
+    e.preventDefault();
+    const row = rows[focusedRow];
+    if (row.result && !row.error) {
+      const resCell = sheetEl.querySelector(`[data-result="${focusedRow}"]`);
+      if (resCell) {
+        resCell.focus();
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(resCell);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        return;
+      }
+    }
+    // 結果がない場合は次行へ
+    moveToRow(focusedRow + 1, true);
+    return;
+  }
+
+  // Enter: 次行へ
   if (key === 'Enter' && !ctrl && !shift) {
     e.preventDefault();
     commitCurrentInput();
     pushUndo();
-    if (focusedRow === rows.length - 1) {
-      rows.push({ expr: '', result: '', error: false });
-    }
+    if (focusedRow === rows.length - 1) rows.push({ expr: '', result: '', error: false });
     focusedRow++;
     renderAll();
     focusInput();
     return;
   }
 
-  // Shift+Enter: 現在行の上に挿入
+  // Shift+Enter: 上に挿入
   if (key === 'Enter' && shift) {
     e.preventDefault();
     commitCurrentInput();
@@ -406,6 +514,7 @@ function handleKeyDown(e) {
     if (key === 'ArrowDown' && focusedRow < rows.length - 1) focusedRow++;
     renderAll();
     focusInput();
+    syncFmtSelect();
     return;
   }
 
@@ -436,6 +545,38 @@ function handleKeyDown(e) {
     evalAll();
     return;
   }
+}
+
+// 右辺セルのキーハンドラ (Tab で次行へ、文字入力で左辺に戻す)
+function handleResultKeyDown(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    if (e.shiftKey) {
+      focusInput();
+    } else {
+      // native: tab_from_result → 次行の左辺へ
+      moveToRow(focusedRow + 1, true);
+    }
+  } else if (!e.ctrlKey && !e.metaKey && e.key.length === 1) {
+    focusInput();
+  }
+}
+
+// 行移動ヘルパー (末尾なら行追加)
+function moveToRow(i, addIfEnd) {
+  commitCurrentInput();
+  if (i >= rows.length) {
+    if (addIfEnd) {
+      pushUndo();
+      rows.push({ expr: '', result: '', error: false });
+    } else {
+      i = rows.length - 1;
+    }
+  }
+  if (i < 0) i = 0;
+  focusedRow = i;
+  renderAll();
+  focusInput();
 }
 
 function deleteCurrentRow(moveDown) {
@@ -477,43 +618,6 @@ async function handlePaste(e) {
   evalAll();
 }
 
-// ---- フォーマット選択 ----
-
-const FMT_FUNCS = ['dec','hex','bin','oct','si','kibi','char'];
-
-function stripFormatter(expr) {
-  const trimmed = expr.trimStart();
-  for (const fn of FMT_FUNCS) {
-    if (!trimmed.startsWith(fn)) continue;
-    let p = fn.length;
-    while (p < trimmed.length && trimmed[p] === ' ') p++;
-    if (p >= trimmed.length || trimmed[p] !== '(') continue;
-    p++;
-    const last = trimmed.trimEnd();
-    if (!last.endsWith(')')) continue;
-    return last.slice(p, last.length - 1).trim();
-  }
-  return expr;
-}
-
-function applyFmt(fmtName) {
-  commitCurrentInput();
-  const body = stripFormatter(rows[focusedRow].expr);
-  rows[focusedRow].expr = fmtName ? `${fmtName}(${body})` : body;
-  pushUndo();
-  renderAll();
-  evalAll();
-  focusInput(); // rAF 内で実行されるので evalAll より後でも問題なし
-}
-
-const fmtSelect = document.getElementById('fmt-select');
-fmtSelect.addEventListener('change', e => {
-  const fmt = e.target.value;
-  // フォーカスをセレクトから手放させてから処理
-  fmtSelect.blur();
-  applyFmt(fmt);
-});
-
 // ---- ファイル操作 ----
 
 document.getElementById('btn-new').addEventListener('click', () => {
@@ -522,10 +626,10 @@ document.getElementById('btn-new').addEventListener('click', () => {
   rows = [{ expr: '', result: '', error: false }];
   focusedRow = 0;
   fileName = null;
-  wasmBroken = false;  // 新規作成時は再初期化を試みる
+  wasmBroken = false;
   renderAll();
   focusInput();
-  evalAll();  // wasm.reset() は evalAll 内で実行
+  evalAll();
 });
 
 document.getElementById('btn-open').addEventListener('click', () => {
@@ -554,17 +658,17 @@ document.getElementById('btn-save').addEventListener('click', () => {
   const blob = new Blob([text], { type: 'text/plain' });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
-  a.href     = url;
-  a.download = fileName ?? 'calcyx.txt';
-  a.click();
+  a.href = url; a.download = fileName ?? 'calcyx.txt'; a.click();
   URL.revokeObjectURL(url);
 });
 
 // ---- Examples ----
 
-document.getElementById('example-select').addEventListener('change', async e => {
+const exampleSelect = document.getElementById('example-select');
+exampleSelect.addEventListener('blur', focusInput);
+exampleSelect.addEventListener('change', async e => {
   const filename = e.target.value;
-  e.target.value = '';  // 選択をリセット（再選択できるように）
+  e.target.value = '';
   if (!filename) return;
   try {
     const res = await fetch(`samples/${filename}`);
@@ -573,7 +677,6 @@ document.getElementById('example-select').addEventListener('change', async e => 
     commitCurrentInput();
     pushUndo();
     const lines = text.replace(/\r\n|\r/g, '\n').split('\n');
-    // 末尾の空行を除去
     while (lines.length > 1 && lines[lines.length - 1].trim() === '') lines.pop();
     rows = lines.map(l => ({ expr: l, result: '', error: false }));
     if (rows.length === 0) rows = [{ expr: '', result: '', error: false }];
