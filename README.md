@@ -22,15 +22,25 @@
 
 ### 依存パッケージ
 
-FLTK・mpdecimal は初回ビルド時に自動取得・ビルドされる。
-ターゲットに固有に必要なパッケージは事前の手動インストールが必要。
+開発機： macOS または Linux
+FLTK・mpdecimal はビルド時に自動取得される。
 
-| プラットフォーム | コマンド |
+**常に必要**
+
+| 開発機 | コマンド |
 |---|---|
 | macOS | `brew install cmake` |
-| Linux | `sudo apt install cmake libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev` |
-| Windows (WSL) | `sudo apt install cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64` |
-| WebAssembly | `brew install emscripten` (macOS) |
+| Linux | `sudo apt install cmake` |
+| Linux (`unix` ビルド) | さらに `sudo apt install libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev` |
+
+**ターゲット別の追加パッケージ**
+
+| ターゲット | 開発機 | コマンド |
+|---|---|---|
+| `win` (Windows クロスビルド) | macOS | `brew install mingw-w64` |
+| `win` (Windows クロスビルド) | Linux | `sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64` |
+| `wasm` (WebAssembly) | macOS | `brew install emscripten` |
+| `wasm` (WebAssembly) | Linux | [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) を参照 |
 
 ### ビルドコマンド
 
@@ -38,10 +48,10 @@ FLTK・mpdecimal は初回ビルド時に自動取得・ビルドされる。
 git clone https://github.com/ponzu840w/calcyx.git
 cd calcyx
 
-cmake --preset unix      # macOS / Linux
+cmake --preset unix      # macOS / Linux ネイティブ
 cmake --build --preset unix
 
-cmake --preset win       # Windows (WSL 上)
+cmake --preset win       # Windows 向けクロスビルド
 cmake --build --preset win
 
 cmake --preset wasm      # WebAssembly
@@ -63,7 +73,7 @@ sudo cmake --install build --component gui --prefix /usr/local     # Linux
 cmake --install build --component cli --prefix ~/.local            # macOS / Linux
 ```
 
-Windows は `cmake --install` 非対応。ZIP を展開して任意の場所に配置してください。
+Windows は `cmake --install` 非対応。ZIP を展開して任意の場所に配置すること。
 
 ### パッケージ生成
 
@@ -74,7 +84,7 @@ cpack --preset win    # Windows → calcyx-win-<version>.zip
 ```
 
 バージョンは git tag から自動取得（形式: `v1.2.3`）。
-タグ上にない場合はファイル名に `-dev` が付きます。
+タグ上にない場合はファイル名に `-dev` が付く。
 
 ### Web 版の開発サーバー
 
@@ -84,14 +94,14 @@ cd build-wasm/web && python3 -m http.server 8080
 # → http://localhost:8080
 ```
 
-WASM は `file://` では動作しません（CORS 制限）。HTTP サーバー経由でアクセスしてください。
+WASM は `file://` では動作しない（CORS 制限）。HTTP サーバー経由でアクセスすること。
 
 ## テスト
 
 ```sh
 ctest --preset unix           # 全テスト (macOS / Linux)
 ctest --preset unix-headless  # GUI テストを除く (macOS / Linux)
-ctest --preset win-headless   # GUI テストを除く (Windows, WSL 上)
+ctest --preset win-headless   # GUI テストを除く (Windows クロスビルド)
 ```
 
 ## アーキテクチャ

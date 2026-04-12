@@ -33,18 +33,25 @@ https://github.com/shapoco/calctus (C# / .NET)
 ## ビルド
 
 ```sh
-cmake --preset unix      # macOS / Linux
+cmake --preset unix      # macOS / Linux ネイティブ
 cmake --build --preset unix
 
-cmake --preset win       # Windows (WSL 上)
+cmake --preset win       # Windows 向けクロスビルド
 cmake --build --preset win
 
-cmake --preset wasm      # WebAssembly (要 emscripten)
+cmake --preset wasm      # WebAssembly
 cmake --build --preset wasm
 ```
 
-FLTK・mpdecimal は初回ビルド時に自動取得。macOS では `brew install cmake` のみ必要。  
-Linux では X11 系パッケージが必要: `sudo apt install cmake libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev`
+開発機は macOS または Linux を前提とします。FLTK・mpdecimal は初回ビルド時に自動取得。
+
+**前提パッケージ（ターゲット別）**
+
+| ターゲット | macOS | Linux |
+|---|---|---|
+| `unix` | `brew install cmake` | `sudo apt install cmake libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev` |
+| `win` | `brew install cmake mingw-w64` | `sudo apt install cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64` |
+| `wasm` | `brew install cmake emscripten` | cmake + [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) |
 
 ### パッケージ生成
 
@@ -53,12 +60,15 @@ cpack --preset unix   # macOS → calcyx-mac.zip / Linux → calcyx_*.deb
 cpack --preset win    # Windows → calcyx-win.zip (WSL 上で実行)
 ```
 
-### Windows 向けクロスコンパイル（WSL 上）
+### Windows 向けクロスコンパイル
 
 #### 初回セットアップ
 
 ```sh
+# Linux
 sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+# macOS
+brew install mingw-w64
 ```
 
 #### ビルド
