@@ -242,9 +242,10 @@ public:
 
     int handle(int event) override {
         if (event == FL_KEYBOARD) {
-            int key  = Fl::event_key();
-            bool ctrl = Fl::event_state(FL_CTRL) != 0;
-            bool meta = Fl::event_state(FL_COMMAND) != 0;
+            int key   = Fl::event_key();
+            bool ctrl  = Fl::event_state(FL_CTRL)  != 0;
+            bool meta  = Fl::event_state(FL_COMMAND) != 0;
+            bool shift = Fl::event_state(FL_SHIFT)  != 0;
 
             if (editor_mode_) {
                 auto *sv = static_cast<SheetView *>(parent());
@@ -280,9 +281,18 @@ public:
                 if (editor_mode_) static_cast<SheetView *>(parent())->completion_hide();
                 return 0;
             }
-            // Ctrl+Delete/BackSpace は左辺のみ (行削除)
-            if (editor_mode_ && ctrl && (key == FL_Delete || key == FL_BackSpace)) {
-                return 0;
+            // Escape: ウィンドウが閉じないよう消費 (ポップアップなし時)
+            if (key == FL_Escape) return 1;
+
+            if (editor_mode_) {
+                // Ctrl/Cmd+Delete/BackSpace: 行削除 → SheetView に委譲
+                if ((ctrl || meta) && (key == FL_Delete || key == FL_BackSpace)) return 0;
+                // Ctrl/Cmd+Shift+Up/Down: 行スワップ → SheetView に委譲
+                if ((ctrl || meta) && shift && (key == FL_Up || key == FL_Down)) return 0;
+                // Shift+Del/BS (修飾なし): 行削除・上移動 → SheetView に委譲
+                if (shift && !ctrl && !meta && (key == FL_Delete || key == FL_BackSpace)) return 0;
+                // 空行での BackSpace: 行削除・上移動 → SheetView に委譲
+                if (!shift && !ctrl && !meta && key == FL_BackSpace && size() == 0) return 0;
             }
             // Cmd+Z / Cmd+Y / Cmd+Shift+Z は SheetView::handle() に委譲 (Undo/Redo)
             if (meta && (key == 'z' || key == 'y')) {
