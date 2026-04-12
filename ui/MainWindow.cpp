@@ -86,8 +86,27 @@ MainWindow::MainWindow(int w, int h, const char *title)
     // フォーカス行変更時に Fl_Choice を更新
     sheet_->set_row_change_cb(row_change_cb, this);
 
+    // 補完ポップアップ: 最後の子として追加することで全ての上に描画される
+    // Fl_Group ベースなので OS ウィンドウを作らず、フォーカス問題がない
+    popup_ = new CompletionPopup();
+
     end();
     resizable(sheet_);
+
+    // SheetView にポインタを渡す (end() 後なので自動追加されない)
+    sheet_->popup_ = popup_;
+}
+
+int MainWindow::handle(int event) {
+    // ポップアップ表示中にポップアップ外をクリックしたら閉じる
+    if (event == FL_PUSH && popup_->is_shown()) {
+        int ex = Fl::event_x(), ey = Fl::event_y();
+        if (ex < popup_->x() || ex >= popup_->x() + popup_->w() ||
+            ey < popup_->y() || ey >= popup_->y() + popup_->h()) {
+            sheet_->completion_hide();
+        }
+    }
+    return Fl_Double_Window::handle(event);
 }
 
 void MainWindow::open_file(const char *path) {

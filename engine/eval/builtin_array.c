@@ -2143,6 +2143,12 @@ static func_def_t *make_extra(const bi_entry_t *e) {
     return fd;
 }
 
+void builtin_enum_extra(builtin_enum_cb cb, void *userdata) {
+    for (int i = 0; EXTRA_TABLE[i].name; i++) {
+        cb(EXTRA_TABLE[i].name, EXTRA_TABLE[i].n_params, userdata);
+    }
+}
+
 func_def_t *builtin_find_extra(const char *name, int n_args) {
     for (int i = 0; EXTRA_TABLE[i].name; i++) {
         const bi_entry_t *e = &EXTRA_TABLE[i];

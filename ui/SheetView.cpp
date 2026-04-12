@@ -1,6 +1,7 @@
 // 移植元: Calctus/UI/SheetView.cs (簡略版)
 
 #include "SheetView.h"
+#include "builtin_docs.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <algorithm>
@@ -243,9 +244,27 @@ public:
             int key  = Fl::event_key();
             bool ctrl = Fl::event_state(FL_CTRL) != 0;
             bool meta = Fl::event_state(FL_COMMAND) != 0;
+
+            if (editor_mode_) {
+                auto *sv = static_cast<SheetView *>(parent());
+                // ポップアップが表示中: Up/Down/Tab/Escape を補完ナビに使う
+                if (sv->popup_->is_shown()) {
+                    if (key == FL_Up)   { sv->popup_->select_prev(); return 1; }
+                    if (key == FL_Down) { sv->popup_->select_next(); return 1; }
+                    if (key == FL_Tab)  { sv->completion_confirm();  return 1; }
+                    if (key == FL_Escape) { sv->completion_hide();   return 1; }
+                    // Ctrl+Space: 補完を明示的に開く（ポップアップ非表示時も同様）
+                }
+                if (ctrl && key == ' ') {
+                    sv->completion_update();
+                    return 1;
+                }
+            }
+
             // Up/Down/Enter は左右どちらの欄からも SheetView::handle() に委譲
             if (key == FL_Up || key == FL_Down ||
                 key == FL_Enter || key == FL_KP_Enter) {
+                if (editor_mode_) static_cast<SheetView *>(parent())->completion_hide();
                 return 0;
             }
             // Ctrl+Delete/BackSpace は左辺のみ (行削除)
@@ -275,10 +294,14 @@ public:
         int ret = Fl_Input::handle(event);
         if (ret && parent()) {
             if (editor_mode_ && event == FL_KEYBOARD) {
-                static_cast<SheetView *>(parent())->live_eval();
+                auto *sv = static_cast<SheetView *>(parent());
+                sv->live_eval();
+                sv->completion_update();
             }
             if (event == FL_PUSH || event == FL_DRAG || event == FL_RELEASE) {
                 parent()->redraw();
+                if (editor_mode_)
+                    static_cast<SheetView *>(parent())->completion_hide();
             }
         }
         return ret;
@@ -334,6 +357,8 @@ SheetView::SheetView(int x, int y, int w, int h)
 
     end();
 
+    // popup_ は MainWindow が生成して set してくれる (初期値 nullptr)
+
     eval_ctx_init(&ctx_);
     builtin_register_all(&ctx_);
 
@@ -344,6 +369,7 @@ SheetView::SheetView(int x, int y, int w, int h)
 
 SheetView::~SheetView() {
     eval_ctx_free(&ctx_);
+    // popup_ は MainWindow が所有・削除する
 }
 
 // ----------------------------------------------------------------
@@ -1027,4 +1053,138 @@ void SheetView::redo() {
     sync_scroll();
     focus_row(r);
     redraw();
+}
+
+// ================================================================
+// 入力補完
+// ================================================================
+
+// 引数情報を含むラベル文字列を生成
+static std::string make_label(const char *name, int n_params) {
+    if (n_params == 0)  return std::string(name) + "()";
+    if (n_params == 1)  return std::string(name) + "(x)";
+    if (n_params == 2)  return std::string(name) + "(x, y)";
+    if (n_params == 3)  return std::string(name) + "(x, y, z)";
+    return std::string(name) + "(...)";  // variadic or 4+
+}
+
+// builtin_enum_main/extra のコールバック: Candidate を追加 (重複 id はスキップ)
+struct EnumCtx { std::vector<Candidate> *out; };
+
+static void enum_cb(const char *name, int n_params, void *userdata) {
+    auto *ec = static_cast<EnumCtx *>(userdata);
+    // 同名重複をスキップ
+    for (auto &c : *ec->out)
+        if (c.id == name) return;
+    const char *doc = builtin_doc(name);
+    ec->out->push_back({ name, make_label(name, n_params),
+                         doc ? doc : "", true });
+}
+
+std::vector<Candidate> SheetView::build_candidates() const {
+    std::vector<Candidate> result;
+    EnumCtx ec{ &result };
+    builtin_enum_main (enum_cb, &ec);
+    builtin_enum_extra(enum_cb, &ec);
+
+    // コンテキスト内のユーザー定義変数・定数 (builtin 関数は除く)
+    for (int i = 0; i < ctx_.n_vars; i++) {
+        const eval_var_t &v = ctx_.vars[i];
+        if (!v.value) continue;
+        if (v.value->type == VAL_FUNC && v.value->func_v && v.value->func_v->builtin)
+            continue;  // 組み込み関数は builtin_enum で既に追加済み
+        // 重複スキップ
+        bool dup = false;
+        for (auto &c : result) if (c.id == v.name) { dup = true; break; }
+        if (dup) continue;
+
+        bool is_func = (v.value->type == VAL_FUNC);
+        std::string label;
+        if (is_func && v.value->func_v) {
+            label = make_label(v.name, v.value->func_v->n_params);
+        } else {
+            label = v.name;
+        }
+        result.push_back({ v.name, label, "", is_func });
+    }
+
+    // キーワード
+    for (const char *kw : { "ans", "true", "false", "def" }) {
+        bool dup = false;
+        for (auto &c : result) if (c.id == kw) { dup = true; break; }
+        if (!dup) result.push_back({ kw, kw, "", false });
+    }
+
+    // アルファベット順ソート
+    std::sort(result.begin(), result.end(),
+              [](const Candidate &a, const Candidate &b){ return a.id < b.id; });
+    return result;
+}
+
+void SheetView::completion_update() {
+    if (!editor_->visible()) return;
+
+    const char *text = editor_->value();
+    int pos = editor_->position();
+
+    // カーソル直前が識別子継続文字でなければ補完しない
+    if (pos == 0 || !lexer_is_id_follow(text[pos - 1])) {
+        completion_hide();
+        return;
+    }
+
+    // 識別子の先頭を探す
+    int start = pos;
+    while (start > 0 && lexer_is_id_follow(text[start - 1])) start--;
+
+    // 先頭が識別子開始文字でなければ補完しない (数字だけの場合など)
+    if (!lexer_is_id_start(text[start])) {
+        completion_hide();
+        return;
+    }
+
+    std::string key(text + start, pos - start);
+
+    if (!popup_->is_shown()) {
+        // 候補リストを再構築してから表示
+        popup_->set_all(build_candidates());
+
+        // カーソルのウィンドウ相対座標を計算
+        // (Fl_Group ベースの popup_ はメインウィンドウ座標系を使う)
+        fl_font(editor_->textfont(), editor_->textsize());
+        int cur_pix  = (int)fl_width(text, pos);
+        int wx       = editor_->x() + PAD + cur_pix;
+        int wy_below = editor_->y() + editor_->h() + 2;
+        int wy_above = editor_->y();
+        popup_->show_at(wx, wy_below, wy_above, key);
+    } else {
+        popup_->update_key(key);
+    }
+}
+
+void SheetView::completion_confirm() {
+    const Candidate *c = popup_->selected();
+    if (!c) { completion_hide(); return; }
+
+    const char *text = editor_->value();
+    int pos = editor_->position();
+
+    // 識別子の先頭を探す
+    int start = pos;
+    while (start > 0 && lexer_is_id_follow(text[start - 1])) start--;
+
+    // 置換テキストを構築
+    std::string rep = c->id;
+    if (c->is_function) rep += "(";
+
+    editor_->replace(start, pos, rep.c_str(), (int)rep.size());
+    // カーソルを括弧内 (関数) または末尾 (変数) に置く
+    editor_->position((int)(start + rep.size()));
+
+    completion_hide();
+    live_eval();
+}
+
+void SheetView::completion_hide() {
+    if (popup_->is_shown()) popup_->hide_popup();
 }

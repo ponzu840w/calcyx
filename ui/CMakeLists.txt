@@ -44,6 +44,8 @@ if(APPLE)
         main.cpp
         MainWindow.cpp
         SheetView.cpp
+        CompletionPopup.cpp
+        builtin_docs.cpp
         ${ICON_FILE}
         ${SAMPLE_FILES}
     )
@@ -60,6 +62,8 @@ elseif(WIN32)
         main.cpp
         MainWindow.cpp
         SheetView.cpp
+        CompletionPopup.cpp
+        builtin_docs.cpp
         calcyx.rc
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
@@ -68,6 +72,8 @@ else()
         main.cpp
         MainWindow.cpp
         SheetView.cpp
+        CompletionPopup.cpp
+        builtin_docs.cpp
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
 endif()
@@ -97,6 +103,8 @@ endif()
 add_executable(test_undo
     test_undo.cpp
     SheetView.cpp
+    CompletionPopup.cpp
+    builtin_docs.cpp
 )
 
 target_include_directories(test_undo PRIVATE

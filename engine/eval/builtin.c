@@ -449,6 +449,12 @@ func_def_t *builtin_find(const char *name, int n_args) {
     return NULL;
 }
 
+void builtin_enum_main(builtin_enum_cb cb, void *userdata) {
+    for (int i = 0; BUILTIN_TABLE[i].name; i++) {
+        cb(BUILTIN_TABLE[i].name, BUILTIN_TABLE[i].n_params, userdata);
+    }
+}
+
 void builtin_register_all(eval_ctx_t *ctx) {
     for (int i = 0; BUILTIN_TABLE[i].name; i++) {
         const builtin_entry_t *e = &BUILTIN_TABLE[i];

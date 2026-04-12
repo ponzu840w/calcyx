@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include "CompletionPopup.h"
+
 extern "C" {
 #include "eval/eval.h"
 #include "eval/builtin.h"
@@ -35,6 +37,12 @@ public:
     void set_row_change_cb(void (*cb)(void *), void *data);
     // 現在フォーカス行のフォーマッタ関数名 (nullptr = Auto)
     const char *current_fmt_name() const;
+
+    // 入力補完 (SheetLineInput から呼ばれる)
+    void completion_update();
+    void completion_confirm();
+    void completion_hide();
+    CompletionPopup *popup_ = nullptr;
 
     // Undo / Redo
     void undo();
@@ -92,10 +100,10 @@ private:
     int focused_row_ = 0;
     int scroll_top_  = 0;
 
-    Fl_Input     *editor_;
-    Fl_Input     *result_display_;  // フォーカス行の結果表示 (read-only)
-    Fl_Scrollbar *vscroll_;
-    eval_ctx_t    ctx_;
+    Fl_Input        *editor_;
+    Fl_Input        *result_display_;  // フォーカス行の結果表示 (read-only)
+    Fl_Scrollbar    *vscroll_;
+    eval_ctx_t       ctx_;
 
     void (*row_change_cb_)(void *) = nullptr;
     void  *row_change_data_        = nullptr;
@@ -127,4 +135,7 @@ private:
     void place_editor();
     void update_result_display();
     int  row_at_y(int fy) const;
+
+    // ---- 入力補完 ----
+    std::vector<Candidate> build_candidates() const;
 };

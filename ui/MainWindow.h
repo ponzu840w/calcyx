@@ -7,6 +7,7 @@
 #include <FL/Fl_Choice.H>
 #include <FL/Fl_Menu_Bar.H>
 #include "SheetView.h"
+#include "CompletionPopup.h"
 
 class MainWindow : public Fl_Double_Window {
 public:
@@ -16,10 +17,13 @@ public:
     // フォーカス行変更時に Fl_Choice の表示を更新
     void update_fmt_choice();
 
+    int handle(int event) override;
+
 private:
-    Fl_Menu_Bar *menu_;
-    Fl_Choice   *fmt_choice_;
-    SheetView   *sheet_;
+    Fl_Menu_Bar     *menu_;
+    Fl_Choice       *fmt_choice_;
+    SheetView       *sheet_;
+    CompletionPopup *popup_;
 
     static const int MENU_H   = 24;
     static const int CHOICE_W = 110;
