@@ -53,8 +53,8 @@ if(APPLE)
     )
     set_target_properties(calcyx_ui PROPERTIES
         MACOSX_BUNDLE_BUNDLE_NAME          "calcyx"
-        MACOSX_BUNDLE_BUNDLE_VERSION       "0.1"
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.1"
+        MACOSX_BUNDLE_BUNDLE_VERSION       "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
         MACOSX_BUNDLE_ICON_FILE            "icon.icns"
         MACOSX_BUNDLE_GUI_IDENTIFIER       "com.ponzu840w.calcyx"
         OUTPUT_NAME                        "calcyx"
@@ -70,7 +70,7 @@ elseif(WIN32)
         app_prefs.cpp
         calcyx.rc
     )
-    set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
+    set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx-gui")
     # exe の隣に samples/ をコピー (File > Examples が参照する)
     add_custom_command(TARGET calcyx_ui POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -87,7 +87,7 @@ else()
         builtin_docs.cpp
         app_prefs.cpp
     )
-    set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
+    set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx-gui")
     # Linux: exe の隣に samples/ をコピー
     add_custom_command(TARGET calcyx_ui POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -99,7 +99,6 @@ endif()
 target_include_directories(calcyx_ui PRIVATE
     ${FLTK_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/engine
-    ${MPDECIMAL_INCLUDE}
 )
 
 target_link_libraries(calcyx_ui PRIVATE
@@ -119,9 +118,15 @@ endif()
 
 if(APPLE)
     install(TARGETS calcyx_ui BUNDLE DESTINATION . COMPONENT gui)
-else()
+elseif(UNIX)
     install(TARGETS calcyx_ui RUNTIME DESTINATION bin COMPONENT gui)
+    install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/com.ponzu840w.calcyx.desktop"
+        DESTINATION share/applications COMPONENT gui)
+    install(FILES "${CMAKE_SOURCE_DIR}/ui/icon.svg"
+        DESTINATION share/icons/hicolor/scalable/apps
+        RENAME calcyx.svg COMPONENT gui)
 endif()
+# Windows はインストール不要 (ZIP 配布のみ)
 
 # ---- test_undo ----
 add_executable(test_undo
@@ -135,7 +140,6 @@ add_executable(test_undo
 target_include_directories(test_undo PRIVATE
     ${FLTK_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/engine
-    ${MPDECIMAL_INCLUDE}
 )
 
 target_link_libraries(test_undo PRIVATE

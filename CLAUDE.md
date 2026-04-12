@@ -33,12 +33,25 @@ https://github.com/shapoco/calctus (C# / .NET)
 ## ビルド
 
 ```sh
-cmake --preset unix
+cmake --preset unix      # macOS / Linux
 cmake --build --preset unix
+
+cmake --preset win       # Windows (WSL 上)
+cmake --build --preset win
+
+cmake --preset wasm      # WebAssembly (要 emscripten)
+cmake --build --preset wasm
 ```
 
 FLTK・mpdecimal は初回ビルド時に自動取得。macOS では `brew install cmake` のみ必要。  
 Linux では X11 系パッケージが必要: `sudo apt install cmake libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev`
+
+### パッケージ生成
+
+```sh
+cpack --preset unix   # macOS → calcyx-mac.zip / Linux → calcyx_*.deb
+cpack --preset win    # Windows → calcyx-win.zip (WSL 上で実行)
+```
 
 ### Windows 向けクロスコンパイル（WSL 上）
 
@@ -48,14 +61,14 @@ Linux では X11 系パッケージが必要: `sudo apt install cmake libx11-dev
 sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
 ```
 
-#### ビルド（初回も2回目以降も同じ）
+#### ビルド
 
 ```sh
-cmake --preset windows
-cmake --build --preset windows
+cmake --preset win
+cmake --build --preset win
 ```
 
-初回ビルド時は FLTK と mpdecimal を自動ダウンロード・クロスビルドして `deps/mingw64/` に配置する（`cmake/deps-mingw64.cmake` の `ExternalProject_Add` による）。  
+初回ビルド時は FLTK と mpdecimal を自動ダウンロード・クロスビルドして `deps/mingw64/` に配置する（`cmake/deps-win.cmake` の `ExternalProject_Add` による）。  
 `deps/` は `.gitignore` 対象だが、手動操作は不要。2回目以降は `deps/mingw64/` が存在する限りスキップされる。
 
 
@@ -97,10 +110,13 @@ iconutil -c icns ui/icon.iconset -o ui/icon.icns
 
 | パス | 内容 |
 |---|---|
-| `./build/ui/calcyx` | GUI アプリ本体 (macOS/Linux) |
+| `./build/ui/calcyx.app` | GUI アプリ本体 (macOS) |
+| `./build/ui/calcyx-gui` | GUI アプリ本体 (Linux) |
+| `./build/cli/calcyx` | CLI (macOS/Linux) |
 | `./build/engine/test_types` | エンジン型システムのテスト |
 | `./build/engine/test_eval` | エンジン評価器のテスト |
 | `./build/ui/test_undo` | SheetView Undo/Redo テスト |
-| `./build-win/ui/calcyx.exe` | GUI アプリ本体 (Windows) |
+| `./build-win/ui/calcyx-gui.exe` | GUI アプリ本体 (Windows) |
+| `./build-win/cli/calcyx.exe` | CLI (Windows) |
 | `./build-win/engine/test_types.exe` | エンジン型システムのテスト (Windows) |
 | `./build-win/engine/test_eval.exe` | エンジン評価器のテスト (Windows) |
