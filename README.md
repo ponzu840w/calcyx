@@ -8,12 +8,22 @@
 
 式を複数行並べて逐次評価できるスクラッチパッド型の計算機。前の行の結果を後の行で参照でき、行を編集するとその場でリアルタイム再評価される。
 
-## ビルド&インストール
+## インストール
+
+バイナリ配布版は [Releases](../../releases) から入手可能。
+
+| プラットフォーム | GUI | CLI |
+|---|---|---|
+| macOS | `calcyx.app` を `/Applications` へ | `bin/calcyx` を PATH の通った場所にコピー |
+| Linux | `sudo dpkg -i calcyx_*.deb`（ランチャーに自動配置） | 同左（`/usr/bin/calcyx` に自動配置） |
+| Windows | `calcyx-gui.exe` を任意の場所に配置 | `calcyx.exe` を任意の場所に配置（PATH 設定は任意） |
+
+## ソースからビルド
 
 ### 依存パッケージ
 
-FLTK・mpdecimal は初回ビルド時に自動取得・ビルドされます。  
-X11 まわりなど OS に密着した依存のみ手動インストールが必要です。
+FLTK・mpdecimal は初回ビルド時に自動取得・ビルドされる。
+ターゲットに固有に必要なパッケージは事前の手動インストールが必要。
 
 | プラットフォーム | コマンド |
 |---|---|
@@ -21,45 +31,72 @@ X11 まわりなど OS に密着した依存のみ手動インストールが必
 | Linux | `sudo apt install cmake libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev` |
 | Windows (WSL) | `sudo apt install cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64` |
 
-### ビルド
+### ビルドコマンド
 
 ```sh
 git clone https://github.com/ponzu840w/calcyx.git
 cd calcyx
-cmake --preset unix    # macOS / Linux
-cmake --preset windows    # Windows (WSL)
-cmake --build --preset <preset>
+
+cmake --preset unix      # 初回のみ (macOS / Linux)
+cmake --build --preset unix
+
+cmake --preset win       # 初回のみ (Windows, WSL 上)
+cmake --build --preset win
 ```
 
 ### インストール
 
+ビルドディレクトリは `cmake --preset unix` なら `build/`、`unix-debug` なら `build-debug/`。
+
 ```sh
-# GUI + CLI 両方（Linux / Windows）
-sudo cmake --install build --prefix /usr/local
+# GUI
+sudo cmake --install build --component gui --prefix /Applications  # macOS
+sudo cmake --install build --component gui --prefix /usr/local     # Linux
 
-# CLI のみ（ユーザーローカル、sudo 不要）
-cmake --install build --component cli --prefix ~/.local
+# CLI
+cmake --install build --component cli --prefix ~/.local            # macOS / Linux
+```
 
-# GUI のみ（macOS）
-sudo cmake --install build --component gui --prefix /Applications
+Windows は `cmake --install` 非対応。ZIP を展開して任意の場所に配置してください。
+
+### パッケージ生成
+
+```sh
+cpack --preset unix   # macOS → calcyx-mac-<version>.zip
+                      # Linux → calcyx_<version>_amd64.deb
+cpack --preset win    # Windows → calcyx-win-<version>.zip
+```
+
+バージョンは git tag から自動取得（形式: `v1.2.3`）。
+タグ上にない場合はファイル名に `-dev` が付きます。
+
+## テスト
+
+```sh
+ctest --preset unix           # 全テスト (macOS / Linux)
+ctest --preset unix-headless  # GUI テストを除く (macOS / Linux)
+ctest --preset win-headless   # GUI テストを除く (Windows, WSL 上)
 ```
 
 ## アーキテクチャ
 
 ```
 engine/   C99 計算エンジン（types / parser / eval）
-ui/       FLTK GUI（macOS / Linux / Windows )
+ui/       FLTK GUI（macOS / Linux / Windows）
+cli/      CLI フロントエンド
 ```
 
 エンジンは C99 のみで実装されており、複数のフロントエンドから共有する設計。
 
-## テスト
+### 実行ファイル
 
-```sh
-cmake --build --preset unix
-./build/engine/test_types
-./build/engine/test_eval
-```
+| パス | 内容 |
+|---|---|
+| `build/ui/calcyx.app` | GUI アプリ本体 (macOS) |
+| `build/ui/calcyx-gui` | GUI アプリ本体 (Linux) |
+| `build/cli/calcyx` | CLI (macOS / Linux) |
+| `build-win/ui/calcyx-gui.exe` | GUI アプリ本体 (Windows) |
+| `build-win/cli/calcyx.exe` | CLI (Windows) |
 
 ## 移植元
 
@@ -95,4 +132,3 @@ cmake --build --preset unix
 |---|---|
 | グラフ表示 | 関数プロット・軸設定ウィンドウ |
 | 設定ダイアログ | フォント・DPI・ホットキー設定 |
-| ウィンドウ状態の永続化 | 位置・サイズの保存 |

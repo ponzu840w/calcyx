@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=1.0
+Name=calcyx
+Comment=Programmers' calculator
+Exec=calcyx-gui
+Icon=calcyx
+Type=Application
+Categories=Utility;Calculator;

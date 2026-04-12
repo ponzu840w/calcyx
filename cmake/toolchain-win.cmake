@@ -1,6 +1,6 @@
 # MinGW-w64 クロスコンパイル用ツールチェーンファイル
 # WSL (Ubuntu) 上で Windows x86_64 バイナリをビルドする
-# 使い方: cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-mingw64.cmake
+# 使い方: cmake -S . -B build-win -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-win.cmake
 
 set(CMAKE_SYSTEM_NAME Windows)
 set(CMAKE_SYSTEM_PROCESSOR x86_64)

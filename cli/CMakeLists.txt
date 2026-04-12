@@ -10,7 +10,7 @@ target_link_libraries(calcyx_cli PRIVATE
     $<$<NOT:$<BOOL:${WIN32}>>:m>
 )
 
-set_target_properties(calcyx_cli PROPERTIES OUTPUT_NAME "calcyx-cli")
+set_target_properties(calcyx_cli PROPERTIES OUTPUT_NAME "calcyx")
 
 if(TARGET dep_mpdecimal)
     add_dependencies(calcyx_cli dep_mpdecimal)

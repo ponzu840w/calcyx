@@ -1,37 +1,57 @@
 {
-  "version": 3,
+  "version": 6,
   "configurePresets": [
     {
-      "name": "unix",
-      "displayName": "Unix Release (macOS / Linux)",
+      "name": "base-unix",
+      "hidden": true,
       "binaryDir": "${sourceDir}/build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
     },
     {
-      "name": "debug",
+      "name": "unix",
+      "displayName": "Unix Release (macOS / Linux)",
+      "inherits": "base-unix"
+    },
+    {
+      "name": "unix-debug",
       "displayName": "Unix Debug (macOS / Linux)",
-      "inherits": "unix",
+      "inherits": "base-unix",
       "binaryDir": "${sourceDir}/build-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
-      "name": "windows",
-      "displayName": "Windows Release (MinGW-w64 cross)",
+      "name": "base-win",
+      "hidden": true,
       "binaryDir": "${sourceDir}/build-win",
-      "toolchainFile": "${sourceDir}/cmake/toolchain-mingw64.cmake",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-win.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "win",
+      "displayName": "Windows Release (MinGW-w64 cross)",
+      "inherits": "base-win"
+    },
+    {
+      "name": "win-debug",
+      "displayName": "Windows Debug (MinGW-w64 cross)",
+      "inherits": "base-win",
+      "binaryDir": "${sourceDir}/build-win-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     }
   ],
   "buildPresets": [
-    { "name": "unix",    "configurePreset": "unix" },
-    { "name": "debug",   "configurePreset": "debug" },
-    { "name": "windows", "configurePreset": "windows" }
+    { "name": "unix",       "configurePreset": "unix" },
+    { "name": "unix-debug", "configurePreset": "unix-debug" },
+    { "name": "win",        "configurePreset": "win" },
+    { "name": "win-debug",  "configurePreset": "win-debug" }
   ],
   "testPresets": [
     {
@@ -40,8 +60,8 @@
       "output": { "outputOnFailure": true }
     },
     {
-      "name": "debug",
-      "configurePreset": "debug",
+      "name": "unix-debug",
+      "configurePreset": "unix-debug",
       "output": { "outputOnFailure": true }
     },
     {
@@ -49,6 +69,16 @@
       "configurePreset": "unix",
       "output": { "outputOnFailure": true },
       "filter": { "exclude": { "label": "gui" } }
+    },
+    {
+      "name": "win-headless",
+      "configurePreset": "win",
+      "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "gui" } }
     }
+  ],
+  "packagePresets": [
+    { "name": "unix", "configurePreset": "unix" },
+    { "name": "win",  "configurePreset": "win" }
   ]
 }
