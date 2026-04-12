@@ -26,12 +26,22 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "wasm",
+      "displayName": "WebAssembly (Emscripten)",
+      "binaryDir": "${sourceDir}/build-wasm",
+      "toolchainFile": "${sourceDir}/cmake/toolchain-emscripten.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
     { "name": "unix",    "configurePreset": "unix" },
     { "name": "debug",   "configurePreset": "debug" },
-    { "name": "windows", "configurePreset": "windows" }
+    { "name": "windows", "configurePreset": "windows" },
+    { "name": "wasm",    "configurePreset": "wasm" }
   ],
   "testPresets": [
     {

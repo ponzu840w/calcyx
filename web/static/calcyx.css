@@ -1,0 +1,233 @@
+/* calcyx.css — ネイティブ SheetView に準拠したダークテーマ */
+
+:root {
+  --bg:         #161616;
+  --row-line:   #202024;
+  --sel-bg:     #262a37;
+  --sep:        #373743;
+  --text:       #ffffff;
+  --symbol:     #40c0ff;   /* C_SYMBOL */
+  --ident:      #c0ff80;   /* C_IDENT  */
+  --special:    #ffc040;   /* C_SPECIAL (数値リテラル) */
+  --si-pfx:     #e0a0ff;   /* C_SI_PFXCHAR */
+  --result:     #64dc64;   /* C_RESULT */
+  --error:      #6e6e6e;   /* C_ERROR  */
+  --eq:         #646478;
+  --cursor:     #b4c8ff;
+  --font:       'Courier New', Courier, monospace;
+  --font-size:  13px;
+  --row-h:      22px;
+  --menubar-h:  28px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ---- メニューバー ---- */
+#menubar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--menubar-h);
+  background: #1e1e22;
+  border-bottom: 1px solid var(--sep);
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+.menu-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 8px;
+  border-right: 1px solid var(--sep);
+  margin-right: 4px;
+}
+.menu-group:last-child { border-right: none; }
+
+.menu-btn {
+  background: #2e2e38;
+  color: var(--text);
+  border: none;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--font);
+  cursor: pointer;
+  border-radius: 2px;
+}
+.menu-btn:hover:not(:disabled) { background: #3a3a48; }
+.menu-btn:disabled { opacity: 0.35; cursor: default; }
+
+.menu-label { font-size: 11px; color: #aaa; margin-right: 4px; }
+
+#fmt-select {
+  background: #2e2e38;
+  color: var(--text);
+  border: none;
+  font-size: 11px;
+  font-family: var(--font);
+  padding: 2px 4px;
+  cursor: pointer;
+}
+
+/* ---- シート ---- */
+#sheet {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 0;
+}
+
+/* スクロールバー */
+#sheet::-webkit-scrollbar { width: 8px; }
+#sheet::-webkit-scrollbar-track { background: var(--bg); }
+#sheet::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+/* ---- 行 ---- */
+/* expr-col-w は JS から #sheet に設定される CSS 変数。
+   式列幅 = 最長式テキスト幅、結果列 = 残り全体 (1fr)。
+   ネイティブ版 update_layout() と同じロジック。 */
+.row {
+  display: grid;
+  grid-template-columns: var(--expr-col-w, 200px) 28px 1fr;
+  align-items: center;
+  min-height: var(--row-h);
+  border-bottom: 1px solid var(--row-line);
+  position: relative;
+}
+.row.focused { background: var(--sel-bg); }
+
+/* 式入力セル */
+.expr-cell {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 1px 4px;
+  min-width: 0;
+}
+
+/* ハイライト付き表示レイヤー（非フォーカス行） */
+.expr-hl {
+  font-family: var(--font);
+  font-size: var(--font-size);
+  white-space: pre;
+  padding: 1px 4px;
+  pointer-events: none;
+  min-height: var(--row-h);
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 入力フィールド（フォーカス行） */
+.expr-input {
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  border: none;
+  outline: none;
+  font-family: var(--font);
+  font-size: var(--font-size);
+  caret-color: var(--cursor);
+  padding: 0;
+  line-height: var(--row-h);
+}
+
+/* = 記号 */
+.eq-cell {
+  padding: 0 6px;
+  color: var(--eq);
+  font-family: var(--font);
+  font-size: var(--font-size);
+  white-space: nowrap;
+  user-select: none;
+}
+.row.empty .eq-cell { visibility: hidden; }
+
+/* 結果セル — ネイティブ版と同様に左揃え */
+.result-cell {
+  padding: 0 4px;
+  font-family: var(--font);
+  font-size: var(--font-size);
+  white-space: nowrap;
+  color: var(--result);
+  overflow: hidden;
+}
+.result-cell.error { color: var(--error); }
+
+/* ---- シンタックスハイライト用スパン ---- */
+.hl-number  { color: var(--special); }
+.hl-string  { color: var(--special); }
+.hl-ident   { color: var(--ident);   }
+.hl-symbol  { color: var(--symbol);  }
+.hl-sipfx   { color: var(--si-pfx); }
+.hl-comment { color: #555; font-style: italic; }
+.hl-text    { color: var(--text);   }
+
+/* ---- Paste ダイアログ ---- */
+dialog {
+  background: #26262b;
+  color: var(--text);
+  border: 1px solid var(--sep);
+  border-radius: 4px;
+  padding: 12px;
+  min-width: 660px;
+}
+dialog::backdrop { background: rgba(0,0,0,0.6); }
+
+.dialog-layout {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.dialog-col { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.dialog-label { font-size: 11px; color: #aaa; }
+
+dialog textarea {
+  flex: 1;
+  background: #1a1a20;
+  color: var(--text);
+  border: 1px solid var(--sep);
+  font-family: var(--font);
+  font-size: 12px;
+  resize: none;
+  padding: 4px;
+  outline: none;
+}
+
+.dialog-controls { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.ctrl-row { display: flex; align-items: center; gap: 8px; }
+.ctrl-label { font-size: 11px; width: 110px; }
+
+dialog input[type="text"],
+dialog input[type="number"] {
+  background: #1a1a20;
+  color: var(--text);
+  border: 1px solid var(--sep);
+  font-family: var(--font);
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+dialog button {
+  background: #2e2e3a;
+  color: var(--text);
+  border: 1px solid var(--sep);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-family: var(--font);
+  cursor: pointer;
+  border-radius: 2px;
+}
+dialog button:hover { background: #3a3a48; }
+dialog button.btn-primary { background: #2a4a6a; }
+dialog button.btn-primary:hover { background: #3a5a7a; }
+
+.dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; }

@@ -26,7 +26,7 @@ void lexer_pop  (lexer_t *lx, token_t *t);
  * トークンキュー (Parser が使う)
  * ====================================================== */
 
-#define TOK_QUEUE_MAX 4096
+#define TOK_QUEUE_MAX 512
 
 typedef struct {
     token_t  tokens[TOK_QUEUE_MAX];

@@ -26,8 +26,9 @@ X11 まわりなど OS に密着した依存のみ手動インストールが必
 ```sh
 git clone https://github.com/ponzu840w/calcyx.git
 cd calcyx
-cmake --preset unix    # macOS / Linux
-cmake --preset windows    # Windows (WSL)
+cmake --preset unix      # macOS / Linux
+cmake --preset windows   # Windows (WSL)
+cmake --preset wasm      # WebAssembly (要 Emscripten: brew install emscripten)
 cmake --build --preset <preset>
 ```
 
@@ -44,11 +45,23 @@ cmake --install build --component cli --prefix ~/.local
 sudo cmake --install build --component gui --prefix /Applications
 ```
 
+### Web 版の開発サーバー
+
+```sh
+cmake --build --preset wasm
+cd build-wasm/web && python3 -m http.server 8080
+# → http://localhost:8080
+```
+
+WASM は `file://` では動作しません（CORS制限）。HTTP サーバー経由でアクセスしてください。
+
 ## アーキテクチャ
 
 ```
 engine/   C99 計算エンジン（types / parser / eval）
-ui/       FLTK GUI（macOS / Linux / Windows )
+ui/       FLTK GUI（macOS / Linux / Windows）
+cli/      CLI ツール
+web/      Web フロントエンド（Vanilla JS + WebAssembly）
 ```
 
 エンジンは C99 のみで実装されており、複数のフロントエンドから共有する設計。

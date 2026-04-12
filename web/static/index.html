@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>calcyx</title>
+  <link rel="stylesheet" href="calcyx.css">
+</head>
+<body>
+  <div id="app">
+    <!-- メニューバー -->
+    <div id="menubar">
+      <div class="menu-group">
+        <button class="menu-btn" id="btn-new"  title="新規 (Ctrl+Shift+N)">New</button>
+        <button class="menu-btn" id="btn-open" title="開く (Ctrl+O)">Open</button>
+        <button class="menu-btn" id="btn-save" title="保存 (Ctrl+S)">Save</button>
+      </div>
+      <div class="menu-group">
+        <button class="menu-btn" id="btn-undo" title="元に戻す (Ctrl+Z)"  disabled>Undo</button>
+        <button class="menu-btn" id="btn-redo" title="やり直し (Ctrl+Y)" disabled>Redo</button>
+      </div>
+      <div class="menu-group fmt-group">
+        <span class="menu-label">Format:</span>
+        <select id="fmt-select">
+          <option value="">Auto</option>
+          <option value="dec">dec</option>
+          <option value="hex">hex</option>
+          <option value="bin">bin</option>
+          <option value="oct">oct</option>
+          <option value="si">si</option>
+        </select>
+      </div>
+      <input type="file" id="file-input" accept=".txt" style="display:none">
+    </div>
+
+    <!-- スプレッドシート本体 -->
+    <div id="sheet"></div>
+  </div>
+
+  <!-- Paste Options ダイアログ -->
+  <dialog id="paste-dialog">
+    <div class="dialog-layout">
+      <div class="dialog-col">
+        <div class="dialog-label">Clipboard Text:</div>
+        <textarea id="paste-src" spellcheck="false" rows="15"></textarea>
+      </div>
+      <div class="dialog-col">
+        <div class="dialog-label">Text will be pasted:</div>
+        <textarea id="paste-preview" spellcheck="false" rows="15"></textarea>
+      </div>
+    </div>
+    <div class="dialog-controls">
+      <div class="ctrl-row">
+        <label class="ctrl-label">Column Delimiter:</label>
+        <input type="text" id="paste-delim" size="3">
+        <button id="btn-remove-commas">Remove Commas</button>
+        <button id="btn-remove-rhs">Remove Right-hands</button>
+      </div>
+      <div class="ctrl-row">
+        <label class="ctrl-label">Column Index:</label>
+        <input type="number" id="paste-col-idx" value="1" min="0" size="4">
+        <span id="paste-col-total"></span>
+        <button id="btn-select-col">Select Column</button>
+      </div>
+    </div>
+    <div class="dialog-buttons">
+      <button id="paste-ok" class="btn-primary">OK</button>
+      <button id="paste-cancel">Cancel</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
