@@ -31,7 +31,7 @@ private:
 
     Fl_Text_Buffer   *src_buf_;
     Fl_Text_Buffer   *preview_buf_;
-    Fl_Text_Display  *src_display_;
+    Fl_Text_Editor   *src_display_;
     Fl_Text_Editor   *preview_editor_;
     Fl_Input         *delimiter_input_;
     Fl_Input         *col_number_input_;

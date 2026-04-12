@@ -128,7 +128,7 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
         td->scrollbar_width(10);
     };
 
-    src_display_ = new Fl_Text_Display(MX, y, half_w, TXT_H);
+    src_display_ = new Fl_Text_Editor(MX, y, half_w, TXT_H);
     src_display_->buffer(src_buf_);
     setup_text(src_display_);
 
@@ -163,46 +163,46 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
         return b;
     };
 
-    // ---- 行1: Delimiter ----
-    int cx = MX;
-    make_small_label(cx, 68, "Delimiter:");  cx += 68;
-    delimiter_input_ = make_input(cx, 42);
+    // テキストエリアの右端 x 座標
+    const int right_x = MX + half_w + GAP;
+
+    // ---- 行1 (y):
+    //   左: "Column Delimiter:" [input]
+    //   右: [Remove Commas] [Remove Right Hands]
+    //
+    // ---- 行2 (y + C_H + gap):
+    //   左: "Column Index:" [input] /N [Select Column]
+    //
+    // ---- 行3 (右下): [OK] [Cancel]
+
+    // 左: Column Delimiter
+    make_small_label(MX, 110, "Column Delimiter:");
+    delimiter_input_ = make_input(MX + 114, 42);
     delimiter_input_->callback(delimiter_cb, this);
     delimiter_input_->when(FL_WHEN_CHANGED);
 
+    // 右: Remove ボタン2つ (同じ y)
+    remove_comma_btn_ = make_btn(right_x, 140, "Remove Commas");
+    remove_comma_btn_->callback(remove_comma_cb, this);
+
+    remove_right_btn_ = make_btn(right_x + 148, 160, "Remove Right-hands");
+    remove_right_btn_->callback(remove_right_cb, this);
+
     y += C_H + MX / 2;
 
-    // ---- 行2: Column # / Select Column ----
-    cx = MX;
-    make_small_label(cx, 68, "Column #:");  cx += 68;
-    col_number_input_ = make_input(cx, 42);
+    // 左: Column Index / Select Column
+    make_small_label(MX, 110, "Column Index:");
+    col_number_input_ = make_input(MX + 114, 42);
     col_number_input_->value("1");
-    cx += 50;
 
-    select_col_btn_ = make_btn(cx, 120, "Select Column");
-    select_col_btn_->callback(select_col_cb, this);
-    cx += 128;
-
-    num_cols_label_ = new Fl_Box(cx, y, 70, C_H, "");
+    num_cols_label_ = new Fl_Box(MX + 114 + 48, y, 40, C_H, "");
     num_cols_label_->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
     num_cols_label_->labelcolor(PF_TEXT);
     num_cols_label_->color(PF_BG);
     num_cols_label_->box(FL_NO_BOX);
 
-    y += C_H + MX / 2;
-
-    // ---- コントロール行2: Remove buttons ----
-    remove_comma_btn_ = new Fl_Button(MX, y, 140, C_H, "Remove Commas");
-    remove_comma_btn_->color(PF_BTN_BG);
-    remove_comma_btn_->labelcolor(PF_TEXT);
-    remove_comma_btn_->box(FL_FLAT_BOX);
-    remove_comma_btn_->callback(remove_comma_cb, this);
-
-    remove_right_btn_ = new Fl_Button(MX + 148, y, 160, C_H, "Remove Right Hands");
-    remove_right_btn_->color(PF_BTN_BG);
-    remove_right_btn_->labelcolor(PF_TEXT);
-    remove_right_btn_->box(FL_FLAT_BOX);
-    remove_right_btn_->callback(remove_right_cb, this);
+    select_col_btn_ = make_btn(MX + 114 + 48 + 44, 120, "Select Column");
+    select_col_btn_->callback(select_col_cb, this);
 
     // ---- OK / Cancel (右下) ----
     cancel_btn_ = new Fl_Button(W - MX - 90, H - MX - BTN_H, 90, BTN_H, "Cancel");
