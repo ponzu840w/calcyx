@@ -163,14 +163,18 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
         return b;
     };
 
+    // ---- 行1: Delimiter ----
     int cx = MX;
     make_small_label(cx, 68, "Delimiter:");  cx += 68;
     delimiter_input_ = make_input(cx, 42);
     delimiter_input_->callback(delimiter_cb, this);
     delimiter_input_->when(FL_WHEN_CHANGED);
-    cx += 50;
 
-    make_small_label(cx, 60, "Column #:");  cx += 60;
+    y += C_H + MX / 2;
+
+    // ---- 行2: Column # / Select Column ----
+    cx = MX;
+    make_small_label(cx, 68, "Column #:");  cx += 68;
     col_number_input_ = make_input(cx, 42);
     col_number_input_->value("1");
     cx += 50;
