@@ -1,6 +1,7 @@
 // 移植元: Calctus/UI/SheetView.cs (簡略版)
 
 #include "SheetView.h"
+#include "PasteOptionForm.h"
 #include "builtin_docs.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
@@ -299,18 +300,21 @@ public:
                 return 0;
             }
         }
-        // ペースト時: 改行を空白に置換してから挿入（オリジナルと同じ動作）
+        // ペースト時: 改行なし→通常挿入、改行あり→複数行ペーストダイアログ
         if (event == FL_PASTE && editor_mode_) {
             const char *txt = Fl::event_text();
             int tlen = Fl::event_length();
-            std::string clean;
-            clean.reserve(tlen);
+            bool has_nl = false;
             for (int i = 0; i < tlen; i++) {
-                char c = txt[i];
-                clean += (c == '\n' || c == '\r') ? ' ' : c;
+                if (txt[i] == '\n' || txt[i] == '\r') { has_nl = true; break; }
             }
-            replace(position(), mark(), clean.c_str(), (int)clean.size());
-            if (parent()) static_cast<SheetView *>(parent())->live_eval();
+            if (has_nl) {
+                static_cast<SheetView *>(parent())->multiline_paste(
+                    std::string(txt, tlen));
+            } else {
+                replace(position(), mark(), txt, tlen);
+                if (parent()) static_cast<SheetView *>(parent())->live_eval();
+            }
             return 1;
         }
 
@@ -1324,6 +1328,35 @@ void SheetView::clear_all() {
         e.redo_ops.push_back({ UndoOpType::Delete, i, "" });
     commit_undo_entry(std::move(e));
     focus_row(0);
+}
+
+// 移植元: Calctus/UI/Sheets/SheetView.cs - MultilinePaste()
+void SheetView::multiline_paste(const std::string &text) {
+    PasteOptionForm *dlg = new PasteOptionForm(text);
+    bool ok = dlg->run();
+    std::vector<std::string> lines;
+    if (ok) lines = dlg->result_lines();
+    delete dlg;
+
+    if (!ok || lines.empty()) return;
+
+    commit();  // 現在行の編集を確定
+
+    // フォーカス行の直前に挿入 (移植元: insertPos = FocusedIndex)
+    int insert_at = focused_row_;
+
+    UndoEntry e;
+    e.view_state = capture_view_state();
+    for (int i = 0; i < (int)lines.size(); i++)
+        e.redo_ops.push_back({ UndoOpType::Insert, insert_at + i, lines[i] });
+    for (int i = (int)lines.size() - 1; i >= 0; i--)
+        e.undo_ops.push_back({ UndoOpType::Delete, insert_at + i, "" });
+
+    commit_undo_entry(std::move(e));
+    focus_row(insert_at + (int)lines.size() - 1);
+    eval_all();
+    place_editor();
+    redraw();
 }
 
 void SheetView::copy_all_to_clipboard() const {

@@ -45,6 +45,7 @@ if(APPLE)
         MainWindow.cpp
         SheetView.cpp
         CompletionPopup.cpp
+        PasteOptionForm.cpp
         builtin_docs.cpp
         app_prefs.cpp
         ${ICON_FILE}
@@ -64,6 +65,7 @@ elseif(WIN32)
         MainWindow.cpp
         SheetView.cpp
         CompletionPopup.cpp
+        PasteOptionForm.cpp
         builtin_docs.cpp
         app_prefs.cpp
         calcyx.rc
@@ -81,6 +83,7 @@ else()
         MainWindow.cpp
         SheetView.cpp
         CompletionPopup.cpp
+        PasteOptionForm.cpp
         builtin_docs.cpp
         app_prefs.cpp
     )
@@ -119,6 +122,7 @@ add_executable(test_undo
     test_undo.cpp
     SheetView.cpp
     CompletionPopup.cpp
+    PasteOptionForm.cpp
     builtin_docs.cpp
 )
 
