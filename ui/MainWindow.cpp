@@ -3,6 +3,7 @@
 #include "MainWindow.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Native_File_Chooser.H>
+#include "app_prefs.h"
 #include <FL/fl_ask.H>
 #include <cstdio>
 #include <cstring>
@@ -203,6 +204,20 @@ bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
     }
     fl_alert("File not found:\n%s", filename);
     return false;
+}
+
+void MainWindow::save_prefs() {
+    AppPrefs prefs;
+    prefs.set_int("geometry_valid", 1);
+    prefs.set_int("x", x());
+    prefs.set_int("y", y());
+    prefs.set_int("w", w());
+    prefs.set_int("h", h());
+}
+
+void MainWindow::hide() {
+    save_prefs();
+    Fl_Double_Window::hide();
 }
 
 void MainWindow::choice_cb(Fl_Widget *w, void *data) {

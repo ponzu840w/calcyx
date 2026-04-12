@@ -17,9 +17,11 @@ public:
     // フォーカス行変更時に Fl_Choice の表示を更新
     void update_fmt_choice();
 
-    int handle(int event) override;
+    int  handle(int event) override;
+    void hide() override;
 
 private:
+    void save_prefs();
     Fl_Menu_Bar     *menu_;
     Fl_Choice       *fmt_choice_;
     SheetView       *sheet_;

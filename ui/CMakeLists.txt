@@ -46,6 +46,7 @@ if(APPLE)
         SheetView.cpp
         CompletionPopup.cpp
         builtin_docs.cpp
+        app_prefs.cpp
         ${ICON_FILE}
         ${SAMPLE_FILES}
     )
@@ -64,6 +65,7 @@ elseif(WIN32)
         SheetView.cpp
         CompletionPopup.cpp
         builtin_docs.cpp
+        app_prefs.cpp
         calcyx.rc
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
@@ -74,6 +76,7 @@ else()
         SheetView.cpp
         CompletionPopup.cpp
         builtin_docs.cpp
+        app_prefs.cpp
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx")
 endif()
