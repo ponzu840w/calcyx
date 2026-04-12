@@ -33,11 +33,16 @@ cmake --build --preset <preset>
 
 ### インストール
 
-| プラットフォーム | 方法 |
-|---|---|
-| macOS | `cp -r build/ui/calcyx.app /Applications/` |
-| Linux | `sudo cp build/ui/calcyx /usr/local/bin/` |
-| Windows | `build-win/ui/calcyx.exe` をコピーして実行 |
+```sh
+# GUI + CLI 両方（Linux / Windows）
+sudo cmake --install build --prefix /usr/local
+
+# CLI のみ（ユーザーローカル、sudo 不要）
+cmake --install build --component cli --prefix ~/.local
+
+# GUI のみ（macOS）
+sudo cmake --install build --component gui --prefix /Applications
+```
 
 ## アーキテクチャ
 

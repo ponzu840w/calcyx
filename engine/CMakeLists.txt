@@ -22,21 +22,19 @@ endif()
 add_executable(test_types test_types.c)
 target_link_libraries(test_types PRIVATE calcyx_engine $<$<NOT:$<BOOL:${WIN32}>>:m>)
 
-# ===== eval テストハーネス =====
-set(SAMPLES_DIR "${CMAKE_SOURCE_DIR}/tmp/calctus-linux/Samples")
-
 add_executable(test_eval test_eval.c)
 target_link_libraries(test_eval PRIVATE calcyx_engine $<$<NOT:$<BOOL:${WIN32}>>:m>)
 target_include_directories(test_eval PRIVATE . ${MPDECIMAL_INCLUDE})
 
-enable_testing()
+# ===== ctest 登録 =====
 
-add_test(NAME Test_Types COMMAND test_types)
+add_test(NAME engine/types COMMAND test_types)
+set_tests_properties(engine/types PROPERTIES LABELS "engine")
 
-# 各 Test_*.txt ファイルを ctest ターゲットとして登録
+set(SAMPLES_DIR "${CMAKE_SOURCE_DIR}/samples")
 file(GLOB SAMPLE_TEST_FILES "${SAMPLES_DIR}/Test_*.txt")
 foreach(TXT ${SAMPLE_TEST_FILES})
     get_filename_component(TNAME ${TXT} NAME_WE)
-    add_test(NAME ${TNAME}
-             COMMAND test_eval ${TXT})
+    add_test(NAME engine/${TNAME} COMMAND test_eval ${TXT})
+    set_tests_properties(engine/${TNAME} PROPERTIES LABELS "engine")
 endforeach()

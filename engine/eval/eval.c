@@ -648,8 +648,36 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
  * eval_str: 文字列の解析・評価
  * ====================================================== */
 
+/* ; 以降の行末コメントを除去。文字列リテラル ('...' / "...") 内の ; は除く。
+ * エスケープシーケンス (\' / \") も正しく読み飛ばす。 */
+void eval_strip_comment(char *buf) {
+    int in_str  = 0;  /* " の中 */
+    int in_char = 0;  /* ' の中 */
+    for (int i = 0; buf[i]; i++) {
+        char c = buf[i];
+        if (in_str) {
+            if (c == '\\')     { i++; continue; }   /* エスケープ読み飛ばし */
+            if (c == '"')      { in_str = 0; }
+        } else if (in_char) {
+            if (c == '\\')     { i++; continue; }
+            if (c == '\'')     { in_char = 0; }
+        } else {
+            if (c == '"')      { in_str  = 1; }
+            else if (c == '\''){ in_char = 1; }
+            else if (c == ';') { buf[i] = '\0'; break; }
+        }
+    }
+}
+
 val_t *eval_str(const char *src, eval_ctx_t *ctx,
                 char *errmsg, int errmsg_len) {
+    /* ; コメントを除去したコピーで評価 */
+    char stripped[4096];
+    strncpy(stripped, src, sizeof(stripped) - 1);
+    stripped[sizeof(stripped) - 1] = '\0';
+    eval_strip_comment(stripped);
+    src = stripped;
+
     char parse_err[256] = "";
     expr_t *ast = parse(src, parse_err, sizeof(parse_err));
     if (!ast) {

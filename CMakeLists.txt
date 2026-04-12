@@ -11,5 +11,8 @@ include(cmake/deps.cmake)
 set(MPDECIMAL_LIB     "${DEPS_DIR}/lib/libmpdec.a")
 set(MPDECIMAL_INCLUDE "${DEPS_DIR}/include")
 
+enable_testing()
+
 add_subdirectory(engine)
 add_subdirectory(ui)
+add_subdirectory(cli)

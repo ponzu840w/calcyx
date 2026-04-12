@@ -3,24 +3,52 @@
   "configurePresets": [
     {
       "name": "unix",
-      "displayName": "Unix (macOS / Linux)",
-      "binaryDir": "${sourceDir}/build"
+      "displayName": "Unix Release (macOS / Linux)",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Unix Debug (macOS / Linux)",
+      "inherits": "unix",
+      "binaryDir": "${sourceDir}/build-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     },
     {
       "name": "windows",
-      "displayName": "Windows (MinGW-w64 cross)",
+      "displayName": "Windows Release (MinGW-w64 cross)",
       "binaryDir": "${sourceDir}/build-win",
-      "toolchainFile": "${sourceDir}/cmake/toolchain-mingw64.cmake"
+      "toolchainFile": "${sourceDir}/cmake/toolchain-mingw64.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ],
   "buildPresets": [
+    { "name": "unix",    "configurePreset": "unix" },
+    { "name": "debug",   "configurePreset": "debug" },
+    { "name": "windows", "configurePreset": "windows" }
+  ],
+  "testPresets": [
     {
       "name": "unix",
-      "configurePreset": "unix"
+      "configurePreset": "unix",
+      "output": { "outputOnFailure": true }
     },
     {
-      "name": "windows",
-      "configurePreset": "windows"
+      "name": "debug",
+      "configurePreset": "debug",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "unix-headless",
+      "configurePreset": "unix",
+      "output": { "outputOnFailure": true },
+      "filter": { "exclude": { "label": "gui" } }
     }
   ]
 }

@@ -117,6 +117,12 @@ if(TARGET dep_fltk)
     add_dependencies(calcyx_ui dep_fltk)
 endif()
 
+if(APPLE)
+    install(TARGETS calcyx_ui BUNDLE DESTINATION . COMPONENT gui)
+else()
+    install(TARGETS calcyx_ui RUNTIME DESTINATION bin COMPONENT gui)
+endif()
+
 # ---- test_undo ----
 add_executable(test_undo
     test_undo.cpp
@@ -145,3 +151,7 @@ endif()
 if(TARGET dep_fltk)
     add_dependencies(test_undo dep_fltk)
 endif()
+
+# ===== ctest 登録 =====
+add_test(NAME gui/sheet COMMAND test_undo)
+set_tests_properties(gui/sheet PROPERTIES LABELS "gui")
