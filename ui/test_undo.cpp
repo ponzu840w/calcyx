@@ -174,6 +174,101 @@ static void test_undo_with_uncommitted_edit(SheetView *sv) {
     check("undo3: row0 expr == ''", sv->row_expr(0) == "");
 }
 
+// delete_row_up: 行削除して上の行へ
+static void test_delete_row_up(SheetView *sv) {
+    printf("[test_delete_row_up]\n");
+    sv->test_type_and_commit("row0");
+    sv->test_insert_row(0);
+    sv->test_type_and_commit("row1");
+    sv->test_insert_row(1);
+    sv->test_type_and_commit("row2");
+    check("setup: 3 rows", sv->row_count() == 3);
+    check("setup: focused on 2", sv->focused_row() == 2);
+
+    sv->delete_row_up();
+    check("after delete: 2 rows", sv->row_count() == 2);
+    check("after delete: focused on 1 (moved up)", sv->focused_row() == 1);
+    check("after delete: row1 is old row1", sv->row_expr(1) == "row1");
+
+    sv->undo();
+    check("undo: 3 rows", sv->row_count() == 3);
+    check("undo: row2 restored", sv->row_expr(2) == "row2");
+}
+
+// move_row_up / move_row_down
+static void test_move_row(SheetView *sv) {
+    printf("[test_move_row]\n");
+    sv->test_type_and_commit("AAA");
+    sv->test_insert_row(0);
+    sv->test_type_and_commit("BBB");
+    sv->test_insert_row(1);
+    sv->test_type_and_commit("CCC");
+    check("setup: [AAA,BBB,CCC]",
+          sv->row_expr(0)=="AAA" && sv->row_expr(1)=="BBB" && sv->row_expr(2)=="CCC");
+    check("setup: focused on 2", sv->focused_row() == 2);
+
+    sv->move_row_up();
+    check("move_up: [AAA,CCC,BBB]",
+          sv->row_expr(0)=="AAA" && sv->row_expr(1)=="CCC" && sv->row_expr(2)=="BBB");
+    check("move_up: focused on 1", sv->focused_row() == 1);
+
+    sv->move_row_up();
+    check("move_up2: [CCC,AAA,BBB]",
+          sv->row_expr(0)=="CCC" && sv->row_expr(1)=="AAA" && sv->row_expr(2)=="BBB");
+    check("move_up2: focused on 0", sv->focused_row() == 0);
+
+    sv->move_row_up();  // 先頭なので何も起きない
+    check("move_up at top: unchanged", sv->row_expr(0)=="CCC" && sv->focused_row()==0);
+
+    sv->undo();
+    check("undo x1: [AAA,CCC,BBB]",
+          sv->row_expr(0)=="AAA" && sv->row_expr(1)=="CCC" && sv->row_expr(2)=="BBB");
+    sv->undo();
+    check("undo x2: [AAA,BBB,CCC]",
+          sv->row_expr(0)=="AAA" && sv->row_expr(1)=="BBB" && sv->row_expr(2)=="CCC");
+    check("undo x2: focused on 2", sv->focused_row() == 2);
+
+    // move_row_down のテスト: 先頭行に移動してから下にスワップ
+    sv->move_row_up();  // [AAA, CCC, BBB] focused=1... wait, need to navigate first
+    // focused=2 (BBB) → move_up → focus=1 : swap(1,2): [AAA,BBB→CCC, CCC→BBB]
+    // Actually from [AAA,BBB,CCC], focused=2:
+    // move_row_up: swap(1,2) → [AAA,CCC,BBB], focused=1
+    check("before down test: [AAA,CCC,BBB]",
+          sv->row_expr(0)=="AAA" && sv->row_expr(1)=="CCC" && sv->row_expr(2)=="BBB");
+    check("before down test: focused on 1", sv->focused_row() == 1);
+
+    sv->move_row_down();
+    check("move_down: [AAA,BBB,CCC]",
+          sv->row_expr(0)=="AAA" && sv->row_expr(1)=="BBB" && sv->row_expr(2)=="CCC");
+    check("move_down: focused on 2", sv->focused_row() == 2);
+}
+
+// clear_all
+static void test_clear_all(SheetView *sv) {
+    printf("[test_clear_all]\n");
+    sv->test_type_and_commit("aaa");
+    sv->test_insert_row(0);
+    sv->test_type_and_commit("bbb");
+    sv->test_insert_row(1);
+    sv->test_type_and_commit("ccc");
+    check("setup: 3 rows", sv->row_count() == 3);
+
+    sv->clear_all();
+    check("after clear: 1 row",   sv->row_count() == 1);
+    check("after clear: empty",   sv->row_expr(0) == "");
+    check("after clear: focus 0", sv->focused_row() == 0);
+
+    sv->undo();
+    check("undo: 3 rows",         sv->row_count() == 3);
+    check("undo: row0 == aaa",    sv->row_expr(0) == "aaa");
+    check("undo: row1 == bbb",    sv->row_expr(1) == "bbb");
+    check("undo: row2 == ccc",    sv->row_expr(2) == "ccc");
+
+    sv->redo();
+    check("redo: 1 row",  sv->row_count() == 1);
+    check("redo: empty",  sv->row_expr(0) == "");
+}
+
 // ---- SheetView をリセットするユーティリティ ----
 // load_file でリセットできないので、Undo を全部戻してから初期化
 static void reset_sv(SheetView *sv) {
@@ -213,13 +308,16 @@ int main(int argc, char **argv) {
         Fl::wait(0);
     };
 
-    test_basic_commit_undo_redo(sv);   reset();
-    test_multiple_commits(sv);         reset();
+    test_basic_commit_undo_redo(sv);        reset();
+    test_multiple_commits(sv);              reset();
     test_redo_cleared_after_new_commit(sv); reset();
-    test_insert_row_undo(sv);          reset();
-    test_delete_row_undo(sv);          reset();
-    test_delete_last_row(sv);          reset();
-    test_undo_with_uncommitted_edit(sv);
+    test_insert_row_undo(sv);               reset();
+    test_delete_row_undo(sv);               reset();
+    test_delete_last_row(sv);               reset();
+    test_undo_with_uncommitted_edit(sv);    reset();
+    test_delete_row_up(sv);                 reset();
+    test_move_row(sv);                      reset();
+    test_clear_all(sv);
 
     printf("\n=== %d passed, %d failed ===\n", g_pass, g_fail);
     return g_fail > 0 ? 1 : 0;

@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cstdio>
+#include <ctime>
 #include <cctype>
 #include <vector>
 
@@ -206,8 +207,8 @@ public:
         // 背景
         fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), C_SEL);
 
-        // 選択ハイライト背景
-        if (p1 != p2) {
+        // 選択ハイライト背景 (フォーカスがある時のみ)
+        if (p1 != p2 && Fl::focus() == this) {
             int sx1 = tx + (int)fl_width(txt, p1);
             int sx2 = tx + (int)fl_width(txt, p2);
             fl_push_clip(x(), y(), w(), h());
@@ -251,12 +252,24 @@ public:
                 if (sv->popup_->is_shown()) {
                     if (key == FL_Up)   { sv->popup_->select_prev(); return 1; }
                     if (key == FL_Down) { sv->popup_->select_next(); return 1; }
-                    if (key == FL_Tab)  { sv->completion_confirm();  return 1; }
+                    if (key == FL_Tab || key == FL_Enter || key == FL_KP_Enter)
+                        { sv->completion_confirm(); return 1; }
                     if (key == FL_Escape) { sv->completion_hide();   return 1; }
-                    // Ctrl+Space: 補完を明示的に開く（ポップアップ非表示時も同様）
                 }
                 if (ctrl && key == ' ') {
                     sv->completion_update();
+                    return 1;
+                }
+                // Tab: 左辺 → 右辺へフォーカス移動
+                if (key == FL_Tab && !Fl::event_state(FL_SHIFT)) {
+                    sv->completion_hide();
+                    sv->focus_result();
+                    return 1;
+                }
+            } else {
+                // 右辺での Tab: 次行の左辺へ
+                if (key == FL_Tab && !Fl::event_state(FL_SHIFT)) {
+                    static_cast<SheetView *>(parent())->tab_from_result();
                     return 1;
                 }
             }
@@ -327,6 +340,7 @@ SheetView::SheetView(int x, int y, int w, int h)
     vscroll_ = new Fl_Scrollbar(x + w - SB_W, y, SB_W, h);
     vscroll_->type(FL_VERTICAL);
     vscroll_->linesize(1);
+    vscroll_->visible_focus(0);  // Tab キー順から除外
     vscroll_->callback([](Fl_Widget *wb, void *d) {
         auto *sv = static_cast<SheetView *>(d);
         sv->scroll_top_ = static_cast<Fl_Scrollbar *>(wb)->value();
@@ -663,7 +677,7 @@ void SheetView::insert_row(int after) {
     focus_row(ins);
 }
 
-void SheetView::delete_row(int idx) {
+void SheetView::delete_row(int idx, bool move_up) {
     if (focused_row_ >= 0 && focused_row_ < (int)rows_.size())
         rows_[focused_row_].expr = editor_->value();
     if ((int)rows_.size() <= 1) {
@@ -682,7 +696,9 @@ void SheetView::delete_row(int idx) {
     e.undo_ops.push_back({ UndoOpType::Insert, idx, deleted_expr });
     e.redo_ops.push_back({ UndoOpType::Delete, idx, "" });
     commit_undo_entry(std::move(e));
-    focus_row(std::min(idx, (int)rows_.size() - 1));
+    int target = move_up ? std::max(0, idx - 1)
+                         : std::min(idx, (int)rows_.size() - 1);
+    focus_row(target);
 }
 
 // 移植元: Calctus/UI/Sheets/SheetViewItem.cs - ReplaceFormatterFunction()
@@ -856,29 +872,66 @@ int SheetView::handle(int event) {
         bool ctrl  = Fl::event_state(FL_CTRL)  != 0;
 
         bool meta = Fl::event_state(FL_COMMAND) != 0;
+        bool cmd  = meta || ctrl;  // macOS=Command, Win/Linux=Ctrl どちらでも反応
         if (meta && key == 'z' && !shift) { undo(); return 1; }
         if (meta && (key == 'y' || (key == 'z' && shift))) { redo(); return 1; }
 
-        if (key == FL_Enter && !ctrl) {
-            commit();  // 式変更があれば Undo エントリを作成
+        // ---- Cmd/Ctrl + Shift + ... ----
+        if (cmd && shift) {
+            if (key == FL_Up)   { move_row_up();   return 1; }
+            if (key == FL_Down) { move_row_down(); return 1; }
+            if (key == FL_Delete || key == FL_BackSpace) { clear_all(); return 1; }
+            if (key == 'c' || key == 'C') { copy_all_to_clipboard(); return 1; }
+            if (key == 'n' || key == 'N') {
+                // 現在時刻を epoch 秒としてカーソル位置に挿入
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%lld", (long long)time(nullptr));
+                int p = editor_->insert_position(), m = editor_->mark();
+                editor_->replace(std::min(p,m), std::max(p,m), buf, (int)strlen(buf));
+                editor_->insert_position((int)(std::min(p,m) + strlen(buf)));
+                live_eval();
+                return 1;
+            }
+        }
+
+        // ---- Enter ----
+        if (key == FL_Enter && !cmd) {
+            commit();
             if (shift) {
-                insert_row(focused_row_);
+                // Shift+Enter: 現在行の上に新規行を挿入
+                insert_row(focused_row_ - 1);
             } else {
-                if (focused_row_ + 1 >= (int)rows_.size()) {
-                    insert_row(focused_row_);
-                } else {
-                    focus_row(focused_row_ + 1);
+                // Enter: 下に新規行 + 結果があれば "ans" を全選択
+                bool has_result = focused_row_ >= 0 &&
+                                  focused_row_ < (int)rows_.size() &&
+                                  !rows_[focused_row_].result.empty() &&
+                                  !rows_[focused_row_].error;
+                insert_row(focused_row_);
+                if (has_result) {
+                    editor_->value("ans");
+                    editor_->insert_position(3, 0);
+                    live_eval();
                 }
             }
             redraw();
             return 1;
         }
-        if (key == FL_Up) {
+
+        // ---- 行削除（上へ移動） ----
+        if (shift && !ctrl && (key == FL_Delete || key == FL_BackSpace)) {
+            delete_row_up(); return 1;
+        }
+        if (key == FL_BackSpace && !shift && !ctrl && editor_->size() == 0) {
+            delete_row_up(); return 1;
+        }
+
+        // ---- 上下移動 ----
+        if (key == FL_Up && !ctrl) {
             commit();
             if (focused_row_ > 0) focus_row(focused_row_ - 1);
             return 1;
         }
-        if (key == FL_Down) {
+        if (key == FL_Down && !ctrl) {
             commit();
             if (focused_row_ + 1 >= (int)rows_.size()) {
                 insert_row(focused_row_);
@@ -887,8 +940,24 @@ int SheetView::handle(int event) {
             }
             return 1;
         }
-        if (ctrl && (key == FL_Delete || key == FL_BackSpace)) {
+
+        // ---- Ctrl+Del/BS: 行削除（元の動作を維持） ----
+        if (ctrl && !shift && (key == FL_Delete || key == FL_BackSpace)) {
             delete_row(focused_row_);
+            return 1;
+        }
+
+        // ---- フォーマットショートカット ----
+        if (key == FL_F + 8)  { apply_fmt(nullptr);  return 1; }  // Auto
+        if (key == FL_F + 9)  { apply_fmt("dec");    return 1; }
+        if (key == FL_F + 10) { apply_fmt("hex");    return 1; }
+        if (key == FL_F + 11) { apply_fmt("bin");    return 1; }
+        if (key == FL_F + 12) { apply_fmt("si");     return 1; }
+
+        // ---- F5: 強制再計算 ----
+        if (key == FL_F + 5) {
+            eval_all();
+            redraw();
             return 1;
         }
     }
@@ -1187,4 +1256,98 @@ void SheetView::completion_confirm() {
 
 void SheetView::completion_hide() {
     if (popup_->is_shown()) popup_->hide_popup();
+}
+
+// ---- 行削除・移動 ----
+
+void SheetView::delete_row_up() {
+    delete_row(focused_row_, true);
+}
+
+void SheetView::move_row_up() {
+    if (focused_row_ <= 0) return;
+    if (focused_row_ >= 0 && focused_row_ < (int)rows_.size())
+        rows_[focused_row_].expr = editor_->value();
+    int a = focused_row_ - 1, b = focused_row_;
+    std::string ea = rows_[a].expr, eb = rows_[b].expr;
+    UndoEntry e;
+    e.view_state = capture_view_state();
+    e.undo_ops.push_back({ UndoOpType::ChangeExpr, a, ea });
+    e.undo_ops.push_back({ UndoOpType::ChangeExpr, b, eb });
+    e.redo_ops.push_back({ UndoOpType::ChangeExpr, a, eb });
+    e.redo_ops.push_back({ UndoOpType::ChangeExpr, b, ea });
+    commit_undo_entry(std::move(e));
+    focus_row(a);
+}
+
+void SheetView::move_row_down() {
+    if (focused_row_ < 0 || focused_row_ >= (int)rows_.size() - 1) return;
+    if (focused_row_ >= 0 && focused_row_ < (int)rows_.size())
+        rows_[focused_row_].expr = editor_->value();
+    int a = focused_row_, b = focused_row_ + 1;
+    std::string ea = rows_[a].expr, eb = rows_[b].expr;
+    UndoEntry e;
+    e.view_state = capture_view_state();
+    e.undo_ops.push_back({ UndoOpType::ChangeExpr, a, ea });
+    e.undo_ops.push_back({ UndoOpType::ChangeExpr, b, eb });
+    e.redo_ops.push_back({ UndoOpType::ChangeExpr, a, eb });
+    e.redo_ops.push_back({ UndoOpType::ChangeExpr, b, ea });
+    commit_undo_entry(std::move(e));
+    focus_row(b);
+}
+
+void SheetView::clear_all() {
+    if (focused_row_ >= 0 && focused_row_ < (int)rows_.size())
+        rows_[focused_row_].expr = editor_->value();
+    if (rows_.size() == 1 && rows_[0].expr.empty()) return;
+    UndoEntry e;
+    e.view_state = capture_view_state();
+    // undo: 元の全行を復元
+    e.undo_ops.push_back({ UndoOpType::ChangeExpr, 0, rows_[0].expr });
+    for (int i = 1; i < (int)rows_.size(); i++)
+        e.undo_ops.push_back({ UndoOpType::Insert, i, rows_[i].expr });
+    // redo: 先頭行を空にして残りを削除
+    e.redo_ops.push_back({ UndoOpType::ChangeExpr, 0, "" });
+    for (int i = (int)rows_.size() - 1; i >= 1; i--)
+        e.redo_ops.push_back({ UndoOpType::Delete, i, "" });
+    commit_undo_entry(std::move(e));
+    focus_row(0);
+}
+
+void SheetView::copy_all_to_clipboard() const {
+    std::string text;
+    for (const auto &row : rows_) {
+        text += row.expr;
+        if (!row.result.empty()) {
+            text += " = ";
+            text += row.result;
+        }
+        text += "\n";
+    }
+    Fl::copy(text.c_str(), (int)text.size(), 1);
+}
+
+void SheetView::focus_result() {
+    if (result_display_->visible()) {
+        Fl::focus(result_display_);
+        // focus() の後に全選択（FLTK が FL_FOCUS ハンドラ内でリセットするため後から設定）
+        result_display_->insert_position(result_display_->size(), 0);
+        redraw();
+    }
+    // 結果がない行では次行の左辺へ (Enter と同じ動作)
+    else {
+        commit();
+        if (focused_row_ + 1 >= (int)rows_.size())
+            insert_row(focused_row_);
+        else
+            focus_row(focused_row_ + 1);
+    }
+}
+
+void SheetView::tab_from_result() {
+    commit();
+    if (focused_row_ + 1 >= (int)rows_.size())
+        insert_row(focused_row_);
+    else
+        focus_row(focused_row_ + 1);
 }

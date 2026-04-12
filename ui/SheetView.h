@@ -42,6 +42,19 @@ public:
     void completion_update();
     void completion_confirm();
     void completion_hide();
+
+    // Tab キー処理 (SheetLineInput から呼ばれる)
+    void focus_result();       // editor_ → result_display_ へフォーカス移動
+    void tab_from_result();    // result_display_ → 次行 editor_ へフォーカス移動
+
+    // 行操作
+    void delete_row_up();      // 現在行削除・上の行へ移動
+    void move_row_up();        // 現在行を上にスワップ (Ctrl+Shift+↑)
+    void move_row_down();      // 現在行を下にスワップ (Ctrl+Shift+↓)
+    void clear_all();          // 全行削除 (Ctrl+Shift+Del / File>All Clear)
+
+    // クリップボード
+    void copy_all_to_clipboard() const;  // 全行を "式 = 結果" 形式でコピー
     CompletionPopup *popup_ = nullptr;
 
     // Undo / Redo
@@ -130,7 +143,7 @@ private:
     void commit();
     void focus_row(int idx);
     void insert_row(int after);
-    void delete_row(int idx);
+    void delete_row(int idx, bool move_up = false);
     void sync_scroll();
     void place_editor();
     void update_result_display();

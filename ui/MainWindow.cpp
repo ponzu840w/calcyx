@@ -41,6 +41,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->box(FL_FLAT_BOX);
     menu_->add("&File/&Open...\t",    FL_COMMAND + 'o', menu_cb, (void*)"open");
     menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save");
+    menu_->add("&File/All &Clear",    0,                menu_cb, (void*)"clear_all");
     menu_->add("&Edit/&Undo\t",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
     menu_->add("&Edit/&Redo\t",       FL_COMMAND + 'y', menu_cb, (void*)"redo");
     menu_->add("&Help/&About calcyx", 0,                menu_cb, (void*)"about");
@@ -78,6 +79,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
         fmt_choice_->add(FMT_DEFS[i].label);
     fmt_choice_->value(0);  // Auto
     fmt_choice_->callback(choice_cb, this);
+    fmt_choice_->visible_focus(0);  // Tab キー順から除外
 
     // シートビュー (メニューバー直下、ウィンドウ全体)
     int sheet_y = MENU_H + PAD;
@@ -154,6 +156,8 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
                 fl_alert("Cannot save file:\n%s", fc.filename());
         }
 
+    } else if (strcmp(cmd, "clear_all") == 0) {
+        win->sheet_->clear_all();
     } else if (strcmp(cmd, "undo") == 0) {
         win->sheet_->undo();
     } else if (strcmp(cmd, "redo") == 0) {
