@@ -28,7 +28,7 @@ static const Fl_Color C_PAREN[4]   = {
     fl_rgb_color(255, 192,  64),
 };
 static const Fl_Color C_RESULT     = fl_rgb_color(100, 220, 100);
-static const Fl_Color C_ERROR      = fl_rgb_color(255, 100, 100);
+static const Fl_Color C_ERROR      = fl_rgb_color(110, 110, 110);
 static const Fl_Color C_CURSOR     = fl_rgb_color(180, 200, 255);
 static const int PAD = 3;
 
@@ -563,7 +563,9 @@ void SheetView::update_layout() {
         has_result = true;
         if (!row.expr.empty())
             max_expr_w = std::max(max_expr_w, (int)fl_width(row.expr.c_str()) + PAD * 2);
-        max_ans_w = std::max(max_ans_w, (int)fl_width(row.result.c_str()) + PAD * 2);
+        // エラー行の結果は右にはみ出すことを許容するため幅計算に含めない
+        if (!row.error)
+            max_ans_w = std::max(max_ans_w, (int)fl_width(row.result.c_str()) + PAD * 2);
     }
 
     // 結果が1行もない場合は eq_pos_ を変更しない (オリジナル: itemsHaveAns が空なら何もしない)
