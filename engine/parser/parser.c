@@ -153,6 +153,29 @@ expr_t *expr_dup(const expr_t *src) {
 }
 
 /* ======================================================
+ * expr_causes_value_change
+ * 移植元: Calctus/Model/Expressions/ - CausesValueChange()
+ * ====================================================== */
+
+bool expr_causes_value_change(const expr_t *e) {
+    if (!e) return false;
+    switch (e->type) {
+        case EXPR_NUM_LIT:
+        case EXPR_BOOL_LIT:
+            return false;  /* リテラル単体: 値変化なし */
+        case EXPR_LAMBDA:
+        case EXPR_DEF:
+            return false;  /* 関数/ラムダ定義: 値変化なし */
+        case EXPR_BINARY:
+            if (e->op == OP_ASSIGN)
+                return expr_causes_value_change(e->child_b);  /* 代入: RHS に依存 */
+            return true;
+        default:
+            return true;
+    }
+}
+
+/* ======================================================
  * パーサー初期化
  * ====================================================== */
 

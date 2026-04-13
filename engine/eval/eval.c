@@ -749,3 +749,24 @@ val_t *eval_str(const char *src, eval_ctx_t *ctx,
     }
     return result;
 }
+
+/* ======================================================
+ * eval_result_visible: = と右辺を表示するか
+ * 移植元: Calctus SheetViewItem ansVisible 判定
+ * ====================================================== */
+
+bool eval_result_visible(const char *src) {
+    if (!src || !*src) return false;
+
+    char stripped[2048];
+    snprintf(stripped, sizeof(stripped), "%s", src);
+    eval_strip_comment(stripped);
+
+    char err[256] = "";
+    expr_t *e = parse(stripped, err, sizeof(err));
+    if (!e) return true;   /* 構文エラー → エラーメッセージを表示するので true */
+
+    bool visible = expr_causes_value_change(e);
+    expr_free(e);
+    return visible;
+}

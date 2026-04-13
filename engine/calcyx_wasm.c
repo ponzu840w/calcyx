@@ -73,3 +73,10 @@ const char *wasm_get_result(void) { return g_result; }
 
 WASM_EXPORT
 const char *wasm_get_error(void) { return g_error; }
+
+/* 式の = と右辺 (結果) を表示すべきかどうか。
+ * 代入式 / def / lambda → 0 (非表示)、それ以外 → 1 (表示) */
+WASM_EXPORT
+int wasm_result_visible(const char *expr) {
+    return eval_result_visible(expr) ? 1 : 0;
+}

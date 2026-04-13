@@ -80,9 +80,10 @@ private:
     struct Row {
         std::string expr;
         std::string result;
-        bool        error       = false;
-        bool        wrapped     = false;     // 式幅が eq_pos_ を超える場合に2行レイアウト
-        val_fmt_t   result_fmt  = FMT_REAL;  // 結果値の実際のフォーマット (ハイライト用)
+        bool        error         = false;
+        bool        wrapped       = false;    // 式幅が eq_pos_ を超える場合に2行レイアウト
+        bool        show_result   = true;     // = と右辺を表示するか (代入/def → false)
+        val_fmt_t   result_fmt    = FMT_REAL; // 結果値の実際のフォーマット (ハイライト用)
     };
 
     // ---- Undo / Redo ----

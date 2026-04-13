@@ -425,8 +425,8 @@ void SheetView::place_editor() {
         editor_->resize(x(), ry, sheet_w(), ROW_H);
         update_result_display();
         result_display_->resize(result_x(), ry + ROW_H, result_w(), ROW_H);
-    } else if (row.result.empty()) {
-        // 結果なし: エディタは全幅
+    } else if (row.result.empty() || !row.show_result) {
+        // 結果なし / 非表示: エディタは全幅
         editor_->resize(x(), ry, sheet_w(), ROW_H);
         update_result_display();  // result_display_ を hide する
     } else {
@@ -463,7 +463,7 @@ void SheetView::update_result_display() {
         return;
     }
     const Row &row = rows_[focused_row_];
-    if (row.result.empty()) {
+    if (row.result.empty() || !row.show_result) {
         rd->hide();
         return;
     }
@@ -504,10 +504,14 @@ void SheetView::eval_all() {
     for (auto &row : rows_) {
         if (row.expr.empty()) {
             row.result.clear();
-            row.error = false;
-            row.result_fmt = FMT_REAL;
+            row.error       = false;
+            row.show_result = false;
+            row.result_fmt  = FMT_REAL;
             continue;
         }
+        // 代入/def/lambda の場合は = と右辺を非表示 (移植元: calctus ansVisible 判定)
+        row.show_result = eval_result_visible(row.expr.c_str());
+
         ctx_.has_error    = false;
         ctx_.error_msg[0] = '\0';
         char errmsg[256]  = "";
@@ -518,6 +522,8 @@ void SheetView::eval_all() {
             row.result_fmt = v->fmt;
             row.result = buf;
             row.error  = false;
+            // VAL_NULL (def の戻り値) や VAL_FUNC は非表示
+            if (v->type == VAL_NULL || v->type == VAL_FUNC) row.show_result = false;
             val_free(v);
         } else {
             row.result     = errmsg[0] ? errmsg : "error";
@@ -546,7 +552,7 @@ void SheetView::update_layout() {
     int max_ans_w  = 0;
     bool has_result = false;
     for (const auto &row : rows_) {
-        if (row.result.empty()) continue;
+        if (row.result.empty() || !row.show_result) continue;
         has_result = true;
         if (!row.expr.empty())
             max_expr_w = std::max(max_expr_w, (int)fl_width(row.expr.c_str()) + PAD * 2);
@@ -754,7 +760,7 @@ void SheetView::draw() {
 
     // 結果値を指定位置に描画するラムダ (非フォーカス行・折り返し下段どちらにも使用)
     auto draw_result_at = [&](const Row &row, int ary, int abaseline) {
-        if (row.result.empty()) return;
+        if (row.result.empty() || !row.show_result) return;
         if (row.error) {
             fl_push_clip(rx, ary, rw, ROW_H);
             fl_font(FL_COURIER, 13);
@@ -810,7 +816,7 @@ void SheetView::draw() {
             fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
 
             // 下段: "=" + 結果
-            if (!row.result.empty() && !row.error) {
+            if (!row.result.empty() && !row.error && row.show_result) {
                 fl_font(FL_COURIER, 13);
                 fl_color(g_colors.symbol);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, bl_bot);
@@ -826,7 +832,7 @@ void SheetView::draw() {
         } else {
             // ---- 通常1行レイアウト ----
             int baseline = ry + (ROW_H + fl_height() - fl_descent() * 2) / 2;
-            bool has_result = !row.result.empty();
+            bool has_result = !row.result.empty() && row.show_result;
 
             // フォーカス行の背景: 結果なしなら全幅、あれば式+"="カラムのみ (結果は result_display_ が担当)
             if (i == focused_row_)
@@ -906,7 +912,8 @@ int SheetView::handle(int event) {
                 bool has_result = focused_row_ >= 0 &&
                                   focused_row_ < (int)rows_.size() &&
                                   !rows_[focused_row_].result.empty() &&
-                                  !rows_[focused_row_].error;
+                                  !rows_[focused_row_].error &&
+                                  rows_[focused_row_].show_result;
                 insert_row(focused_row_);
                 if (has_result) {
                     editor_->value("ans");

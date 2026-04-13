@@ -39,9 +39,9 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->color(C_MENU_BG);
     menu_->textcolor(C_MENU_FG);
     menu_->box(FL_FLAT_BOX);
+    menu_->add("&File/All &Clear\tCtrl+Shift+Del", FL_COMMAND | FL_SHIFT | FL_Delete, menu_cb, (void*)"clear_all", FL_MENU_DIVIDER);
     menu_->add("&File/&Open...\t",    FL_COMMAND + 'o', menu_cb, (void*)"open");
-    menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save");
-    menu_->add("&File/All &Clear",    0,                menu_cb, (void*)"clear_all");
+    menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Undo\t",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
     menu_->add("&Edit/&Redo\t",       FL_COMMAND + 'y', menu_cb, (void*)"redo");
     menu_->add("&Help/&About calcyx", 0,                menu_cb, (void*)"about");
@@ -68,6 +68,12 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&File/&Examples/Test_Sum_Average",    0, menu_cb, (void*)"Test_Sum_Average.txt");
     menu_->add("&File/&Examples/Test_Trigonometric",  0, menu_cb, (void*)"Test_Trigonometric.txt");
     menu_->add("&File/&Examples/Test_eSeries",        0, menu_cb, (void*)"Test_eSeries.txt");
+    // Examples サブメニューの後に区切り線を入れる
+    {
+        Fl_Menu_Item *it = (Fl_Menu_Item *)menu_->find_item("&File/&Examples");
+        if (it) it->flags |= FL_MENU_DIVIDER;
+    }
+    menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
 
     // フォーマット選択ドロップダウン (メニューバー右端)
     fmt_choice_ = new Fl_Choice(w - CHOICE_W, 0, CHOICE_W, MENU_H);
@@ -162,6 +168,9 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         win->sheet_->undo();
     } else if (strcmp(cmd, "redo") == 0) {
         win->sheet_->redo();
+    } else if (strcmp(cmd, "exit") == 0) {
+        win->save_prefs();
+        exit(0);
     } else if (strcmp(cmd, "about") == 0) {
         fl_message(
             "calcyx " CALCYX_VERSION_FULL "\n"
@@ -169,11 +178,24 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
             "\n"
             "A programmable calculator based on Calctus.\n"
             "\n"
-            "Based on Calctus by shapoco\n"
-            "(https://github.com/shapoco/calctus)\n"
-            "Copyright (c) 2022 shapoco, MIT License\n"
+            "-- calcyx --\n"
+            "Copyright (c) 2026 ponzu840w\n"
+            "MIT License\n"
             "\n"
-            "Copyright (c) 2026 ponzu840w, MIT License"
+            "-- Calctus (original) --\n"
+            "Copyright (c) 2022 shapoco\n"
+            "https://github.com/shapoco/calctus\n"
+            "MIT License\n"
+            "\n"
+            "-- FLTK (Fast Light Tool Kit) --\n"
+            "Copyright (c) 1998-2024 Bill Spitzak and others\n"
+            "GNU LGPL with exceptions\n"
+            "https://www.fltk.org\n"
+            "\n"
+            "-- mpdecimal --\n"
+            "Copyright (c) 2008-2024 Stefan Krah\n"
+            "BSD 2-Clause License\n"
+            "https://www.bytereef.org/mpdecimal"
         );
     } else {
         open_sample_file(win, cmd);

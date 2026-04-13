@@ -12,11 +12,12 @@ applyColors();
 // ---- WASM 初期化 ----
 const Module = await CalcyxModule();
 const wasm = {
-  init:       Module.cwrap('wasm_init',       null,     []),
-  reset:      Module.cwrap('wasm_reset',      null,     []),
-  eval_line:  Module.cwrap('wasm_eval_line',  'number', ['string']),
-  get_result: Module.cwrap('wasm_get_result', 'string', []),
-  get_error:  Module.cwrap('wasm_get_error',  'string', []),
+  init:           Module.cwrap('wasm_init',           null,     []),
+  reset:          Module.cwrap('wasm_reset',          null,     []),
+  eval_line:      Module.cwrap('wasm_eval_line',      'number', ['string']),
+  get_result:     Module.cwrap('wasm_get_result',     'string', []),
+  get_error:      Module.cwrap('wasm_get_error',      'string', []),
+  result_visible: Module.cwrap('wasm_result_visible', 'number', ['string']),
 };
 wasm.init();
 
@@ -28,11 +29,12 @@ async function reinitWasm() {
   console.info('[calcyx] WASM 再初期化開始...');
   try {
     const m = await CalcyxModule();
-    wasm.init       = m.cwrap('wasm_init',       null,     []);
-    wasm.reset      = m.cwrap('wasm_reset',      null,     []);
-    wasm.eval_line  = m.cwrap('wasm_eval_line',  'number', ['string']);
-    wasm.get_result = m.cwrap('wasm_get_result', 'string', []);
-    wasm.get_error  = m.cwrap('wasm_get_error',  'string', []);
+    wasm.init           = m.cwrap('wasm_init',           null,     []);
+    wasm.reset          = m.cwrap('wasm_reset',          null,     []);
+    wasm.eval_line      = m.cwrap('wasm_eval_line',      'number', ['string']);
+    wasm.get_result     = m.cwrap('wasm_get_result',     'string', []);
+    wasm.get_error      = m.cwrap('wasm_get_error',      'string', []);
+    wasm.result_visible = m.cwrap('wasm_result_visible', 'number', ['string']);
     wasm.init();
     wasmBroken = false;
     console.info('[calcyx] WASM 再初期化完了');
@@ -123,7 +125,9 @@ function evalAll() {
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
-    if (!row.expr.trim()) { row.result = ''; row.error = false; continue; }
+    if (!row.expr.trim()) { row.result = ''; row.error = false; row.showResult = true; continue; }
+    // 変数定義・関数定義は = と右辺を非表示
+    row.showResult = !!wasm.result_visible(row.expr);
     let ok = false;
     try {
       ok = wasm.eval_line(row.expr);
@@ -131,7 +135,7 @@ function evalAll() {
       console.error('[calcyx] wasm.eval_line() クラッシュ:', JSON.stringify(row.expr), e.message);
       wasmBroken = true;
       row.result = 'internal error'; row.error = true;
-      for (let j = i + 1; j < rows.length; j++) { rows[j].result = ''; rows[j].error = false; }
+      for (let j = i + 1; j < rows.length; j++) { rows[j].result = ''; rows[j].error = false; rows[j].showResult = true; }
       updateResultCells();
       return;
     }
@@ -166,7 +170,7 @@ function updateLayout() {
 
   let maxExprW = 0, maxAnsW = 0, hasResult = false;
   for (const row of rows) {
-    if (!row.result) continue;
+    if (!row.result || !row.showResult) continue;
     hasResult = true;
     if (row.expr)
       maxExprW = Math.max(maxExprW, Math.ceil(measureText(row.expr)) + PAD * 2);
@@ -187,7 +191,7 @@ function updateLayout() {
 
   // 式幅が eqPos を超える行は折り返し (native: row.wrapped)
   for (const row of rows) {
-    row.wrapped = !!(row.result && row.expr &&
+    row.wrapped = !!(row.result && row.showResult && row.expr &&
                      Math.ceil(measureText(row.expr)) > eqPos);
   }
 
@@ -245,19 +249,20 @@ function buildRowEl(i) {
     div.appendChild(exprCell);
   }
 
-  // ---- = 列 ----
-  const eqCell = document.createElement('div');
-  eqCell.className = 'eq-cell';
-  eqCell.textContent = '=';
-  div.appendChild(eqCell);
+  // ---- = 列・結果列 (show_result が false の場合は非表示) ----
+  if (row.showResult !== false) {
+    const eqCell = document.createElement('div');
+    eqCell.className = 'eq-cell';
+    eqCell.textContent = '=';
+    div.appendChild(eqCell);
 
-  // ---- 結果列 ----
-  const resCell = document.createElement('div');
-  resCell.className = 'result-cell' + (row.error ? ' error' : '');
-  resCell.dataset.result = i;
-  resCell.tabIndex = -1;  // フォーカス可能 (Tab で移動できる)
-  applyResultToCell(resCell, row);
-  div.appendChild(resCell);
+    const resCell = document.createElement('div');
+    resCell.className = 'result-cell' + (row.error ? ' error' : '');
+    resCell.dataset.result = i;
+    resCell.tabIndex = -1;  // フォーカス可能 (Tab で移動できる)
+    applyResultToCell(resCell, row);
+    div.appendChild(resCell);
+  }
 
   return div;
 }
@@ -273,9 +278,12 @@ function applyResultToCell(cell, row) {
 }
 
 function updateResultCells() {
+  let needRebuild = false;
   for (let i = 0; i < rows.length; i++) {
     const row  = rows[i];
     const cell = sheetEl.querySelector(`[data-result="${i}"]`);
+    // showResult の変化でセルの有無が変わるので再描画が必要
+    if (!!cell !== (row.showResult !== false)) { needRebuild = true; break; }
     if (!cell) continue;
     applyResultToCell(cell, row);
     cell.className = 'result-cell' + (row.error ? ' error' : '');
@@ -284,6 +292,20 @@ function updateResultCells() {
       rowEl.classList.toggle('empty',   row.expr === '');
       rowEl.classList.toggle('wrapped', !!row.wrapped);
     }
+  }
+  if (needRebuild) {
+    // showResult 変化で DOM を再構築するとき、カーソル位置を保存・復元する
+    const prevInput = sheetEl.querySelector('.expr-input');
+    const savedPos  = prevInput ? prevInput.selectionStart : -1;
+    renderAll();
+    if (savedPos >= 0) {
+      const newInput = sheetEl.querySelector('.expr-input');
+      if (newInput) {
+        newInput.focus();
+        newInput.setSelectionRange(savedPos, savedPos);
+      }
+    }
+    return;
   }
   updateLayout();
 }
@@ -440,7 +462,7 @@ function handleKeyDown(e) {
   if (key === 'Tab' && !shift && !ctrl) {
     e.preventDefault();
     const row = rows[focusedRow];
-    if (row.result && !row.error) {
+    if (row.result && !row.error && row.showResult !== false) {
       const resCell = sheetEl.querySelector(`[data-result="${focusedRow}"]`);
       if (resCell) {
         resCell.focus();

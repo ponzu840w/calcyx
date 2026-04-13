@@ -119,4 +119,12 @@ struct expr_s {
 void    expr_free(expr_t *e);
 expr_t *expr_dup (const expr_t *e);  /* ディープコピー */
 
+/* 移植元: Calctus/Model/Expressions/ - CausesValueChange()
+ * 式が「値の変化」を起こすかどうか: false なら = と右辺を非表示にする。
+ * - 代入式: RHS の causes_value_change に依存
+ * - def / lambda: false
+ * - 数値/真偽値リテラル単体: false
+ * - それ以外 (演算・関数呼び出し・変数参照 etc.): true */
+bool expr_causes_value_change(const expr_t *e);
+
 #endif /* EXPR_H */
