@@ -21,7 +21,7 @@ target_link_libraries(calcyx_wasm PRIVATE calcyx_engine)
 
 target_link_options(calcyx_wasm PRIVATE
     # 公開する C 関数
-    "-sEXPORTED_FUNCTIONS=['_wasm_init','_wasm_reset','_wasm_eval_line','_wasm_get_result','_wasm_get_error']"
+    "-sEXPORTED_FUNCTIONS=['_wasm_init','_wasm_reset','_wasm_eval_line','_wasm_get_result','_wasm_get_error','_wasm_result_visible']"
     "-sEXPORTED_RUNTIME_METHODS=['ccall','cwrap']"
     # ES6 モジュールとして出力
     "-sMODULARIZE=1"
@@ -48,10 +48,20 @@ if(TARGET dep_mpdecimal)
     add_dependencies(calcyx_wasm dep_mpdecimal)
 endif()
 
-# ---- ビルド後: 静的ファイルを build-wasm/web/ にコピー ----
+# ---- ビルド後: 静的ファイルをコピー・サンプルをルートから同期して manifest を生成 ----
 add_custom_command(TARGET calcyx_wasm POST_BUILD
+    # 静的ファイルをコピー
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/static"
         "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "静的ファイルをコピー"
+    # ルートの samples/ をビルド出力へコピー (web/static/samples/ より優先)
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/samples"
+        "${CMAKE_CURRENT_BINARY_DIR}/samples"
+    # manifest.json を生成 (app.js が動的読み込みに使用)
+    COMMAND ${CMAKE_COMMAND}
+        "-DSRC_DIR=${CMAKE_SOURCE_DIR}/samples"
+        "-DOUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/samples/manifest.json"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/gen_manifest.cmake"
+    COMMENT "静的ファイルをコピー・サンプルを同期・manifest.json を生成"
 )

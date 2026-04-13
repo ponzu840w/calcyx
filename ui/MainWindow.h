@@ -8,6 +8,8 @@
 #include <FL/Fl_Menu_Bar.H>
 #include "SheetView.h"
 #include "CompletionPopup.h"
+#include <string>
+#include <vector>
 
 class MainWindow : public Fl_Double_Window {
 public:
@@ -35,5 +37,8 @@ private:
     static void menu_cb  (Fl_Widget *w, void *data);
     static void choice_cb(Fl_Widget *w, void *data);
     static void row_change_cb(void *data);  // SheetView からのコールバック
+    void populate_samples_menu();
     static bool open_sample_file(MainWindow *win, const char *filename);
+
+    std::vector<std::string> sample_files_;  // メニュー文字列の安定した記憶域
 };

@@ -690,9 +690,27 @@ document.getElementById('btn-save').addEventListener('click', () => {
   URL.revokeObjectURL(url);
 });
 
-// ---- Examples ----
+// ---- Samples ----
 
 const exampleSelect = document.getElementById('example-select');
+
+// manifest.json を取得して <select> を動的に構築
+(async () => {
+  try {
+    const res = await fetch('samples/manifest.json');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const files = await res.json();
+    for (const filename of files) {
+      const opt = document.createElement('option');
+      opt.value = filename;
+      opt.textContent = filename.replace(/\.txt$/i, '');
+      exampleSelect.appendChild(opt);
+    }
+  } catch (err) {
+    console.warn('[calcyx] manifest.json 取得失敗 (ローカル環境では正常):', err.message);
+  }
+})();
+
 exampleSelect.addEventListener('blur', focusInput);
 exampleSelect.addEventListener('change', async e => {
   const filename = e.target.value;

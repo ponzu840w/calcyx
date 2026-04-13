@@ -7,6 +7,11 @@
 #include <FL/fl_ask.H>
 #include <cstdio>
 #include <cstring>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <sys/stat.h>
+#include <dirent.h>
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #include <libgen.h>
@@ -45,34 +50,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&Edit/&Undo\t",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
     menu_->add("&Edit/&Redo\t",       FL_COMMAND + 'y', menu_cb, (void*)"redo");
     menu_->add("&Help/&About calcyx", 0,                menu_cb, (void*)"about");
-    menu_->add("&File/&Examples/Examples",            0, menu_cb, (void*)"Examples.txt");
-    menu_->add("&File/&Examples/Test_Abs_Sign",       0, menu_cb, (void*)"Test_Abs_Sign.txt");
-    menu_->add("&File/&Examples/Test_Array",          0, menu_cb, (void*)"Test_Array.txt");
-    menu_->add("&File/&Examples/Test_Assign",         0, menu_cb, (void*)"Test_Assign.txt");
-    menu_->add("&File/&Examples/Test_BitByteOps",     0, menu_cb, (void*)"Test_BitByteOps.txt");
-    menu_->add("&File/&Examples/Test_Cast",           0, menu_cb, (void*)"Test_Cast.txt");
-    menu_->add("&File/&Examples/Test_Color",          0, menu_cb, (void*)"Test_Color.txt");
-    menu_->add("&File/&Examples/Test_DateTime",       0, menu_cb, (void*)"Test_DateTime.txt");
-    menu_->add("&File/&Examples/Test_ECC",            0, menu_cb, (void*)"Test_ECC.txt");
-    menu_->add("&File/&Examples/Test_Encoding",       0, menu_cb, (void*)"Test_Encoding.txt");
-    menu_->add("&File/&Examples/Test_Exponential",    0, menu_cb, (void*)"Test_Exponential.txt");
-    menu_->add("&File/&Examples/Test_Functions",      0, menu_cb, (void*)"Test_Functions.txt");
-    menu_->add("&File/&Examples/Test_GCD_LCM",        0, menu_cb, (void*)"Test_GCD_LCM.txt");
-    menu_->add("&File/&Examples/Test_GrayCode",       0, menu_cb, (void*)"Test_GrayCode.txt");
-    menu_->add("&File/&Examples/Test_MinMax",         0, menu_cb, (void*)"Test_MinMax.txt");
-    menu_->add("&File/&Examples/Test_PrimeNumber",    0, menu_cb, (void*)"Test_PrimeNumber.txt");
-    menu_->add("&File/&Examples/Test_Representation", 0, menu_cb, (void*)"Test_Representation.txt");
-    menu_->add("&File/&Examples/Test_Rounding",       0, menu_cb, (void*)"Test_Rounding.txt");
-    menu_->add("&File/&Examples/Test_Solve",          0, menu_cb, (void*)"Test_Solve.txt");
-    menu_->add("&File/&Examples/Test_String",         0, menu_cb, (void*)"Test_String.txt");
-    menu_->add("&File/&Examples/Test_Sum_Average",    0, menu_cb, (void*)"Test_Sum_Average.txt");
-    menu_->add("&File/&Examples/Test_Trigonometric",  0, menu_cb, (void*)"Test_Trigonometric.txt");
-    menu_->add("&File/&Examples/Test_eSeries",        0, menu_cb, (void*)"Test_eSeries.txt");
-    // Examples サブメニューの後に区切り線を入れる
-    {
-        Fl_Menu_Item *it = (Fl_Menu_Item *)menu_->find_item("&File/&Examples");
-        if (it) it->flags |= FL_MENU_DIVIDER;
-    }
+    populate_samples_menu();
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
 
     // フォーマット選択ドロップダウン (メニューバー右端)
@@ -208,32 +186,62 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
     }
 }
 
-bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
-    char path[1024];
-
+// samples/ ディレクトリへの絶対/相対パスを返す。見つからなければ空文字列。
+static std::string find_samples_dir() {
+    struct stat st;
 #ifdef __APPLE__
-    // App Bundle: 実行ファイルは Contents/MacOS/ にあり、
-    // サンプルは Contents/Resources/samples/ に置かれる
     {
-        uint32_t size = sizeof(path);
-        if (_NSGetExecutablePath(path, &size) == 0) {
-            // path = .../calcyx.app/Contents/MacOS/calcyx
-            char *dir = dirname(path);  // .../calcyx.app/Contents/MacOS
+        char buf[1024];
+        uint32_t size = sizeof(buf);
+        if (_NSGetExecutablePath(buf, &size) == 0) {
+            char *dir = dirname(buf);
             char candidate[1024];
-            snprintf(candidate, sizeof(candidate), "%s/../Resources/samples/%s", dir, filename);
-            if (win->sheet_->load_file(candidate)) return true;
+            snprintf(candidate, sizeof(candidate), "%s/../Resources/samples", dir);
+            if (stat(candidate, &st) == 0 && S_ISDIR(st.st_mode)) return candidate;
         }
     }
 #endif
-
-    static const char *bases[] = {
-        "samples/",
-        "../samples/",
-        "../../samples/",
-    };
+    static const char *bases[] = { "samples", "../samples", "../../samples" };
     for (auto *base : bases) {
-        snprintf(path, sizeof(path), "%s%s", base, filename);
-        if (win->sheet_->load_file(path)) return true;
+        if (stat(base, &st) == 0 && S_ISDIR(st.st_mode)) return base;
+    }
+    return "";
+}
+
+void MainWindow::populate_samples_menu() {
+    std::string dir = find_samples_dir();
+    if (dir.empty()) return;
+
+    DIR *dp = opendir(dir.c_str());
+    if (!dp) return;
+
+    std::vector<std::string> files;
+    struct dirent *ent;
+    while ((ent = readdir(dp)) != nullptr) {
+        std::string name = ent->d_name;
+        if (name.size() > 4 && name.substr(name.size() - 4) == ".txt")
+            files.push_back(name);
+    }
+    closedir(dp);
+
+    std::sort(files.begin(), files.end());
+    sample_files_ = std::move(files);
+
+    for (const auto &f : sample_files_) {
+        std::string label = "&File/&Samples/" + f.substr(0, f.size() - 4);
+        menu_->add(label.c_str(), 0, menu_cb, (void *)f.c_str());
+    }
+
+    // Samples サブメニューの後に区切り線を入れる
+    Fl_Menu_Item *it = (Fl_Menu_Item *)menu_->find_item("&File/&Samples");
+    if (it) it->flags |= FL_MENU_DIVIDER;
+}
+
+bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
+    std::string dir = find_samples_dir();
+    if (!dir.empty()) {
+        std::string path = dir + "/" + filename;
+        if (win->sheet_->load_file(path.c_str())) return true;
     }
     fl_alert("File not found:\n%s", filename);
     return false;
