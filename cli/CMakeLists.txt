@@ -1,4 +1,10 @@
-add_executable(calcyx_cli main.c)
+if(WIN32)
+    set(_cli_rc calcyx.rc)
+else()
+    set(_cli_rc "")
+endif()
+
+add_executable(calcyx_cli main.c ${_cli_rc})
 
 target_include_directories(calcyx_cli PRIVATE
     ${CMAKE_SOURCE_DIR}/engine
