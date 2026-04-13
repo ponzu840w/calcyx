@@ -22,6 +22,7 @@
 
 #ifdef _WIN32
 #  include <io.h>
+#  include <windows.h>
 #  define isatty _isatty
 #  define fileno _fileno
 #else
@@ -153,6 +154,10 @@ static void print_help(const char *prog) {
 
 /* ---- main ---- */
 int main(int argc, char *argv[]) {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
     output_mode_t out  = OUT_RESULT;
     const char *inline_exprs[MAX_ARGS];
     int         n_inline = 0;
