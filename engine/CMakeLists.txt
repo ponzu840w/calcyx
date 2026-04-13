@@ -13,17 +13,20 @@ add_library(calcyx_engine STATIC
 )
 
 target_include_directories(calcyx_engine PUBLIC . ${MPDECIMAL_INCLUDE})
-target_link_libraries(calcyx_engine PUBLIC ${MPDECIMAL_LIB})
+target_link_libraries(calcyx_engine PUBLIC
+    ${MPDECIMAL_LIB}
+    $<$<NOT:$<BOOL:${WIN32}>>:m>
+)
 
 if(TARGET dep_mpdecimal)
     add_dependencies(calcyx_engine dep_mpdecimal)
 endif()
 
 add_executable(test_types test_types.c)
-target_link_libraries(test_types PRIVATE calcyx_engine $<$<NOT:$<BOOL:${WIN32}>>:m>)
+target_link_libraries(test_types PRIVATE calcyx_engine)
 
 add_executable(test_eval test_eval.c)
-target_link_libraries(test_eval PRIVATE calcyx_engine $<$<NOT:$<BOOL:${WIN32}>>:m>)
+target_link_libraries(test_eval PRIVATE calcyx_engine)
 target_include_directories(test_eval PRIVATE . ${MPDECIMAL_INCLUDE})
 
 # ===== ctest 登録 =====
