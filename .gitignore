@@ -16,3 +16,4 @@ Makefile
 .DS_Store
 debug.sh
 ui/icon.iconset/
+claude-hand.sh
