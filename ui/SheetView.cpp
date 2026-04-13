@@ -438,6 +438,14 @@ void SheetView::place_editor() {
 
 void SheetView::sync_scroll() {
     int n = (int)rows_.size();
+    // 総ピクセル高を求める
+    int total_px = 0;
+    for (int i = 0; i < n; i++) total_px += row_h(i);
+
+    bool need_sb = total_px > h();
+    if (need_sb && !vscroll_->visible()) { vscroll_->show(); place_editor(); }
+    if (!need_sb && vscroll_->visible()) { vscroll_->hide(); scroll_top_ = 0; place_editor(); }
+
     // 下から積み上げて h() に収まる最大 scroll_top_ を求める
     int cum = 0, max_top = 0;
     for (int i = n - 1; i >= 0; i--) {
@@ -446,8 +454,6 @@ void SheetView::sync_scroll() {
     }
     scroll_top_ = std::clamp(scroll_top_, 0, max_top);
     // スライダサイズ: 表示ピクセル / 総ピクセル
-    int total_px = 0;
-    for (int i = 0; i < n; i++) total_px += row_h(i);
     int vis_px = std::min(h(), total_px);
     vscroll_->bounds(0, max_top);
     vscroll_->slider_size(total_px > 0 ? (double)vis_px / total_px : 1.0);

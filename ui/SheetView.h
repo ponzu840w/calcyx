@@ -132,7 +132,7 @@ private:
     int eq_pos_ = 0;   // sheet 左端からの "=" カラム開始 x オフセット
     int eq_w_   = 22;  // "=" カラム幅 (フォントから算出)
 
-    int sheet_w()    const { return w() - SB_W; }
+    int sheet_w()    const { return w() - (vscroll_->visible() ? SB_W : 0); }
     int expr_w()     const { return eq_pos_; }
     int eq_col_x()   const { return x() + eq_pos_; }
     int result_x()   const { return x() + eq_pos_ + eq_w_; }
