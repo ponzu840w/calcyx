@@ -1,19 +1,25 @@
 /* calcyx.css — ネイティブ SheetView に準拠したダークテーマ */
 
 :root {
+  /* --- カラーテーマ (colors.js の applyColors() で上書きされる) ---
+   * デフォルト値はフォールバック用。calctus Appearance_Color_* に準拠。 */
   --bg:         #161616;
   --row-line:   #202024;
   --sel-bg:     #262a37;
   --sep:        #373743;
   --text:       #ffffff;
-  --symbol:     #40c0ff;   /* C_SYMBOL */
-  --ident:      #c0ff80;   /* C_IDENT  */
-  --special:    #ffc040;   /* C_SPECIAL (数値リテラル) */
-  --si-pfx:     #e0a0ff;   /* C_SI_PFXCHAR */
-  --result:     #64dc64;   /* C_RESULT */
-  --error:      #6e6e6e;   /* C_ERROR  */
-  --eq:         #646478;
   --cursor:     #b4c8ff;
+  /* シンタックスハイライト */
+  --symbol:     #40c0ff;   /* Appearance_Color_Symbols           */
+  --ident:      #c0ff80;   /* Appearance_Color_Identifiers       */
+  --special:    #ffc040;   /* Appearance_Color_Special_Literals  */
+  --si-pfx:     #e0a0ff;   /* Appearance_Color_SI_Prefix         */
+  --paren-0:    #40c0ff;   /* Appearance_Color_Parenthesis_1     */
+  --paren-1:    #c080ff;   /* Appearance_Color_Parenthesis_2     */
+  --paren-2:    #ff80c0;   /* Appearance_Color_Parenthesis_3     */
+  --paren-3:    #ffc040;   /* Appearance_Color_Parenthesis_4     */
+  --error:      #6e6e6e;   /* Appearance_Color_Error             */
+  /* --- レイアウト定数 --- */
   --font:       'Courier New', Courier, monospace;
   --font-size:  13px;
   --row-h:      22px;
@@ -125,9 +131,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 .expr-cell {
   position: relative;      /* オーバーレイの基準点 */
   overflow: hidden;
-  padding: 1px 4px;
+  padding: 0;              /* padding は子要素側で持つ (行高ずれ防止) */
   min-width: 0;
-  min-height: var(--row-h);
+  height: var(--row-h);    /* 他行と完全に高さを揃える */
 }
 
 /* ハイライトオーバーレイ (フォーカス行・入力欄の背後に重ねる) */
@@ -147,9 +153,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 
 /* 入力フィールド (テキストを透明にしてオーバーレイを見せる) */
 .expr-input {
-  position: relative;
+  position: absolute;        /* フロー外に出してセル高さに影響させない */
+  inset: 0;                  /* セル全体を覆う */
   z-index: 1;
-  width: 100%;
   background: transparent;
   color: transparent;        /* 入力テキストは非表示 */
   border: none;
@@ -157,7 +163,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
   font-family: var(--font);
   font-size: var(--font-size);
   caret-color: var(--cursor);
-  padding: 0;
+  padding: 1px 4px;          /* オーバーレイと同じ padding */
   line-height: var(--row-h);
 }
 
@@ -175,10 +181,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
   overflow: hidden;
 }
 
-/* = 記号 */
+/* = 記号 (ネイティブ: C_SYMBOL 色) */
 .eq-cell {
   padding: 0 3px;
-  color: var(--eq);
+  color: var(--symbol);
   font-family: var(--font);
   font-size: var(--font-size);
   white-space: nowrap;
@@ -203,13 +209,26 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 .result-cell.error { color: var(--error); }
 
 /* ---- シンタックスハイライト用スパン ---- */
-.hl-number  { color: var(--special); }
-.hl-string  { color: var(--special); }
+/* hl-number は未使用 (数値はデフォルト色=白、native準拠) */
+.hl-string  { color: var(--special); }  /* 文字/文字列リテラル → オレンジ */
 .hl-ident   { color: var(--ident);   }
 .hl-symbol  { color: var(--symbol);  }
 .hl-sipfx   { color: var(--si-pfx); }
 .hl-comment { color: #555; font-style: italic; }
 .hl-text    { color: var(--text);   }
+
+/* カラーリテラル (#RRGGBB) の inline color-box */
+.hl-color-box {
+  padding: 0 1px;
+  border-radius: 1px;
+  /* background / color は style 属性でインライン設定 */
+}
+
+/* 括弧深さ別カラー (ネイティブ C_PAREN[4] / Appearance_Color_Parenthesis_1..4) */
+.hl-paren-0 { color: var(--paren-0); }
+.hl-paren-1 { color: var(--paren-1); }
+.hl-paren-2 { color: var(--paren-2); }
+.hl-paren-3 { color: var(--paren-3); }
 
 /* ---- Paste ダイアログ ---- */
 dialog {

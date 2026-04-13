@@ -3,6 +3,7 @@
 #include <FL/Fl.H>
 #include "MainWindow.h"
 #include "app_prefs.h"
+#include "colors.h"
 
 #if defined(_WIN32)
 #  include <windows.h>
@@ -10,6 +11,8 @@
 #endif
 
 int main(int argc, char **argv) {
+    colors_init_defaults(&g_colors);
+
     Fl::scheme("gtk+");
     Fl::visual(FL_DOUBLE | FL_INDEX);
 

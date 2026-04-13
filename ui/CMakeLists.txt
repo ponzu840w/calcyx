@@ -42,6 +42,7 @@ if(APPLE)
 
     add_executable(calcyx_ui MACOSX_BUNDLE
         main.cpp
+        colors.cpp
         MainWindow.cpp
         SheetView.cpp
         CompletionPopup.cpp
@@ -62,6 +63,7 @@ if(APPLE)
 elseif(WIN32)
     add_executable(calcyx_ui WIN32
         main.cpp
+        colors.cpp
         MainWindow.cpp
         SheetView.cpp
         CompletionPopup.cpp
@@ -80,6 +82,7 @@ elseif(WIN32)
 else()
     add_executable(calcyx_ui
         main.cpp
+        colors.cpp
         MainWindow.cpp
         SheetView.cpp
         CompletionPopup.cpp
@@ -137,6 +140,7 @@ endif()
 # ---- test_undo ----
 add_executable(test_undo
     test_undo.cpp
+    colors.cpp
     SheetView.cpp
     CompletionPopup.cpp
     PasteOptionForm.cpp

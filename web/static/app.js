@@ -2,8 +2,12 @@
 // ネイティブ SheetView の挙動を再現する。
 
 import { highlight } from './highlight.js';
+import { applyColors } from './colors.js';
 import { PasteDialog } from './paste-dialog.js';
 import CalcyxModule from './calcyx.js';
+
+// ---- カラーテーマ適用 ----
+applyColors();
 
 // ---- WASM 初期化 ----
 const Module = await CalcyxModule();
@@ -252,14 +256,20 @@ function buildRowEl(i) {
   resCell.className = 'result-cell' + (row.error ? ' error' : '');
   resCell.dataset.result = i;
   resCell.tabIndex = -1;  // フォーカス可能 (Tab で移動できる)
-  if (row.error) {
-    resCell.textContent = row.result;
-  } else {
-    resCell.innerHTML = highlight(row.result);
-  }
+  applyResultToCell(resCell, row);
   div.appendChild(resCell);
 
   return div;
+}
+
+// ネイティブ draw_result_at に準拠: エラー / 通常 (カラーボックス含む) を振り分け
+// カラーリテラルの color-box は highlight() が inline span で処理する
+function applyResultToCell(cell, row) {
+  if (row.error) {
+    cell.textContent = row.result;
+  } else {
+    cell.innerHTML = highlight(row.result);
+  }
 }
 
 function updateResultCells() {
@@ -267,11 +277,7 @@ function updateResultCells() {
     const row  = rows[i];
     const cell = sheetEl.querySelector(`[data-result="${i}"]`);
     if (!cell) continue;
-    if (row.error) {
-      cell.textContent = row.result;
-    } else {
-      cell.innerHTML = highlight(row.result);
-    }
+    applyResultToCell(cell, row);
     cell.className = 'result-cell' + (row.error ? ' error' : '');
     const rowEl = cell.closest('.row');
     if (rowEl) {
@@ -336,7 +342,7 @@ function stripFormatter(expr) {
     if (p >= trimmed.length || trimmed[p] !== '(') continue;
     const last = trimmed.trimEnd();
     if (!last.endsWith(')')) continue;
-    return last.slice(p, last.length - 1).trim();
+    return last.slice(p + 1, last.length - 1).trim();  // p は '(' の位置なので +1
   }
   return expr;
 }

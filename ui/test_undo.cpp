@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstring>
 #include "SheetView.h"
+#include "colors.h"
 
 static int g_pass = 0;
 static int g_fail = 0;
@@ -285,6 +286,7 @@ static void reset_sv(SheetView *sv) {
 }
 
 int main(int argc, char **argv) {
+    colors_init_defaults(&g_colors);
     // FLTK 初期化: 表示なしで widget を生成するには show() が必要
     Fl_Window *win = new Fl_Window(800, 600, "test_undo");
     SheetView *sv  = new SheetView(0, 0, 800, 600);

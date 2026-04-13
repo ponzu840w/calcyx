@@ -3,6 +3,7 @@
 #include "SheetView.h"
 #include "PasteOptionForm.h"
 #include "builtin_docs.h"
+#include "colors.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <algorithm>
@@ -12,25 +13,7 @@
 #include <cctype>
 #include <vector>
 
-// ---- カラー (移植元: Calctus/Settings.cs Appearance_Color_*) ----
-static const Fl_Color C_BG         = fl_rgb_color( 22,  22,  22);
-static const Fl_Color C_SEL        = fl_rgb_color( 38,  42,  55);
-static const Fl_Color C_SEP        = fl_rgb_color( 55,  55,  65);
-static const Fl_Color C_ROWLINE    = fl_rgb_color( 32,  32,  36);
-static const Fl_Color C_TEXT       = fl_rgb_color(255, 255, 255);
-static const Fl_Color C_SYMBOL     = fl_rgb_color( 64, 192, 255);
-static const Fl_Color C_IDENT      = fl_rgb_color(192, 255, 128);
-static const Fl_Color C_SPECIAL    = fl_rgb_color(255, 192,  64);
-static const Fl_Color C_SI_PFXCHAR = fl_rgb_color(224, 160, 255);
-static const Fl_Color C_PAREN[4]   = {
-    fl_rgb_color( 64, 192, 255),
-    fl_rgb_color(192, 128, 255),
-    fl_rgb_color(255, 128, 192),
-    fl_rgb_color(255, 192,  64),
-};
-static const Fl_Color C_RESULT     = fl_rgb_color(100, 220, 100);
-static const Fl_Color C_ERROR      = fl_rgb_color(110, 110, 110);
-static const Fl_Color C_CURSOR     = fl_rgb_color(180, 200, 255);
+// カラーは g_colors (colors.h) を参照する。
 static const int PAD = 3;
 
 // ================================================================
@@ -79,7 +62,7 @@ static void draw_expr_highlighted(const char *expr,
     int len = (int)strlen(expr);
     if (len == 0) return;
 
-    std::vector<Fl_Color> fg(len, C_TEXT);
+    std::vector<Fl_Color> fg(len, g_colors.text);
     std::vector<Fl_Color> bg(len, (Fl_Color)0);
 
     tok_queue_t q;
@@ -99,21 +82,21 @@ static void draw_expr_highlighted(const char *expr,
 
         switch (tok.type) {
             case TOK_WORD:
-                for (int i = p; i < end; i++) fg[i] = C_IDENT;
+                for (int i = p; i < end; i++) fg[i] = g_colors.ident;
                 break;
 
             case TOK_BOOL_LIT:
-                for (int i = p; i < end; i++) fg[i] = C_SPECIAL;
+                for (int i = p; i < end; i++) fg[i] = g_colors.special;
                 break;
 
             case TOK_NUM_LIT:
                 if (tok.val) {
                     val_fmt_t vfmt = tok.val->fmt;
                     if (vfmt == FMT_SI_PREFIX) {
-                        if (end - 1 >= p) fg[end - 1] = C_SI_PFXCHAR;
+                        if (end - 1 >= p) fg[end - 1] = g_colors.si_pfx;
                     } else if (vfmt == FMT_BIN_PREFIX) {
-                        if (end - 2 >= p) fg[end - 2] = C_SI_PFXCHAR;
-                        if (end - 1 >= p) fg[end - 1] = C_SI_PFXCHAR;
+                        if (end - 2 >= p) fg[end - 2] = g_colors.si_pfx;
+                        if (end - 1 >= p) fg[end - 1] = g_colors.si_pfx;
                     } else if (vfmt == FMT_WEB_COLOR) {
                         // トークンテキストから色値をパース
                         unsigned int rgb = 0;
@@ -133,13 +116,13 @@ static void draw_expr_highlighted(const char *expr,
                         Fl_Color fc = lum < 128 ? FL_WHITE : FL_BLACK;
                         for (int i = p; i < end; i++) { bg[i] = bc; fg[i] = fc; }
                     } else if (vfmt == FMT_CHAR || vfmt == FMT_STRING || vfmt == FMT_DATETIME) {
-                        for (int i = p; i < end; i++) fg[i] = C_SPECIAL;
+                        for (int i = p; i < end; i++) fg[i] = g_colors.special;
                     } else {
                         // 指数部 (e/E) ハイライト: 直前が数字の場合のみ
                         for (int i = p + 1; i < end; i++) {
                             if ((expr[i] == 'e' || expr[i] == 'E') &&
                                 isdigit((unsigned char)expr[i-1])) {
-                                for (int k = i; k < end; k++) fg[k] = C_SI_PFXCHAR;
+                                for (int k = i; k < end; k++) fg[k] = g_colors.si_pfx;
                                 break;
                             }
                         }
@@ -149,18 +132,18 @@ static void draw_expr_highlighted(const char *expr,
 
             case TOK_OP:
             case TOK_KEYWORD:
-                for (int i = p; i < end; i++) fg[i] = C_SYMBOL;
+                for (int i = p; i < end; i++) fg[i] = g_colors.symbol;
                 break;
 
             case TOK_SYMBOL:
                 if (tl == 1 && (tok.text[0] == '(' || tok.text[0] == ')')) {
                     int d = paren_depth;
                     if (tok.text[0] == ')' && d > 0) d--;
-                    fg[p] = C_PAREN[d % 4];
+                    fg[p] = g_colors.paren[d % 4];
                     if (tok.text[0] == '(') paren_depth++;
                     else if (paren_depth > 0) paren_depth--;
                 } else {
-                    for (int i = p; i < end; i++) fg[i] = C_SYMBOL;
+                    for (int i = p; i < end; i++) fg[i] = g_colors.symbol;
                 }
                 break;
 
@@ -206,7 +189,7 @@ public:
         int tx = x() + PAD - sx;
 
         // 背景
-        fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), C_SEL);
+        fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colors.sel_bg);
 
         // 選択ハイライト背景 (フォーカスがある時のみ)
         if (p1 != p2 && Fl::focus() == this) {
@@ -343,7 +326,7 @@ SheetView::SheetView(int x, int y, int w, int h)
     : Fl_Group(x, y, w, h)
 {
     box(FL_FLAT_BOX);
-    color(C_BG);
+    color(g_colors.bg);
 
     // eq_pos_ / eq_w_ の初期値 (update_layout() で上書きされる)
     fl_font(FL_COURIER, 13);
@@ -365,21 +348,21 @@ SheetView::SheetView(int x, int y, int w, int h)
     // フォーカス行の式エディタ
     editor_ = new SheetLineInput(x, y, expr_w(), ROW_H);
     editor_->box(FL_FLAT_BOX);
-    editor_->color(C_SEL);
-    editor_->textcolor(C_CURSOR);
+    editor_->color(g_colors.sel_bg);
+    editor_->textcolor(g_colors.cursor);
     editor_->textfont(FL_COURIER);
     editor_->textsize(13);
-    editor_->cursor_color(C_CURSOR);
+    editor_->cursor_color(g_colors.cursor);
     editor_->when(0);
 
     // フォーカス行の結果表示（右辺: 読み取り専用 SheetLineInput、左辺と同じスタイル）
     auto *rd = new SheetLineInput(result_x(), y, result_w(), ROW_H, false);
     rd->box(FL_FLAT_BOX);
-    rd->color(C_SEL);
-    rd->textcolor(C_CURSOR);
+    rd->color(g_colors.sel_bg);
+    rd->textcolor(g_colors.cursor);
     rd->textfont(FL_COURIER);
     rd->textsize(13);
-    rd->cursor_color(C_CURSOR);
+    rd->cursor_color(g_colors.cursor);
     rd->when(0);
     result_display_ = rd;
 
@@ -489,8 +472,8 @@ void SheetView::update_result_display() {
 
     if (row.error) {
         // エラーは単色描画
-        rd->color(C_SEL);
-        rd->set_override_color(C_ERROR);
+        rd->color(g_colors.sel_bg);
+        rd->set_override_color(g_colors.error);
     } else if (row.result_fmt == FMT_WEB_COLOR &&
                row.result.size() == 7 && row.result[0] == '#') {
         // WebColor: 背景をその色に、シンタックスハイライトは無効化してテキスト色を調整
@@ -505,7 +488,7 @@ void SheetView::update_result_display() {
         }
     } else {
         // 通常: シンタックスハイライト (draw_expr_highlighted が自動判定)
-        rd->color(C_SEL);
+        rd->color(g_colors.sel_bg);
         rd->set_override_color((Fl_Color)0);
     }
     rd->show();
@@ -760,7 +743,7 @@ void SheetView::draw() {
     fl_push_no_clip();
     fl_push_clip(x(), y(), w(), h());
 
-    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), C_BG);
+    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colors.bg);
 
     const int ew  = expr_w();
     const int eqx = eq_col_x();
@@ -775,7 +758,7 @@ void SheetView::draw() {
         if (row.error) {
             fl_push_clip(rx, ary, rw, ROW_H);
             fl_font(FL_COURIER, 13);
-            fl_color(C_ERROR);
+            fl_color(g_colors.error);
             fl_draw(row.result.c_str(), rx + PAD, abaseline);
             fl_pop_clip();
         } else if (row.result_fmt == FMT_WEB_COLOR &&
@@ -788,7 +771,9 @@ void SheetView::draw() {
                 Fl_Color bc = fl_rgb_color(r8, g8, b8);
                 int lum = (r8 * 299 + g8 * 587 + b8 * 114) / 1000;
                 Fl_Color fc = lum < 128 ? FL_WHITE : FL_BLACK;
-                fl_draw_box(FL_FLAT_BOX, rx, ary, rw, ROW_H, bc);
+                // テキスト幅分だけ塗る (列全体を塗りつぶさない)
+                int text_w = std::min((int)fl_width(row.result.c_str()) + PAD * 2, rw);
+                fl_draw_box(FL_FLAT_BOX, rx, ary, text_w, ROW_H, bc);
                 fl_push_clip(rx, ary, rw, ROW_H);
                 fl_font(FL_COURIER, 13);
                 fl_color(fc);
@@ -814,20 +799,20 @@ void SheetView::draw() {
 
             // 背景 (2行分)
             if (i == focused_row_)
-                fl_draw_box(FL_FLAT_BOX, x(), ry, sheet_w(), rh, C_SEL);
+                fl_draw_box(FL_FLAT_BOX, x(), ry, sheet_w(), rh, g_colors.sel_bg);
 
             // 上段: 式 (全幅)
             if (!row.expr.empty())
                 draw_expr_highlighted(row.expr.c_str(), x() + PAD, x(), ry, sheet_w(), ROW_H);
 
             // 上段/下段の境界線
-            fl_color(C_ROWLINE);
+            fl_color(g_colors.rowline);
             fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
 
             // 下段: "=" + 結果
             if (!row.result.empty() && !row.error) {
                 fl_font(FL_COURIER, 13);
-                fl_color(C_SYMBOL);
+                fl_color(g_colors.symbol);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, bl_bot);
             }
 
@@ -835,7 +820,7 @@ void SheetView::draw() {
             draw_result_at(row, ry2, bl_bot);
 
             // 下段の区切り線
-            fl_color(C_ROWLINE);
+            fl_color(g_colors.rowline);
             fl_line(x(), ry2 + ROW_H - 1, x() + sheet_w(), ry2 + ROW_H - 1);
 
         } else {
@@ -845,7 +830,7 @@ void SheetView::draw() {
 
             // フォーカス行の背景: 結果なしなら全幅、あれば式+"="カラムのみ (結果は result_display_ が担当)
             if (i == focused_row_)
-                fl_draw_box(FL_FLAT_BOX, x(), ry, has_result ? ew + eq_w_ : sheet_w(), ROW_H, C_SEL);
+                fl_draw_box(FL_FLAT_BOX, x(), ry, has_result ? ew + eq_w_ : sheet_w(), ROW_H, g_colors.sel_bg);
 
             // 式テキスト: 結果なしなら全幅で描画
             if (!row.expr.empty()) {
@@ -858,7 +843,7 @@ void SheetView::draw() {
             // "=" 記号 (縦線なし)
             if (has_result && !row.error) {
                 fl_font(FL_COURIER, 13);
-                fl_color(C_SYMBOL);
+                fl_color(g_colors.symbol);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, baseline);
             }
 
@@ -866,7 +851,7 @@ void SheetView::draw() {
             draw_result_at(row, ry, baseline);
 
             // 横区切り線
-            fl_color(C_ROWLINE);
+            fl_color(g_colors.rowline);
             fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
         }
 
