@@ -530,12 +530,15 @@ val_t *val_lsr(const val_t *a, const val_t *b) {
 }
 
 val_t *val_asl(const val_t *a, const val_t *b) {
+    /* Arithmetic Shift Left: MSB (符号ビット) を保持したまま下位 63 ビットを左シフト。
+     * Calctus の ASL セマンティクスに従い、符号ビットは入力値のまま固定する。 */
     int64_t av = val_as_long(a);
     int sh = val_as_int(b);
     if (sh < 0 || sh >= 64) return val_new_i64(0, a->fmt);
-    int64_t sign = av & (int64_t)(1ULL << 63);
-    int64_t shifted = (int64_t)((uint64_t)av << sh) & (int64_t)0x7fffffffffffffffLL;
-    return val_new_i64(sign | shifted, a->fmt);
+    int64_t sign    = av & (int64_t)(1ULL << 63);              /* MSB を保存 */
+    int64_t shifted = (int64_t)((uint64_t)av << sh)            /* 左シフト   */
+                      & (int64_t)0x7fffffffffffffffLL;          /* MSB をクリア */
+    return val_new_i64(sign | shifted, a->fmt);                /* MSB を戻す */
 }
 
 val_t *val_asr(const val_t *a, const val_t *b) {
@@ -760,12 +763,19 @@ void val_to_str(const val_t *v, char *buf, size_t buflen) {
         case VAL_ARRAY: {
             size_t pos = 0;
             if (pos < buflen - 1) buf[pos++] = '[';
+            bool truncated = false;
             for (int i = 0; i < v->arr_len; i++) {
-                if (i > 0 && pos + 2 < buflen) { buf[pos++] = ','; buf[pos++] = ' '; }
                 char elem[128];
                 val_to_str(v->arr_items[i], elem, sizeof(elem));
                 size_t elen = strlen(elem);
-                if (pos + elen < buflen - 2) { memcpy(buf + pos, elem, elen); pos += elen; }
+                /* セパレータ + 要素 + ']' が収まるか確認 (余裕: "..." + ']' = 4) */
+                size_t need = (i > 0 ? 2 : 0) + elen + 4;
+                if (pos + need >= buflen) { truncated = true; break; }
+                if (i > 0) { buf[pos++] = ','; buf[pos++] = ' '; }
+                memcpy(buf + pos, elem, elen); pos += elen;
+            }
+            if (truncated && pos + 3 < buflen) {
+                memcpy(buf + pos, "...", 3); pos += 3;
             }
             if (pos < buflen - 1) buf[pos++] = ']';
             buf[pos] = '\0';

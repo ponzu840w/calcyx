@@ -207,11 +207,8 @@ static int try_binpfx(const char *s, val_t **out) {
     i += 2; /* consume prefix + 'i' */
     char num_buf[64]; strip_underscores(s, i - 2, num_buf, sizeof(num_buf));
     real_t base; real_from_str(&base, num_buf);
-    /* multiply by 2^(pidx*10) */
-    double scale_d = 1.0;
-    for (int j = 0; j < pidx * 10; j++) scale_d *= 2.0;
-    char scale_str[32]; snprintf(scale_str, sizeof(scale_str), "%.0f", scale_d);
-    real_t scale; real_from_str(&scale, scale_str);
+    /* multiply by 2^(pidx*10): pidx は 1..5 なので最大 2^50 — int64_t で十分 */
+    real_t scale; real_from_i64(&scale, (int64_t)1 << (pidx * 10));
     real_t result; real_mul(&result, &base, &scale);
     *out = val_new_real(&result, FMT_BIN_PREFIX);
     return i;

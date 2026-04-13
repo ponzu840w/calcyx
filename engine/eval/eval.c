@@ -157,10 +157,16 @@ static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
         val_t **res = (val_t **)malloc((size_t)len * sizeof(val_t *));
         if (!res) return NULL;
         for (int i = 0; i < len; i++) {
-            val_t *tmp_args[64];
+            val_t **tmp_args = (val_t **)malloc((size_t)n_args * sizeof(val_t *));
+            if (!tmp_args) {
+                for (int j = 0; j < i; j++) val_free(res[j]);
+                free(res);
+                return NULL;
+            }
             for (int j = 0; j < n_args; j++) tmp_args[j] = args[j];
             tmp_args[fd->vec_arg_idx] = arr->arr_items[i];
             res[i] = call_func(fd, tmp_args, n_args, ctx);
+            free(tmp_args);
             if (!res[i] || ctx->has_error) {
                 for (int j = 0; j < i; j++) val_free(res[j]);
                 free(res);

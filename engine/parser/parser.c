@@ -7,6 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define EXPR_STACK_MAX   128  /* p_expr: 値スタック・演算子スタックの最大深さ */
+#define OPERAND_ARGS_MAX  64  /* p_operand: 関数呼び出し引数の最大個数 */
+
 /* ======================================================
  * 演算子テーブル (移植元: OpDef.cs)
  * ====================================================== */
@@ -289,8 +292,6 @@ static expr_t *p_pop(parser_t *p, bool root) {
  * p_expr: シャンティング法による演算子優先度解析
  * ====================================================== */
 
-#define EXPR_STACK_MAX 128
-
 static expr_t *p_expr(parser_t *p, bool root) {
     expr_t  *val_stk[EXPR_STACK_MAX];
     token_t  op_stk [EXPR_STACK_MAX];
@@ -469,8 +470,6 @@ static expr_t *p_elem_ref(parser_t *p) {
 /* ======================================================
  * p_operand: 基本オペランド
  * ====================================================== */
-
-#define OPERAND_ARGS_MAX 64
 
 static expr_t *p_operand(parser_t *p) {
     token_t tok;
