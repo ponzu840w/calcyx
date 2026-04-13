@@ -462,12 +462,14 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
     /* --- 関数呼び出し (移植元: CallExpr.OnEval) --- */
     case EXPR_CALL: {
         /* 引数を評価 */
-        val_t *args[64];
         int n = e->n_args;
+        val_t **args = malloc(n * sizeof(val_t *));
+        if (!args) { EVAL_ERROR(ctx, e->tok.pos, "out of memory"); return NULL; }
         for (int i = 0; i < n; i++) {
             args[i] = expr_eval(e->args[i], ctx);
             if (!args[i] || ctx->has_error) {
                 for (int j = 0; j < i; j++) val_free(args[j]);
+                free(args);
                 return NULL;
             }
         }
@@ -478,6 +480,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             if (fd->n_params == -1 || fd->n_params == n) {
                 val_t *result = call_func(fd, args, n, ctx);
                 for (int i = 0; i < n; i++) val_free(args[i]);
+                free(args);
                 return result;
             }
         }
@@ -488,9 +491,11 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             val_t *result = call_func(fd, args, n, ctx);
             func_def_free(fd); free(fd);
             for (int i = 0; i < n; i++) val_free(args[i]);
+            free(args);
             return result;
         }
         for (int i = 0; i < n; i++) val_free(args[i]);
+        free(args);
         EVAL_ERROR(ctx, e->tok.pos, "Function '%s' not found.", e->name);
         return NULL;
     }

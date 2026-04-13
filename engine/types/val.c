@@ -517,23 +517,32 @@ val_t *val_bit_or(const val_t *a, const val_t *b) {
  * ====================================================== */
 
 val_t *val_lsl(const val_t *a, const val_t *b) {
-    return val_new_i64(val_as_long(a) << val_as_int(b), a->fmt);
+    int sh = val_as_int(b);
+    if (sh < 0 || sh >= 64) return val_new_i64(0, a->fmt);
+    return val_new_i64((int64_t)((uint64_t)val_as_long(a) << sh), a->fmt);
 }
 
 val_t *val_lsr(const val_t *a, const val_t *b) {
-    return val_new_i64((int64_t)((uint64_t)val_as_long(a) >> val_as_int(b)), a->fmt);
+    int sh = val_as_int(b);
+    if (sh < 0 || sh >= 64) return val_new_i64(0, a->fmt);
+    return val_new_i64((int64_t)((uint64_t)val_as_long(a) >> sh), a->fmt);
 }
 
 val_t *val_asl(const val_t *a, const val_t *b) {
     int64_t av = val_as_long(a);
     int sh = val_as_int(b);
+    if (sh < 0 || sh >= 64) return val_new_i64(0, a->fmt);
     int64_t sign = av & (int64_t)(1ULL << 63);
-    int64_t shifted = (av << sh) & (int64_t)0x7fffffffffffffffLL;
+    int64_t shifted = (int64_t)((uint64_t)av << sh) & (int64_t)0x7fffffffffffffffLL;
     return val_new_i64(sign | shifted, a->fmt);
 }
 
 val_t *val_asr(const val_t *a, const val_t *b) {
-    return val_new_i64(val_as_long(a) >> val_as_int(b), a->fmt);
+    int64_t av = val_as_long(a);
+    int sh = val_as_int(b);
+    if (sh < 0) return val_new_i64(0, a->fmt);
+    if (sh >= 63) return val_new_i64(av < 0 ? -1 : 0, a->fmt);
+    return val_new_i64(av >> sh, a->fmt);
 }
 
 /* ======================================================
