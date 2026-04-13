@@ -18,6 +18,7 @@ public:
     void update_fmt_choice();
 
     int  handle(int event) override;
+    void resize(int x, int y, int w, int h) override;
     void hide() override;
 
 private:

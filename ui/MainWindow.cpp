@@ -106,6 +106,12 @@ MainWindow::MainWindow(int w, int h, const char *title)
     sheet_->popup_ = popup_;
 }
 
+void MainWindow::resize(int nx, int ny, int nw, int nh) {
+    Fl_Double_Window::resize(nx, ny, nw, nh);
+    menu_->resize(0, 0, nw - CHOICE_W - PAD, MENU_H);
+    fmt_choice_->resize(nw - CHOICE_W, 0, CHOICE_W, MENU_H);
+}
+
 int MainWindow::handle(int event) {
     // ポップアップ表示中にポップアップ外をクリックしたら閉じる
     if (event == FL_PUSH && popup_->is_shown()) {
