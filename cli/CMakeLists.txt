@@ -9,6 +9,10 @@ target_link_libraries(calcyx_cli PRIVATE
     calcyx_engine
 )
 
+target_compile_definitions(calcyx_cli PRIVATE
+    CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
+)
+
 set_target_properties(calcyx_cli PROPERTIES OUTPUT_NAME "calcyx")
 
 if(TARGET dep_mpdecimal)
