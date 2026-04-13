@@ -59,6 +59,12 @@ if(NOT EXISTS "${_fltk_stamp}")
             -DFLTK_BUILD_TEST=OFF
             -DFLTK_BUILD_FLUID=OFF
             -DFLTK_BUILD_FLTK_OPTIONS=OFF
+            # システム zlib/png/jpeg ではなく同梱版を使う。
+            # Linux ネイティブでも libfltk_z.a 等が生成され、プラットフォーム間で
+            # リンク構成が揃うため（SVG 描画のため fltk_images + fltk_z が必要）
+            -DFLTK_USE_SYSTEM_ZLIB=OFF
+            -DFLTK_USE_SYSTEM_LIBPNG=OFF
+            -DFLTK_USE_SYSTEM_LIBJPEG=OFF
         INSTALL_COMMAND   ${CMAKE_COMMAND} --build <BINARY_DIR> --target install
                 COMMAND   ${CMAKE_COMMAND} -E touch "${_fltk_stamp}"
     )
