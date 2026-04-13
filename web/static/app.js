@@ -73,8 +73,8 @@ function pushUndo() {
 function applySnapshot(snap) {
   rows = snap.rows.map(r => ({ expr: r.expr, result: '', error: false }));
   focusedRow = Math.min(snap.focused, rows.length - 1);
+  renderAll();   // 先にDOMを再構築してからevalAll (逆順だと古いinput値を読んでしまう)
   evalAll();
-  renderAll();
   focusInput();
 }
 
@@ -322,12 +322,16 @@ function syncOverlay() {
   hlDiv.style.transform = `translateX(${-input.scrollLeft}px)`;
 }
 
-function focusInput() {
+function focusInput(selectAll = false) {
   requestAnimationFrame(() => {
     const input = sheetEl.querySelector('.expr-input');
     if (input) {
       input.focus();
-      input.setSelectionRange(input.value.length, input.value.length);
+      if (selectAll) {
+        input.select();
+      } else {
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
       input.closest('.row')?.scrollIntoView({ block: 'nearest' });
       syncOverlay();
     }
@@ -455,8 +459,20 @@ function handleKeyDown(e) {
   const shift = e.shiftKey;
 
   // Undo / Redo
-  if (ctrl && !shift && key === 'z') { e.preventDefault(); commitCurrentInput(); pushUndo(); undo(); return; }
-  if (ctrl && (key === 'y' || (shift && key === 'z'))) { e.preventDefault(); redo(); return; }
+  if (ctrl && !shift && key === 'z') {
+    e.preventDefault(); e.stopPropagation();
+    // 未コミットの変更がある場合のみ push (無条件に push するとredoスタックを壊す)
+    const snap = undoStack[undoPos];
+    const inp = sheetEl.querySelector('.expr-input');
+    const curVal = inp ? inp.value : '';
+    const hasUncommitted = !snap ||
+      rows.length !== snap.rows.length ||
+      curVal !== (snap.rows[focusedRow]?.expr ?? '');
+    if (hasUncommitted) { commitCurrentInput(); pushUndo(); }
+    undo();
+    return;
+  }
+  if (ctrl && (key === 'y' || (shift && key === 'z'))) { e.preventDefault(); e.stopPropagation(); redo(); return; }
 
   // Tab: 左辺 → 右辺へ (native: focus_result)
   if (key === 'Tab' && !shift && !ctrl) {
@@ -479,15 +495,18 @@ function handleKeyDown(e) {
     return;
   }
 
-  // Enter: 次行へ
+  // Enter: 現在行の下に新規行を挿入 (native: insert_row + ans プリフィル)
   if (key === 'Enter' && !ctrl && !shift) {
     e.preventDefault();
     commitCurrentInput();
     pushUndo();
-    if (focusedRow === rows.length - 1) rows.push({ expr: '', result: '', error: false });
+    const cur = rows[focusedRow];
+    const hasResult = cur && cur.result && !cur.error && cur.showResult !== false;
+    rows.splice(focusedRow + 1, 0, { expr: hasResult ? 'ans' : '', result: '', error: false });
     focusedRow++;
     renderAll();
-    focusInput();
+    focusInput(hasResult);  // ans 挿入時は全選択 (native: insert_position(3,0))
+    if (hasResult) evalAll();
     return;
   }
 
@@ -660,7 +679,32 @@ document.getElementById('btn-new').addEventListener('click', () => {
   evalAll();
 });
 
-document.getElementById('btn-open').addEventListener('click', () => {
+// ---- Open ドロップダウン ----
+
+const openPanel = document.getElementById('open-panel');
+
+function openDropdownShow() {
+  openPanel.hidden = false;
+}
+function openDropdownHide() {
+  openPanel.hidden = true;
+  focusInput();
+}
+
+document.getElementById('btn-open').addEventListener('click', e => {
+  e.stopPropagation();
+  openPanel.hidden ? openDropdownShow() : openDropdownHide();
+});
+
+// パネル外クリックで閉じる
+document.addEventListener('click', e => {
+  if (!openPanel.hidden && !openPanel.contains(e.target))
+    openDropdownHide();
+});
+
+// Upload...
+document.getElementById('dd-upload').addEventListener('click', () => {
+  openDropdownHide();
   document.getElementById('file-input').click();
 });
 
@@ -681,60 +725,44 @@ document.getElementById('file-input').addEventListener('change', async e => {
   evalAll();
 });
 
-document.getElementById('btn-save').addEventListener('click', () => {
-  const text = rows.map(r => r.expr).join('\n');
-  const blob = new Blob([text], { type: 'text/plain' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href = url; a.download = fileName ?? 'calcyx.txt'; a.click();
-  URL.revokeObjectURL(url);
-});
-
-// ---- Samples ----
-
-const exampleSelect = document.getElementById('example-select');
-
-// manifest.json を取得して <select> を動的に構築
+// manifest.json を取得して samples セクションを動的構築
 (async () => {
   try {
     const res = await fetch('samples/manifest.json');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const files = await res.json();
+    const container = document.getElementById('dd-samples');
     for (const filename of files) {
-      const opt = document.createElement('option');
-      opt.value = filename;
-      opt.textContent = filename.replace(/\.txt$/i, '');
-      exampleSelect.appendChild(opt);
+      const item = document.createElement('div');
+      item.className = 'dropdown-item';
+      item.textContent = filename.replace(/\.txt$/i, '');
+      item.addEventListener('click', async () => {
+        openDropdownHide();
+        try {
+          const r = await fetch(`samples/${filename}`);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const text = await r.text();
+          commitCurrentInput();
+          pushUndo();
+          const lines = text.replace(/\r\n|\r/g, '\n').split('\n');
+          while (lines.length > 1 && lines[lines.length - 1].trim() === '') lines.pop();
+          rows = lines.map(l => ({ expr: l, result: '', error: false }));
+          if (rows.length === 0) rows = [{ expr: '', result: '', error: false }];
+          focusedRow = 0;
+          fileName = filename;
+          renderAll();
+          focusInput();
+          evalAll();
+        } catch (err) {
+          console.error('[calcyx] サンプルロード失敗:', filename, err);
+        }
+      });
+      container.appendChild(item);
     }
   } catch (err) {
     console.warn('[calcyx] manifest.json 取得失敗 (ローカル環境では正常):', err.message);
   }
 })();
-
-exampleSelect.addEventListener('blur', focusInput);
-exampleSelect.addEventListener('change', async e => {
-  const filename = e.target.value;
-  e.target.value = '';
-  if (!filename) return;
-  try {
-    const res = await fetch(`samples/${filename}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const text = await res.text();
-    commitCurrentInput();
-    pushUndo();
-    const lines = text.replace(/\r\n|\r/g, '\n').split('\n');
-    while (lines.length > 1 && lines[lines.length - 1].trim() === '') lines.pop();
-    rows = lines.map(l => ({ expr: l, result: '', error: false }));
-    if (rows.length === 0) rows = [{ expr: '', result: '', error: false }];
-    focusedRow = 0;
-    fileName = filename;
-    renderAll();
-    focusInput();
-    evalAll();
-  } catch (err) {
-    console.error('[calcyx] サンプルロード失敗:', filename, err);
-  }
-});
 
 // ---- Undo/Redo ボタン ----
 
@@ -746,8 +774,10 @@ document.getElementById('btn-redo').addEventListener('click', () => { commitCurr
 document.addEventListener('keydown', e => {
   const ctrl = e.ctrlKey || e.metaKey;
   if (!ctrl) return;
-  if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); commitCurrentInput(); pushUndo(); undo(); }
-  if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+  // expr-input にフォーカスがある場合は handleKeyDown が処理済み (stopPropagation 済み)
+  const fromInput = e.target.classList.contains('expr-input');
+  if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); if (!fromInput) { commitCurrentInput(); undo(); } }
+  if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); if (!fromInput) redo(); }
   if (e.key === 'o') { e.preventDefault(); document.getElementById('btn-open').click(); }
   if (e.key === 's') { e.preventDefault(); document.getElementById('btn-save').click(); }
 });

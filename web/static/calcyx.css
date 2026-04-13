@@ -72,7 +72,37 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 
 .menu-label { font-size: 11px; color: #aaa; margin-right: 4px; }
 
-#fmt-select, #example-select {
+/* ---- ドロップダウンメニュー ---- */
+.menu-dropdown {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.dropdown-panel {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  background: #2e2e38;
+  border: 1px solid var(--sep);
+  min-width: 160px;
+  max-height: 60vh;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+  border-radius: 2px;
+}
+.dropdown-item {
+  padding: 4px 12px;
+  font-size: 11px;
+  font-family: var(--font);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.dropdown-item:hover { background: #3a3a48; }
+.dropdown-sep { height: 1px; background: var(--sep); margin: 2px 0; }
+
+#fmt-select {
   background: #2e2e38;
   color: var(--text);
   border: none;

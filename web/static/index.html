@@ -12,19 +12,20 @@
     <!-- メニューバー -->
     <div id="menubar">
       <div class="menu-group">
-        <button class="menu-btn" id="btn-new"  title="新規 (Ctrl+Shift+N)">AC</button>
-        <button class="menu-btn" id="btn-open" title="開く (Ctrl+O)">Open</button>
+        <button class="menu-btn" id="btn-new"  title="All Clear (Ctrl+Shift+Del)">AC</button>
+        <div class="menu-dropdown">
+          <button class="menu-btn menu-btn-dd" id="btn-open" title="開く">Open ▾</button>
+          <div class="dropdown-panel" id="open-panel" hidden>
+            <div class="dropdown-item" id="dd-upload">Upload...</div>
+            <div class="dropdown-sep"></div>
+            <div id="dd-samples"><!-- app.js が動的に追加 --></div>
+          </div>
+        </div>
         <button class="menu-btn" id="btn-save" title="保存 (Ctrl+S)">Save</button>
       </div>
       <div class="menu-group">
         <button class="menu-btn" id="btn-undo" title="元に戻す (Ctrl+Z)"  disabled>Undo</button>
         <button class="menu-btn" id="btn-redo" title="やり直し (Ctrl+Y)" disabled>Redo</button>
-      </div>
-      <div class="menu-group">
-        <span class="menu-label">Samples:</span>
-        <select id="example-select">
-          <option value="">-- select --</option>
-        </select>
       </div>
       <div class="menu-group fmt-group">
         <span class="menu-label">Format:</span>
