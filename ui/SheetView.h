@@ -63,6 +63,7 @@ public:
     void redo();
     bool can_undo() const { return undo_idx_ > 0; }
     bool can_redo() const { return undo_idx_ < (int)undo_buf_.size(); }
+    bool has_uncommitted_edit() const;
 
     // テスト用ヘルパー
     int         row_count() const { return (int)rows_.size(); }

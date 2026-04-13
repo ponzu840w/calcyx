@@ -589,6 +589,12 @@ void SheetView::live_eval() {
     place_editor();      // = 位置が変わった場合にウィジェットを再配置
     update_result_display();
     redraw();
+    if (row_change_cb_) row_change_cb_(row_change_data_);
+}
+
+bool SheetView::has_uncommitted_edit() const {
+    if (focused_row_ < 0 || focused_row_ >= (int)rows_.size()) return false;
+    return std::string(editor_->value()) != original_expr_;
 }
 
 void SheetView::commit() {
@@ -1093,6 +1099,7 @@ void SheetView::undo() {
             place_editor();
             update_result_display();
             redraw();
+            if (row_change_cb_) row_change_cb_(row_change_data_);
             return;
         }
         rows_[focused_row_].expr = editor_->value();

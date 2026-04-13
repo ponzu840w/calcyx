@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.15)
 
 # ---- FLTK (DEPS_DIR は親の CMakeLists.txt で deps.cmake により設定済み) ----
-set(FLTK_LIB        "${DEPS_DIR}/lib/libfltk.a")
+set(FLTK_LIB         "${DEPS_DIR}/lib/libfltk.a")
+set(FLTK_IMAGES_LIB  "${DEPS_DIR}/lib/libfltk_images.a")
+set(FLTK_Z_LIB       "${DEPS_DIR}/lib/libfltk_z.a")
 set(FLTK_INCLUDE_DIR "${DEPS_DIR}/include")
 
 message(STATUS "FLTK: ${FLTK_LIB}")
@@ -35,7 +37,9 @@ endif()
 # ---- calcyx (App Bundle on macOS, 通常バイナリ on Windows/Linux) ----
 if(APPLE)
     set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")
+    set(ICON_SVG  "${CMAKE_CURRENT_SOURCE_DIR}/icon.svg")
     set_source_files_properties(${ICON_FILE} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
+    set_source_files_properties(${ICON_SVG}  PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
     file(GLOB SAMPLE_FILES "${CMAKE_SOURCE_DIR}/samples/*.txt")
     set_source_files_properties(${SAMPLE_FILES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/samples")
@@ -50,6 +54,7 @@ if(APPLE)
         builtin_docs.cpp
         app_prefs.cpp
         ${ICON_FILE}
+        ${ICON_SVG}
         ${SAMPLE_FILES}
     )
     set_target_properties(calcyx_ui PROPERTIES
@@ -111,6 +116,8 @@ target_compile_definitions(calcyx_ui PRIVATE
 
 target_link_libraries(calcyx_ui PRIVATE
     calcyx_engine
+    ${FLTK_IMAGES_LIB}
+    ${FLTK_Z_LIB}
     ${FLTK_LIB}
     ${PLATFORM_LIBS}
     m

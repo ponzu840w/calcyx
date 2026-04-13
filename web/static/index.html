@@ -24,11 +24,13 @@
         <button class="menu-btn" id="btn-save" title="保存 (Ctrl+S)">Save</button>
       </div>
       <div class="menu-group">
-        <button class="menu-btn" id="btn-undo" title="元に戻す (Ctrl+Z)"  disabled>Undo</button>
-        <button class="menu-btn" id="btn-redo" title="やり直し (Ctrl+Y)" disabled>Redo</button>
+        <button class="menu-btn" id="btn-undo" title="元に戻す (Ctrl+Z)"  disabled>←</button>
+        <button class="menu-btn" id="btn-redo" title="やり直し (Ctrl+Y)" disabled>→</button>
+      </div>
+      <div class="menu-group">
+        <button class="menu-btn" id="btn-about" title="About">?</button>
       </div>
       <div class="menu-group fmt-group">
-        <span class="menu-label">Format:</span>
         <select id="fmt-select">
           <option value="">Auto</option>
           <option value="dec">dec</option>
@@ -74,6 +76,29 @@
     <div class="dialog-buttons">
       <button id="paste-ok" class="btn-primary">OK</button>
       <button id="paste-cancel">Cancel</button>
+    </div>
+  </dialog>
+
+  <!-- About ダイアログ -->
+  <dialog id="about-dialog">
+    <div class="about-header">
+      <img src="favicon.svg" alt="calcyx" width="48" height="48" class="about-icon">
+      <div>
+        <div class="about-title">calcyx <span id="about-version"></span></div>
+        <div class="about-subtitle">Web Edition</div>
+      </div>
+    </div>
+    <p>A programmable calculator based on Calctus.</p>
+    <p><a href="https://github.com/ponzu840w/calcyx" target="_blank" rel="noopener">https://github.com/ponzu840w/calcyx</a></p>
+    <div class="about-licenses">
+      <div><strong>calcyx</strong> — Copyright &copy; 2026 ponzu840w — MIT License</div>
+      <div><strong>Calctus</strong> — Copyright &copy; 2022 shapoco — MIT License
+        — <a href="https://github.com/shapoco/calctus" target="_blank" rel="noopener">GitHub</a></div>
+      <div><strong>mpdecimal</strong> — Copyright &copy; 2008-2024 Stefan Krah — BSD 2-Clause
+        — <a href="https://www.bytereef.org/mpdecimal" target="_blank" rel="noopener">bytereef.org</a></div>
+    </div>
+    <div class="dialog-buttons">
+      <button id="about-close" class="btn-primary">OK</button>
     </div>
   </dialog>
 

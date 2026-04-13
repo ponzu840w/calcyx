@@ -48,6 +48,13 @@ if(TARGET dep_mpdecimal)
     add_dependencies(calcyx_wasm dep_mpdecimal)
 endif()
 
+# ---- バージョン情報を JS に埋め込む ----
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/static/version.js.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/version.js"
+    @ONLY
+)
+
 # ---- ビルド後: 静的ファイルをコピー・サンプルをルートから同期して manifest を生成 ----
 add_custom_command(TARGET calcyx_wasm POST_BUILD
     # 静的ファイルをコピー

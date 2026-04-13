@@ -5,6 +5,7 @@ import { highlight } from './highlight.js';
 import { applyColors } from './colors.js';
 import { PasteDialog } from './paste-dialog.js';
 import CalcyxModule from './calcyx.js';
+import { CALCYX_VERSION } from './version.js';
 
 // ---- カラーテーマ適用 ----
 applyColors();
@@ -93,7 +94,12 @@ function redo() {
 }
 
 function updateUndoButtons() {
-  document.getElementById('btn-undo').disabled = undoPos <= 0;
+  // 未コミット変更がある場合は Undo を有効化 (Ctrl+Z で取り消せるため)
+  const inp = sheetEl.querySelector('.expr-input');
+  const curVal = inp ? inp.value : '';
+  const snap = undoPos >= 0 ? undoStack[undoPos] : null;
+  const hasUncommitted = curVal !== (snap?.rows[focusedRow]?.expr ?? '');
+  document.getElementById('btn-undo').disabled = undoPos <= 0 && !hasUncommitted;
   document.getElementById('btn-redo').disabled = undoPos >= undoStack.length - 1;
 }
 
@@ -414,6 +420,7 @@ sheetEl.addEventListener('input', e => {
   rows[focusedRow].expr = e.target.value;
   syncOverlay();
   evalAll();
+  updateUndoButtons();
 });
 
 sheetEl.addEventListener('keydown', e => {
@@ -678,6 +685,20 @@ document.getElementById('btn-new').addEventListener('click', () => {
   focusInput();
   evalAll();
 });
+
+// ---- About ----
+
+{
+  const aboutDlg = document.getElementById('about-dialog');
+  document.getElementById('about-version').textContent = CALCYX_VERSION;
+  document.getElementById('btn-about').addEventListener('click', () => {
+    aboutDlg.showModal();
+  });
+  document.getElementById('about-close').addEventListener('click', () => {
+    aboutDlg.close();
+    focusInput();
+  });
+}
 
 // ---- Open ドロップダウン ----
 

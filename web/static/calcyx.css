@@ -320,3 +320,23 @@ dialog button.btn-primary { background: #2a4a6a; }
 dialog button.btn-primary:hover { background: #3a5a7a; }
 
 .dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---- About ダイアログ ---- */
+#about-dialog {
+  min-width: auto;
+  max-width: 420px;
+  text-align: center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+}
+.about-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 10px; }
+.about-icon { flex-shrink: 0; }
+.about-title { font-size: 16px; font-weight: bold; }
+.about-subtitle { font-size: 11px; color: #aaa; }
+#about-dialog p { margin: 4px 0; font-size: 12px; }
+#about-dialog a { color: var(--symbol); }
+.about-licenses { margin: 10px 0; font-size: 11px; color: #ccc; display: flex; flex-direction: column; gap: 4px; text-align: left; }
+#about-dialog .dialog-buttons { justify-content: center; }

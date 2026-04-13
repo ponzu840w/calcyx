@@ -5,6 +5,9 @@
 #include <FL/Fl_Native_File_Chooser.H>
 #include "app_prefs.h"
 #include <FL/fl_ask.H>
+#include <FL/Fl_SVG_Image.H>
+#include <FL/Fl_Help_View.H>
+#include <FL/fl_utf8.h>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -30,6 +33,8 @@ static const struct { const char *label; const char *func_name; } FMT_DEFS[] = {
 };
 static const int FMT_COUNT = 8;
 
+static std::string find_icon_svg();
+
 static const Fl_Color C_WIN_BG  = fl_rgb_color( 30,  30,  30);
 static const Fl_Color C_MENU_BG = fl_rgb_color( 40,  40,  45);
 static const Fl_Color C_MENU_FG = fl_rgb_color(210, 210, 220);
@@ -39,8 +44,9 @@ MainWindow::MainWindow(int w, int h, const char *title)
 {
     color(C_WIN_BG);
 
-    // メニューバー (右側に Fl_Choice の分だけ幅を残す)
-    menu_ = new Fl_Menu_Bar(0, 0, w - CHOICE_W - PAD, MENU_H);
+    // ---- メニューバー ----
+    int mw = calc_menu_w(w);
+    menu_ = new Fl_Menu_Bar(0, 0, mw, MENU_H);
     menu_->color(C_MENU_BG);
     menu_->textcolor(C_MENU_FG);
     menu_->box(FL_FLAT_BOX);
@@ -49,11 +55,33 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Undo\t",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
     menu_->add("&Edit/&Redo\t",       FL_COMMAND + 'y', menu_cb, (void*)"redo");
-    menu_->add("&Help/&About calcyx", 0,                menu_cb, (void*)"about");
     populate_samples_menu();
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
 
-    // フォーマット選択ドロップダウン (メニューバー右端)
+    // ---- ← → ツールバーボタン (右寄せ: ? の左隣) ----
+    auto make_btn = [&](int bx, const char *label, const char *cmd) {
+        auto *b = new Fl_Button(bx, 0, BTN_W, MENU_H, label);
+        b->box(FL_FLAT_BOX);
+        b->color(C_MENU_BG);
+        b->labelcolor(C_MENU_FG);
+        b->labelsize(14);
+        b->callback(menu_cb, (void*)cmd);
+        b->visible_focus(0);
+        return b;
+    };
+    btn_undo_  = make_btn(w - CHOICE_W - PAD - ABOUT_W - PAD - BTN_W * 2, "@<-", "undo");
+    btn_redo_  = make_btn(w - CHOICE_W - PAD - ABOUT_W - PAD - BTN_W,     "@->", "redo");
+
+    // ---- ? About ボタン (右寄せ、フォーマット選択の左) ----
+    btn_about_ = new Fl_Button(w - CHOICE_W - PAD - ABOUT_W, 0, ABOUT_W, MENU_H, "?");
+    btn_about_->box(FL_FLAT_BOX);
+    btn_about_->color(C_MENU_BG);
+    btn_about_->labelcolor(C_MENU_FG);
+    btn_about_->labelsize(13);
+    btn_about_->callback(menu_cb, (void*)"about");
+    btn_about_->visible_focus(0);
+
+    // ---- フォーマット選択ドロップダウン (右端) ----
     fmt_choice_ = new Fl_Choice(w - CHOICE_W, 0, CHOICE_W, MENU_H);
     fmt_choice_->color(C_MENU_BG);
     fmt_choice_->labelcolor(C_MENU_FG);
@@ -82,12 +110,40 @@ MainWindow::MainWindow(int w, int h, const char *title)
 
     // SheetView にポインタを渡す (end() 後なので自動追加されない)
     sheet_->popup_ = popup_;
+
+    // 初期状態のグレーアウトを反映
+    update_toolbar();
 }
 
 void MainWindow::resize(int nx, int ny, int nw, int nh) {
     Fl_Double_Window::resize(nx, ny, nw, nh);
-    menu_->resize(0, 0, nw - CHOICE_W - PAD, MENU_H);
+    int mw = calc_menu_w(nw);
+    menu_->resize(0, 0, mw, MENU_H);
+    btn_undo_->resize(nw - CHOICE_W - PAD - ABOUT_W - PAD - BTN_W * 2, 0, BTN_W, MENU_H);
+    btn_redo_->resize(nw - CHOICE_W - PAD - ABOUT_W - PAD - BTN_W,     0, BTN_W, MENU_H);
+    btn_about_->resize(nw - CHOICE_W - PAD - ABOUT_W, 0, ABOUT_W, MENU_H);
     fmt_choice_->resize(nw - CHOICE_W, 0, CHOICE_W, MENU_H);
+}
+
+void MainWindow::update_toolbar() {
+    bool u = sheet_->can_undo() || sheet_->has_uncommitted_edit();
+    bool r = sheet_->can_redo();
+
+    // ← → ボタンのグレーアウト
+    if (u) btn_undo_->activate(); else btn_undo_->deactivate();
+    if (r) btn_redo_->activate(); else btn_redo_->deactivate();
+
+    // Edit メニュー項目のグレーアウト
+    auto set_active = [&](const char *path, bool active) {
+        Fl_Menu_Item *it = (Fl_Menu_Item *)menu_->find_item(path);
+        if (!it) return;
+        if (active) it->activate(); else it->deactivate();
+    };
+    set_active("&Edit/&Undo", u);
+    set_active("&Edit/&Redo", r);
+
+    btn_undo_->redraw();
+    btn_redo_->redraw();
 }
 
 int MainWindow::handle(int event) {
@@ -117,7 +173,75 @@ void MainWindow::update_fmt_choice() {
 }
 
 void MainWindow::row_change_cb(void *data) {
-    static_cast<MainWindow *>(data)->update_fmt_choice();
+    auto *win = static_cast<MainWindow *>(data);
+    win->update_fmt_choice();
+    win->update_toolbar();
+}
+
+// ---- About ダイアログ (Fl_Help_View でリンクをクリック可能にする) ----
+
+static const char *about_link_cb(Fl_Widget *, const char *uri) {
+    if (uri && *uri) fl_open_uri(uri);
+    return nullptr;  // nullptr を返すと Help_View 内遷移をしない
+}
+
+static void show_about(MainWindow *win) {
+    (void)win;
+    // アイコン (static で1回だけロード)
+    static Fl_SVG_Image *about_icon = nullptr;
+    if (!about_icon) {
+        std::string svg_path = find_icon_svg();
+        if (!svg_path.empty()) {
+            about_icon = new Fl_SVG_Image(svg_path.c_str());
+            if (about_icon->fail()) { delete about_icon; about_icon = nullptr; }
+            else about_icon->resize(64, 64);
+        }
+    }
+
+    const int DW = 420, DH = 380;
+    Fl_Double_Window dlg(DW, DH, "About calcyx");
+    dlg.set_modal();
+    dlg.color(fl_rgb_color(30, 30, 30));
+
+    // アイコン
+    Fl_Box icon_box(DW / 2 - 32, 10, 64, 64);
+    icon_box.box(FL_NO_BOX);
+    if (about_icon) icon_box.image(about_icon);
+
+    // HTML コンテンツ
+    Fl_Help_View hv(10, 80, DW - 20, DH - 120);
+    hv.color(fl_rgb_color(30, 30, 30));
+    hv.textcolor(fl_rgb_color(210, 210, 220));
+    hv.textfont(FL_HELVETICA);
+    hv.textsize(12);
+    hv.link(about_link_cb);
+    hv.scrollbar_size(0);  // スクロールバーを隠す
+
+    std::string html =
+        "<center>"
+        "<b>calcyx " CALCYX_VERSION_FULL "</b><br>"
+        CALCYX_EDITION
+        "<p>A programmable calculator based on Calctus.</p>"
+        "<a href='https://github.com/ponzu840w/calcyx'>https://github.com/ponzu840w/calcyx</a>"
+        "</center>"
+        "<font size=2>"
+        "<p><b>calcyx</b> \xe2\x80\x94 Copyright \xc2\xa9 2026 ponzu840w \xe2\x80\x94 MIT License</p>"
+        "<p><b>Calctus</b> \xe2\x80\x94 Copyright \xc2\xa9 2022 shapoco \xe2\x80\x94 MIT License<br>"
+        "<a href='https://github.com/shapoco/calctus'>https://github.com/shapoco/calctus</a></p>"
+        "<p><b>FLTK</b> \xe2\x80\x94 Copyright \xc2\xa9 1998-2024 Bill Spitzak and others \xe2\x80\x94 LGPL<br>"
+        "<a href='https://www.fltk.org'>https://www.fltk.org</a></p>"
+        "<p><b>mpdecimal</b> \xe2\x80\x94 Copyright \xc2\xa9 2008-2024 Stefan Krah \xe2\x80\x94 BSD 2-Clause<br>"
+        "<a href='https://www.bytereef.org/mpdecimal'>https://www.bytereef.org/mpdecimal</a></p>"
+        "</font>";
+    hv.value(html.c_str());
+
+    // OK ボタン
+    Fl_Button ok_btn(DW / 2 - 40, DH - 35, 80, 25, "OK");
+    ok_btn.callback([](Fl_Widget *w, void *) { w->window()->hide(); });
+
+    dlg.end();
+    dlg.show();
+    while (dlg.shown()) Fl::wait();
 }
 
 void MainWindow::menu_cb(Fl_Widget *w, void *data) {
@@ -156,34 +280,36 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         win->save_prefs();
         exit(0);
     } else if (strcmp(cmd, "about") == 0) {
-        fl_message(
-            "calcyx " CALCYX_VERSION_FULL "\n"
-            CALCYX_EDITION "\n"
-            "\n"
-            "A programmable calculator based on Calctus.\n"
-            "\n"
-            "-- calcyx --\n"
-            "Copyright (c) 2026 ponzu840w\n"
-            "MIT License\n"
-            "\n"
-            "-- Calctus (original) --\n"
-            "Copyright (c) 2022 shapoco\n"
-            "https://github.com/shapoco/calctus\n"
-            "MIT License\n"
-            "\n"
-            "-- FLTK (Fast Light Tool Kit) --\n"
-            "Copyright (c) 1998-2024 Bill Spitzak and others\n"
-            "GNU LGPL with exceptions\n"
-            "https://www.fltk.org\n"
-            "\n"
-            "-- mpdecimal --\n"
-            "Copyright (c) 2008-2024 Stefan Krah\n"
-            "BSD 2-Clause License\n"
-            "https://www.bytereef.org/mpdecimal"
-        );
+        show_about(win);
     } else {
         open_sample_file(win, cmd);
     }
+}
+
+// icon.svg のパスを返す。見つからなければ空文字列。
+static std::string find_icon_svg() {
+    struct stat st;
+#ifdef __APPLE__
+    {
+        char buf[1024];
+        uint32_t size = sizeof(buf);
+        if (_NSGetExecutablePath(buf, &size) == 0) {
+            char *dir = dirname(buf);
+            char candidate[1024];
+            snprintf(candidate, sizeof(candidate), "%s/../Resources/icon.svg", dir);
+            if (stat(candidate, &st) == 0 && S_ISREG(st.st_mode)) return candidate;
+        }
+    }
+#endif
+    static const char *bases[] = {
+        "ui/icon.svg", "../ui/icon.svg", "../../ui/icon.svg",
+        "icon.svg", "../icon.svg",
+        "/usr/share/icons/hicolor/scalable/apps/calcyx.svg",
+    };
+    for (auto *base : bases) {
+        if (stat(base, &st) == 0 && S_ISREG(st.st_mode)) return base;
+    }
+    return "";
 }
 
 // samples/ ディレクトリへの絶対/相対パスを返す。見つからなければ空文字列。

@@ -1,0 +1,1 @@
+export const CALCYX_VERSION = '@CALCYX_VERSION_FULL@';
