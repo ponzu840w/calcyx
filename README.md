@@ -134,6 +134,15 @@ web/      Web フロントエンド（Vanilla JS + WebAssembly）
 | `build-win/ui/calcyx-gui.exe` | GUI アプリ本体 (Windows) |
 | `build-win/cli/calcyx.exe` | CLI (Windows) |
 
+## Calctus からの変更点
+
+calcyx は Calctus の移植版ですが、以下の点で文法・動作が異なります。
+
+### v0.3.0
+
+- **文字列スライスが両端インクルーシブ** Calctus では `s[2:4]` が末尾エクスクルーシブ（2文字）でしたが、calcyx では配列・ビットフィールドと統一して両端インクルーシブ（3文字）です。
+- **`;` による行コメント** `;` 以降は無視されます。
+
 ## 移植元
 
 このソフトウェアは [Calctus](https://github.com/shapoco/calctus) (Copyright (c) 2022 shapoco, MIT License) をもとに開発されています。
