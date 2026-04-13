@@ -310,20 +310,23 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
         val_t *target = var->value;
 
         if (target->type == VAL_STR) {
-            /* 文字列スライス置換: s[from:to] = str */
+            /* 文字列スライス置換: s[from:to] = str
+             * 両端インクルーシブ（calcyx 独自仕様。配列・ビットフィールドと統一） */
             const char *s = target->str_v;
             int len = (int)strlen(s);
             if (from < 0) from += len;
             if (to   < 0) to   += len;
-            if (from < 0 || from > len || to < from || to > len) {
+            int lo = (from < to) ? (int)from : (int)to;
+            int hi = (from < to) ? (int)to   : (int)from;
+            if (lo < 0 || hi >= len) {
                 EVAL_ERROR(ctx, lhs->tok.pos, "Index out of range.");
                 val_free(rval); return NULL;
             }
             const char *rep = (rval->type == VAL_STR) ? rval->str_v : "";
             int rep_len = (int)strlen(rep);
-            /* prefix: s[0..from), suffix: s[to..end) */
-            int pre = (int)from;
-            int suf_start = (int)to;
+            /* prefix: s[0..lo), suffix: s[hi+1..end) */
+            int pre = lo;
+            int suf_start = hi + 1;
             int suf_len = len - suf_start;
             if (suf_len < 0) suf_len = 0;
             char *nbuf = (char *)malloc((size_t)(pre + rep_len + suf_len + 1));
@@ -620,8 +623,8 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             int len = (int)strlen(s);
             if (from < 0) from += len;
             if (to   < 0) to   += len;
-            if (from == to) {
-                /* 単一インデックス: UTF-8 コードポイントを数値で返す */
+            if (!e->child_c) {
+                /* 単一インデックス s[i]: UTF-8 コードポイントを数値で返す */
                 if (from < 0 || from >= len) {
                     EVAL_ERROR(ctx, e->tok.pos, "Index out of range.");
                     val_free(obj); return NULL;
@@ -644,14 +647,18 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
                 }
                 result = val_new_i64(code, FMT_CHAR);
             } else {
-                /* スライス: from inclusive, to exclusive */
-                if (from < 0 || from > len || to < from || to > len) {
+                /* スライス s[from:to]: 両端インクルーシブ
+                 * Calctus は文字列だけ Substring(from,length) 式（末尾エクスクルーシブ）
+                 * だが、calcyx では配列・ビットフィールドと統一し両端インクルーシブとする */
+                int lo = (from < to) ? (int)from : (int)to;
+                int hi = (from < to) ? (int)to   : (int)from;
+                if (lo < 0 || hi >= len) {
                     EVAL_ERROR(ctx, e->tok.pos, "Index out of range.");
                     val_free(obj); return NULL;
                 }
-                int w = (int)(to - from);
+                int w = hi - lo + 1;
                 char *buf = (char *)malloc((size_t)w + 1);
-                if (buf) { memcpy(buf, s + from, (size_t)w); buf[w] = '\0'; }
+                if (buf) { memcpy(buf, s + lo, (size_t)w); buf[w] = '\0'; }
                 result = buf ? val_new_str(buf) : NULL;
                 free(buf);
             }

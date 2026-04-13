@@ -27,9 +27,12 @@ assert(all(split(",","abc,def,ghi")==["abc", "def", "ghi"]))
 assert(join("|",["abc","def","ghi"])=="abc|def|ghi")
 s="abcdef"
 assert(s[2]=='c')
-assert(s[2:4]=="cd")
+# 文字列スライスは calcyx 独自仕様（両端インクルーシブ）。
+# Calctus は Substring(from, to-from) 式で末尾エクスクルーシブのため、
+# s[2:4] は "cd" だが、calcyx では配列・ビットフィールドと揃えて "cde" を返す。
+assert(s[2:4]=="cde")
 assert(s[2:4]="XYZ"=="XYZ")
 s="abXYZef"
-assert(s[-4:-2]=="YZ")
+assert(s[-4:-2]=="YZe")
 s[-4:-2]="@"
-assert(s=="abX@ef")
+assert(s=="abX@f")
