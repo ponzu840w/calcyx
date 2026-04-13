@@ -315,6 +315,10 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
             int len = (int)strlen(s);
             if (from < 0) from += len;
             if (to   < 0) to   += len;
+            if (from < 0 || from > len || to < from || to > len) {
+                EVAL_ERROR(ctx, lhs->tok.pos, "Index out of range.");
+                val_free(rval); return NULL;
+            }
             const char *rep = (rval->type == VAL_STR) ? rval->str_v : "";
             int rep_len = (int)strlen(rep);
             /* prefix: s[0..from), suffix: s[to..end) */
@@ -337,6 +341,10 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
             int len = target->arr_len;
             if (from < 0) from += len;
             if (to   < 0) to   += len;
+            if (from < 0 || from >= len || to < 0 || to >= len) {
+                EVAL_ERROR(ctx, lhs->tok.pos, "Index out of range.");
+                val_free(rval); return NULL;
+            }
             val_t *new_arr = val_dup(target);
             if (from == to) {
                 val_free(new_arr->arr_items[from]);
@@ -367,6 +375,11 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
             if (from < to) {
                 EVAL_ERROR(ctx, lhs->tok.pos,
                            "Bit field range: MSB must be >= LSB.");
+                val_free(rval); return NULL;
+            }
+            if (from < 0 || from > 63 || to < 0 || to > 63) {
+                EVAL_ERROR(ctx, lhs->tok.pos,
+                           "Bit field index out of range (must be 0-63).");
                 val_free(rval); return NULL;
             }
             int64_t w = from - to + 1;
@@ -584,6 +597,10 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             int len = obj->arr_len;
             if (from < 0) from += len;
             if (to   < 0) to   += len;
+            if (from < 0 || from >= len || to < 0 || to >= len) {
+                EVAL_ERROR(ctx, e->tok.pos, "Index out of range.");
+                val_free(obj); return NULL;
+            }
             if (from == to) {
                 result = val_dup(obj->arr_items[(int)from]);
             } else {
@@ -591,6 +608,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
                 int hi = (from < to) ? (int)to   : (int)from;
                 int w = hi - lo + 1;
                 val_t **items = (val_t **)malloc((size_t)w * sizeof(val_t *));
+                if (!items) { val_free(obj); return NULL; }
                 for (int i = 0; i < w; i++)
                     items[i] = val_dup(obj->arr_items[lo + i]);
                 result = val_new_array(items, w, obj->fmt);
@@ -604,6 +622,10 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             if (to   < 0) to   += len;
             if (from == to) {
                 /* 単一インデックス: UTF-8 コードポイントを数値で返す */
+                if (from < 0 || from >= len) {
+                    EVAL_ERROR(ctx, e->tok.pos, "Index out of range.");
+                    val_free(obj); return NULL;
+                }
                 unsigned char c = (unsigned char)s[from];
                 int64_t code;
                 if (c < 0x80) {
@@ -622,6 +644,11 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
                 }
                 result = val_new_i64(code, FMT_CHAR);
             } else {
+                /* スライス: from inclusive, to exclusive */
+                if (from < 0 || from > len || to < from || to > len) {
+                    EVAL_ERROR(ctx, e->tok.pos, "Index out of range.");
+                    val_free(obj); return NULL;
+                }
                 int w = (int)(to - from);
                 char *buf = (char *)malloc((size_t)w + 1);
                 if (buf) { memcpy(buf, s + from, (size_t)w); buf[w] = '\0'; }
@@ -633,6 +660,11 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             if (from < to) {
                 EVAL_ERROR(ctx, e->tok.pos,
                            "Bit field: MSB index must be >= LSB index.");
+                val_free(obj); return NULL;
+            }
+            if (from < 0 || from > 63 || to < 0 || to > 63) {
+                EVAL_ERROR(ctx, e->tok.pos,
+                           "Bit field index out of range (must be 0-63).");
                 val_free(obj); return NULL;
             }
             int64_t bits = val_as_long(obj);
