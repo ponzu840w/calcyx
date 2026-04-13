@@ -200,8 +200,8 @@ public:
         fl_font(textfont(), textsize());
 
         const char *txt = value();
-        int p1 = std::min(position(), mark());
-        int p2 = std::max(position(), mark());
+        int p1 = std::min(insert_position(), mark());
+        int p2 = std::max(insert_position(), mark());
         int sx = xscroll();
         int tx = x() + PAD - sx;
 
@@ -233,7 +233,7 @@ public:
 
         // カーソル (非選択時のみ)
         if (Fl::focus() == this && p1 == p2) {
-            int cx = tx + (int)fl_width(txt, position());
+            int cx = tx + (int)fl_width(txt, insert_position());
             if (cx >= x() && cx < x() + w()) {
                 fl_color(cursor_color());
                 fl_line(cx, y() + 2, cx, y() + h() - 2);
@@ -312,7 +312,7 @@ public:
                 static_cast<SheetView *>(parent())->multiline_paste(
                     std::string(txt, tlen));
             } else {
-                replace(position(), mark(), txt, tlen);
+                replace(insert_position(), mark(), txt, tlen);
                 if (parent()) static_cast<SheetView *>(parent())->live_eval();
             }
             return 1;

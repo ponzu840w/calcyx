@@ -282,8 +282,8 @@ typedef struct { eval_ctx_t *ctx; func_def_t *key_fd; } sort_ctx_t;
 static int sort_compare(const val_t *a, const val_t *b, const sort_ctx_t *sc) {
     double da, db;
     if (sc->key_fd) {
-        val_t *ka = call_fd_1(sc->key_fd, a, sc->ctx);
-        val_t *kb = call_fd_1(sc->key_fd, b, sc->ctx);
+        val_t *ka = call_fd_1(sc->key_fd, (val_t *)a, sc->ctx);
+        val_t *kb = call_fd_1(sc->key_fd, (val_t *)b, sc->ctx);
         da = ka ? val_as_double(ka) : 0;
         db = kb ? val_as_double(kb) : 0;
         val_free(ka); val_free(kb);
