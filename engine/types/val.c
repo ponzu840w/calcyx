@@ -409,6 +409,7 @@ val_t *val_sub(const val_t *a, const val_t *b) {
 val_t *val_mul(const val_t *a, const val_t *b) {
     /* 文字列繰り返し: "abc" * 3 = "abcabcabc" */
     if (a->type == VAL_STR && b->type == VAL_REAL) {
+        if (!real_is_integer(&b->real_v)) return NULL;  /* 非整数は型エラー */
         int n = (int)real_to_i64(&b->real_v);
         if (n <= 0) return val_new_str("");
         size_t slen = strlen(a->str_v);

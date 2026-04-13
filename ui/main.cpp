@@ -47,6 +47,9 @@ int main(int argc, char **argv) {
     // タスクバー・ウィンドウ枠のアイコンを exe リソースから設定
     HICON hicon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1));
     win.icon(hicon);
+#elif !defined(__APPLE__)
+    // Linux: WM_CLASS を設定してデスクトップ環境がアイコンを解決できるようにする
+    win.xclass("calcyx");
 #endif
 
     win.show(argc, argv);

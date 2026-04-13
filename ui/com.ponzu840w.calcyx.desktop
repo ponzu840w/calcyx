@@ -6,3 +6,4 @@ Exec=calcyx-gui
 Icon=calcyx
 Type=Application
 Categories=Utility;Calculator;
+StartupWMClass=calcyx

@@ -14,6 +14,15 @@
 #include <ctype.h>
 
 /* ======================================================
+ * 文字列コピーヘルパー (strncpy + 確実な NUL 終端)
+ * ====================================================== */
+
+static void str_copy(char *dst, const char *src, size_t size) {
+    strncpy(dst, src, size - 1);
+    dst[size - 1] = '\0';
+}
+
+/* ======================================================
  * ヘルパー: 関数値を引数付きで呼び出す
  * ====================================================== */
 
@@ -23,7 +32,7 @@ static void bind_param(eval_ctx_t *child, const char *pname, val_t *val) {
     if (!pname || !pname[0] || child->n_vars >= EVAL_VAR_MAX) { val_free(val); return; }
     eval_var_t *nv = &child->vars[child->n_vars++];
     memset(nv, 0, sizeof(*nv));
-    strncpy(nv->name, pname, TOK_TEXT_MAX - 1);
+    str_copy(nv->name, pname, TOK_TEXT_MAX);
     nv->value    = val;
     nv->readonly = false;
 }
@@ -363,7 +372,7 @@ static val_t *bi_indexOf_arr(val_t **a, int n, void *ctx) {
     if (a[0]->type == VAL_STR) {
         char needle[512] = "";
         if (a[1]->type == VAL_STR) {
-            strncpy(needle, a[1]->str_v, sizeof(needle)-1);
+            str_copy(needle, a[1]->str_v, sizeof(needle));
         } else {
             val_to_str(a[1], needle, sizeof(needle));
         }
@@ -397,7 +406,7 @@ static val_t *bi_lastIndexOf_arr(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
     if (a[0]->type == VAL_STR) {
         char needle[512] = "";
-        if (a[1]->type == VAL_STR) strncpy(needle, a[1]->str_v, sizeof(needle)-1);
+        if (a[1]->type == VAL_STR) str_copy(needle, a[1]->str_v, sizeof(needle));
         else val_to_str(a[1], needle, sizeof(needle));
         /* simple last-occurance search */
         const char *s = a[0]->str_v;
@@ -1001,7 +1010,7 @@ static val_t *bi_trim(val_t **a, int n, void *ctx) {
     if (a[0]->type != VAL_STR) return val_dup(a[0]);
     const char *s = a[0]->str_v;
     while (*s == ' ' || *s == '\t') s++;
-    char buf[1024]; strncpy(buf, s, sizeof(buf)-1); buf[sizeof(buf)-1]='\0';
+    char buf[1024]; str_copy(buf, s, sizeof(buf));
     int len = (int)strlen(buf);
     while (len > 0 && (buf[len-1] == ' ' || buf[len-1] == '\t')) buf[--len] = '\0';
     return val_new_str(buf);
@@ -1016,7 +1025,7 @@ static val_t *bi_trimStart(val_t **a, int n, void *ctx) {
 static val_t *bi_trimEnd(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
     if (a[0]->type != VAL_STR) return val_dup(a[0]);
-    char buf[1024]; strncpy(buf, a[0]->str_v, sizeof(buf)-1); buf[sizeof(buf)-1]='\0';
+    char buf[1024]; str_copy(buf, a[0]->str_v, sizeof(buf));
     int len = (int)strlen(buf);
     while (len > 0 && (buf[len-1] == ' ' || buf[len-1] == '\t')) buf[--len] = '\0';
     return val_new_str(buf);
@@ -1025,14 +1034,14 @@ static val_t *bi_trimEnd(val_t **a, int n, void *ctx) {
 static val_t *bi_toLower(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
     if (a[0]->type != VAL_STR) return val_dup(a[0]);
-    char buf[1024]; strncpy(buf, a[0]->str_v, sizeof(buf)-1); buf[sizeof(buf)-1]='\0';
+    char buf[1024]; str_copy(buf, a[0]->str_v, sizeof(buf));
     for (int i = 0; buf[i]; i++) buf[i] = (char)tolower((unsigned char)buf[i]);
     return val_new_str(buf);
 }
 static val_t *bi_toUpper(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
     if (a[0]->type != VAL_STR) return val_dup(a[0]);
-    char buf[1024]; strncpy(buf, a[0]->str_v, sizeof(buf)-1); buf[sizeof(buf)-1]='\0';
+    char buf[1024]; str_copy(buf, a[0]->str_v, sizeof(buf));
     for (int i = 0; buf[i]; i++) buf[i] = (char)toupper((unsigned char)buf[i]);
     return val_new_str(buf);
 }
@@ -1042,9 +1051,9 @@ static val_t *bi_replace(val_t **a, int n, void *ctx) {
     if (a[0]->type != VAL_STR) return val_dup(a[0]);
     const char *s   = a[0]->str_v;
     char from[512] = "", to[512] = "";
-    if (a[1]->type == VAL_STR) strncpy(from, a[1]->str_v, sizeof(from)-1);
+    if (a[1]->type == VAL_STR) str_copy(from, a[1]->str_v, sizeof(from));
     else val_to_str(a[1], from, sizeof(from));
-    if (a[2]->type == VAL_STR) strncpy(to, a[2]->str_v, sizeof(to)-1);
+    if (a[2]->type == VAL_STR) str_copy(to, a[2]->str_v, sizeof(to));
     else val_to_str(a[2], to, sizeof(to));
     size_t flen = strlen(from), tlen = strlen(to);
     char buf[4096]; size_t pos = 0;
@@ -1063,7 +1072,7 @@ static val_t *bi_startsWith(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
     if (a[0]->type != VAL_STR) return val_new_bool(false);
     char prefix[512] = "";
-    if (a[1]->type == VAL_STR) strncpy(prefix, a[1]->str_v, sizeof(prefix)-1);
+    if (a[1]->type == VAL_STR) str_copy(prefix, a[1]->str_v, sizeof(prefix));
     size_t plen = strlen(prefix);
     return val_new_bool(strncmp(a[0]->str_v, prefix, plen) == 0);
 }
@@ -1071,7 +1080,7 @@ static val_t *bi_endsWith(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
     if (a[0]->type != VAL_STR) return val_new_bool(false);
     char suf[512] = "";
-    if (a[1]->type == VAL_STR) strncpy(suf, a[1]->str_v, sizeof(suf)-1);
+    if (a[1]->type == VAL_STR) str_copy(suf, a[1]->str_v, sizeof(suf));
     size_t slen = strlen(a[0]->str_v), suflen = strlen(suf);
     if (suflen > slen) return val_new_bool(false);
     return val_new_bool(strcmp(a[0]->str_v + slen - suflen, suf) == 0);
@@ -1081,8 +1090,8 @@ static val_t *bi_split(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
     /* split(sep, str) */
     char sep[512] = "", src[4096] = "";
-    if (a[0]->type == VAL_STR) strncpy(sep, a[0]->str_v, sizeof(sep)-1);
-    if (a[1]->type == VAL_STR) strncpy(src, a[1]->str_v, sizeof(src)-1);
+    if (a[0]->type == VAL_STR) str_copy(sep, a[0]->str_v, sizeof(sep));
+    if (a[1]->type == VAL_STR) str_copy(src, a[1]->str_v, sizeof(src));
     size_t seplen = strlen(sep);
     val_t *tmp[1024];
     int cnt = 0;
@@ -1111,14 +1120,14 @@ static val_t *bi_join(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
     /* join(sep, array) */
     char sep[512] = "";
-    if (a[0]->type == VAL_STR) strncpy(sep, a[0]->str_v, sizeof(sep)-1);
+    if (a[0]->type == VAL_STR) str_copy(sep, a[0]->str_v, sizeof(sep));
     if (a[1]->type != VAL_ARRAY) return val_new_str("");
     char buf[4096]; size_t pos = 0;
     size_t seplen = strlen(sep);
     for (int i = 0; i < a[1]->arr_len; i++) {
-        char elem[1024];
+        char elem[1024] = "";
         if (a[1]->arr_items[i]->type == VAL_STR)
-            strncpy(elem, a[1]->arr_items[i]->str_v, sizeof(elem)-1);
+            str_copy(elem, a[1]->arr_items[i]->str_v, sizeof(elem));
         else
             val_to_str(a[1]->arr_items[i], elem, sizeof(elem));
         size_t elen = strlen(elem);
@@ -2135,7 +2144,7 @@ static const bi_entry_t EXTRA_TABLE[] = {
 static func_def_t *make_extra(const bi_entry_t *e) {
     func_def_t *fd = (func_def_t *)calloc(1, sizeof(func_def_t));
     if (!fd) return NULL;
-    strncpy(fd->name, e->name, sizeof(fd->name) - 1);
+    str_copy(fd->name, e->name, sizeof(fd->name));
     fd->n_params    = e->n_params;
     fd->vec_arg_idx = e->vec_arg_idx;
     fd->variadic    = (e->n_params == -1);

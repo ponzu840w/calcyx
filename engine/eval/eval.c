@@ -36,12 +36,20 @@ static val_t *apply_unary_array(val_t *arr,
 
 /* 2項演算の scalar 演算 */
 static val_t *scalar_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
-    (void)ctx;
     switch (op) {
         case OP_MUL:       return val_mul (a, b);
-        case OP_DIV:       return val_div (a, b);
-        case OP_IDIV:      return val_idiv(a, b);
-        case OP_MOD:       return val_mod (a, b);
+        case OP_DIV:
+        case OP_IDIV:
+        case OP_MOD: {
+            real_t rb; val_as_real(&rb, b);
+            if (real_is_zero(&rb)) {
+                EVAL_ERROR(ctx, 0, "Division by zero.");
+                return NULL;
+            }
+            if (op == OP_DIV)  return val_div (a, b);
+            if (op == OP_IDIV) return val_idiv(a, b);
+            return val_mod(a, b);
+        }
         case OP_ADD:       return val_add (a, b);
         case OP_SUB:       return val_sub (a, b);
         case OP_LSL:       return val_lsl (a, b);
@@ -72,44 +80,39 @@ static val_t *scalar_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
     }
 }
 
+/* 配列ブロードキャスト共通ループ: a/b の arr_items[i] か scalar を選択して演算 */
+static val_t *broadcast_op(op_id_t op, const val_t *a, const val_t *b,
+                            int len, val_fmt_t fmt, eval_ctx_t *ctx) {
+    val_t **res = (val_t **)malloc((size_t)len * sizeof(val_t *));
+    if (!res) return NULL;
+    for (int i = 0; i < len; i++) {
+        const val_t *ai = (a->type == VAL_ARRAY) ? a->arr_items[i] : a;
+        const val_t *bi = (b->type == VAL_ARRAY) ? b->arr_items[i] : b;
+        res[i] = scalar_binop(op, (val_t *)ai, (val_t *)bi, ctx);
+        if (!res[i] || ctx->has_error) {
+            for (int j = 0; j < i; j++) val_free(res[j]);
+            free(res);
+            return NULL;
+        }
+    }
+    val_t *out = val_new_array(res, len, fmt);
+    for (int i = 0; i < len; i++) val_free(res[i]);
+    free(res);
+    return out;
+}
+
 /* 2項演算 (配列ブロードキャスト付き, 移植元: BinaryOp.scalarOperation + 配列分岐) */
 static val_t *apply_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
     bool a_arr = (a->type == VAL_ARRAY);
     bool b_arr = (b->type == VAL_ARRAY);
-
-    if (a_arr && !b_arr) {
-        val_t **res = (val_t **)malloc((size_t)a->arr_len * sizeof(val_t *));
-        if (!res) return NULL;
-        for (int i = 0; i < a->arr_len; i++)
-            res[i] = scalar_binop(op, a->arr_items[i], b, ctx);
-        val_t *out = val_new_array(res, a->arr_len, a->fmt);
-        for (int i = 0; i < a->arr_len; i++) val_free(res[i]);
-        free(res);
-        return out;
-    }
-    if (!a_arr && b_arr) {
-        val_t **res = (val_t **)malloc((size_t)b->arr_len * sizeof(val_t *));
-        if (!res) return NULL;
-        for (int i = 0; i < b->arr_len; i++)
-            res[i] = scalar_binop(op, a, b->arr_items[i], ctx);
-        val_t *out = val_new_array(res, b->arr_len, b->fmt);
-        for (int i = 0; i < b->arr_len; i++) val_free(res[i]);
-        free(res);
-        return out;
-    }
+    if (a_arr && !b_arr) return broadcast_op(op, a, b, a->arr_len, a->fmt, ctx);
+    if (!a_arr && b_arr) return broadcast_op(op, a, b, b->arr_len, b->fmt, ctx);
     if (a_arr && b_arr) {
         if (a->arr_len != b->arr_len) {
             EVAL_ERROR(ctx, 0, "Array size mismatch.");
             return NULL;
         }
-        val_t **res = (val_t **)malloc((size_t)a->arr_len * sizeof(val_t *));
-        if (!res) return NULL;
-        for (int i = 0; i < a->arr_len; i++)
-            res[i] = scalar_binop(op, a->arr_items[i], b->arr_items[i], ctx);
-        val_t *out = val_new_array(res, a->arr_len, a->fmt);
-        for (int i = 0; i < a->arr_len; i++) val_free(res[i]);
-        free(res);
-        return out;
+        return broadcast_op(op, a, b, a->arr_len, a->fmt, ctx);
     }
     return scalar_binop(op, a, b, ctx);
 }
@@ -203,6 +206,36 @@ static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
     }
     eval_ctx_free(&child);
     return result;
+}
+
+/* ======================================================
+ * ラムダ/def 共通: func_def_t を式ノードから生成
+ * ====================================================== */
+
+static func_def_t *make_func_def(const expr_t *e, const char *name) {
+    func_def_t *fd = (func_def_t *)calloc(1, sizeof(func_def_t));
+    if (!fd) return NULL;
+    strncpy(fd->name, name, sizeof(fd->name) - 1);
+    if (e->arg_defs) {
+        fd->n_params    = e->arg_defs->n;
+        fd->vec_arg_idx = e->arg_defs->vec_arg_idx;
+        fd->variadic    = e->arg_defs->variadic;
+        if (fd->n_params > 0) {
+            fd->param_names = (char **)calloc((size_t)fd->n_params, sizeof(char *));
+            if (!fd->param_names) { free(fd); return NULL; }
+            for (int i = 0; i < fd->n_params; i++)
+                fd->param_names[i] = e->arg_defs->names[i]
+                                     ? strdup(e->arg_defs->names[i])
+                                     : NULL;
+        }
+    } else {
+        fd->n_params    = 0;
+        fd->vec_arg_idx = -1;
+    }
+    fd->body      = (void *)expr_dup(e->body);
+    fd->free_body = body_free;
+    fd->dup_body  = body_dup;
+    return fd;
 }
 
 /* ======================================================
@@ -464,7 +497,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
         /* 引数を評価 */
         int n = e->n_args;
         val_t **args = malloc(n * sizeof(val_t *));
-        if (!args) { EVAL_ERROR(ctx, e->tok.pos, "out of memory"); return NULL; }
+        if (!args) { EVAL_ERROR(ctx, e->tok.pos, "Out of memory."); return NULL; }
         for (int i = 0; i < n; i++) {
             args[i] = expr_eval(e->args[i], ctx);
             if (!args[i] || ctx->has_error) {
@@ -502,55 +535,15 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
 
     /* --- ラムダ式 (移植元: LambdaExpr.OnEval) --- */
     case EXPR_LAMBDA: {
-        func_def_t *fd = (func_def_t *)calloc(1, sizeof(func_def_t));
+        func_def_t *fd = make_func_def(e, "<lambda>");
         if (!fd) return NULL;
-        strncpy(fd->name, "<lambda>", sizeof(fd->name) - 1);
-        if (e->arg_defs) {
-            fd->n_params    = e->arg_defs->n;
-            fd->vec_arg_idx = e->arg_defs->vec_arg_idx;
-            fd->variadic    = e->arg_defs->variadic;
-            if (fd->n_params > 0) {
-                fd->param_names = (char **)calloc((size_t)fd->n_params,
-                                                   sizeof(char *));
-                for (int i = 0; i < fd->n_params; i++)
-                    fd->param_names[i] = e->arg_defs->names[i]
-                                         ? strdup(e->arg_defs->names[i])
-                                         : NULL;
-            }
-        } else {
-            fd->n_params    = 0;
-            fd->vec_arg_idx = -1;
-        }
-        fd->body       = (void *)expr_dup(e->body);
-        fd->free_body  = body_free;
-        fd->dup_body   = body_dup;
         return val_new_func(fd);
     }
 
     /* --- def 宣言 (移植元: DefExpr.OnEval) --- */
     case EXPR_DEF: {
-        func_def_t *fd = (func_def_t *)calloc(1, sizeof(func_def_t));
+        func_def_t *fd = make_func_def(e, e->name);
         if (!fd) return NULL;
-        strncpy(fd->name, e->name, sizeof(fd->name) - 1);
-        if (e->arg_defs) {
-            fd->n_params    = e->arg_defs->n;
-            fd->vec_arg_idx = e->arg_defs->vec_arg_idx;
-            fd->variadic    = e->arg_defs->variadic;
-            if (fd->n_params > 0) {
-                fd->param_names = (char **)calloc((size_t)fd->n_params,
-                                                   sizeof(char *));
-                for (int i = 0; i < fd->n_params; i++)
-                    fd->param_names[i] = e->arg_defs->names[i]
-                                         ? strdup(e->arg_defs->names[i])
-                                         : NULL;
-            }
-        } else {
-            fd->n_params    = 0;
-            fd->vec_arg_idx = -1;
-        }
-        fd->body      = (void *)expr_dup(e->body);
-        fd->free_body = body_free;
-        fd->dup_body  = body_dup;
         /* 変数テーブルに FuncVal として登録 */
         eval_ctx_set_var(ctx, e->name, val_new_func(fd));
         return val_new_null();

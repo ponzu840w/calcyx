@@ -70,7 +70,6 @@ void frac_find_frac(real_t *n_out, real_t *d_out, const real_t *val) {
         real_t n_cf, d_cf;
         real_copy(&n_cf, &xi);
         real_from_i64(&d_cf, 1);
-        bool overflow = false;
         for (int i = count - 2; i >= 0; i--) {
             real_t tmp, t1, t2, g, nd, dd;
             real_copy(&tmp, &n_cf);
