@@ -361,6 +361,7 @@ static int try_datetime(const char *s, val_t **out) {
     t.tm_sec  = sc;
     t.tm_isdst = -1;
     time_t ts = mktime(&t);
+    if (ts == (time_t)-1) return 0;  /* 不正な日付リテラル: トークン化失敗 */
     real_t r;
     real_from_i64(&r, (int64_t)ts);
     *out = val_new_real(&r, FMT_DATETIME);
@@ -537,6 +538,7 @@ void tok_queue_free(tok_queue_t *q) {
 }
 
 void tok_queue_push_back(tok_queue_t *q, const token_t *t) {
+    if (q->count >= TOK_QUEUE_MAX) return;  /* キューフル: トークンを捨てる */
     int idx = (q->head + q->count) % TOK_QUEUE_MAX;
     q->tokens[idx] = *t;  /* shallow copy; val ownership transferred */
     q->count++;

@@ -142,7 +142,15 @@ func_def_t *func_def_dup(const func_def_t *src) {
         d->param_names = (char **)calloc((size_t)src->n_params, sizeof(char *));
         if (!d->param_names) { free(d); return NULL; }
         for (int i = 0; i < src->n_params; i++) {
-            d->param_names[i] = src->param_names[i] ? strdup(src->param_names[i]) : NULL;
+            if (src->param_names[i]) {
+                d->param_names[i] = strdup(src->param_names[i]);
+                if (!d->param_names[i]) {
+                    for (int j = 0; j < i; j++) free(d->param_names[j]);
+                    free(d->param_names);
+                    free(d);
+                    return NULL;
+                }
+            }
         }
     } else {
         d->param_names = NULL;
@@ -150,6 +158,12 @@ func_def_t *func_def_dup(const func_def_t *src) {
     /* body のディープコピー */
     if (src->dup_body && src->body) {
         d->body = src->dup_body(src->body);
+        if (!d->body) {
+            for (int i = 0; i < src->n_params; i++) free(d->param_names[i]);
+            free(d->param_names);
+            free(d);
+            return NULL;
+        }
     } else {
         d->body = NULL;
     }
@@ -713,6 +727,7 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
         case FMT_DATETIME: {
             time_t ts = (time_t)real_to_i64(r);
             struct tm *t = localtime(&ts);
+            if (!t) { snprintf(buf, buflen, "#invalid-date#"); break; }
             snprintf(buf, buflen, "#%04d/%02d/%02d %02d:%02d:%02d#",
                      t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
                      t->tm_hour, t->tm_min, t->tm_sec);

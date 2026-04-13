@@ -1210,7 +1210,7 @@ void SheetView::completion_update() {
     if (!editor_->visible()) return;
 
     const char *text = editor_->value();
-    int pos = editor_->position();
+    int pos = editor_->insert_position();
 
     // カーソル直前が識別子継続文字でなければ補完しない
     if (pos == 0 || !lexer_is_id_follow(text[pos - 1])) {
@@ -1252,7 +1252,7 @@ void SheetView::completion_confirm() {
     if (!c) { completion_hide(); return; }
 
     const char *text = editor_->value();
-    int pos = editor_->position();
+    int pos = editor_->insert_position();
 
     // 識別子の先頭を探す
     int start = pos;
@@ -1264,7 +1264,7 @@ void SheetView::completion_confirm() {
 
     editor_->replace(start, pos, rep.c_str(), (int)rep.size());
     // カーソルを括弧内 (関数) または末尾 (変数) に置く
-    editor_->position((int)(start + rep.size()));
+    editor_->insert_position((int)(start + rep.size()));
 
     completion_hide();
     live_eval();

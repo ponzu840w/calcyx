@@ -274,18 +274,16 @@ static val_t *bi_count_fn(val_t **a, int n, void *ctx) {
     return val_new_i64(cnt, FMT_INT);
 }
 
-/* sort: compare two vals numerically */
-typedef struct { val_t **arr; eval_ctx_t *ctx; func_def_t *key_fd; } sort_data_t;
-static sort_data_t *g_sort_data = NULL;
+/* sort: コンテキスト付き比較とインサーションソート
+ * qsort のグローバル変数経由コンテキスト渡しを廃止し、
+ * 計算機の配列サイズ（通常 ≪1000）では O(n²) で十分。 */
+typedef struct { eval_ctx_t *ctx; func_def_t *key_fd; } sort_ctx_t;
 
-static int sort_cmp(const void *pa, const void *pb) {
-    val_t *a = *(val_t **)pa;
-    val_t *b = *(val_t **)pb;
-    sort_data_t *sd = g_sort_data;
+static int sort_compare(const val_t *a, const val_t *b, const sort_ctx_t *sc) {
     double da, db;
-    if (sd->key_fd) {
-        val_t *ka = call_fd_1(sd->key_fd, a, sd->ctx);
-        val_t *kb = call_fd_1(sd->key_fd, b, sd->ctx);
+    if (sc->key_fd) {
+        val_t *ka = call_fd_1(sc->key_fd, a, sc->ctx);
+        val_t *kb = call_fd_1(sc->key_fd, b, sc->ctx);
         da = ka ? val_as_double(ka) : 0;
         db = kb ? val_as_double(kb) : 0;
         val_free(ka); val_free(kb);
@@ -296,16 +294,27 @@ static int sort_cmp(const void *pa, const void *pb) {
     return (da > db) - (da < db);
 }
 
+static void sort_items(val_t **items, int len, const sort_ctx_t *sc) {
+    for (int i = 1; i < len; i++) {
+        val_t *key = items[i];
+        int j = i - 1;
+        while (j >= 0 && sort_compare(items[j], key, sc) > 0) {
+            items[j + 1] = items[j];
+            j--;
+        }
+        items[j + 1] = key;
+    }
+}
+
 static val_t *bi_sort1(val_t **a, int n, void *ctx) {
     (void)n;
     if (a[0]->type != VAL_ARRAY) return val_dup(a[0]);
     int len = a[0]->arr_len;
     val_t **items = (val_t **)malloc((size_t)len * sizeof(val_t *));
+    if (!items) return NULL;
     for (int i = 0; i < len; i++) items[i] = val_dup(a[0]->arr_items[i]);
-    sort_data_t sd = { items, (eval_ctx_t *)ctx, NULL };
-    g_sort_data = &sd;
-    qsort(items, (size_t)len, sizeof(val_t *), sort_cmp);
-    g_sort_data = NULL;
+    sort_ctx_t sc = { (eval_ctx_t *)ctx, NULL };
+    sort_items(items, len, &sc);
     val_t *out = val_new_array(items, len, a[0]->fmt);
     for (int i = 0; i < len; i++) val_free(items[i]);
     free(items);
@@ -318,11 +327,10 @@ static val_t *bi_sort2(val_t **a, int n, void *ctx) {
     func_def_t *fd = get_fd(a[1]);
     int len = a[0]->arr_len;
     val_t **items = (val_t **)malloc((size_t)len * sizeof(val_t *));
+    if (!items) return NULL;
     for (int i = 0; i < len; i++) items[i] = val_dup(a[0]->arr_items[i]);
-    sort_data_t sd = { items, (eval_ctx_t *)ctx, fd };
-    g_sort_data = &sd;
-    qsort(items, (size_t)len, sizeof(val_t *), sort_cmp);
-    g_sort_data = NULL;
+    sort_ctx_t sc = { (eval_ctx_t *)ctx, fd };
+    sort_items(items, len, &sc);
     val_t *out = val_new_array(items, len, a[0]->fmt);
     for (int i = 0; i < len; i++) val_free(items[i]);
     free(items);

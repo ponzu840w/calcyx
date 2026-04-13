@@ -26,8 +26,14 @@ static val_t *apply_unary_array(val_t *arr,
         val_t *(*op)(const val_t *)) {
     val_t **res = (val_t **)malloc((size_t)arr->arr_len * sizeof(val_t *));
     if (!res) return NULL;
-    for (int i = 0; i < arr->arr_len; i++)
+    for (int i = 0; i < arr->arr_len; i++) {
         res[i] = op(arr->arr_items[i]);
+        if (!res[i]) {
+            for (int j = 0; j < i; j++) val_free(res[j]);
+            free(res);
+            return NULL;
+        }
+    }
     val_t *out = val_new_array(res, arr->arr_len, arr->fmt);
     for (int i = 0; i < arr->arr_len; i++) val_free(res[i]);
     free(res);
