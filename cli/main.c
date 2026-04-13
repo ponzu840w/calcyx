@@ -126,6 +126,8 @@ static int run_stream(FILE *fp, eval_ctx_t *ctx, output_mode_t out) {
 /* ---- ヘルプ ---- */
 static void print_help(const char *prog) {
     fprintf(stderr,
+        "calcyx " CALCYX_VERSION_FULL " (" CALCYX_EDITION ")\n"
+        "\n"
         "Usage: %s [options] [file...]\n"
         "\n"
         "Options:\n"
@@ -162,7 +164,7 @@ int main(int argc, char *argv[]) {
             print_help(argv[0]);
             return 0;
         } else if (strcmp(argv[i], "-V") == 0 || strcmp(argv[i], "--version") == 0) {
-            printf("calcyx " CALCYX_VERSION_FULL "\n");
+            printf("calcyx " CALCYX_VERSION_FULL " (" CALCYX_EDITION ")\n");
             return 0;
         } else if (strcmp(argv[i], "-e") == 0) {
             if (i + 1 >= argc) {

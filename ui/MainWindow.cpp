@@ -165,6 +165,7 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
     } else if (strcmp(cmd, "about") == 0) {
         fl_message(
             "calcyx " CALCYX_VERSION_FULL "\n"
+            CALCYX_EDITION "\n"
             "\n"
             "A programmable calculator based on Calctus.\n"
             "\n"

@@ -103,6 +103,7 @@ target_include_directories(calcyx_ui PRIVATE
 
 target_compile_definitions(calcyx_ui PRIVATE
     CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
+    CALCYX_EDITION="${CALCYX_PLATFORM} GUI"
 )
 
 target_link_libraries(calcyx_ui PRIVATE

@@ -39,6 +39,15 @@ endif()
 project(calcyx VERSION "${CALCYX_VERSION}" LANGUAGES C CXX)
 message(STATUS "calcyx version: ${CALCYX_VERSION_FULL}")
 
+# ---- プラットフォーム名 ----
+if(WIN32)
+    set(CALCYX_PLATFORM "Windows")
+elseif(APPLE)
+    set(CALCYX_PLATFORM "macOS")
+else()
+    set(CALCYX_PLATFORM "Linux")
+endif()
+
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
