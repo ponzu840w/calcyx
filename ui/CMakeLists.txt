@@ -101,6 +101,10 @@ target_include_directories(calcyx_ui PRIVATE
     ${CMAKE_SOURCE_DIR}/engine
 )
 
+target_compile_definitions(calcyx_ui PRIVATE
+    CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
+)
+
 target_link_libraries(calcyx_ui PRIVATE
     calcyx_engine
     ${FLTK_LIB}
@@ -118,6 +122,8 @@ endif()
 
 if(APPLE)
     install(TARGETS calcyx_ui BUNDLE DESTINATION . COMPONENT gui)
+elseif(WIN32)
+    install(TARGETS calcyx_ui RUNTIME DESTINATION bin COMPONENT gui)
 elseif(UNIX)
     install(TARGETS calcyx_ui RUNTIME DESTINATION bin COMPONENT gui)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/com.ponzu840w.calcyx.desktop"
@@ -126,7 +132,6 @@ elseif(UNIX)
         DESTINATION share/icons/hicolor/scalable/apps
         RENAME calcyx.svg COMPONENT gui)
 endif()
-# Windows はインストール不要 (ZIP 配布のみ)
 
 # ---- test_undo ----
 add_executable(test_undo

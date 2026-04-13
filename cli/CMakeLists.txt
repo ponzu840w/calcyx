@@ -7,7 +7,6 @@ target_include_directories(calcyx_cli PRIVATE
 
 target_link_libraries(calcyx_cli PRIVATE
     calcyx_engine
-    $<$<NOT:$<BOOL:${WIN32}>>:m>
 )
 
 set_target_properties(calcyx_cli PROPERTIES OUTPUT_NAME "calcyx")
