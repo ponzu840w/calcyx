@@ -63,7 +63,7 @@ int wasm_eval_line(const char *expr) {
         g_ctx.error_msg[0] = '\0';
         return 0;
     }
-    val_to_str(result, g_result, sizeof(g_result));
+    val_to_display_str(result, g_result, sizeof(g_result));
     val_free(result);
     return 1;
 }

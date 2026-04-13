@@ -72,7 +72,7 @@ static bool eval_line(const char *raw, eval_ctx_t *ctx,
     }
 
     char result_str[1024] = "";
-    val_to_str(result, result_str, sizeof(result_str));
+    val_to_display_str(result, result_str, sizeof(result_str));
     val_free(result);
 
     if (out == OUT_BOTH)
@@ -107,7 +107,7 @@ static void run_repl(eval_ctx_t *ctx) {
             ctx->error_msg[0] = '\0';
         } else {
             char buf[1024];
-            val_to_str(result, buf, sizeof(buf));
+            val_to_display_str(result, buf, sizeof(buf));
             puts(buf);
             val_free(result);
         }

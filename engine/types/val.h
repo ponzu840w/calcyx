@@ -149,9 +149,14 @@ val_t *val_logic_and (const val_t *a, const val_t *b);
 val_t *val_logic_or  (const val_t *a, const val_t *b);
 val_t *val_logic_not (const val_t *a);
 
-/* --- 文字列変換 (デバッグ・表示用) --- */
-/* buf に NUL 終端文字列を書く。足りなければ切り詰める。 */
+/* --- 文字列変換 --- */
+/* 生の文字列表現。VAL_STR/FMT_CHAR はクォートなし。
+ * 文字列連結・内部処理用（移植元の Val.AsString 相当）。 */
 void val_to_str(const val_t *v, char *buf, size_t buflen);
+
+/* 表示用の文字列表現。VAL_STR は "..." で、FMT_CHAR は '...' で囲みエスケープする。
+ * 配列内の要素も再帰的に表示形式になる（移植元の Formatter.Format 相当）。 */
+void val_to_display_str(const val_t *v, char *buf, size_t buflen);
 
 /* --- NumberFormatter (移植元: NumberFormatter.cs - FormatSettings / RealToString) --- */
 typedef struct {

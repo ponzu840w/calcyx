@@ -751,12 +751,63 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
     }
 }
 
-void val_to_str(const val_t *v, char *buf, size_t buflen) {
+/* 1 文字をエスケープして buf[*pos..cap) に書き込む。cap は終端用の 1 バイトを含む。
+ * string_mode=true  → 文字列リテラル内（" を \" にエスケープ、' はそのまま）
+ * string_mode=false → 文字リテラル内（' を \' にエスケープ、" はそのまま）
+ * 移植元: Calctus/Model/Formats/CharFormatter.cs - Escape() */
+static void append_escaped_byte(char *buf, size_t *pos, size_t cap,
+                                 unsigned char c, bool string_mode) {
+    const char *esc = NULL;
+    char ebuf[8];
+    switch (c) {
+        case '\a': esc = "\\a";  break;
+        case '\b': esc = "\\b";  break;
+        case '\f': esc = "\\f";  break;
+        case '\n': esc = "\\n";  break;
+        case '\r': esc = "\\r";  break;
+        case '\t': esc = "\\t";  break;
+        case '\v': esc = "\\v";  break;
+        case '\\': esc = "\\\\"; break;
+        case '\0': esc = "\\0";  break;
+        case '\'': if (!string_mode) esc = "\\'";  break;
+        case '"':  if ( string_mode) esc = "\\\""; break;
+    }
+    if (!esc && c < 0x20) {
+        snprintf(ebuf, sizeof(ebuf), "\\x%02X", c);
+        esc = ebuf;
+    }
+    if (esc) {
+        size_t elen = strlen(esc);
+        if (*pos + elen < cap) { memcpy(buf + *pos, esc, elen); *pos += elen; }
+    } else {
+        /* 制御文字以外はそのまま出力（UTF-8 マルチバイトも pass-through） */
+        if (*pos + 1 < cap) buf[(*pos)++] = (char)c;
+    }
+}
+
+/* 本体: display=true で VAL_STR/FMT_CHAR をクォート＆エスケープする */
+static void val_format(const val_t *v, char *buf, size_t buflen, bool display) {
     if (!v || buflen == 0) return;
-    if (buflen > 0) buf[0] = '\0';
+    buf[0] = '\0';
     switch (v->type) {
         case VAL_REAL: {
-            real_to_str_fmt(&v->real_v, v->fmt, buf, buflen);
+            if (display && v->fmt == FMT_CHAR && real_is_integer(&v->real_v)) {
+                /* 'a' 形式: UTF-8 エンコード済みの文字列を ' で囲みエスケープ */
+                int64_t iv = real_to_i64(&v->real_v);
+                char utf8[8]; size_t ulen = 0;
+                if      (iv < 0x80)    { utf8[ulen++] = (char)iv; }
+                else if (iv < 0x800)   { utf8[ulen++] = (char)(0xC0|(iv>>6)); utf8[ulen++] = (char)(0x80|(iv&0x3F)); }
+                else if (iv < 0x10000) { utf8[ulen++] = (char)(0xE0|(iv>>12)); utf8[ulen++] = (char)(0x80|((iv>>6)&0x3F)); utf8[ulen++] = (char)(0x80|(iv&0x3F)); }
+                else                   { utf8[ulen++] = (char)(0xF0|(iv>>18)); utf8[ulen++] = (char)(0x80|((iv>>12)&0x3F)); utf8[ulen++] = (char)(0x80|((iv>>6)&0x3F)); utf8[ulen++] = (char)(0x80|(iv&0x3F)); }
+                size_t pos = 0;
+                if (pos + 1 < buflen) buf[pos++] = '\'';
+                for (size_t i = 0; i < ulen; i++)
+                    append_escaped_byte(buf, &pos, buflen, (unsigned char)utf8[i], false);
+                if (pos + 1 < buflen) buf[pos++] = '\'';
+                buf[pos] = '\0';
+            } else {
+                real_to_str_fmt(&v->real_v, v->fmt, buf, buflen);
+            }
             break;
         }
         case VAL_FRAC: {
@@ -770,7 +821,16 @@ void val_to_str(const val_t *v, char *buf, size_t buflen) {
             snprintf(buf, buflen, "%s", v->bool_v ? "true" : "false");
             break;
         case VAL_STR:
-            snprintf(buf, buflen, "%s", v->str_v);
+            if (display) {
+                size_t pos = 0;
+                if (pos + 1 < buflen) buf[pos++] = '"';
+                for (const unsigned char *p = (const unsigned char *)v->str_v; *p; p++)
+                    append_escaped_byte(buf, &pos, buflen, *p, true);
+                if (pos + 1 < buflen) buf[pos++] = '"';
+                buf[pos] = '\0';
+            } else {
+                snprintf(buf, buflen, "%s", v->str_v);
+            }
             break;
         case VAL_NULL:
             snprintf(buf, buflen, "null");
@@ -781,7 +841,7 @@ void val_to_str(const val_t *v, char *buf, size_t buflen) {
             bool truncated = false;
             for (int i = 0; i < v->arr_len; i++) {
                 char elem[128];
-                val_to_str(v->arr_items[i], elem, sizeof(elem));
+                val_format(v->arr_items[i], elem, sizeof(elem), display);
                 size_t elen = strlen(elem);
                 /* セパレータ + 要素 + ']' が収まるか確認 (余裕: "..." + ']' = 4) */
                 size_t need = (i > 0 ? 2 : 0) + elen + 4;
@@ -801,6 +861,14 @@ void val_to_str(const val_t *v, char *buf, size_t buflen) {
                      (v->func_v && v->func_v->name[0]) ? v->func_v->name : "?");
             break;
     }
+}
+
+void val_to_str(const val_t *v, char *buf, size_t buflen) {
+    val_format(v, buf, buflen, false);
+}
+
+void val_to_display_str(const val_t *v, char *buf, size_t buflen) {
+    val_format(v, buf, buflen, true);
 }
 
 /* ======================================================

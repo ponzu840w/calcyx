@@ -531,7 +531,7 @@ void SheetView::eval_all() {
         val_t *v = eval_str(row.expr.c_str(), &ctx_, errmsg, sizeof(errmsg));
         if (v) {
             char buf[512];
-            val_to_str(v, buf, sizeof(buf));
+            val_to_display_str(v, buf, sizeof(buf));
             row.result_fmt = v->fmt;
             row.result = buf;
             row.error  = false;
