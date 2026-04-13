@@ -53,10 +53,23 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&File/All &Clear\tCtrl+Shift+Del", FL_COMMAND | FL_SHIFT | FL_Delete, menu_cb, (void*)"clear_all", FL_MENU_DIVIDER);
     menu_->add("&File/&Open...\t",    FL_COMMAND + 'o', menu_cb, (void*)"open");
     menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
-    menu_->add("&Edit/&Undo\t",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
-    menu_->add("&Edit/&Redo\t",       FL_COMMAND + 'y', menu_cb, (void*)"redo");
+    menu_->add("&Edit/&Undo\tCtrl+Z", FL_COMMAND + 'z', menu_cb, (void*)"undo");
+    menu_->add("&Edit/&Redo\tCtrl+Y", FL_COMMAND + 'y', menu_cb, (void*)"redo");
     populate_samples_menu();
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
+
+    // 全メニュー追加後にインデックスを取得
+    // find_index(path) はショートカット付きラベルで失敗するので手動検索
+    mi_undo_ = mi_redo_ = -1;
+    for (int i = 0; i < menu_->size(); i++) {
+        const Fl_Menu_Item &it = menu_->menu()[i];
+        if (!it.label()) continue;
+        if (it.callback() == menu_cb) {
+            const char *d = (const char *)it.user_data();
+            if (d && strcmp(d, "undo") == 0) mi_undo_ = i;
+            if (d && strcmp(d, "redo") == 0) mi_redo_ = i;
+        }
+    }
 
     // ---- ← → ツールバーボタン (右寄せ: ? の左隣) ----
     auto make_btn = [&](int bx, const char *label, const char *cmd) {
@@ -129,21 +142,23 @@ void MainWindow::update_toolbar() {
     bool u = sheet_->can_undo() || sheet_->has_uncommitted_edit();
     bool r = sheet_->can_redo();
 
-    // ← → ボタンのグレーアウト
-    if (u) btn_undo_->activate(); else btn_undo_->deactivate();
-    if (r) btn_redo_->activate(); else btn_redo_->deactivate();
-
-    // Edit メニュー項目のグレーアウト
-    auto set_active = [&](const char *path, bool active) {
-        Fl_Menu_Item *it = (Fl_Menu_Item *)menu_->find_item(path);
-        if (!it) return;
-        if (active) it->activate(); else it->deactivate();
-    };
-    set_active("&Edit/&Undo", u);
-    set_active("&Edit/&Redo", r);
-
+    // ← → ボタン: deactivate() は白っぽくなるので labelcolor だけ変更
+    // (undo/redo は内部でガードしているので、無効時にクリックしても安全)
+    static const Fl_Color C_DIM = fl_rgb_color(60, 60, 65);
+    btn_undo_->labelcolor(u ? C_MENU_FG : C_DIM);
+    btn_redo_->labelcolor(r ? C_MENU_FG : C_DIM);
     btn_undo_->redraw();
     btn_redo_->redraw();
+
+    // Edit メニュー項目のグレーアウト (色も変更して視認性を確保)
+    Fl_Menu_Item *items = (Fl_Menu_Item *)menu_->menu();
+    auto set_menu = [&](int idx, bool active) {
+        if (idx < 0) return;
+        if (active) { items[idx].activate();   items[idx].labelcolor(C_MENU_FG); }
+        else        { items[idx].deactivate(); items[idx].labelcolor(C_DIM); }
+    };
+    set_menu(mi_undo_, u);
+    set_menu(mi_redo_, r);
 }
 
 int MainWindow::handle(int event) {

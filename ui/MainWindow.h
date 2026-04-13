@@ -34,6 +34,8 @@ private:
     Fl_Choice       *fmt_choice_;
     SheetView       *sheet_;
     CompletionPopup *popup_;
+    int              mi_undo_;    // Edit/Undo メニュー項目インデックス
+    int              mi_redo_;    // Edit/Redo メニュー項目インデックス
 
     static const int MENU_H   = 24;
     static const int CHOICE_W = 110;
