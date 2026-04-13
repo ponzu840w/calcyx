@@ -306,7 +306,7 @@ static expr_t *p_expr(parser_t *p, bool root) {
         const op_def_t *rop = op_find(OPTYPE_BINARY, rtok.text);
         if (!rop) {
             char msg[128];
-            snprintf(msg, sizeof(msg), "Not a binary operator: '%s'", rtok.text);
+            snprintf(msg, sizeof(msg), "Not a binary operator: '%.80s'", rtok.text);
             PERROR(p, rtok, msg);
             tok_free(&rtok);
             break;
@@ -591,7 +591,7 @@ call_err:
     } else {
         token_t bad = p_read(p);
         char msg[128];
-        snprintf(msg, sizeof(msg), "Invalid operand: '%s'", bad.text);
+        snprintf(msg, sizeof(msg), "Invalid operand: '%.100s'", bad.text);
         PERROR(p, bad, msg);
         tok_free(&bad);
     }

@@ -290,7 +290,7 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
     if (lhs->type == EXPR_PART_REF && lhs->child_a->type == EXPR_ID) {
         eval_var_t *var = eval_ctx_ref_var(ctx, lhs->child_a->name, false);
         if (!var) {
-            EVAL_ERROR(ctx, lhs->child_a->tok.pos, "Variable not found: '%s'",
+            EVAL_ERROR(ctx, lhs->child_a->tok.pos, "Variable not found: '%.200s'",
                        lhs->child_a->name);
             val_free(rval); return NULL;
         }
@@ -406,7 +406,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
     case EXPR_ID: {
         eval_var_t *var = eval_ctx_ref_var(ctx, e->name, false);
         if (var) return val_dup(var->value);
-        EVAL_ERROR(ctx, e->tok.pos, "Variable '%s' not found.", e->name);
+        EVAL_ERROR(ctx, e->tok.pos, "Variable '%.200s' not found.", e->name);
         return NULL;
     }
 
@@ -541,7 +541,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
         }
         for (int i = 0; i < n; i++) val_free(args[i]);
         free(args);
-        EVAL_ERROR(ctx, e->tok.pos, "Function '%s' not found.", e->name);
+        EVAL_ERROR(ctx, e->tok.pos, "Function '%.200s' not found.", e->name);
         return NULL;
     }
 
