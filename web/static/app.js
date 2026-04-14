@@ -153,14 +153,21 @@ function evalAll() {
 
 // ---- レイアウト計算 ----
 
-// キャンバスでテキスト幅を計測 (ネイティブの fl_width() 相当)
-const _measureCanvas = document.createElement('canvas');
-const _measureCtx    = _measureCanvas.getContext('2d');
-_measureCtx.font = `${getComputedStyle(document.documentElement)
-  .getPropertyValue('--font-size').trim() || '13px'} "Courier New", Courier, monospace`;
+// テキスト幅計測用の hidden DOM 要素 (ネイティブの fl_width() 相当)。
+// 当初は canvas.measureText を使っていたが、Android では実際の DOM レンダリング幅と
+// 微妙にズレて左辺カラムが必要より短くなる問題があったため、オーバーレイと
+// 同じフォントスタイルの DOM 要素で offsetWidth を読む方式に変更。
+const _measureEl = document.createElement('div');
+_measureEl.setAttribute('aria-hidden', 'true');
+_measureEl.style.cssText =
+  'position:absolute; visibility:hidden; left:-9999px; top:0; ' +
+  'white-space:pre; padding:0; margin:0; border:0; ' +
+  'font-family:var(--font); font-size:var(--font-size);';
+document.body.appendChild(_measureEl);
 
 function measureText(text) {
-  return _measureCtx.measureText(text).width;
+  _measureEl.textContent = text;
+  return _measureEl.offsetWidth;
 }
 
 // ネイティブ SheetView.h と合わせる
@@ -214,8 +221,9 @@ window.addEventListener('resize', () => {
   for (let i = 0; i < rows.length; i++) {
     const rowEl = sheetEl.querySelector(`[data-row="${i}"]`);
     if (!rowEl) continue;
-    rowEl.classList.toggle('empty',   rows[i].expr === '');
-    rowEl.classList.toggle('wrapped', !!rows[i].wrapped);
+    rowEl.classList.toggle('empty',     rows[i].expr === '');
+    rowEl.classList.toggle('wrapped',   !!rows[i].wrapped);
+    rowEl.classList.toggle('no-result', rows[i].showResult === false);
   }
 });
 
@@ -236,7 +244,8 @@ function buildRowEl(i) {
   div.className = 'row' +
     (i === focusedRow ? ' focused' : '') +
     (row.expr === ''  ? ' empty'   : '') +
-    (row.wrapped      ? ' wrapped' : '');
+    (row.wrapped      ? ' wrapped' : '') +
+    (row.showResult === false ? ' no-result' : '');
   div.dataset.row = i;
 
   // ---- 式列 ----
@@ -307,8 +316,9 @@ function updateResultCells() {
     cell.className = 'result-cell' + (row.error ? ' error' : '');
     const rowEl = cell.closest('.row');
     if (rowEl) {
-      rowEl.classList.toggle('empty',   row.expr === '');
-      rowEl.classList.toggle('wrapped', !!row.wrapped);
+      rowEl.classList.toggle('empty',     row.expr === '');
+      rowEl.classList.toggle('wrapped',   !!row.wrapped);
+      rowEl.classList.toggle('no-result', row.showResult === false);
     }
   }
   if (needRebuild) {
@@ -427,8 +437,37 @@ fmtSelect.addEventListener('blur', focusInput);
 
 // ---- イベントデリゲーション ----
 
+// IME 変換中はオーバーレイを隠して <input> 自身のテキストを表示する。
+// Android Chrome では変換中に input.value が placeholder (スペース等) を返すため
+// highlight() 経由でオーバーレイを描画すると文字化け + scrollLeft 追従で破綻する。
+let imeComposing = false;
+
+sheetEl.addEventListener('compositionstart', e => {
+  if (!e.target.classList.contains('expr-input')) return;
+  imeComposing = true;
+  e.target.closest('.expr-cell')?.classList.add('composing');
+});
+sheetEl.addEventListener('compositionend', e => {
+  if (!e.target.classList.contains('expr-input')) return;
+  imeComposing = false;
+  const cell = e.target.closest('.expr-cell');
+  const input = e.target;
+  // Android Chrome では compositionend 時点で input.value が未確定なことがあり、
+  // かつ後続の input (isComposing=false) が不発なケースもある。
+  // setTimeout(0) で次tick まで待ってから row.expr を更新・再評価する。
+  // composing クラスは値確定・syncOverlay 後に外すことで stale content のフラッシュを防ぐ。
+  setTimeout(() => {
+    rows[focusedRow].expr = input.value;
+    syncOverlay();
+    cell?.classList.remove('composing');
+    evalAll();
+    updateUndoButtons();
+  }, 0);
+});
+
 sheetEl.addEventListener('input', e => {
   if (!e.target.classList.contains('expr-input')) return;
+  if (e.isComposing || imeComposing) return;   // IME 変換中は compositionend 側で処理
   rows[focusedRow].expr = e.target.value;
   syncOverlay();
   evalAll();
@@ -438,8 +477,8 @@ sheetEl.addEventListener('input', e => {
 sheetEl.addEventListener('keydown', e => {
   if (e.target.classList.contains('expr-input')) {
     handleKeyDown(e);
-    // カーソル移動後に rAF でオーバーレイを同期
-    requestAnimationFrame(syncOverlay);
+    // カーソル移動後に rAF でオーバーレイを同期 (IME 変換中は不要・有害)
+    if (!imeComposing) requestAnimationFrame(syncOverlay);
     return;
   }
   if (e.target.dataset.result !== undefined) {

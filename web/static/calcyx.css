@@ -138,6 +138,14 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 }
 .row.focused { background: var(--sel-bg); }
 
+/* showResult=false の行 (リテラル単体や def/lambda 等):
+   = 列・結果列がないので式セルを全幅に広げる。
+   そうしないと長い式が --expr-col-w で見切れる。 */
+.row.no-result .expr-cell,
+.row.no-result .expr-hl {
+  grid-column: 1 / -1;
+}
+
 /* 折り返し行: 式が全幅 (上段)、= + 結果が下段 */
 .row.wrapped {
   grid-template-rows: var(--row-h) var(--row-h);
@@ -196,6 +204,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
   padding: 1px 4px;          /* オーバーレイと同じ padding */
   line-height: var(--row-h);
 }
+
+/* IME 変換中 (Android Gboard 等): オーバーレイを隠して input 生テキストを表示。
+   変換中は input.value が placeholder 文字列を返すケースがあり、
+   highlight() が化けた文字を描画してしまうため。 */
+.expr-cell.composing .expr-hl-overlay { visibility: hidden; }
+.expr-cell.composing .expr-input      { color: var(--text); }
 
 /* ハイライト付き表示レイヤー (非フォーカス行) */
 .expr-hl {
