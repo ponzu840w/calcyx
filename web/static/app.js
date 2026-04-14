@@ -48,6 +48,24 @@ async function reinitWasm() {
 const sheetEl = document.getElementById('sheet');
 const pasteDialog = new PasteDialog();
 
+// 永続フロート編集エディタ。フォーカス行の expr セルに重ねて表示する。
+// 行移動 / renderAll() でも DOM から外さないので、Android の IME が閉じ直されない。
+const floatEditor  = document.createElement('div');
+floatEditor.id = 'float-editor';
+
+const floatOverlay = document.createElement('div');
+floatOverlay.className = 'expr-hl-overlay';
+
+const floatInput = document.createElement('input');
+floatInput.type = 'text';
+floatInput.className = 'expr-input';
+floatInput.setAttribute('spellcheck', 'false');
+floatInput.setAttribute('autocomplete', 'off');
+
+floatEditor.appendChild(floatOverlay);
+floatEditor.appendChild(floatInput);
+sheetEl.appendChild(floatEditor);
+
 let rows = [{ expr: '', result: '', error: false }];
 let focusedRow = 0;
 let fileName = null;
@@ -95,10 +113,8 @@ function redo() {
 
 function updateUndoButtons() {
   // 未コミット変更がある場合は Undo を有効化 (Ctrl+Z で取り消せるため)
-  const inp = sheetEl.querySelector('.expr-input');
-  const curVal = inp ? inp.value : '';
   const snap = undoPos >= 0 ? undoStack[undoPos] : null;
-  const hasUncommitted = curVal !== (snap?.rows[focusedRow]?.expr ?? '');
+  const hasUncommitted = floatInput.value !== (snap?.rows[focusedRow]?.expr ?? '');
   document.getElementById('btn-undo').disabled = undoPos <= 0 && !hasUncommitted;
   document.getElementById('btn-redo').disabled = undoPos >= undoStack.length - 1;
 }
@@ -106,9 +122,8 @@ function updateUndoButtons() {
 // ---- エンジン評価 ----
 
 function evalAll() {
-  const input = sheetEl.querySelector('.expr-input');
-  if (input && focusedRow >= 0 && focusedRow < rows.length) {
-    rows[focusedRow].expr = input.value;
+  if (focusedRow >= 0 && focusedRow < rows.length) {
+    rows[focusedRow].expr = floatInput.value;
   }
 
   if (wasmBroken) {
@@ -225,16 +240,29 @@ window.addEventListener('resize', () => {
     rowEl.classList.toggle('wrapped',   !!rows[i].wrapped);
     rowEl.classList.toggle('no-result', rows[i].showResult === false);
   }
+  positionFloatingEditor();
 });
 
 // ---- レンダリング ----
 
 function renderAll() {
-  sheetEl.innerHTML = '';
+  // floatEditor は DOM に残したまま行要素だけ差し替え、floatInput のフォーカスを維持する
+  const toRemove = [];
+  for (const c of sheetEl.children) {
+    if (c !== floatEditor) toRemove.push(c);
+  }
+  toRemove.forEach(el => el.remove());
   for (let i = 0; i < rows.length; i++) {
     sheetEl.appendChild(buildRowEl(i));
   }
   updateLayout();
+  // フォーカス行の式を floatInput に反映 (変換中は触らない)
+  const expr = rows[focusedRow]?.expr ?? '';
+  if (!imeComposing && floatInput.value !== expr) {
+    floatInput.value = expr;
+  }
+  positionFloatingEditor();
+  syncOverlay();
   syncFmtSelect();
 }
 
@@ -248,33 +276,12 @@ function buildRowEl(i) {
     (row.showResult === false ? ' no-result' : '');
   div.dataset.row = i;
 
-  // ---- 式列 ----
-  if (i === focusedRow) {
-    // フォーカス行: ハイライトオーバーレイ + 透明入力欄
-    const exprCell = document.createElement('div');
-    exprCell.className = 'expr-cell';
-
-    const hlDiv = document.createElement('div');
-    hlDiv.className = 'expr-hl-overlay';
-    hlDiv.innerHTML = highlight(row.expr) || '&ZeroWidthSpace;';
-
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.className = 'expr-input';
-    input.value = row.expr;
-    input.setAttribute('spellcheck', 'false');
-    input.setAttribute('autocomplete', 'off');
-
-    exprCell.appendChild(hlDiv);
-    exprCell.appendChild(input);
-    div.appendChild(exprCell);
-  } else {
-    // 非フォーカス行: ハイライト表示のみ
-    const exprCell = document.createElement('div');
-    exprCell.className = 'expr-hl';
-    exprCell.innerHTML = highlight(row.expr) || '&ZeroWidthSpace;';
-    div.appendChild(exprCell);
-  }
+  // 式列は常に静的ハイライト。フォーカス行は CSS で visibility:hidden され、
+  // その上に floatEditor が重なる。
+  const exprCell = document.createElement('div');
+  exprCell.className = 'expr-hl';
+  exprCell.innerHTML = highlight(row.expr) || '&ZeroWidthSpace;';
+  div.appendChild(exprCell);
 
   // ---- = 列・結果列 (show_result が false の場合は非表示) ----
   if (row.showResult !== false) {
@@ -294,6 +301,28 @@ function buildRowEl(i) {
   return div;
 }
 
+// フォーカス行の .expr-hl の位置・サイズを読んで floatEditor を重ねる。
+// getBoundingClientRect でビューポート座標を取り、#sheet 基準 + scrollTop で
+// #sheet の絶対座標空間に変換する (offsetTop は grid 子で不安定な環境がある)。
+function positionFloatingEditor() {
+  if (focusedRow < 0 || focusedRow >= rows.length) {
+    floatEditor.style.display = 'none';
+    return;
+  }
+  const rowEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
+  if (!rowEl) { floatEditor.style.display = 'none'; return; }
+  const exprEl = rowEl.querySelector('.expr-hl');
+  if (!exprEl) { floatEditor.style.display = 'none'; return; }
+
+  const sheetRect = sheetEl.getBoundingClientRect();
+  const exprRect  = exprEl.getBoundingClientRect();
+  floatEditor.style.display = '';
+  floatEditor.style.top    = `${exprRect.top  - sheetRect.top  + sheetEl.scrollTop }px`;
+  floatEditor.style.left   = `${exprRect.left - sheetRect.left + sheetEl.scrollLeft}px`;
+  floatEditor.style.width  = `${exprRect.width }px`;
+  floatEditor.style.height = `${exprRect.height}px`;
+}
+
 // ネイティブ draw_result_at に準拠: エラー / 通常 (カラーボックス含む) を振り分け
 // カラーリテラルの color-box は highlight() が inline span で処理する
 function applyResultToCell(cell, row) {
@@ -305,21 +334,11 @@ function applyResultToCell(cell, row) {
 }
 
 function updateResultCells() {
-  // showResult が変化した行がある場合は DOM 再構築が必要
+  // showResult が変化した行がある場合は DOM 再構築 (floatInput は DOM に残るのでフォーカス維持)
   for (let i = 0; i < rows.length; i++) {
     const cell = sheetEl.querySelector(`[data-result="${i}"]`);
     if (!!cell !== (rows[i].showResult !== false)) {
-      // showResult 変化で DOM を再構築するとき、カーソル位置を保存・復元する
-      const prevInput = sheetEl.querySelector('.expr-input');
-      const savedPos  = prevInput ? prevInput.selectionStart : -1;
       renderAll();
-      if (savedPos >= 0) {
-        const newInput = sheetEl.querySelector('.expr-input');
-        if (newInput) {
-          newInput.focus();
-          newInput.setSelectionRange(savedPos, savedPos);
-        }
-      }
       return;
     }
   }
@@ -342,33 +361,31 @@ function updateResultCells() {
       rowEl.classList.toggle('no-result', row.showResult === false);
     }
   }
+
+  // wrapped / no-result / 列幅変化に追従して floatEditor を再配置
+  positionFloatingEditor();
 }
 
 // ---- フォーカス管理 ----
 
-// 入力欄のシンタックスハイライトオーバーレイを input の scroll に同期する
+// floatOverlay を floatInput のスクロール位置に合わせる。
+// floatInput はテキスト透明なので overlay がハイライト済み表示を担う。
 function syncOverlay() {
-  const input = sheetEl.querySelector('.expr-input');
-  if (!input) return;
-  const hlDiv = input.closest('.expr-cell')?.querySelector('.expr-hl-overlay');
-  if (!hlDiv) return;
-  hlDiv.innerHTML = highlight(input.value) || '&ZeroWidthSpace;';
-  hlDiv.style.transform = `translateX(${-input.scrollLeft}px)`;
+  floatOverlay.innerHTML = highlight(floatInput.value) || '&ZeroWidthSpace;';
+  floatOverlay.style.transform = `translateX(${-floatInput.scrollLeft}px)`;
 }
 
 function focusInput(selectAll = false) {
   requestAnimationFrame(() => {
-    const input = sheetEl.querySelector('.expr-input');
-    if (input) {
-      input.focus();
-      if (selectAll) {
-        input.select();
-      } else {
-        input.setSelectionRange(input.value.length, input.value.length);
-      }
-      input.closest('.row')?.scrollIntoView({ block: 'nearest' });
-      syncOverlay();
+    floatInput.focus();
+    if (selectAll) {
+      floatInput.select();
+    } else {
+      floatInput.setSelectionRange(floatInput.value.length, floatInput.value.length);
     }
+    const rowEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
+    rowEl?.scrollIntoView({ block: 'nearest' });
+    syncOverlay();
   });
 }
 
@@ -383,10 +400,40 @@ document.getElementById('menubar').addEventListener('mousedown', e => {
 });
 
 function commitCurrentInput() {
-  const input = sheetEl.querySelector('.expr-input');
-  if (input && focusedRow >= 0 && focusedRow < rows.length) {
-    rows[focusedRow].expr = input.value;
+  if (focusedRow >= 0 && focusedRow < rows.length) {
+    rows[focusedRow].expr = floatInput.value;
   }
+}
+
+// 行構造を変えない軽量フォーカス移動 (renderAll を呼ばない)。
+// 矢印キーやタップで行を跨ぐときに使う。floatInput を触らないので
+// ソフトキーボードが維持される。
+function moveFocus(newRow) {
+  if (newRow < 0 || newRow >= rows.length || newRow === focusedRow) return;
+  commitCurrentInput();
+  const oldIdx = focusedRow;
+  const oldEl  = sheetEl.querySelector(`[data-row="${oldIdx}"]`);
+  if (oldEl) {
+    oldEl.classList.remove('focused');
+    oldEl.classList.toggle('empty', rows[oldIdx].expr === '');
+    // 直前まで隠されていた静的 .expr-hl にコミット済みの式を書き戻す
+    const exprHl = oldEl.querySelector('.expr-hl');
+    if (exprHl) exprHl.innerHTML = highlight(rows[oldIdx].expr) || '&ZeroWidthSpace;';
+  }
+  focusedRow = newRow;
+  let newEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
+  newEl?.classList.add('focused');
+  floatInput.value = rows[focusedRow].expr;
+  floatInput.setSelectionRange(floatInput.value.length, floatInput.value.length);
+  // 旧行のコミット値で結果が変わる可能性があるので再評価。
+  // evalAll → updateResultCells → updateLayout → positionFloatingEditor
+  // (showResult 変化で renderAll に飛ぶケースあり、その場合 newEl は無効化する)
+  evalAll();
+  newEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
+  syncOverlay();
+  newEl?.scrollIntoView({ block: 'nearest' });
+  syncFmtSelect();
+  floatInput.focus();
 }
 
 // ---- フォーマット選択 ----
@@ -449,25 +496,28 @@ fmtSelect.addEventListener('blur', focusInput);
 let imeComposing = false;
 
 sheetEl.addEventListener('compositionstart', e => {
-  if (!e.target.classList.contains('expr-input')) return;
+  if (e.target !== floatInput) return;
   imeComposing = true;
-  const rowEl = e.target.closest('.row');
+  const rowEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
   rowEl?.classList.add('composing');
+  floatEditor.classList.add('composing');
+  // .composing により .expr-hl が全幅に広がるので位置を再計算
+  positionFloatingEditor();
 });
 sheetEl.addEventListener('compositionend', e => {
-  if (!e.target.classList.contains('expr-input')) return;
+  if (e.target !== floatInput) return;
   imeComposing = false;
-  const rowEl = e.target.closest('.row');
-  const input = e.target;
+  const rowEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
   // Android Chrome では compositionend 時点で input.value が未確定なことがあり、
   // かつ後続の input (isComposing=false) が不発なケースもある。
   // setTimeout(0) で次tick まで待ってから row.expr を更新・再評価する。
-  // composing クラスは値確定・syncOverlay 後に外すことで stale content のフラッシュを防ぐ。
   setTimeout(() => {
-    rows[focusedRow].expr = input.value;
+    rows[focusedRow].expr = floatInput.value;
     syncOverlay();
     rowEl?.classList.remove('composing');
+    floatEditor.classList.remove('composing');
     evalAll();
+    positionFloatingEditor();
     updateUndoButtons();
   }, 0);
 });
@@ -504,13 +554,10 @@ sheetEl.addEventListener('pointerdown', e => {
   const i = parseInt(rowEl.dataset.row, 10);
   if (isNaN(i)) return;
   if (i !== focusedRow) {
-    commitCurrentInput();
-    focusedRow = i;
-    renderAll();
-    evalAll();
+    moveFocus(i);
   }
-  // input 自体のクリックはブラウザのカーソル配置に任せる
-  if (e.target.tagName !== 'INPUT') {
+  // 結果セル / floatInput 自体のクリックはブラウザに任せる
+  if (e.target !== floatInput && !e.target.classList.contains('result-cell')) {
     e.preventDefault();
     focusInput();
   }
@@ -528,11 +575,9 @@ function handleKeyDown(e) {
     e.preventDefault(); e.stopPropagation();
     // 未コミットの変更がある場合のみ push (無条件に push するとredoスタックを壊す)
     const snap = undoStack[undoPos];
-    const inp = sheetEl.querySelector('.expr-input');
-    const curVal = inp ? inp.value : '';
     const hasUncommitted = !snap ||
       rows.length !== snap.rows.length ||
-      curVal !== (snap.rows[focusedRow]?.expr ?? '');
+      floatInput.value !== (snap.rows[focusedRow]?.expr ?? '');
     if (hasUncommitted) { commitCurrentInput(); pushUndo(); }
     undo();
     return;
@@ -618,15 +663,11 @@ function handleKeyDown(e) {
     return;
   }
 
-  // 上下矢印: 行移動
+  // 上下矢印: 行移動 (軽量版・renderAll しない)
   if (!ctrl && !shift && (key === 'ArrowUp' || key === 'ArrowDown')) {
     e.preventDefault();
-    commitCurrentInput();
-    if (key === 'ArrowUp'   && focusedRow > 0)               focusedRow--;
-    if (key === 'ArrowDown' && focusedRow < rows.length - 1) focusedRow++;
-    renderAll();
-    focusInput();
-    syncFmtSelect();
+    const target = focusedRow + (key === 'ArrowUp' ? -1 : 1);
+    moveFocus(target);
     return;
   }
 

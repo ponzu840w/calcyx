@@ -118,6 +118,22 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
   overflow-y: auto;
   overflow-x: hidden;
   padding: 2px 0;
+  position: relative;   /* #float-editor の absolute 基準 */
+}
+
+/* 永続フロート編集エディタ: フォーカス行の .expr-hl の位置に重なる。
+   JS で top/left/width/height を計算して設定する。
+   position:absolute なので #sheet のスクロールに自然に追従する。 */
+#float-editor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: var(--row-h);
+  overflow: hidden;
+  /* row は position:relative で z-auto、しかも DOM 順で floatEditor より後ろにある。
+     .row.focused の背景色に覆われないよう前面に引き上げる。 */
+  z-index: 5;
 }
 
 /* スクロールバー */
@@ -137,6 +153,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
   position: relative;
 }
 .row.focused { background: var(--sel-bg); }
+
+/* フォーカス行の静的 .expr-hl は floatEditor に隠されるので見せない
+   (visibility:hidden でレイアウトサイズは維持し、offsetWidth/Top を読める)。 */
+.row.focused .expr-hl { visibility: hidden; }
 
 /* showResult=false の行 (リテラル単体や def/lambda 等):
    = 列・結果列がないので式セルを全幅に広げる。
@@ -226,9 +246,9 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 /* IME 変換中 (Android Gboard 等): オーバーレイを隠して input 生テキストを表示。
    変換中は input.value が placeholder 文字列を返すケースがあり、
    highlight() が化けた文字を描画してしまうため。
-   .row.composing で付くクラスを使う (全幅レイアウト切替と一緒に動く)。 */
-.row.composing .expr-hl-overlay { visibility: hidden; }
-.row.composing .expr-input      { color: var(--text); }
+   floatEditor 自身にクラスを付ける。 */
+#float-editor.composing .expr-hl-overlay { visibility: hidden; }
+#float-editor.composing .expr-input      { color: var(--text); }
 
 /* ハイライト付き表示レイヤー (非フォーカス行) */
 .expr-hl {
