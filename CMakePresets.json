@@ -50,9 +50,9 @@
       }
     },
     {
-      "name": "wasm",
-      "displayName": "WebAssembly (Emscripten)",
-      "binaryDir": "${sourceDir}/build-wasm",
+      "name": "web",
+      "displayName": "Web (Emscripten / WebAssembly)",
+      "binaryDir": "${sourceDir}/build-web",
       "toolchainFile": "${sourceDir}/cmake/toolchain-emscripten.cmake",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
@@ -64,7 +64,7 @@
     { "name": "unix-debug", "configurePreset": "unix-debug" },
     { "name": "win",        "configurePreset": "win" },
     { "name": "win-debug",  "configurePreset": "win-debug" },
-    { "name": "wasm",       "configurePreset": "wasm" }
+    { "name": "web",        "configurePreset": "web" }
   ],
   "testPresets": [
     {
@@ -93,6 +93,6 @@
   "packagePresets": [
     { "name": "unix", "configurePreset": "unix" },
     { "name": "win",  "configurePreset": "win" },
-    { "name": "web",  "configurePreset": "wasm" }
+    { "name": "web",  "configurePreset": "web" }
   ]
 }

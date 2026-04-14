@@ -1,6 +1,6 @@
 # cmake/toolchain-emscripten.cmake
 # Emscripten (WebAssembly) クロスコンパイル用ツールチェーン
-# 使い方: cmake --preset wasm
+# 使い方: cmake --preset web
 
 execute_process(
     COMMAND em-config EMSCRIPTEN_ROOT

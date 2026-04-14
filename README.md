@@ -42,8 +42,8 @@ FLTK・mpdecimal はビルド時に自動取得される。
 |---|---|---|
 | `win` (Windows クロスビルド) | macOS | `brew install mingw-w64` |
 | `win` (Windows クロスビルド) | Linux | `sudo apt install gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64` |
-| `wasm` (WebAssembly) | macOS | `brew install emscripten` |
-| `wasm` (WebAssembly) | Linux | [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) を参照 |
+| `web` (WebAssembly) | macOS | `brew install emscripten` |
+| `web` (WebAssembly) | Linux | [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) を参照 |
 
 ### ビルドコマンド
 
@@ -59,9 +59,9 @@ cmake --build --preset unix
 cmake --preset win
 cmake --build --preset win
 
-# WebAssembly
-cmake --preset wasm
-cmake --build --preset wasm
+# Web (WebAssembly)
+cmake --preset web
+cmake --build --preset web
 ```
 
 デバッグビルドは `unix-debug` / `win-debug` プリセットを使用。
@@ -102,8 +102,8 @@ cpack --preset web    # -> calcyx-web-<version>.zip
 ### Web 版の開発サーバー
 
 ```sh
-cmake --build --preset wasm
-cd build-wasm/web && python3 -m http.server 8080
+cmake --build --preset web
+cd build-web/web && python3 -m http.server 8080
 # → http://localhost:8080
 ```
 

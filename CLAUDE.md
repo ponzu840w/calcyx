@@ -39,8 +39,8 @@ cmake --build --preset unix
 cmake --preset win       # Windows 向けクロスビルド
 cmake --build --preset win
 
-cmake --preset wasm      # WebAssembly
-cmake --build --preset wasm
+cmake --preset web       # WebAssembly
+cmake --build --preset web
 ```
 
 開発機は macOS または Linux を前提とします。FLTK・mpdecimal は初回ビルド時に自動取得。
@@ -51,7 +51,7 @@ cmake --build --preset wasm
 |---|---|---|
 | `unix` | `brew install cmake` | `sudo apt install cmake libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev` |
 | `win` | `brew install cmake mingw-w64` | `sudo apt install cmake gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64` |
-| `wasm` | `brew install cmake emscripten` | cmake + [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) |
+| `web`  | `brew install cmake emscripten` | cmake + [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) |
 
 ### パッケージ生成
 
