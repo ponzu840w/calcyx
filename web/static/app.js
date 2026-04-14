@@ -256,6 +256,17 @@ function renderAll() {
     sheetEl.appendChild(buildRowEl(i));
   }
   updateLayout();
+  // updateLayout() は row.wrapped を更新するが、buildRowEl はその前に
+  // 古い row.wrapped でクラスを付けてしまっているので、ここで同期する。
+  // これをやらないと初回サンプルロード時に「narrow 列 + 折り返しなし」の
+  // 奇妙な表示になり、次の何かの操作 (updateResultCells 経由) で展開される。
+  for (let i = 0; i < rows.length; i++) {
+    const rowEl = sheetEl.querySelector(`[data-row="${i}"]`);
+    if (!rowEl) continue;
+    rowEl.classList.toggle('empty',     rows[i].expr === '');
+    rowEl.classList.toggle('wrapped',   !!rows[i].wrapped);
+    rowEl.classList.toggle('no-result', rows[i].showResult === false);
+  }
   // フォーカス行の式を floatInput に反映 (変換中は触らない)
   const expr = rows[focusedRow]?.expr ?? '';
   if (!imeComposing && floatInput.value !== expr) {

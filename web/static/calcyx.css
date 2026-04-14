@@ -28,12 +28,23 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body { height: 100%; background: var(--bg); color: var(--text); overflow: hidden; }
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  /* iOS/Android で入力フォーカス時に body がスクロールするのを抑止。
+     fixed により visual viewport の変化で document が動かなくなる。 */
+  position: fixed;
+  width: 100%;
+}
 
 #app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  /* モバイルのソフトキーボード出現に追従するため 100dvh を使う。
+     100vh は layout viewport 基準でキーボード表示時に余る。 */
+  height: 100dvh;
 }
 
 /* ---- メニューバー ---- */
