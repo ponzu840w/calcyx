@@ -165,6 +165,24 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
   grid-row: 2;
 }
 
+/* IME 変換中 (単一行だった行のみ): = と結果を一時的に非表示にして
+   式セルを単一行全幅に広げる。入力中に強制折り返しが発生して
+   表示が崩れるのを避ける。
+   元から .wrapped だった行はそのままの 2 行レイアウトを維持する。 */
+.row.composing:not(.wrapped) {
+  grid-template-rows: var(--row-h);
+  min-height: var(--row-h);
+}
+.row.composing:not(.wrapped) .expr-cell,
+.row.composing:not(.wrapped) .expr-hl {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.row.composing:not(.wrapped) .eq-cell,
+.row.composing:not(.wrapped) .result-cell {
+  display: none;
+}
+
 /* 式入力セル (フォーカス行) */
 .expr-cell {
   position: relative;      /* オーバーレイの基準点 */
@@ -207,9 +225,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); overflow: 
 
 /* IME 変換中 (Android Gboard 等): オーバーレイを隠して input 生テキストを表示。
    変換中は input.value が placeholder 文字列を返すケースがあり、
-   highlight() が化けた文字を描画してしまうため。 */
-.expr-cell.composing .expr-hl-overlay { visibility: hidden; }
-.expr-cell.composing .expr-input      { color: var(--text); }
+   highlight() が化けた文字を描画してしまうため。
+   .row.composing で付くクラスを使う (全幅レイアウト切替と一緒に動く)。 */
+.row.composing .expr-hl-overlay { visibility: hidden; }
+.row.composing .expr-input      { color: var(--text); }
 
 /* ハイライト付き表示レイヤー (非フォーカス行) */
 .expr-hl {

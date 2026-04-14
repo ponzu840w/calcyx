@@ -305,12 +305,33 @@ function applyResultToCell(cell, row) {
 }
 
 function updateResultCells() {
-  let needRebuild = false;
+  // showResult が変化した行がある場合は DOM 再構築が必要
+  for (let i = 0; i < rows.length; i++) {
+    const cell = sheetEl.querySelector(`[data-result="${i}"]`);
+    if (!!cell !== (rows[i].showResult !== false)) {
+      // showResult 変化で DOM を再構築するとき、カーソル位置を保存・復元する
+      const prevInput = sheetEl.querySelector('.expr-input');
+      const savedPos  = prevInput ? prevInput.selectionStart : -1;
+      renderAll();
+      if (savedPos >= 0) {
+        const newInput = sheetEl.querySelector('.expr-input');
+        if (newInput) {
+          newInput.focus();
+          newInput.setSelectionRange(savedPos, savedPos);
+        }
+      }
+      return;
+    }
+  }
+
+  // updateLayout を先に走らせて row.wrapped を新しい値に更新してから
+  // クラスをトグルする。逆順にすると 1 サイクル遅れて wrapped 表示がずれる
+  // (IME 変換中は input が抑止されているので confirm 時に 1 サイクル分見切れる)。
+  updateLayout();
+
   for (let i = 0; i < rows.length; i++) {
     const row  = rows[i];
     const cell = sheetEl.querySelector(`[data-result="${i}"]`);
-    // showResult の変化でセルの有無が変わるので再描画が必要
-    if (!!cell !== (row.showResult !== false)) { needRebuild = true; break; }
     if (!cell) continue;
     applyResultToCell(cell, row);
     cell.className = 'result-cell' + (row.error ? ' error' : '');
@@ -321,21 +342,6 @@ function updateResultCells() {
       rowEl.classList.toggle('no-result', row.showResult === false);
     }
   }
-  if (needRebuild) {
-    // showResult 変化で DOM を再構築するとき、カーソル位置を保存・復元する
-    const prevInput = sheetEl.querySelector('.expr-input');
-    const savedPos  = prevInput ? prevInput.selectionStart : -1;
-    renderAll();
-    if (savedPos >= 0) {
-      const newInput = sheetEl.querySelector('.expr-input');
-      if (newInput) {
-        newInput.focus();
-        newInput.setSelectionRange(savedPos, savedPos);
-      }
-    }
-    return;
-  }
-  updateLayout();
 }
 
 // ---- フォーカス管理 ----
@@ -445,12 +451,13 @@ let imeComposing = false;
 sheetEl.addEventListener('compositionstart', e => {
   if (!e.target.classList.contains('expr-input')) return;
   imeComposing = true;
-  e.target.closest('.expr-cell')?.classList.add('composing');
+  const rowEl = e.target.closest('.row');
+  rowEl?.classList.add('composing');
 });
 sheetEl.addEventListener('compositionend', e => {
   if (!e.target.classList.contains('expr-input')) return;
   imeComposing = false;
-  const cell = e.target.closest('.expr-cell');
+  const rowEl = e.target.closest('.row');
   const input = e.target;
   // Android Chrome では compositionend 時点で input.value が未確定なことがあり、
   // かつ後続の input (isComposing=false) が不発なケースもある。
@@ -459,7 +466,7 @@ sheetEl.addEventListener('compositionend', e => {
   setTimeout(() => {
     rows[focusedRow].expr = input.value;
     syncOverlay();
-    cell?.classList.remove('composing');
+    rowEl?.classList.remove('composing');
     evalAll();
     updateUndoButtons();
   }, 0);
