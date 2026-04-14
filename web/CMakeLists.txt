@@ -56,6 +56,8 @@ configure_file(
 )
 
 # ---- ビルド後: 静的ファイルをコピー・サンプルをルートから同期して manifest を生成 ----
+# キャッシュバスター値にはビルド毎に変わる CALCYX_VERSION_FULL を流用する
+# (git 未コミット時は 0.0.0-dev のため、リリースブランチでビルドした方が良い)。
 add_custom_command(TARGET calcyx_wasm POST_BUILD
     # 静的ファイルをコピー
     COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -70,5 +72,41 @@ add_custom_command(TARGET calcyx_wasm POST_BUILD
         "-DSRC_DIR=${CMAKE_SOURCE_DIR}/samples"
         "-DOUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/samples/manifest.json"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/gen_manifest.cmake"
-    COMMENT "静的ファイルをコピー・サンプルを同期・manifest.json を生成"
+    # index.html と app.js に ?v=${CALCYX_VERSION_FULL} を注入
+    COMMAND ${CMAKE_COMMAND}
+        "-DINPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/index.html"
+        "-DCACHE_BUST=${CALCYX_VERSION_FULL}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/inject_cache_bust.cmake"
+    COMMAND ${CMAKE_COMMAND}
+        "-DINPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/app.js"
+        "-DCACHE_BUST=${CALCYX_VERSION_FULL}"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/inject_cache_bust.cmake"
+    COMMENT "静的ファイルをコピー・サンプルを同期・manifest.json を生成・キャッシュバスター注入"
+)
+
+# ---- install() ルール (cpack 入力) ----
+# POST_BUILD で生成済みのファイルを zip 化する。WASM ビルドでしか呼ばれない。
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/index.html"
+    "${CMAKE_CURRENT_BINARY_DIR}/app.js"
+    "${CMAKE_CURRENT_BINARY_DIR}/calcyx.css"
+    "${CMAKE_CURRENT_BINARY_DIR}/calcyx.js"
+    "${CMAKE_CURRENT_BINARY_DIR}/calcyx.wasm"
+    "${CMAKE_CURRENT_BINARY_DIR}/colors.js"
+    "${CMAKE_CURRENT_BINARY_DIR}/favicon.svg"
+    "${CMAKE_CURRENT_BINARY_DIR}/highlight.js"
+    "${CMAKE_CURRENT_BINARY_DIR}/paste-dialog.js"
+    "${CMAKE_CURRENT_BINARY_DIR}/version.js"
+    DESTINATION .
+    COMPONENT web
+)
+install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/samples/"
+    DESTINATION samples
+    COMPONENT web
+)
+install(FILES
+    "${CMAKE_SOURCE_DIR}/LICENSE"
+    "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"
+    DESTINATION .
+    COMPONENT web
 )

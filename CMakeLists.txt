@@ -69,6 +69,17 @@ add_subdirectory(engine)
 
 if(EMSCRIPTEN)
     add_subdirectory(web)
+
+    # ---- CPack (WASM/Web 配布用 zip) ----
+    set(CPACK_PACKAGE_NAME                "calcyx")
+    set(CPACK_PACKAGE_VERSION             "${CALCYX_VERSION}")
+    set(CPACK_PACKAGE_VENDOR              "ponzu840w")
+    set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Programmers' calculator (web)")
+    set(CPACK_GENERATOR                   "ZIP")
+    set(CPACK_PACKAGE_FILE_NAME           "calcyx-web-${CALCYX_VERSION_FULL}")
+    set(CPACK_COMPONENTS_ALL              web)
+    set(CPACK_ARCHIVE_COMPONENT_INSTALL   OFF)
+    include(CPack)
 else()
     add_subdirectory(ui)
     add_subdirectory(cli)

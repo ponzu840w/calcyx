@@ -58,7 +58,13 @@ cmake --build --preset wasm
 ```sh
 cpack --preset unix   # macOS → calcyx-mac.zip / Linux → calcyx_*.deb
 cpack --preset win    # Windows → calcyx-win.zip (WSL 上で実行)
+cpack --preset web    # Web → calcyx-web-<version>.zip (静的ホスティング用一式)
 ```
+
+`cpack --preset web` で作成される zip には、index.html / app.js / calcyx.{js,wasm,css} / 各
+ES module / samples/ / LICENSE 類が入り、そのまま静的ホスティングに展開できます。
+ビルド時に `?v=<version>` 形式のキャッシュバスタークエリが index.html と app.js に注入さ
+れるため、デプロイ毎にブラウザキャッシュが自動で無効化されます。
 
 ### Windows 向けクロスコンパイル
 

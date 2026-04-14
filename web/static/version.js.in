@@ -1,1 +1,4 @@
 export const CALCYX_VERSION = '@CALCYX_VERSION_FULL@';
+// デプロイごとに変わる値。静的アセットの URL クエリに付与してブラウザキャッシュを
+// 無効化する。ローカル開発で version.js が未生成のままでも空文字 fallback で動く。
+export const CACHE_BUST     = '@CALCYX_VERSION_FULL@';

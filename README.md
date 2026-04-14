@@ -92,6 +92,8 @@ cpack --preset unix   # -> calcyx-mac-<version>.zip
                       # or calcyx-linux-<version>.deb
 # Windows
 cpack --preset win    # -> calcyx-win-<version>.zip
+# Web (静的ホスティング用ファイル一式)
+cpack --preset web    # -> calcyx-web-<version>.zip
 ```
 
 バージョンは git tag から自動取得（形式: `v1.2.3`）。
@@ -104,8 +106,6 @@ cmake --build --preset wasm
 cd build-wasm/web && python3 -m http.server 8080
 # → http://localhost:8080
 ```
-
-WASM は `file://` では動作しない（CORS 制限）。HTTP サーバー経由でアクセスすること。
 
 ## テスト
 

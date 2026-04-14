@@ -5,13 +5,20 @@ import { highlight } from './highlight.js';
 import { applyColors } from './colors.js';
 import { PasteDialog } from './paste-dialog.js';
 import CalcyxModule from './calcyx.js';
-import { CALCYX_VERSION } from './version.js';
+import { CALCYX_VERSION, CACHE_BUST } from './version.js';
+
+// Emscripten が calcyx.wasm を fetch するときのパスに ?v=... を付与する。
+// calcyx.js 本体は静的 import 経由でビルド時にクエリが付くが、wasm は
+// calcyx.js 内部の locateFile 経由で読まれるので別途指定する必要がある。
+const _wasmInitOpts = {
+  locateFile: (p) => p.endsWith('.wasm') ? `${p}?v=${CACHE_BUST}` : p,
+};
 
 // ---- カラーテーマ適用 ----
 applyColors();
 
 // ---- WASM 初期化 ----
-const Module = await CalcyxModule();
+const Module = await CalcyxModule(_wasmInitOpts);
 const wasm = {
   init:           Module.cwrap('wasm_init',           null,     []),
   reset:          Module.cwrap('wasm_reset',          null,     []),
@@ -29,7 +36,7 @@ let wasmReiniting = false;
 async function reinitWasm() {
   console.info('[calcyx] WASM 再初期化開始...');
   try {
-    const m = await CalcyxModule();
+    const m = await CalcyxModule(_wasmInitOpts);
     wasm.init           = m.cwrap('wasm_init',           null,     []);
     wasm.reset          = m.cwrap('wasm_reset',          null,     []);
     wasm.eval_line      = m.cwrap('wasm_eval_line',      'number', ['string']);
@@ -859,7 +866,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
 // manifest.json を取得して samples セクションを動的構築
 (async () => {
   try {
-    const res = await fetch('samples/manifest.json');
+    const res = await fetch(`samples/manifest.json?v=${CACHE_BUST}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const files = await res.json();
     const container = document.getElementById('dd-samples');
@@ -870,7 +877,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
       item.addEventListener('click', async () => {
         openDropdownHide();
         try {
-          const r = await fetch(`samples/${filename}`);
+          const r = await fetch(`samples/${filename}?v=${CACHE_BUST}`);
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const text = await r.text();
           commitCurrentInput();

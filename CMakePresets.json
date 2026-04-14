@@ -92,6 +92,7 @@
   ],
   "packagePresets": [
     { "name": "unix", "configurePreset": "unix" },
-    { "name": "win",  "configurePreset": "win" }
+    { "name": "win",  "configurePreset": "win" },
+    { "name": "web",  "configurePreset": "wasm" }
   ]
 }
