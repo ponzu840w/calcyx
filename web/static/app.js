@@ -205,7 +205,19 @@ function updateLayout() {
   sheetEl.style.setProperty('--eq-col-w',   eqW   + 'px');
 }
 
-window.addEventListener('resize', () => { updateLayout(); renderAll(); });
+// resize 時は DOM 再構築せずクラスだけ更新する。
+// renderAll() を呼ぶと focused 行の <input> が破棄され、
+// Android でソフトキーボード表示に伴う viewport resize で
+// キーボードが即座に引っ込んでしまう。
+window.addEventListener('resize', () => {
+  updateLayout();
+  for (let i = 0; i < rows.length; i++) {
+    const rowEl = sheetEl.querySelector(`[data-row="${i}"]`);
+    if (!rowEl) continue;
+    rowEl.classList.toggle('empty',   rows[i].expr === '');
+    rowEl.classList.toggle('wrapped', !!rows[i].wrapped);
+  }
+});
 
 // ---- レンダリング ----
 
