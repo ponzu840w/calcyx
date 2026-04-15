@@ -14,14 +14,23 @@
       <div class="menu-group">
         <button class="menu-btn" id="btn-new"  title="All Clear (Ctrl+Shift+Del)">AC</button>
         <div class="menu-dropdown">
-          <button class="menu-btn menu-btn-dd" id="btn-open" title="開く">Open ▾</button>
+          <button class="menu-btn menu-btn-dd" id="btn-open" title="開く">📂 ▾</button>
           <div class="dropdown-panel" id="open-panel" hidden>
             <div class="dropdown-item" id="dd-upload">Upload...</div>
             <div class="dropdown-sep"></div>
             <div id="dd-samples"><!-- app.js が動的に追加 --></div>
           </div>
         </div>
-        <button class="menu-btn" id="btn-save" title="保存 (Ctrl+S)">Save</button>
+        <div class="menu-dropdown">
+          <button class="menu-btn menu-btn-dd" id="btn-save" title="保存 (Ctrl+S)">💾 ▾</button>
+          <div class="dropdown-panel" id="save-panel" hidden>
+            <div class="dropdown-item" id="dd-save-file">Save to file...</div>
+            <div class="dropdown-item" id="dd-copy-all">Copy all to clipboard</div>
+          </div>
+        </div>
+      </div>
+      <div class="menu-group">
+        <button class="menu-btn" id="btn-paste" title="クリップボードから貼り付け">📥</button>
       </div>
       <div class="menu-group">
         <button class="menu-btn" id="btn-undo" title="元に戻す (Ctrl+Z)"  disabled>←</button>
@@ -44,7 +53,13 @@
     </div>
 
     <!-- スプレッドシート本体 -->
-    <div id="sheet"></div>
+    <div id="sheet">
+      <!-- フォーカス行の右端に浮かぶ L/R コピーボタン (JS で位置を計算) -->
+      <div id="row-action-bar" hidden>
+        <button class="row-action-btn" id="btn-copy-lhs" title="左辺をコピー">📋L</button>
+        <button class="row-action-btn" id="btn-copy-rhs" title="右辺をコピー">📋R</button>
+      </div>
+    </div>
   </div>
 
   <!-- Paste Options ダイアログ -->
@@ -52,25 +67,27 @@
     <div class="dialog-layout">
       <div class="dialog-col">
         <div class="dialog-label">Clipboard Text:</div>
-        <textarea id="paste-src" spellcheck="false" rows="15"></textarea>
+        <textarea id="paste-src" spellcheck="false" wrap="off" rows="8"></textarea>
+        <div class="ctrl-row">
+          <label class="ctrl-label">Column Delimiter:</label>
+          <input type="text" id="paste-delim" size="3">
+        </div>
+        <div class="ctrl-row">
+          <label class="ctrl-label">Column Index:</label>
+          <input type="number" id="paste-col-idx" value="1" min="0" size="2">
+          <span id="paste-col-total"></span>
+        </div>
+        <div class="ctrl-row ctrl-row-right">
+          <button id="btn-select-col">Select Column</button>
+        </div>
       </div>
       <div class="dialog-col">
         <div class="dialog-label">Text will be pasted:</div>
-        <textarea id="paste-preview" spellcheck="false" rows="15"></textarea>
-      </div>
-    </div>
-    <div class="dialog-controls">
-      <div class="ctrl-row">
-        <label class="ctrl-label">Column Delimiter:</label>
-        <input type="text" id="paste-delim" size="3">
-        <button id="btn-remove-commas">Remove Commas</button>
-        <button id="btn-remove-rhs">Remove Right-hands</button>
-      </div>
-      <div class="ctrl-row">
-        <label class="ctrl-label">Column Index:</label>
-        <input type="number" id="paste-col-idx" value="1" min="0" size="4">
-        <span id="paste-col-total"></span>
-        <button id="btn-select-col">Select Column</button>
+        <textarea id="paste-preview" spellcheck="false" wrap="off" rows="8"></textarea>
+        <div class="ctrl-row">
+          <button id="btn-remove-commas">Remove Commas</button>
+          <button id="btn-remove-rhs">Remove Right-hands</button>
+        </div>
       </div>
     </div>
     <div class="dialog-buttons">

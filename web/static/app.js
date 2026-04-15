@@ -253,10 +253,11 @@ window.addEventListener('resize', () => {
 // ---- レンダリング ----
 
 function renderAll() {
-  // floatEditor は DOM に残したまま行要素だけ差し替え、floatInput のフォーカスを維持する
+  // floatEditor / rowActionBar は DOM に残したまま行要素だけ差し替え、floatInput のフォーカスを維持する
+  const rowActionBar = document.getElementById('row-action-bar');
   const toRemove = [];
   for (const c of sheetEl.children) {
-    if (c !== floatEditor) toRemove.push(c);
+    if (c !== floatEditor && c !== rowActionBar) toRemove.push(c);
   }
   toRemove.forEach(el => el.remove());
   for (let i = 0; i < rows.length; i++) {
@@ -325,12 +326,13 @@ function buildRowEl(i) {
 function positionFloatingEditor() {
   if (focusedRow < 0 || focusedRow >= rows.length) {
     floatEditor.style.display = 'none';
+    positionRowActionBar();
     return;
   }
   const rowEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
-  if (!rowEl) { floatEditor.style.display = 'none'; return; }
+  if (!rowEl) { floatEditor.style.display = 'none'; positionRowActionBar(); return; }
   const exprEl = rowEl.querySelector('.expr-hl');
-  if (!exprEl) { floatEditor.style.display = 'none'; return; }
+  if (!exprEl) { floatEditor.style.display = 'none'; positionRowActionBar(); return; }
 
   const sheetRect = sheetEl.getBoundingClientRect();
   const exprRect  = exprEl.getBoundingClientRect();
@@ -339,6 +341,23 @@ function positionFloatingEditor() {
   floatEditor.style.left   = `${exprRect.left - sheetRect.left + sheetEl.scrollLeft}px`;
   floatEditor.style.width  = `${exprRect.width }px`;
   floatEditor.style.height = `${exprRect.height}px`;
+  positionRowActionBar();
+}
+
+// L/R コピーボタンの位置を更新。フォーカス行の「直下」(= 1 行ぶん下) に浮かべる。
+// 次の行がある場合はその右側に重なり、最下段の場合は #sheet の padding-bottom
+// (= var(--row-h)) が確保しているバッファ領域に着地する。
+function positionRowActionBar() {
+  const bar = document.getElementById('row-action-bar');
+  if (!bar) return;
+  if (focusedRow < 0 || focusedRow >= rows.length) { bar.hidden = true; return; }
+  const rowEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
+  if (!rowEl) { bar.hidden = true; return; }
+  const sheetRect = sheetEl.getBoundingClientRect();
+  const rowRect   = rowEl.getBoundingClientRect();
+  bar.hidden = false;
+  bar.style.top = `${rowRect.bottom - sheetRect.top + sheetEl.scrollTop}px`;
+  // right: 0 は CSS 側で設定済み
 }
 
 // ネイティブ draw_result_at に準拠: エラー / 通常 (カラーボックス含む) を振り分け
@@ -790,14 +809,11 @@ function deleteCurrentRow(moveDown) {
 
 // ---- 貼り付け処理 ----
 
-async function handlePaste(e) {
-  const text = e.clipboardData?.getData('text') ?? '';
-  if (!text.includes('\n') && !text.includes('\r')) return;
-
-  e.preventDefault();
+// 複数行テキストを PasteDialog で整形し、現在行を起点に挿入する。
+// 入力 event 経由 (handlePaste) と Paste ボタン経由の両方から呼ばれる。
+async function openPasteDialogAndApply(text) {
   const lines = await pasteDialog.open(text);
   if (!lines || lines.length === 0) return;
-
   commitCurrentInput();
   pushUndo();
   rows[focusedRow].expr = lines[0];
@@ -808,6 +824,13 @@ async function handlePaste(e) {
   renderAll();
   focusInput();
   evalAll();
+}
+
+async function handlePaste(e) {
+  const text = e.clipboardData?.getData('text') ?? '';
+  if (!text.includes('\n') && !text.includes('\r')) return;
+  e.preventDefault();
+  await openPasteDialogAndApply(text);
 }
 
 // ---- ファイル操作 ----
@@ -927,6 +950,108 @@ document.getElementById('file-input').addEventListener('change', async e => {
 
 document.getElementById('btn-undo').addEventListener('click', () => { commitCurrentInput(); undo(); });
 document.getElementById('btn-redo').addEventListener('click', () => { commitCurrentInput(); redo(); });
+
+// ---- Save ドロップダウン (Save to file / Copy all to clipboard) ----
+
+const savePanel = document.getElementById('save-panel');
+
+function saveDropdownShow() { savePanel.hidden = false; }
+function saveDropdownHide() { savePanel.hidden = true; focusInput(); }
+
+document.getElementById('btn-save').addEventListener('click', e => {
+  e.stopPropagation();
+  savePanel.hidden ? saveDropdownShow() : saveDropdownHide();
+});
+document.addEventListener('click', e => {
+  if (!savePanel.hidden && !savePanel.contains(e.target))
+    saveDropdownHide();
+});
+
+function serializeAllRows() {
+  return rows.map(r => {
+    if (r.result && !r.error && r.showResult !== false) {
+      return `${r.expr} = ${r.result}`;
+    }
+    return r.expr;
+  }).join('\n');
+}
+
+document.getElementById('dd-save-file').addEventListener('click', () => {
+  saveDropdownHide();
+  commitCurrentInput();
+  const text = serializeAllRows();
+  const blob = new Blob([text + '\n'], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName || 'calcyx.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('dd-copy-all').addEventListener('click', async () => {
+  saveDropdownHide();
+  commitCurrentInput();
+  try {
+    await navigator.clipboard.writeText(serializeAllRows());
+  } catch (err) {
+    console.error('[calcyx] クリップボードへのコピー失敗:', err);
+  }
+  focusInput();
+});
+
+// ---- 行単位の左辺/右辺コピー (フォーカス行の右端に浮かぶボタン) ----
+
+async function writeClipboard(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch (err) { console.error('[calcyx] クリップボードへのコピー失敗:', err); }
+}
+
+// mousedown で preventDefault しないと floatInput のフォーカスが外れ、
+// スマホではソフトキーボードが一瞬消える。
+for (const id of ['btn-copy-lhs', 'btn-copy-rhs']) {
+  document.getElementById(id).addEventListener('mousedown', e => e.preventDefault());
+}
+
+document.getElementById('btn-copy-lhs').addEventListener('click', async () => {
+  commitCurrentInput();
+  await writeClipboard(rows[focusedRow]?.expr ?? '');
+  focusInput();
+});
+
+document.getElementById('btn-copy-rhs').addEventListener('click', async () => {
+  const row = rows[focusedRow];
+  if (!row) return;
+  const text = (row.result && !row.error && row.showResult !== false) ? row.result : '';
+  await writeClipboard(text);
+  focusInput();
+});
+
+// ---- Paste ボタン ----
+
+document.getElementById('btn-paste').addEventListener('click', async () => {
+  let text;
+  try {
+    text = await navigator.clipboard.readText();
+  } catch (err) {
+    console.error('[calcyx] クリップボードの読み取り失敗:', err);
+    return;
+  }
+  if (!text) return;
+  if (text.includes('\n') || text.includes('\r')) {
+    await openPasteDialogAndApply(text);
+    return;
+  }
+  // 単一行: floatInput のカーソル位置に挿入
+  const start = floatInput.selectionStart ?? floatInput.value.length;
+  const end   = floatInput.selectionEnd   ?? floatInput.value.length;
+  floatInput.value = floatInput.value.slice(0, start) + text + floatInput.value.slice(end);
+  floatInput.selectionStart = floatInput.selectionEnd = start + text.length;
+  floatInput.dispatchEvent(new Event('input', { bubbles: true }));
+  focusInput();
+});
 
 // ---- グローバルキーボードショートカット ----
 

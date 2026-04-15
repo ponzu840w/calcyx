@@ -128,7 +128,9 @@ html, body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 2px 0;
+  /* padding-bottom は L/R コピーボタンが最下段の下に着地できる余白。
+     それ以外の余白は通常の 2px。 */
+  padding: 2px 0 var(--row-h) 0;
   position: relative;   /* #float-editor の absolute 基準 */
 }
 
@@ -146,6 +148,34 @@ html, body {
      .row.focused の背景色に覆われないよう前面に引き上げる。 */
   z-index: 5;
 }
+
+/* フォーカス行の右端に浮かぶ L/R コピーボタン。
+   floatEditor と同じく #sheet 内で absolute 配置、JS が top を更新する。
+   非 wrapped 行では行右端、wrapped 行では 2 段目 (結果列) の右端に付く。 */
+#row-action-bar {
+  position: absolute;
+  right: 0;
+  height: var(--row-h);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 2px;
+  z-index: 6;             /* floatEditor (5) より上 */
+  pointer-events: auto;
+}
+#row-action-bar[hidden] { display: none; }
+.row-action-btn {
+  background: #2e2e38;
+  color: var(--text);
+  border: 1px solid var(--sep);
+  padding: 0 6px;
+  height: calc(var(--row-h) - 4px);
+  font-size: 11px;
+  font-family: var(--font);
+  cursor: pointer;
+  border-radius: 2px;
+}
+.row-action-btn:hover { background: #3a3a48; }
 
 /* スクロールバー */
 #sheet::-webkit-scrollbar { width: 8px; }
@@ -331,20 +361,34 @@ dialog {
   border: 1px solid var(--sep);
   border-radius: 4px;
   padding: 12px;
-  min-width: 660px;
+  box-sizing: border-box;
 }
 dialog::backdrop { background: rgba(0,0,0,0.6); }
 
+#paste-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  /* 画面幅が 700px 以上なら 700px で中央、700px 未満ならビューポートに追従。
+     PC/スマホで同じ縦積みレイアウトを共有する。 */
+  width: calc(100vw - 16px);
+  max-width: 700px;
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+}
+
 .dialog-layout {
   display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-bottom: 10px;
 }
-.dialog-col { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.dialog-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .dialog-label { font-size: 11px; color: #aaa; }
 
 dialog textarea {
-  flex: 1;
   background: #1a1a20;
   color: var(--text);
   border: 1px solid var(--sep);
@@ -355,9 +399,10 @@ dialog textarea {
   outline: none;
 }
 
-.dialog-controls { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
 .ctrl-row { display: flex; align-items: center; gap: 8px; }
+.ctrl-row-right { justify-content: flex-end; }
 .ctrl-label { font-size: 11px; width: 110px; }
+#paste-col-idx { width: 3em; }
 
 dialog input[type="text"],
 dialog input[type="number"] {
