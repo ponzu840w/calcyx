@@ -14,18 +14,14 @@
       <div class="menu-group">
         <button class="menu-btn" id="btn-new"  title="All Clear (Ctrl+Shift+Del)">AC</button>
         <div class="menu-dropdown">
-          <button class="menu-btn menu-btn-dd" id="btn-open" title="開く">📂<span class="btn-label"> Open</span> ▾</button>
+          <button class="menu-btn menu-btn-dd" id="btn-open" title="ファイル">📂<span class="btn-label"> File</span> ▾</button>
           <div class="dropdown-panel" id="open-panel" hidden>
+            <div class="dropdown-item" id="dd-save-file">Save to file...</div>
+            <div class="dropdown-item" id="dd-copy-all">Copy all to clipboard</div>
+            <div class="dropdown-sep"></div>
             <div class="dropdown-item" id="dd-upload">Upload...</div>
             <div class="dropdown-sep"></div>
             <div id="dd-samples"><!-- app.js が動的に追加 --></div>
-          </div>
-        </div>
-        <div class="menu-dropdown">
-          <button class="menu-btn menu-btn-dd" id="btn-save" title="保存 (Ctrl+S)">💾<span class="btn-label"> Save</span> ▾</button>
-          <div class="dropdown-panel" id="save-panel" hidden>
-            <div class="dropdown-item" id="dd-save-file">Save to file...</div>
-            <div class="dropdown-item" id="dd-copy-all">Copy all to clipboard</div>
           </div>
         </div>
       </div>

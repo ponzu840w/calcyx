@@ -83,6 +83,56 @@ let undoPos = -1;
 // (native: SheetView::commit() が original_expr_ と比較するのに相当)。
 let originalExpr = '';
 
+// ---- autosave (localStorage) ----
+// 編集履歴を計算機の「付属ノート」として localStorage に永続化する。
+// ブラウザを閉じても次回起動時に復元され、Save/Open はエクスポート/インポート
+// 用途として残る。デバウンスで書き込み頻度を抑える。
+const AUTOSAVE_KEY = 'calcyx.autosave.v1';
+const AUTOSAVE_DEBOUNCE_MS = 300;
+let autosaveTimer = null;
+
+function doAutosave() {
+  try {
+    // 未コミットの floatInput 値も保存対象にする (rows はいじらない)。
+    const exprs = rows.map((r, i) =>
+      i === focusedRow && !imeComposing ? floatInput.value : r.expr
+    );
+    const payload = JSON.stringify({ v: 1, rows: exprs, focusedRow });
+    localStorage.setItem(AUTOSAVE_KEY, payload);
+  } catch (e) {
+    console.warn('[calcyx] autosave 失敗:', e);
+  }
+}
+
+function scheduleAutosave() {
+  if (autosaveTimer) return;
+  autosaveTimer = setTimeout(() => {
+    autosaveTimer = null;
+    doAutosave();
+  }, AUTOSAVE_DEBOUNCE_MS);
+}
+
+// タブ離脱時はデバウンスを待たず同期書き込み。
+// pagehide はモバイル (bfcache) も含めて発火しやすいので beforeunload より確実。
+window.addEventListener('pagehide', doAutosave);
+window.addEventListener('beforeunload', doAutosave);
+
+function restoreFromStorage() {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !Array.isArray(data.rows) || data.rows.length === 0) return null;
+    return {
+      rows: data.rows.map(expr => ({ expr: String(expr ?? ''), result: '', error: false })),
+      focusedRow: Math.max(0, Math.min(data.focusedRow ?? 0, data.rows.length - 1)),
+    };
+  } catch (e) {
+    console.warn('[calcyx] autosave の復元失敗:', e);
+    return null;
+  }
+}
+
 // ---- Undo/Redo ----
 
 function captureSnapshot() {
@@ -97,6 +147,7 @@ function pushUndo() {
   undoStack.push(captureSnapshot());
   undoPos = undoStack.length - 1;
   updateUndoButtons();
+  scheduleAutosave();
 }
 
 function applySnapshot(snap) {
@@ -593,6 +644,7 @@ sheetEl.addEventListener('input', e => {
   syncOverlay();
   evalAll();
   updateUndoButtons();
+  scheduleAutosave();  // 未コミットの in-flight 編集も保存対象
 });
 
 sheetEl.addEventListener('keydown', e => {
@@ -989,21 +1041,7 @@ document.getElementById('file-input').addEventListener('change', async e => {
 document.getElementById('btn-undo').addEventListener('click', () => { commitCurrentInput(); undo(); });
 document.getElementById('btn-redo').addEventListener('click', () => { commitCurrentInput(); redo(); });
 
-// ---- Save ドロップダウン (Save to file / Copy all to clipboard) ----
-
-const savePanel = document.getElementById('save-panel');
-
-function saveDropdownShow() { savePanel.hidden = false; }
-function saveDropdownHide() { savePanel.hidden = true; focusInput(); }
-
-document.getElementById('btn-save').addEventListener('click', e => {
-  e.stopPropagation();
-  savePanel.hidden ? saveDropdownShow() : saveDropdownHide();
-});
-document.addEventListener('click', e => {
-  if (!savePanel.hidden && !savePanel.contains(e.target))
-    saveDropdownHide();
-});
+// ---- File ドロップダウン配下: Save to file / Copy all to clipboard ----
 
 function serializeAllRows() {
   return rows.map(r => {
@@ -1015,7 +1053,7 @@ function serializeAllRows() {
 }
 
 document.getElementById('dd-save-file').addEventListener('click', () => {
-  saveDropdownHide();
+  openDropdownHide();
   commitCurrentInput();
   const text = serializeAllRows();
   const blob = new Blob([text + '\n'], { type: 'text/plain;charset=utf-8' });
@@ -1030,7 +1068,7 @@ document.getElementById('dd-save-file').addEventListener('click', () => {
 });
 
 document.getElementById('dd-copy-all').addEventListener('click', async () => {
-  saveDropdownHide();
+  openDropdownHide();
   commitCurrentInput();
   try {
     await navigator.clipboard.writeText(serializeAllRows());
@@ -1123,12 +1161,20 @@ document.addEventListener('keydown', e => {
   const fromInput = e.target.classList.contains('expr-input');
   if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); if (!fromInput) { commitCurrentInput(); undo(); } }
   if (e.key === 'y' || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); if (!fromInput) redo(); }
-  if (e.key === 'o') { e.preventDefault(); document.getElementById('btn-open').click(); }
-  if (e.key === 's') { e.preventDefault(); document.getElementById('btn-save').click(); }
+  if (e.key === 'o' || e.key === 's') { e.preventDefault(); document.getElementById('btn-open').click(); }
 });
 
 // ---- 初期化 ----
 
+// localStorage からの autosave 復元。あれば rows / focusedRow を置き換える。
+{
+  const restored = restoreFromStorage();
+  if (restored) {
+    rows = restored.rows;
+    focusedRow = restored.focusedRow;
+  }
+}
 pushUndo();
 renderAll();
+evalAll();
 focusInput();

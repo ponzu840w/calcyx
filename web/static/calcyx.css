@@ -76,6 +76,18 @@ html, body {
 }
 .menu-group:last-child { border-right: none; }
 
+/* fmt セレクトだけは右端に寄せる。モバイルで .menu-btn の clamp() が
+   max に張り付いてもメニューバーの右側に空白が残らないように、auto マージンで
+   余白をボタン群と fmt との間に集約する。
+   fmt-group の直後に非表示の file-input が入っているため :last-child では
+   ないので、border-right を明示的に消す必要がある。 */
+.fmt-group {
+  margin-left: auto;
+  margin-right: 0;
+  padding-right: 0;
+  border-right: none;
+}
+
 .menu-btn {
   background: #2e2e38;
   color: var(--text);
