@@ -79,6 +79,9 @@ let fileName = null;
 
 const undoStack = [];
 let undoPos = -1;
+// フォーカス行に入った時点の expr。commit 時に差分があれば行ごとに push する
+// (native: SheetView::commit() が original_expr_ と比較するのに相当)。
+let originalExpr = '';
 
 // ---- Undo/Redo ----
 
@@ -279,6 +282,7 @@ function renderAll() {
   const expr = rows[focusedRow]?.expr ?? '';
   if (!imeComposing && floatInput.value !== expr) {
     floatInput.value = expr;
+    originalExpr = expr;  // 新しい編集セッションの比較基準
   }
   positionFloatingEditor();
   syncOverlay();
@@ -436,9 +440,18 @@ document.getElementById('menubar').addEventListener('mousedown', e => {
   }
 });
 
+// 現在行の floatInput 値を rows に書き戻す。差分があれば undo エントリを作る。
+// native: SheetView::commit() 相当 — original_expr_ と比較し、差分があれば
+// ChangeExpr の UndoEntry を1件 commit する。
 function commitCurrentInput() {
-  if (focusedRow >= 0 && focusedRow < rows.length) {
-    rows[focusedRow].expr = floatInput.value;
+  if (focusedRow < 0 || focusedRow >= rows.length) return;
+  const newExpr = floatInput.value;
+  if (newExpr !== originalExpr) {
+    rows[focusedRow].expr = newExpr;
+    originalExpr = newExpr;  // 二重登録防止
+    pushUndo();
+  } else {
+    rows[focusedRow].expr = newExpr;
   }
 }
 
@@ -461,6 +474,7 @@ function moveFocus(newRow) {
   let newEl = sheetEl.querySelector(`[data-row="${focusedRow}"]`);
   newEl?.classList.add('focused');
   floatInput.value = rows[focusedRow].expr;
+  originalExpr = floatInput.value;  // 新しい編集セッションの比較基準
   floatInput.setSelectionRange(floatInput.value.length, floatInput.value.length);
   // 旧行のコミット値で結果が変わる可能性があるので再評価。
   // evalAll → updateResultCells → updateLayout → positionFloatingEditor
@@ -610,12 +624,7 @@ function handleKeyDown(e) {
   // Undo / Redo
   if (ctrl && !shift && key === 'z') {
     e.preventDefault(); e.stopPropagation();
-    // 未コミットの変更がある場合のみ push (無条件に push するとredoスタックを壊す)
-    const snap = undoStack[undoPos];
-    const hasUncommitted = !snap ||
-      rows.length !== snap.rows.length ||
-      floatInput.value !== (snap.rows[focusedRow]?.expr ?? '');
-    if (hasUncommitted) { commitCurrentInput(); pushUndo(); }
+    commitCurrentInput();  // 差分があれば commitCurrentInput 内で pushUndo される
     undo();
     return;
   }
@@ -667,11 +676,11 @@ function handleKeyDown(e) {
   if (key === 'Enter' && !ctrl && !shift) {
     e.preventDefault();
     commitCurrentInput();
-    pushUndo();
     const cur = rows[focusedRow];
     const hasResult = cur && cur.result && !cur.error && cur.showResult !== false;
     rows.splice(focusedRow + 1, 0, { expr: hasResult ? 'ans' : '', result: '', error: false });
     focusedRow++;
+    pushUndo();
     renderAll();
     focusInput(hasResult);  // ans 挿入時は全選択 (native: insert_position(3,0))
     if (hasResult) evalAll();
@@ -682,8 +691,8 @@ function handleKeyDown(e) {
   if (key === 'Enter' && shift) {
     e.preventDefault();
     commitCurrentInput();
-    pushUndo();
     rows.splice(focusedRow, 0, { expr: '', result: '', error: false });
+    pushUndo();
     renderAll();
     focusInput();
     evalAll();
@@ -694,8 +703,8 @@ function handleKeyDown(e) {
   if (shift && !ctrl && (key === 'Delete' || key === 'Backspace')) {
     e.preventDefault();
     commitCurrentInput();
-    pushUndo();
     deleteCurrentRow(key === 'Delete');
+    pushUndo();
     return;
   }
 
@@ -704,8 +713,8 @@ function handleKeyDown(e) {
     e.preventDefault();
     commitCurrentInput();
     if (focusedRow < rows.length - 1) {
-      pushUndo();
       rows.splice(focusedRow + 1, 1);
+      pushUndo();
       renderAll();
       focusInput();
       evalAll();
@@ -716,8 +725,8 @@ function handleKeyDown(e) {
   // Backspace on empty: 上の行へ移動して削除
   if (!ctrl && !shift && key === 'Backspace' && e.target.value === '') {
     e.preventDefault();
-    pushUndo();
     deleteCurrentRow(false);
+    pushUndo();
     return;
   }
 
@@ -733,11 +742,11 @@ function handleKeyDown(e) {
   if (ctrl && shift && (key === 'ArrowUp' || key === 'ArrowDown')) {
     e.preventDefault();
     commitCurrentInput();
-    pushUndo();
     const target = focusedRow + (key === 'ArrowUp' ? -1 : 1);
     if (target >= 0 && target < rows.length) {
       [rows[focusedRow], rows[target]] = [rows[target], rows[focusedRow]];
       focusedRow = target;
+      pushUndo();
     }
     renderAll();
     focusInput();
@@ -778,8 +787,8 @@ function moveToRow(i, addIfEnd) {
   commitCurrentInput();
   if (i >= rows.length) {
     if (addIfEnd) {
-      pushUndo();
       rows.push({ expr: '', result: '', error: false });
+      pushUndo();
     } else {
       i = rows.length - 1;
     }
@@ -815,12 +824,12 @@ async function openPasteDialogAndApply(text) {
   const lines = await pasteDialog.open(text);
   if (!lines || lines.length === 0) return;
   commitCurrentInput();
-  pushUndo();
   rows[focusedRow].expr = lines[0];
   for (let i = 1; i < lines.length; i++) {
     rows.splice(focusedRow + i, 0, { expr: lines[i], result: '', error: false });
   }
   focusedRow = focusedRow + lines.length - 1;
+  pushUndo();
   renderAll();
   focusInput();
   evalAll();
@@ -837,11 +846,12 @@ async function handlePaste(e) {
 
 document.getElementById('btn-new').addEventListener('click', () => {
   commitCurrentInput();
-  pushUndo();
+  if (rows.length === 1 && rows[0].expr === '') return;
   rows = [{ expr: '', result: '', error: false }];
   focusedRow = 0;
   fileName = null;
   wasmBroken = false;
+  pushUndo();
   renderAll();
   focusInput();
   evalAll();
@@ -896,12 +906,16 @@ document.getElementById('file-input').addEventListener('change', async e => {
   const text = await file.text();
   e.target.value = '';
   commitCurrentInput();
-  pushUndo();
   const lines = text.replace(/\r\n|\r/g, '\n').split('\n');
+  while (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
   rows = lines.map(l => ({ expr: l, result: '', error: false }));
   if (rows.length === 0) rows = [{ expr: '', result: '', error: false }];
   focusedRow = 0;
   fileName = file.name;
+  // native: load_file() は undo_buf_.clear() する。ロードを undo 対象にしない。
+  undoStack.length = 0;
+  undoPos = -1;
+  pushUndo();
   renderAll();
   focusInput();
   evalAll();
@@ -925,13 +939,16 @@ document.getElementById('file-input').addEventListener('change', async e => {
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const text = await r.text();
           commitCurrentInput();
-          pushUndo();
           const lines = text.replace(/\r\n|\r/g, '\n').split('\n');
           while (lines.length > 1 && lines[lines.length - 1].trim() === '') lines.pop();
           rows = lines.map(l => ({ expr: l, result: '', error: false }));
           if (rows.length === 0) rows = [{ expr: '', result: '', error: false }];
           focusedRow = 0;
           fileName = filename;
+          // native: load_file() は undo_buf_.clear() する。ロードを undo 対象にしない。
+          undoStack.length = 0;
+          undoPos = -1;
+          pushUndo();
           renderAll();
           focusInput();
           evalAll();
