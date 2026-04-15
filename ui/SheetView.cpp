@@ -246,15 +246,26 @@ public:
                     return 1;
                 }
                 // Tab: 左辺 → 右辺へフォーカス移動
-                if (key == FL_Tab && !Fl::event_state(FL_SHIFT)) {
+                if (key == FL_Tab && !shift) {
                     sv->completion_hide();
                     sv->focus_result();
                     return 1;
                 }
+                // Shift+Tab: 前行の右辺 (なければ左辺) へ (Tab の逆方向)
+                if (key == FL_Tab && shift) {
+                    sv->completion_hide();
+                    sv->shift_tab_from_editor();
+                    return 1;
+                }
             } else {
                 // 右辺での Tab: 次行の左辺へ
-                if (key == FL_Tab && !Fl::event_state(FL_SHIFT)) {
+                if (key == FL_Tab && !shift) {
                     static_cast<SheetView *>(parent())->tab_from_result();
+                    return 1;
+                }
+                // 右辺での Shift+Tab: 同じ行の左辺へ (Tab の逆方向)
+                if (key == FL_Tab && shift) {
+                    static_cast<SheetView *>(parent())->shift_tab_from_result();
                     return 1;
                 }
             }
@@ -1400,4 +1411,25 @@ void SheetView::tab_from_result() {
         insert_row(focused_row_);
     else
         focus_row(focused_row_ + 1);
+}
+
+void SheetView::shift_tab_from_editor() {
+    commit();
+    if (focused_row_ <= 0) return;  // 最上段では何もしない
+    focus_row(focused_row_ - 1);
+    // focus_row は editor_ にフォーカスを置くので、前行に可視な結果があれば
+    // result_display_ に上書きして Tab 順序を反転させる。
+    if (result_display_->visible()) {
+        Fl::focus(result_display_);
+        result_display_->insert_position(result_display_->size(), 0);
+        redraw();
+    }
+}
+
+void SheetView::shift_tab_from_result() {
+    // 同じ行の左辺に戻す (focused_row_ は変えない)。通常の Tab 移動と同様、
+    // カーソルは末尾に置き選択状態は作らない (insert_position の単引数版)。
+    Fl::focus(editor_);
+    editor_->insert_position(editor_->size());
+    redraw();
 }

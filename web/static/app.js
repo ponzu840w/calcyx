@@ -623,6 +623,27 @@ function handleKeyDown(e) {
     return;
   }
 
+  // Shift+Tab: 前行の右辺 (なければ左辺) へ (Tab の逆方向)
+  if (key === 'Tab' && shift && !ctrl) {
+    e.preventDefault();
+    if (focusedRow <= 0) return;
+    const prev = rows[focusedRow - 1];
+    const prevHasResult = prev.result && !prev.error && prev.showResult !== false;
+    moveFocus(focusedRow - 1);
+    if (prevHasResult) {
+      const resCell = sheetEl.querySelector(`[data-result="${focusedRow}"]`);
+      if (resCell) {
+        resCell.focus();
+        const sel = window.getSelection();
+        const range = document.createRange();
+        range.selectNodeContents(resCell);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+    return;
+  }
+
   // Enter: 現在行の下に新規行を挿入 (native: insert_row + ans プリフィル)
   if (key === 'Enter' && !ctrl && !shift) {
     e.preventDefault();

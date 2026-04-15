@@ -44,8 +44,10 @@ public:
     void completion_hide();
 
     // Tab キー処理 (SheetLineInput から呼ばれる)
-    void focus_result();       // editor_ → result_display_ へフォーカス移動
-    void tab_from_result();    // result_display_ → 次行 editor_ へフォーカス移動
+    void focus_result();          // editor_ → result_display_ へフォーカス移動
+    void tab_from_result();       // result_display_ → 次行 editor_ へフォーカス移動
+    void shift_tab_from_editor(); // editor_ → 前行 result_display_ (または editor_)
+    void shift_tab_from_result(); // result_display_ → 同じ行 editor_
 
     // 行操作
     void delete_row_up();      // 現在行削除・上の行へ移動
