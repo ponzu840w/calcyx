@@ -14,7 +14,7 @@
       <div class="menu-group">
         <button class="menu-btn" id="btn-new"  title="All Clear (Ctrl+Shift+Del)">AC</button>
         <div class="menu-dropdown">
-          <button class="menu-btn menu-btn-dd" id="btn-open" title="開く">📂 ▾</button>
+          <button class="menu-btn menu-btn-dd" id="btn-open" title="開く">📂<span class="btn-label"> Open</span> ▾</button>
           <div class="dropdown-panel" id="open-panel" hidden>
             <div class="dropdown-item" id="dd-upload">Upload...</div>
             <div class="dropdown-sep"></div>
@@ -22,7 +22,7 @@
           </div>
         </div>
         <div class="menu-dropdown">
-          <button class="menu-btn menu-btn-dd" id="btn-save" title="保存 (Ctrl+S)">💾 ▾</button>
+          <button class="menu-btn menu-btn-dd" id="btn-save" title="保存 (Ctrl+S)">💾<span class="btn-label"> Save</span> ▾</button>
           <div class="dropdown-panel" id="save-panel" hidden>
             <div class="dropdown-item" id="dd-save-file">Save to file...</div>
             <div class="dropdown-item" id="dd-copy-all">Copy all to clipboard</div>
@@ -30,14 +30,14 @@
         </div>
       </div>
       <div class="menu-group">
-        <button class="menu-btn" id="btn-paste" title="クリップボードから貼り付け">📥</button>
+        <button class="menu-btn" id="btn-paste" title="クリップボードから貼り付け">📋<span class="btn-label"> Paste</span></button>
       </div>
       <div class="menu-group">
-        <button class="menu-btn" id="btn-undo" title="元に戻す (Ctrl+Z)"  disabled>←</button>
-        <button class="menu-btn" id="btn-redo" title="やり直し (Ctrl+Y)" disabled>→</button>
+        <button class="menu-btn" id="btn-undo" title="元に戻す (Ctrl+Z)"  disabled>⟲ <span class="btn-label">Undo</span></button>
+        <button class="menu-btn" id="btn-redo" title="やり直し (Ctrl+Y)" disabled>⟳ <span class="btn-label">Redo</span></button>
       </div>
       <div class="menu-group">
-        <button class="menu-btn" id="btn-about" title="About">?</button>
+        <button class="menu-btn" id="btn-about" title="About"><span class="btn-icon-alt">?</span><span class="btn-label">About</span></button>
       </div>
       <div class="menu-group fmt-group">
         <select id="fmt-select">
@@ -56,8 +56,8 @@
     <div id="sheet">
       <!-- フォーカス行の右端に浮かぶ L/R コピーボタン (JS で位置を計算) -->
       <div id="row-action-bar" hidden>
-        <button class="row-action-btn" id="btn-copy-lhs" title="左辺をコピー">📋L</button>
-        <button class="row-action-btn" id="btn-copy-rhs" title="右辺をコピー">📋R</button>
+        <button class="row-action-btn" id="btn-copy-lhs" title="左辺をコピー">🗐 Copy L</button>
+        <button class="row-action-btn" id="btn-copy-rhs" title="右辺をコピー">🗐 Copy R</button>
       </div>
     </div>
   </div>

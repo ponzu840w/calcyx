@@ -24,6 +24,11 @@
   --font-size:  13px;
   --row-h:      22px;
   --menubar-h:  28px;
+  /* 上部メニューバー内のボタン/セレクトの高さ (PC 既定)。
+     モバイル media query で拡大する。 */
+  --menu-btn-h: 22px;
+  /* L/R コピーボタンバーの高さ。既定は行高に合わせ、モバイルでは拡大する。 */
+  --action-bar-h: var(--row-h);
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -72,16 +77,71 @@ html, body {
   background: #2e2e38;
   color: var(--text);
   border: none;
-  padding: 2px 8px;
+  padding: 0 8px;
   font-size: 11px;
   font-family: var(--font);
   cursor: pointer;
   border-radius: 2px;
+  /* 絵文字ボタンはグリフが縦に大きく、通常テキストボタンより高くなりがち。
+     inline-flex + 固定 height で全 .menu-btn の高さを揃える。 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--menu-btn-h);
+  line-height: 1;
+  white-space: nowrap;   /* " ▾" や " Open" が折り返さないように */
 }
 .menu-btn:hover:not(:disabled) { background: #3a3a48; }
 .menu-btn:disabled { opacity: 0.35; cursor: default; }
 
 .menu-label { font-size: 11px; color: #aaa; margin-right: 4px; }
+
+/* 広 PC (デスクトップ fine pointer + 画面幅に余裕) でのみラベル表示。
+   モバイル・小画面ではアイコンのみで横幅を節約する。 */
+.btn-label { display: none; }
+.btn-icon-alt { display: inline; }
+@media (min-width: 900px) and (pointer: fine) {
+  .btn-label { display: inline; }
+  /* ラベルが出るときは代替アイコン (例: About の "?") を隠す */
+  .btn-icon-alt { display: none; }
+}
+
+/* ---- モバイル / タッチデバイスのタップ領域拡大 ---- */
+/* 計算領域 (--row-h / --font-size) はそのまま、操作系ボタンのみ大きくする。
+   狭い画面ではメニューバー全部が収まるよう clamp() でパディング・フォントを
+   ビューポート幅に応じて段階的に切り詰める。 */
+@media (pointer: coarse), (max-width: 768px) {
+  :root {
+    --menubar-h:    44px;
+    --menu-btn-h:   36px;
+    --action-bar-h: 40px;
+  }
+  #menubar {
+    gap:     clamp(2px, 1vw, 4px);
+    padding: 0 clamp(3px, 1vw, 6px);
+  }
+  .menu-group {
+    gap:           clamp(1px, 0.5vw, 2px);
+    padding-right: clamp(3px, 1.5vw, 8px);
+    margin-right:  clamp(2px, 1vw, 4px);
+  }
+  .menu-btn {
+    padding:   0 clamp(3px, 2vw, 12px);
+    font-size: clamp(12px, 3.5vw, 14px);
+  }
+  .dropdown-item {
+    padding: 12px 16px;
+    font-size: 14px;
+  }
+  #fmt-select {
+    font-size: clamp(12px, 3.5vw, 14px);
+    padding:   0 clamp(2px, 1vw, 6px);
+  }
+  .row-action-btn {
+    padding: 0 12px;
+    font-size: 14px;
+  }
+}
 
 /* ---- ドロップダウンメニュー ---- */
 .menu-dropdown {
@@ -119,8 +179,12 @@ html, body {
   border: none;
   font-size: 11px;
   font-family: var(--font);
-  padding: 2px 4px;
+  padding: 0 4px;
   cursor: pointer;
+  /* .menu-btn と高さを揃える */
+  height: var(--menu-btn-h);
+  line-height: 1;
+  box-sizing: border-box;
 }
 
 /* ---- シート ---- */
@@ -130,7 +194,7 @@ html, body {
   overflow-x: hidden;
   /* padding-bottom は L/R コピーボタンが最下段の下に着地できる余白。
      それ以外の余白は通常の 2px。 */
-  padding: 2px 0 var(--row-h) 0;
+  padding: 2px 0 var(--action-bar-h) 0;
   position: relative;   /* #float-editor の absolute 基準 */
 }
 
@@ -155,7 +219,7 @@ html, body {
 #row-action-bar {
   position: absolute;
   right: 0;
-  height: var(--row-h);
+  height: var(--action-bar-h);
   display: flex;
   align-items: center;
   gap: 2px;
@@ -168,12 +232,17 @@ html, body {
   background: #2e2e38;
   color: var(--text);
   border: 1px solid var(--sep);
-  padding: 0 6px;
-  height: calc(var(--row-h) - 4px);
+  padding: 0 8px;
+  height: calc(var(--action-bar-h) - 4px);
   font-size: 11px;
   font-family: var(--font);
   cursor: pointer;
   border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  white-space: nowrap;
 }
 .row-action-btn:hover { background: #3a3a48; }
 
