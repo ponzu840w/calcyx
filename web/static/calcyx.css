@@ -29,6 +29,8 @@
   --menu-btn-h: 22px;
   /* L/R コピーボタンバーの高さ。既定は行高に合わせ、モバイルでは拡大する。 */
   --action-bar-h: var(--row-h);
+  /* 右下固定のフォーカス行移動ボタンの幅 (モバイルで拡大)。 */
+  --nav-btn-w: 32px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -50,6 +52,7 @@ html, body {
   /* モバイルのソフトキーボード出現に追従するため 100dvh を使う。
      100vh は layout viewport 基準でキーボード表示時に余る。 */
   height: 100dvh;
+  position: relative;    /* #row-nav-bar の absolute 基準 */
 }
 
 /* ---- メニューバー ---- */
@@ -90,6 +93,9 @@ html, body {
   height: var(--menu-btn-h);
   line-height: 1;
   white-space: nowrap;   /* " ▾" や " Open" が折り返さないように */
+  user-select: none;     /* 連打でボタン文字が選択されてフォーカスが奪われるのを防ぐ */
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .menu-btn:hover:not(:disabled) { background: #3a3a48; }
 .menu-btn:disabled { opacity: 0.35; cursor: default; }
@@ -115,6 +121,7 @@ html, body {
     --menubar-h:    44px;
     --menu-btn-h:   36px;
     --action-bar-h: 40px;
+    --nav-btn-w:    44px;
   }
   #menubar {
     gap:     clamp(2px, 1vw, 4px);
@@ -192,9 +199,9 @@ html, body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  /* padding-bottom は L/R コピーボタンが最下段の下に着地できる余白。
-     それ以外の余白は通常の 2px。 */
-  padding: 2px 0 var(--action-bar-h) 0;
+  /* padding-bottom は 2 行分。下段は右下固定の #row-nav-bar に隠れないため、
+     上段は L/R コピーボタンが最下段のすぐ下に着地できるため。 */
+  padding: 2px 0 calc(var(--action-bar-h) * 2) 0;
   position: relative;   /* #float-editor の absolute 基準 */
 }
 
@@ -215,10 +222,11 @@ html, body {
 
 /* フォーカス行の右端に浮かぶ L/R コピーボタン。
    floatEditor と同じく #sheet 内で absolute 配置、JS が top を更新する。
-   非 wrapped 行では行右端、wrapped 行では 2 段目 (結果列) の右端に付く。 */
+   非 wrapped 行では行右端、wrapped 行では 2 段目 (結果列) の右端に付く。
+   右下固定の #row-nav-bar を避けるため、right を nav-btn-w 分だけずらす。 */
 #row-action-bar {
   position: absolute;
-  right: 0;
+  right: calc(var(--nav-btn-w) + 4px);
   height: var(--action-bar-h);
   display: flex;
   align-items: center;
@@ -228,6 +236,40 @@ html, body {
   pointer-events: auto;
 }
 #row-action-bar[hidden] { display: none; }
+
+/* 右下固定のフォーカス行移動ボタン (縦積み)。
+   #app に対する absolute 配置で、スクロールやキーボード出現に追従。 */
+#row-nav-bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px;
+  z-index: 7;             /* #row-action-bar (6) より上 */
+  pointer-events: auto;
+}
+.row-nav-btn {
+  background: #2e2e38;
+  color: var(--text);
+  border: 1px solid var(--sep);
+  width: var(--nav-btn-w);
+  height: var(--action-bar-h);
+  font-size: 12px;
+  font-family: var(--font);
+  cursor: pointer;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  user-select: none;     /* 連打でボタン文字が選択されてフォーカスが奪われるのを防ぐ */
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.row-nav-btn:hover { background: #3a3a48; }
+.row-nav-btn:disabled { opacity: 0.35; cursor: default; }
 .row-action-btn {
   background: #2e2e38;
   color: var(--text);
@@ -243,6 +285,9 @@ html, body {
   justify-content: center;
   line-height: 1;
   white-space: nowrap;
+  user-select: none;     /* 連打でボタン文字が選択されてフォーカスが奪われるのを防ぐ */
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .row-action-btn:hover { background: #3a3a48; }
 
@@ -250,6 +295,15 @@ html, body {
 #sheet::-webkit-scrollbar { width: 8px; }
 #sheet::-webkit-scrollbar-track { background: var(--bg); }
 #sheet::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+/* タッチ端末ではスクロールバーを完全に隠す。
+   #row-nav-bar が #app の右端に貼り付くため、残っているとボタン上下の
+   隙間でスクロールバーの hit area に指が乗って blur/scroll-start が発生し、
+   ソフトキーボードが引っ込む原因になる。 */
+@media (pointer: coarse), (max-width: 768px) {
+  #sheet { scrollbar-width: none; }
+  #sheet::-webkit-scrollbar { display: none; width: 0; }
+}
 
 /* ---- 行 ---- */
 /* expr-col-w, eq-col-w は JS から設定される CSS 変数。
@@ -353,6 +407,14 @@ html, body {
   line-height: var(--row-h);
 }
 
+/* 選択時も color を transparent で固定する。
+   指定しないと Android Chrome / iOS Safari が選択中の文字色を
+   プラットフォーム標準 (≒黒) に戻してしまい、透明であるはずの
+   入力テキストが黒塗り状態で浮き上がって見える。
+   背景は半透明にしてハイライトオーバーレイが透けるようにする。 */
+.expr-input::selection     { color: transparent; background: rgba(100, 160, 255, 0.35); }
+.expr-input::-moz-selection { color: transparent; background: rgba(100, 160, 255, 0.35); }
+
 /* IME 変換中 (Android Gboard 等): オーバーレイを隠して input 生テキストを表示。
    変換中は input.value が placeholder 文字列を返すケースがあり、
    highlight() が化けた文字を描画してしまうため。
@@ -410,9 +472,10 @@ html, body {
 .hl-comment { color: #555; font-style: italic; }
 .hl-text    { color: var(--text);   }
 
-/* カラーリテラル (#RRGGBB) の inline color-box */
+/* カラーリテラル (#RRGGBB) の inline color-box。
+   padding / margin / border はいずれも floatInput との字送りを狂わせ
+   カーソル位置がズレるので使わない。背景色のみで視覚化する。 */
 .hl-color-box {
-  padding: 0 1px;
   border-radius: 1px;
   /* background / color は style 属性でインライン設定 */
 }

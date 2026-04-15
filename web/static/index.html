@@ -54,11 +54,18 @@
 
     <!-- スプレッドシート本体 -->
     <div id="sheet">
-      <!-- フォーカス行の右端に浮かぶ L/R コピーボタン (JS で位置を計算) -->
+      <!-- フォーカス行の右端に浮かぶ L/R コピーボタン (JS で位置を計算)。
+           右下固定の #row-nav-bar を避けるため、CSS で右マージンを取ってある。 -->
       <div id="row-action-bar" hidden>
         <button class="row-action-btn" id="btn-copy-lhs" title="左辺をコピー">🗐 Copy L</button>
         <button class="row-action-btn" id="btn-copy-rhs" title="右辺をコピー">🗐 Copy R</button>
       </div>
+    </div>
+
+    <!-- 右下に固定のフォーカス行移動ボタン (縦積み) -->
+    <div id="row-nav-bar">
+      <button class="row-nav-btn" id="btn-row-prev" title="前の行へ">▲</button>
+      <button class="row-nav-btn" id="btn-row-next" title="次の行へ">▼</button>
     </div>
   </div>
 

@@ -287,6 +287,7 @@ function renderAll() {
   positionFloatingEditor();
   syncOverlay();
   syncFmtSelect();
+  updateRowNavButtons();
 }
 
 function buildRowEl(i) {
@@ -360,8 +361,19 @@ function positionRowActionBar() {
   const sheetRect = sheetEl.getBoundingClientRect();
   const rowRect   = rowEl.getBoundingClientRect();
   bar.hidden = false;
-  bar.style.top = `${rowRect.bottom - sheetRect.top + sheetEl.scrollTop}px`;
-  // right: 0 は CSS 側で設定済み
+  const barTop = rowRect.bottom - sheetRect.top + sheetEl.scrollTop;
+  bar.style.top = `${barTop}px`;
+  // right は CSS 側で設定済み
+
+  // L/R コピーバーの下端が必ず可視範囲に入るようスクロールを補正する。
+  // scrollIntoView は行そのものを可視にするだけで、下に浮かぶバーの分は
+  // 考慮しないため、行を可視にした後にバー分の差し足しスクロールを行う。
+  const barH = bar.offsetHeight || 0;
+  const barBottom = barTop + barH;
+  const visibleBottom = sheetEl.scrollTop + sheetEl.clientHeight;
+  if (barBottom > visibleBottom) {
+    sheetEl.scrollTop = barBottom - sheetEl.clientHeight;
+  }
 }
 
 // ネイティブ draw_result_at に準拠: エラー / 通常 (カラーボックス含む) を振り分け
@@ -484,6 +496,7 @@ function moveFocus(newRow) {
   syncOverlay();
   newEl?.scrollIntoView({ block: 'nearest' });
   syncFmtSelect();
+  updateRowNavButtons();
   floatInput.focus();
 }
 
@@ -607,11 +620,19 @@ sheetEl.addEventListener('pointerdown', e => {
   if (i !== focusedRow) {
     moveFocus(i);
   }
-  // 結果セル / floatInput 自体のクリックはブラウザに任せる
-  if (e.target !== floatInput && !e.target.classList.contains('result-cell')) {
+  // floatInput 自体のクリックはブラウザに任せる (キャレット位置を保持)
+  if (e.target === floatInput) return;
+  // 結果セル: マウスならクリックして範囲選択できるようブラウザに任せる。
+  // タッチ/ペンの場合は誤タップでソフトキーボードが引っ込むので preventDefault
+  // + floatInput に focus を戻す。
+  if (e.target.classList.contains('result-cell')) {
+    if (e.pointerType === 'mouse') return;
     e.preventDefault();
     focusInput();
+    return;
   }
+  e.preventDefault();
+  focusInput();
 });
 
 // ---- キーボードハンドラ ----
@@ -1026,10 +1047,33 @@ async function writeClipboard(text) {
   catch (err) { console.error('[calcyx] クリップボードへのコピー失敗:', err); }
 }
 
-// mousedown で preventDefault しないと floatInput のフォーカスが外れ、
-// スマホではソフトキーボードが一瞬消える。
-for (const id of ['btn-copy-lhs', 'btn-copy-rhs']) {
-  document.getElementById(id).addEventListener('mousedown', e => e.preventDefault());
+// floatInput のフォーカスを奪われないよう、押下時に preventDefault。
+// touch 端末では touchstart → (合成) mousedown の経路を通らないケースがあり
+// mousedown だけではスマホで不定期に blur → ソフトキーボードが引っ込むので、
+// touch/mouse/pen を統合する pointerdown で処理する。
+for (const id of ['btn-copy-lhs', 'btn-copy-rhs', 'btn-row-prev', 'btn-row-next']) {
+  const el = document.getElementById(id);
+  el.addEventListener('pointerdown', e => e.preventDefault());
+  el.addEventListener('mousedown',   e => e.preventDefault());  // 古いブラウザのフォールバック
+}
+
+// 右下固定のフォーカス行移動ボタン。moveFocus は renderAll を呼ばず
+// 軽量にフォーカスだけ動かすのでソフトキーボードが消えない。
+document.getElementById('btn-row-prev').addEventListener('click', () => {
+  moveFocus(focusedRow - 1);
+});
+document.getElementById('btn-row-next').addEventListener('click', () => {
+  // 末尾で押されたら行を追加する (moveToRow の addIfEnd と同じ挙動)
+  if (focusedRow >= rows.length - 1) {
+    moveToRow(focusedRow + 1, true);
+  } else {
+    moveFocus(focusedRow + 1);
+  }
+});
+
+function updateRowNavButtons() {
+  document.getElementById('btn-row-prev').disabled = focusedRow <= 0;
+  // 次の行ボタンは常に有効 (末尾なら行追加)
 }
 
 document.getElementById('btn-copy-lhs').addEventListener('click', async () => {
