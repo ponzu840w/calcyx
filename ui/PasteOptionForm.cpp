@@ -70,7 +70,7 @@ static std::string trim(const std::string &s) {
 // ---- コンストラクタ ----
 
 PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
-    : Fl_Window(640, 460, "Paste Options")
+    : Fl_Window(640, 488, "Paste Options")
 {
     set_modal();
     color(PF_BG);
@@ -101,7 +101,7 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
     const int TXT_H = 248;
     const int C_H   = 24;     // コントロール高さ
     const int BTN_H = 26;
-    const int W     = 640, H = 460;
+    const int W     = 640, H = 488;
     const int half_w = (W - MX * 2 - GAP) / 2;
 
     int y = MX;
@@ -190,7 +190,7 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
 
     y += C_H + MX / 2;
 
-    // 左: Column Index / Select Column
+    // 左: Column Index
     make_small_label(MX, 110, "Column Index:");
     col_number_input_ = make_input(MX + 114, 42);
     col_number_input_->value("1");
@@ -201,7 +201,10 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
     num_cols_label_->color(PF_BG);
     num_cols_label_->box(FL_NO_BOX);
 
-    select_col_btn_ = make_btn(MX + 114 + 48 + 44, 120, "Select Column");
+    y += C_H + MX / 2;
+
+    // 左半分の右寄せ: Select Column
+    select_col_btn_ = make_btn(MX + half_w - 120, 120, "Select Column");
     select_col_btn_->callback(select_col_cb, this);
 
     // ---- OK / Cancel (右下) ----
