@@ -1296,6 +1296,22 @@ void SheetView::delete_row_up() {
     delete_row(focused_row_, true);
 }
 
+void SheetView::insert_row_below() {
+    commit();
+    insert_row(focused_row_);
+    redraw();
+}
+
+void SheetView::insert_row_above() {
+    commit();
+    insert_row(focused_row_ - 1);
+    redraw();
+}
+
+void SheetView::delete_current_row() {
+    delete_row(focused_row_);
+}
+
 void SheetView::move_row_up() {
     if (focused_row_ <= 0) return;
     if (focused_row_ >= 0 && focused_row_ < (int)rows_.size())

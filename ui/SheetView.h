@@ -54,6 +54,9 @@ public:
     void move_row_up();        // 現在行を上にスワップ (Ctrl+Shift+↑)
     void move_row_down();      // 現在行を下にスワップ (Ctrl+Shift+↓)
     void clear_all();          // 全行削除 (Ctrl+Shift+Del / File>All Clear)
+    void insert_row_below();   // フォーカス行の下に新規行 (メニュー用)
+    void insert_row_above();   // フォーカス行の上に新規行 (メニュー用)
+    void delete_current_row(); // フォーカス行を削除 (メニュー用)
 
     // クリップボード
     void copy_all_to_clipboard() const;  // 全行を "式 = 結果" 形式でコピー

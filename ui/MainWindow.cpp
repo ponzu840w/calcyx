@@ -50,11 +50,18 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->color(C_MENU_BG);
     menu_->textcolor(C_MENU_FG);
     menu_->box(FL_FLAT_BOX);
-    menu_->add("&File/All &Clear\tCtrl+Shift+Del", FL_COMMAND | FL_SHIFT | FL_Delete, menu_cb, (void*)"clear_all", FL_MENU_DIVIDER);
-    menu_->add("&File/&Open...\t",    FL_COMMAND + 'o', menu_cb, (void*)"open");
-    menu_->add("&File/&Save As...\t", FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
-    menu_->add("&Edit/&Undo\tCtrl+Z", FL_COMMAND + 'z', menu_cb, (void*)"undo");
-    menu_->add("&Edit/&Redo\tCtrl+Y", FL_COMMAND + 'y', menu_cb, (void*)"redo");
+    menu_->add("&File/All &Clear",    FL_COMMAND | FL_SHIFT | FL_Delete, menu_cb, (void*)"clear_all", FL_MENU_DIVIDER);
+    menu_->add("&File/&Open...",     FL_COMMAND + 'o', menu_cb, (void*)"open");
+    menu_->add("&File/&Save As...",  FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
+    menu_->add("&Edit/&Undo",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
+    menu_->add("&Edit/&Redo",       FL_COMMAND + 'y', menu_cb, (void*)"redo", FL_MENU_DIVIDER);
+    menu_->add("&Edit/Copy &All",   FL_COMMAND | FL_SHIFT + 'c', menu_cb, (void*)"copy_all", FL_MENU_DIVIDER);
+    menu_->add("&Edit/&Insert Row Below", FL_Enter,            menu_cb, (void*)"insert_below");
+    menu_->add("&Edit/Insert Row A&bove", FL_SHIFT | FL_Enter, menu_cb, (void*)"insert_above");
+    menu_->add("&Edit/&Delete Row",       FL_COMMAND | FL_Delete,          menu_cb, (void*)"delete_row");
+    menu_->add("&Edit/Move Row &Up",      FL_COMMAND | FL_SHIFT | FL_Up,   menu_cb, (void*)"move_up");
+    menu_->add("&Edit/Move Row Do&wn",    FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
+    menu_->add("&Edit/&Recalculate", FL_F + 5, menu_cb, (void*)"recalc");
     populate_samples_menu();
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
 
@@ -262,6 +269,7 @@ static void show_about(MainWindow *win) {
 void MainWindow::menu_cb(Fl_Widget *w, void *data) {
     (void)w;
     const char *cmd = static_cast<const char *>(data);
+    if (!cmd) return;
     MainWindow *win = nullptr;
     for (Fl_Window *fw = Fl::first_window(); fw; fw = Fl::next_window(fw))
         if ((win = dynamic_cast<MainWindow *>(fw))) break;
@@ -285,6 +293,21 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
                 fl_alert("Cannot save file:\n%s", fc.filename());
         }
 
+    } else if (strcmp(cmd, "copy_all") == 0) {
+        win->sheet_->copy_all_to_clipboard();
+    } else if (strcmp(cmd, "recalc") == 0) {
+        win->sheet_->live_eval();
+        win->sheet_->redraw();
+    } else if (strcmp(cmd, "insert_below") == 0) {
+        win->sheet_->insert_row_below();
+    } else if (strcmp(cmd, "insert_above") == 0) {
+        win->sheet_->insert_row_above();
+    } else if (strcmp(cmd, "delete_row") == 0) {
+        win->sheet_->delete_current_row();
+    } else if (strcmp(cmd, "move_up") == 0) {
+        win->sheet_->move_row_up();
+    } else if (strcmp(cmd, "move_down") == 0) {
+        win->sheet_->move_row_down();
     } else if (strcmp(cmd, "clear_all") == 0) {
         win->sheet_->clear_all();
     } else if (strcmp(cmd, "undo") == 0) {
