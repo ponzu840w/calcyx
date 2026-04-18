@@ -32,7 +32,9 @@
       "binaryDir": "${sourceDir}/build-win",
       "toolchainFile": "${sourceDir}/cmake/toolchain-win.cmake",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_FLAGS": "-g",
+        "CMAKE_CXX_FLAGS": "-g"
       }
     },
     {

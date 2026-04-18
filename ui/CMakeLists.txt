@@ -21,7 +21,7 @@ if(APPLE)
     )
 elseif(WIN32)
     list(APPEND PLATFORM_LIBS
-        comctl32 gdi32 ole32 uuid ws2_32 imm32 gdiplus
+        comctl32 gdi32 ole32 uuid ws2_32 imm32 gdiplus dbghelp
         -static -static-libgcc -static-libstdc++
     )
 else()
@@ -55,6 +55,7 @@ if(APPLE)
         settings_globals.cpp
         builtin_docs.cpp
         app_prefs.cpp
+        crash_handler.cpp
         ${ICON_FILE}
         ${ICON_SVG}
         ${SAMPLE_FILES}
@@ -79,6 +80,7 @@ elseif(WIN32)
         settings_globals.cpp
         builtin_docs.cpp
         app_prefs.cpp
+        crash_handler.cpp
         calcyx.rc
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx-gui")
@@ -100,6 +102,7 @@ else()
         settings_globals.cpp
         builtin_docs.cpp
         app_prefs.cpp
+        crash_handler.cpp
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx-gui")
     # Linux: exe の隣に samples/ をコピー
@@ -161,6 +164,7 @@ add_executable(test_undo
     settings_globals.cpp
     builtin_docs.cpp
     app_prefs.cpp
+    crash_handler.cpp
 )
 
 target_include_directories(test_undo PRIVATE
