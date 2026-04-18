@@ -40,13 +40,13 @@ std::string AppPrefs::config_dir() {
     return buf;
 }
 
-// ---- config.ini のパスを返す ----
+// ---- state.ini のパスを返す ----
 std::string AppPrefs::config_path() {
     std::string dir = config_dir();
 #if defined(_WIN32)
-    return dir + "\\config.ini";
+    return dir + "\\state.ini";
 #else
-    return dir + "/config.ini";
+    return dir + "/state.ini";
 #endif
 }
 

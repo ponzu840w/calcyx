@@ -1,8 +1,8 @@
 // アプリ設定の読み書き
-// レジストリを使わず、プラットフォーム標準ディレクトリの config.ini に保存する
-//   Windows : %APPDATA%\calcyx\config.ini
-//   macOS   : ~/Library/Application Support/calcyx/config.ini
-//   Linux   : $XDG_CONFIG_HOME/calcyx/config.ini  (なければ ~/.config/calcyx/config.ini)
+// レジストリを使わず、プラットフォーム標準ディレクトリの state.ini に保存する
+//   Windows : %APPDATA%\calcyx\state.ini
+//   macOS   : ~/Library/Application Support/calcyx/state.ini
+//   Linux   : $XDG_CONFIG_HOME/calcyx/state.ini  (なければ ~/.config/calcyx/state.ini)
 
 #pragma once
 #include <string>
