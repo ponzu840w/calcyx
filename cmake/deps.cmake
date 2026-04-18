@@ -49,22 +49,27 @@ if(NOT EXISTS "${_fltk_stamp}")
         set(_fltk_toolchain "")
     endif()
 
+    include(ProcessorCount)
+    ProcessorCount(_nproc)
+    if(_nproc EQUAL 0)
+        set(_nproc 4)
+    endif()
+
     ExternalProject_Add(dep_fltk
         URL      https://github.com/fltk/fltk/releases/download/release-${FLTK_VERSION}/fltk-${FLTK_VERSION}-source.tar.gz
         URL_HASH SHA256=94b464cce634182c8407adac1be5fc49678986ca93285699b444352af89b4efe
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PATCH_COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/cmake/patch-fltk.py <SOURCE_DIR>
         CMAKE_ARGS
             ${_fltk_toolchain}
             -DCMAKE_INSTALL_PREFIX=${DEPS_DIR}
             -DFLTK_BUILD_TEST=OFF
             -DFLTK_BUILD_FLUID=OFF
             -DFLTK_BUILD_FLTK_OPTIONS=OFF
-            # システム zlib/png/jpeg ではなく同梱版を使う。
-            # Linux ネイティブでも libfltk_z.a 等が生成され、プラットフォーム間で
-            # リンク構成が揃うため（SVG 描画のため fltk_images + fltk_z が必要）
             -DFLTK_USE_SYSTEM_ZLIB=OFF
             -DFLTK_USE_SYSTEM_LIBPNG=OFF
             -DFLTK_USE_SYSTEM_LIBJPEG=OFF
+        BUILD_COMMAND     ${CMAKE_COMMAND} --build <BINARY_DIR> -j ${_nproc}
         INSTALL_COMMAND   ${CMAKE_COMMAND} --build <BINARY_DIR> --target install
                 COMMAND   ${CMAKE_COMMAND} -E touch "${_fltk_stamp}"
     )

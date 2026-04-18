@@ -19,6 +19,9 @@
 #include <mach-o/dyld.h>
 #include <libgen.h>
 #endif
+#ifdef _WIN32
+#include <FL/platform.H>
+#endif
 
 // フォーマット定義 (移植元: RepresentaionFuncs.cs)
 static const struct { const char *label; const char *func_name; } FMT_DEFS[] = {
@@ -185,6 +188,33 @@ int MainWindow::handle(int event) {
             sheet_->completion_hide();
         }
     }
+#if defined(_WIN32) && !defined(NDEBUG)
+    if (event == FL_PUSH && shown()) {
+        HWND hwnd = fl_win32_xid(this);
+        if (hwnd) {
+            POINT pt = {0, 0};
+            ClientToScreen(hwnd, &pt);
+            float s = Fl::screen_scale(screen_num());
+            static FILE *dbgf = nullptr;
+            if (!dbgf) {
+                char p[MAX_PATH];
+                GetModuleFileNameA(NULL, p, MAX_PATH);
+                std::string lp(p);
+                auto slash = lp.rfind('\\');
+                if (slash != std::string::npos) lp = lp.substr(0, slash);
+                lp += "\\menu-debug.log";
+                dbgf = fopen(lp.c_str(), "a");
+            }
+            if (dbgf) {
+                fprintf(dbgf, "[menu-dbg] FL(%d,%d,%d,%d) C2S(%ld,%ld) scr=%d s=%g mouse=(%d,%d)\n",
+                        x(), y(), w(), h(),
+                        pt.x, pt.y, screen_num(), s,
+                        Fl::event_x_root(), Fl::event_y_root());
+                fflush(dbgf);
+            }
+        }
+    }
+#endif
     return Fl_Double_Window::handle(event);
 }
 
