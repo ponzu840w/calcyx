@@ -45,6 +45,7 @@ bool real_is_zero(const real_t *a);
 
 /* 判定 */
 bool real_is_integer(const real_t *a);
+bool real_fits_i64  (const real_t *a);
 int  real_sign      (const real_t *a);   /* -1 / 0 / 1 */
 void real_gcd       (real_t *out, const real_t *a, const real_t *b);
 

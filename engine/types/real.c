@@ -85,6 +85,12 @@ bool real_is_integer(const real_t *a) {
     return real_eq(a, &fl);
 }
 
+bool real_fits_i64(const real_t *a) {
+    uint32_t status = 0;
+    mpd_qget_i64((mpd_t *)&a->mpd, &status);
+    return (status & MPD_Invalid_operation) == 0;
+}
+
 int real_sign(const real_t *a) {
     real_t zero;
     real_from_i64(&zero, 0);

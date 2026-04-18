@@ -658,14 +658,14 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
     int64_t iv;
     switch (fmt) {
         case FMT_HEX:
-            if (real_is_integer(r)) {
+            if (real_is_integer(r) && real_fits_i64(r)) {
                 iv = real_to_i64(r);
                 if (iv < 0)       snprintf(buf, buflen, "-0x%llX", (unsigned long long)(-iv));
                 else              snprintf(buf, buflen, "0x%llX",  (unsigned long long)iv);
             } else { real_to_str(r, buf, buflen); }
             break;
         case FMT_BIN:
-            if (real_is_integer(r)) {
+            if (real_is_integer(r) && real_fits_i64(r)) {
                 iv = real_to_i64(r);
                 if (iv == 0) { snprintf(buf, buflen, "0b0"); break; }
                 char tmp[70]; int pos = 0;
@@ -679,14 +679,14 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
             } else { real_to_str(r, buf, buflen); }
             break;
         case FMT_OCT:
-            if (real_is_integer(r)) {
+            if (real_is_integer(r) && real_fits_i64(r)) {
                 iv = real_to_i64(r);
                 if (iv < 0) snprintf(buf, buflen, "-0%llo", (unsigned long long)(-iv));
                 else        snprintf(buf, buflen, "0%llo",  (unsigned long long)iv);
             } else { real_to_str(r, buf, buflen); }
             break;
         case FMT_CHAR:
-            if (real_is_integer(r)) {
+            if (real_is_integer(r) && real_fits_i64(r)) {
                 iv = real_to_i64(r);
                 /* UTF-8 エンコード */
                 size_t p = 0;
@@ -733,6 +733,7 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
             break;
         }
         case FMT_DATETIME: {
+            if (!real_fits_i64(r)) { real_to_str(r, buf, buflen); break; }
             time_t ts = (time_t)real_to_i64(r);
             struct tm *t = localtime(&ts);
             if (!t) { snprintf(buf, buflen, "#invalid-date#"); break; }
@@ -742,7 +743,7 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
             break;
         }
         case FMT_WEB_COLOR:
-            if (real_is_integer(r)) {
+            if (real_is_integer(r) && real_fits_i64(r)) {
                 iv = real_to_i64(r);
                 if (iv < 0 || iv > 0xFFFFFF) {
                     /* RGB 範囲外は 16 進数 */
@@ -799,7 +800,8 @@ static void val_format(const val_t *v, char *buf, size_t buflen, bool display) {
     buf[0] = '\0';
     switch (v->type) {
         case VAL_REAL: {
-            if (display && v->fmt == FMT_CHAR && real_is_integer(&v->real_v)) {
+            if (display && v->fmt == FMT_CHAR && real_is_integer(&v->real_v)
+                && real_fits_i64(&v->real_v)) {
                 /* 'a' 形式: UTF-8 エンコード済みの文字列を ' で囲みエスケープ */
                 int64_t iv = real_to_i64(&v->real_v);
                 char utf8[8]; size_t ulen = 0;
