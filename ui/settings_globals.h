@@ -1,5 +1,5 @@
 // settings_globals.h — ユーザー設定 (calcyx.conf)
-// アプリ状態 (config.ini) とは分離されたユーザー編集可能な設定ファイル。
+// アプリ状態 (state.ini) とは分離されたユーザー編集可能な設定ファイル。
 // ダイアログからも手動テキスト編集からも変更できる。
 
 #pragma once

@@ -7,6 +7,7 @@
 #include "settings_globals.h"
 #include "app_prefs.h"
 #include "colors.h"
+#include "crash_handler.h"
 #include <FL/Fl.H>
 #include <cstdio>
 #include <cstring>
@@ -23,32 +24,36 @@ int  g_font_id   = FL_COURIER;
 int  g_font_size  = 13;
 bool g_input_auto_completion    = true;
 bool g_input_auto_close_brackets = false;
-bool g_sep_thousands = false;
-bool g_sep_hex       = false;
+bool g_sep_thousands = true;
+bool g_sep_hex       = true;
 
 static std::string s_conf_path;
 
-// ---- フォント名 <-> ID 変換 ----
-struct FontEntry { const char *name; int id; };
-static const FontEntry FONT_TABLE[] = {
-    { "Courier",      FL_COURIER },
-    { "Courier Bold", FL_COURIER_BOLD },
-    { "Helvetica",    FL_HELVETICA },
-    { "Times",        FL_TIMES },
-    { "Screen",       FL_SCREEN },
-    { "Screen Bold",  FL_SCREEN_BOLD },
-};
-static const int FONT_TABLE_SIZE = sizeof(FONT_TABLE) / sizeof(FONT_TABLE[0]);
+// ---- フォント名 <-> ID 変換 (システムフォント対応) ----
+static bool s_sys_fonts_loaded = false;
 
-static const char *font_id_to_name(int id) {
-    for (int i = 0; i < FONT_TABLE_SIZE; i++)
-        if (FONT_TABLE[i].id == id) return FONT_TABLE[i].name;
+static void ensure_sys_fonts() {
+    if (s_sys_fonts_loaded) return;
+    s_sys_fonts_loaded = true;
+    Fl::set_fonts(nullptr);
+}
+
+static std::string font_id_to_name(Fl_Font id) {
+    ensure_sys_fonts();
+    int attr = 0;
+    const char *name = Fl::get_font_name(id, &attr);
+    if (name && name[0]) return name;
     return "Courier";
 }
 
-static int font_name_to_id(const std::string &name) {
-    for (int i = 0; i < FONT_TABLE_SIZE; i++)
-        if (name == FONT_TABLE[i].name) return FONT_TABLE[i].id;
+static Fl_Font font_name_to_id(const std::string &name) {
+    ensure_sys_fonts();
+    Fl_Font n = Fl::set_fonts(nullptr);
+    for (Fl_Font i = 0; i < n; i++) {
+        int attr = 0;
+        const char *fn = Fl::get_font_name(i, &attr);
+        if (fn && name == fn) return i;
+    }
     return FL_COURIER;
 }
 
@@ -84,20 +89,24 @@ const char *settings_path() {
     return s_conf_path.c_str();
 }
 
+static void update_crash_config_snapshot();
+
 // ---- デフォルト値 ----
 void settings_init_defaults() {
     g_font_id   = FL_COURIER;
     g_font_size  = 13;
     g_input_auto_completion    = true;
     g_input_auto_close_brackets = false;
-    g_sep_thousands = false;
-    g_sep_hex       = false;
+    g_sep_thousands = true;
+    g_sep_hex       = true;
 
     g_fmt_settings.decimal_len     = 15;
     g_fmt_settings.e_notation      = true;
     g_fmt_settings.e_positive_min  = 7;
     g_fmt_settings.e_negative_max  = -4;
     g_fmt_settings.e_alignment     = true;
+
+    update_crash_config_snapshot();
 }
 
 // ---- conf ファイル読み込み ----
@@ -147,6 +156,20 @@ static bool get_bool(const std::map<std::string, std::string> &kv,
     return v == "true" || v == "1" || v == "yes";
 }
 
+static void update_crash_config_snapshot() {
+    char buf[800];
+    snprintf(buf, sizeof(buf),
+        "font_size=%d, sep_thousands=%d, sep_hex=%d\n"
+        "decimal_digits=%d, e_notation=%d, e_pos_min=%d, e_neg_max=%d, e_align=%d\n"
+        "auto_completion=%d, auto_close_brackets=%d",
+        g_font_size, g_sep_thousands, g_sep_hex,
+        g_fmt_settings.decimal_len, g_fmt_settings.e_notation,
+        g_fmt_settings.e_positive_min, g_fmt_settings.e_negative_max,
+        g_fmt_settings.e_alignment,
+        g_input_auto_completion, g_input_auto_close_brackets);
+    crash_handler_save_config(buf);
+}
+
 // ---- load ----
 void settings_load() {
     auto kv = read_conf();
@@ -156,8 +179,8 @@ void settings_load() {
     g_font_size  = std::clamp(get_int(kv, "font_size", 13), 8, 36);
     g_input_auto_completion     = get_bool(kv, "auto_completion", true);
     g_input_auto_close_brackets = get_bool(kv, "auto_close_brackets", false);
-    g_sep_thousands = get_bool(kv, "thousands_separator", false);
-    g_sep_hex       = get_bool(kv, "hex_separator", false);
+    g_sep_thousands = get_bool(kv, "thousands_separator", true);
+    g_sep_hex       = get_bool(kv, "hex_separator", true);
 
     g_fmt_settings.decimal_len    = std::clamp(get_int(kv, "decimal_digits", 15), 1, 34);
     g_fmt_settings.e_notation     = get_bool(kv, "e_notation", true);
@@ -185,6 +208,8 @@ void settings_load() {
     g_colors.paren[2] = lc("color_paren2",   def.paren[2]);
     g_colors.paren[3] = lc("color_paren3",   def.paren[3]);
     g_colors.error    = lc("color_error",    def.error);
+
+    update_crash_config_snapshot();
 }
 
 // ---- save ----
@@ -200,7 +225,7 @@ void settings_save() {
         "# Custom comments will not be preserved.\n"
         "\n"
         "# ---- Font ----\n"
-        "# Available: Courier, Courier Bold, Helvetica, Times, Screen, Screen Bold\n"
+        "# Any font name installed on the system (e.g. monospace, DejaVu Sans Mono)\n"
         "font = %s\n"
         "font_size = %d\n"
         "\n"
@@ -233,7 +258,7 @@ void settings_save() {
         "color_paren2 = %s\n"
         "color_paren3 = %s\n"
         "color_error = %s\n",
-        font_id_to_name(g_font_id), g_font_size,
+        font_id_to_name(g_font_id).c_str(), g_font_size,
         g_input_auto_completion ? "true" : "false",
         g_input_auto_close_brackets ? "true" : "false",
         g_fmt_settings.decimal_len,
@@ -260,4 +285,6 @@ void settings_save() {
         color_to_hex(g_colors.error).c_str());
 
     fclose(fp);
+
+    update_crash_config_snapshot();
 }
