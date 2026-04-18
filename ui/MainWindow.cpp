@@ -107,8 +107,16 @@ MainWindow::MainWindow(int w, int h, const char *title)
     fmt_choice_->labelcolor(C_MENU_FG);
     fmt_choice_->textcolor(C_MENU_FG);
     fmt_choice_->box(FL_FLAT_BOX);
-    for (int i = 0; i < FMT_COUNT; i++)
-        fmt_choice_->add(FMT_DEFS[i].label);
+    for (int i = 0; i < FMT_COUNT; i++) {
+        const char *l = FMT_DEFS[i].label;
+        int sc = 0;
+        if (strcmp(l, "Auto") == 0) sc = FL_F + 8;
+        else if (strcmp(l, "Dec") == 0) sc = FL_F + 9;
+        else if (strcmp(l, "Hex") == 0) sc = FL_F + 10;
+        else if (strcmp(l, "Bin") == 0) sc = FL_F + 11;
+        else if (strcmp(l, "SI")  == 0) sc = FL_F + 12;
+        fmt_choice_->add(l, sc, nullptr);
+    }
     fmt_choice_->value(0);  // Auto
     fmt_choice_->callback(choice_cb, this);
     fmt_choice_->visible_focus(0);  // Tab キー順から除外
