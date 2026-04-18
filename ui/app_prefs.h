@@ -19,6 +19,9 @@ public:
     void set_int(const std::string &key, int         val);
     void set_str(const std::string &key, const std::string &val);
 
+    // 設定ディレクトリのパスを返す (ディレクトリがなければ作成する)
+    static std::string config_dir();
+
 private:
     std::string path_;
     std::map<std::string, std::string> data_;

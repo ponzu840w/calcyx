@@ -4,6 +4,7 @@
 #include "MainWindow.h"
 #include "app_prefs.h"
 #include "colors.h"
+#include "settings_globals.h"
 
 #if defined(_WIN32)
 #  include <windows.h>
@@ -12,12 +13,15 @@
 
 int main(int argc, char **argv) {
     colors_init_defaults(&g_colors);
+    settings_init_defaults();
 
     Fl::scheme("gtk+");
     Fl::visual(FL_DOUBLE | FL_INDEX);
 
     // ウィンドウジオメトリを前回終了時の設定から復元
     int wx = 0, wy = 0, ww = 520, wh = 600;
+    settings_load();
+
     {
         AppPrefs prefs;
         int valid = prefs.get_int("geometry_valid", 0);

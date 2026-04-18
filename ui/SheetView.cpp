@@ -4,6 +4,7 @@
 #include "PasteOptionForm.h"
 #include "builtin_docs.h"
 #include "colors.h"
+#include "settings_globals.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <algorithm>
@@ -155,7 +156,7 @@ static void draw_expr_highlighted(const char *expr,
     tok_queue_free(&q);
 
     fl_push_clip(clip_x, clip_y, clip_w, clip_h);
-    fl_font(FL_COURIER, 13);
+    fl_font(g_font_id, g_font_size);
     draw_colored_spans(expr, len, fg.data(), bg.data(), text_x, clip_y, clip_h);
     fl_pop_clip();
 }
@@ -205,7 +206,7 @@ public:
         if (override_color_ != (Fl_Color)0) {
             // エラーなど単色描画
             fl_push_clip(x(), y(), w(), h());
-            fl_font(FL_COURIER, 13);
+            fl_font(g_font_id, g_font_size);
             fl_color(override_color_);
             int baseline = y() + (h() + fl_height() - fl_descent() * 2) / 2;
             fl_draw(txt, tx, baseline);
@@ -294,6 +295,25 @@ public:
                 return 0;
             }
         }
+        // 括弧自動閉じ
+        if (event == FL_KEYBOARD && editor_mode_ && g_input_auto_close_brackets) {
+            const char *t = Fl::event_text();
+            if (t && t[0] && !t[1]) {
+                char close = 0;
+                if (t[0] == '(') close = ')';
+                else if (t[0] == '[') close = ']';
+                else if (t[0] == '{') close = '}';
+                if (close) {
+                    int pos = insert_position();
+                    char pair[3] = { t[0], close, '\0' };
+                    replace(pos, mark(), pair, 2);
+                    insert_position(pos + 1);
+                    if (parent()) static_cast<SheetView *>(parent())->live_eval();
+                    return 1;
+                }
+            }
+        }
+
         // ペースト時: 改行なし→通常挿入、改行あり→複数行ペーストダイアログ
         if (event == FL_PASTE && editor_mode_) {
             const char *txt = Fl::event_text();
@@ -317,7 +337,8 @@ public:
             if (editor_mode_ && event == FL_KEYBOARD) {
                 auto *sv = static_cast<SheetView *>(parent());
                 sv->live_eval();
-                sv->completion_update();
+                if (g_input_auto_completion)
+                    sv->completion_update();
             }
             if (event == FL_PUSH || event == FL_DRAG || event == FL_RELEASE) {
                 parent()->redraw();
@@ -340,7 +361,7 @@ SheetView::SheetView(int x, int y, int w, int h)
     color(g_colors.bg);
 
     // eq_pos_ / eq_w_ の初期値 (update_layout() で上書きされる)
-    fl_font(FL_COURIER, 13);
+    fl_font(g_font_id, g_font_size);
     eq_w_   = (int)fl_width("==") + 4;
     eq_pos_ = (w - SB_W) * 3 / 5;
 
@@ -361,8 +382,8 @@ SheetView::SheetView(int x, int y, int w, int h)
     editor_->box(FL_FLAT_BOX);
     editor_->color(g_colors.sel_bg);
     editor_->textcolor(g_colors.cursor);
-    editor_->textfont(FL_COURIER);
-    editor_->textsize(13);
+    editor_->textfont(g_font_id);
+    editor_->textsize(g_font_size);
     editor_->cursor_color(g_colors.cursor);
     editor_->when(0);
 
@@ -371,8 +392,8 @@ SheetView::SheetView(int x, int y, int w, int h)
     rd->box(FL_FLAT_BOX);
     rd->color(g_colors.sel_bg);
     rd->textcolor(g_colors.cursor);
-    rd->textfont(FL_COURIER);
-    rd->textsize(13);
+    rd->textfont(g_font_id);
+    rd->textsize(g_font_size);
     rd->cursor_color(g_colors.cursor);
     rd->when(0);
     result_display_ = rd;
@@ -557,7 +578,7 @@ void SheetView::eval_all() {
 // 移植元: Calctus/UI/SheetView.cs - validateLayout()
 // 全行の式幅・答え幅を計測し、最大値から "=" カラム位置を算出する。
 void SheetView::update_layout() {
-    fl_font(FL_COURIER, 13);
+    fl_font(g_font_id, g_font_size);
 
     // "=" カラム幅: オリジナルは "==" の文字幅
     eq_w_ = (int)fl_width("==") + 4;
@@ -596,6 +617,15 @@ void SheetView::update_layout() {
         row.wrapped = !row.result.empty() && !row.expr.empty() &&
                       (int)fl_width(row.expr.c_str()) > eq_pos_;
     }
+}
+
+void SheetView::apply_font() {
+    editor_->textfont(g_font_id);
+    editor_->textsize(g_font_size);
+    result_display_->textfont(g_font_id);
+    result_display_->textsize(g_font_size);
+    update_layout();
+    redraw();
 }
 
 void SheetView::live_eval() {
@@ -779,14 +809,14 @@ void SheetView::draw() {
     const int rx  = result_x();
     const int rw  = result_w();
 
-    fl_font(FL_COURIER, 13);
+    fl_font(g_font_id, g_font_size);
 
     // 結果値を指定位置に描画するラムダ (非フォーカス行・折り返し下段どちらにも使用)
     auto draw_result_at = [&](const Row &row, int ary, int abaseline) {
         if (row.result.empty() || !row.show_result) return;
         if (row.error) {
             fl_push_clip(rx, ary, rw, ROW_H);
-            fl_font(FL_COURIER, 13);
+            fl_font(g_font_id, g_font_size);
             fl_color(g_colors.error);
             fl_draw(row.result.c_str(), rx + PAD, abaseline);
             fl_pop_clip();
@@ -804,7 +834,7 @@ void SheetView::draw() {
                 int text_w = std::min((int)fl_width(row.result.c_str()) + PAD * 2, rw);
                 fl_draw_box(FL_FLAT_BOX, rx, ary, text_w, ROW_H, bc);
                 fl_push_clip(rx, ary, rw, ROW_H);
-                fl_font(FL_COURIER, 13);
+                fl_font(g_font_id, g_font_size);
                 fl_color(fc);
                 fl_draw(row.result.c_str(), rx + PAD, abaseline);
                 fl_pop_clip();
@@ -840,7 +870,7 @@ void SheetView::draw() {
 
             // 下段: "=" + 結果
             if (!row.result.empty() && !row.error && row.show_result) {
-                fl_font(FL_COURIER, 13);
+                fl_font(g_font_id, g_font_size);
                 fl_color(g_colors.symbol);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, bl_bot);
             }
@@ -871,7 +901,7 @@ void SheetView::draw() {
 
             // "=" 記号 (縦線なし)
             if (has_result && !row.error) {
-                fl_font(FL_COURIER, 13);
+                fl_font(g_font_id, g_font_size);
                 fl_color(g_colors.symbol);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, baseline);
             }

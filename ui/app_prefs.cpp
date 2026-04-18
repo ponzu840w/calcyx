@@ -15,28 +15,18 @@
 #  define MKDIR(p) mkdir((p), 0755)
 #endif
 
-// ---- 設定ディレクトリのパスを返す ----
-std::string AppPrefs::config_path() {
+// ---- 設定ディレクトリを返す (末尾にセパレータなし) ----
+std::string AppPrefs::config_dir() {
     char buf[1024];
-
 #if defined(_WIN32)
-    // %APPDATA%\calcyx\config.ini
     const char *appdata = getenv("APPDATA");
     if (!appdata) appdata = ".";
     snprintf(buf, sizeof(buf), "%s\\calcyx", appdata);
-    MKDIR(buf);
-    snprintf(buf, sizeof(buf), "%s\\calcyx\\config.ini", appdata);
-
 #elif defined(__APPLE__)
-    // ~/Library/Application Support/calcyx/config.ini
     const char *home = getenv("HOME");
     if (!home) home = ".";
     snprintf(buf, sizeof(buf), "%s/Library/Application Support/calcyx", home);
-    MKDIR(buf);
-    snprintf(buf, sizeof(buf), "%s/Library/Application Support/calcyx/config.ini", home);
-
 #else
-    // $XDG_CONFIG_HOME/calcyx/config.ini  or  ~/.config/calcyx/config.ini
     const char *xdg = getenv("XDG_CONFIG_HOME");
     if (xdg && xdg[0]) {
         snprintf(buf, sizeof(buf), "%s/calcyx", xdg);
@@ -45,11 +35,19 @@ std::string AppPrefs::config_path() {
         if (!home) home = ".";
         snprintf(buf, sizeof(buf), "%s/.config/calcyx", home);
     }
-    MKDIR(buf);
-    strncat(buf, "/config.ini", sizeof(buf) - strlen(buf) - 1);
 #endif
-
+    MKDIR(buf);
     return buf;
+}
+
+// ---- config.ini のパスを返す ----
+std::string AppPrefs::config_path() {
+    std::string dir = config_dir();
+#if defined(_WIN32)
+    return dir + "\\config.ini";
+#else
+    return dir + "/config.ini";
+#endif
 }
 
 // ---- コンストラクタ: ファイルを読み込む ----

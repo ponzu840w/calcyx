@@ -170,4 +170,7 @@ typedef struct {
 void real_to_str_with_settings(const real_t *r, const fmt_settings_t *fs,
                                 char *buf, size_t buflen);
 
+/* グローバル数値フォーマット設定 (UI から書き換え可能) */
+extern fmt_settings_t g_fmt_settings;
+
 #endif /* VAL_H */

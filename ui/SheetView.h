@@ -28,6 +28,8 @@ public:
     void apply_fmt(const char *func_name);
     // リアルタイム評価 (SheetLineInput から呼ばれる)
     void live_eval();
+    // フォント変更を反映
+    void apply_font();
     // テキストファイルを読み込んで全行を置き換え
     bool load_file(const char *path);
     // テキストファイルに保存

@@ -51,6 +51,8 @@ if(APPLE)
         SheetView.cpp
         CompletionPopup.cpp
         PasteOptionForm.cpp
+        PrefsDialog.cpp
+        settings_globals.cpp
         builtin_docs.cpp
         app_prefs.cpp
         ${ICON_FILE}
@@ -73,6 +75,8 @@ elseif(WIN32)
         SheetView.cpp
         CompletionPopup.cpp
         PasteOptionForm.cpp
+        PrefsDialog.cpp
+        settings_globals.cpp
         builtin_docs.cpp
         app_prefs.cpp
         calcyx.rc
@@ -92,6 +96,8 @@ else()
         SheetView.cpp
         CompletionPopup.cpp
         PasteOptionForm.cpp
+        PrefsDialog.cpp
+        settings_globals.cpp
         builtin_docs.cpp
         app_prefs.cpp
     )
@@ -151,7 +157,10 @@ add_executable(test_undo
     SheetView.cpp
     CompletionPopup.cpp
     PasteOptionForm.cpp
+    PrefsDialog.cpp
+    settings_globals.cpp
     builtin_docs.cpp
+    app_prefs.cpp
 )
 
 target_include_directories(test_undo PRIVATE

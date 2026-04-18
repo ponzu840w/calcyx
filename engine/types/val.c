@@ -9,6 +9,14 @@
 #include <time.h>
 #include <math.h>
 
+fmt_settings_t g_fmt_settings = {
+    .decimal_len     = 15,
+    .e_notation      = true,
+    .e_positive_min  = 7,
+    .e_negative_max  = -4,
+    .e_alignment     = true,
+};
+
 /* ======================================================
  * フォーマット選択 (FormatHint.Select)
  * ====================================================== */
@@ -746,7 +754,7 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
             } else { real_to_str(r, buf, buflen); }
             break;
         default:
-            real_to_str(r, buf, buflen);
+            real_to_str_with_settings(r, &g_fmt_settings, buf, buflen);
             break;
     }
 }

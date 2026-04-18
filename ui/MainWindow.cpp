@@ -1,6 +1,7 @@
 // 移植元: Calctus/UI/MainForm.cs (簡略版)
 
 #include "MainWindow.h"
+#include "PrefsDialog.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Native_File_Chooser.H>
 #include "app_prefs.h"
@@ -66,6 +67,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&Edit/Move Row Do&wn",    FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Recalculate", FL_F + 5, menu_cb, (void*)"recalc");
     populate_samples_menu();
+    menu_->add("&File/&Preferences...", FL_COMMAND + ',', menu_cb, (void*)"prefs", FL_MENU_DIVIDER);
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
 
     // 全メニュー追加後にインデックスを取得
@@ -355,6 +357,8 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
     } else if (strcmp(cmd, "exit") == 0) {
         win->save_prefs();
         exit(0);
+    } else if (strcmp(cmd, "prefs") == 0) {
+        PrefsDialog::run(win->sheet_);
     } else if (strcmp(cmd, "about") == 0) {
         show_about(win);
     } else {
