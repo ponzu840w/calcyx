@@ -5,6 +5,7 @@
 #include "builtin_docs.h"
 #include "colors.h"
 #include "settings_globals.h"
+#include "crash_handler.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <algorithm>
@@ -21,13 +22,81 @@ static const int PAD = 3;
 // ハイライト描画ユーティリティ
 // ================================================================
 
+// 桁区切り用のピクセルシフトを計算する。
+// shifts[i] は文字 i の描画前に加算する累積オフセット。
+// gap は挿入する隙間ピクセル幅 (フォントサイズの 1/3 程度)。
+static void calc_separator_shifts(const char *text, int len, val_fmt_t fmt,
+                                   std::vector<double> &shifts) {
+    shifts.assign(len, 0.0);
+    if (len == 0) return;
+
+    bool is_hex_family = (fmt == FMT_HEX || fmt == FMT_BIN || fmt == FMT_OCT);
+    if (is_hex_family ? !g_sep_hex : !g_sep_thousands) return;
+
+    // ユーザーが既に _ を入れていたらスキップ
+    for (int i = 0; i < len; i++)
+        if (text[i] == '_' || text[i] == ',') return;
+
+    int group = is_hex_family ? 4 : 3;
+    double gap = fl_width("0", 1) * 0.35;
+
+    // プレフィックス ("0x", "0b", "0") をスキップ
+    int start = 0;
+    if (is_hex_family && len >= 2 && text[0] == '0' &&
+        (text[1] == 'x' || text[1] == 'X' || text[1] == 'b' || text[1] == 'B'))
+        start = 2;
+    else if (fmt == FMT_OCT && len >= 1 && text[0] == '0')
+        start = 1;
+
+    // 整数部の終端を探す (小数点, 'e', 'E', 末尾)
+    int int_end = len;
+    int frac_start = -1;
+    for (int i = start; i < len; i++) {
+        if (text[i] == '.') { int_end = i; frac_start = i + 1; break; }
+        if ((text[i] == 'e' || text[i] == 'E') && fmt != FMT_HEX) { int_end = i; break; }
+    }
+
+    // 整数部: 右端基準で group 桁ごとにギャップ (左→右に累積)
+    int digits = int_end - start;
+    if (digits > group) {
+        double acc = 0.0;
+        for (int i = start; i < int_end; i++) {
+            int from_right = int_end - i;
+            if (from_right % group == 0 && i > start)
+                acc += gap;
+            shifts[i] = acc;
+        }
+    }
+
+    // 小数部: 左端から group 桁ごとにギャップ (10進のみ)
+    if (!is_hex_family && frac_start >= 0 && frac_start < len) {
+        double acc = 0.0;
+        int count = 0;
+        for (int i = frac_start; i < len; i++) {
+            if (!isdigit((unsigned char)text[i])) break;
+            if (count > 0 && count % group == 0) acc += gap;
+            count++;
+            shifts[i] = acc;
+        }
+    }
+}
+
 // fg/bg colors[i] は文字 i のカラー。bg == 0 は透明。
 // text_x: テキスト描画開始 x 座標 (PAD 込み)
+// sep_shifts: 桁区切り用のピクセルオフセット (nullptr なら区切りなし)
 static void draw_colored_spans(const char *text, int len,
                                 const Fl_Color *fg, const Fl_Color *bg,
-                                int text_x, int row_y, int row_h) {
+                                int text_x, int row_y, int row_h,
+                                const double *sep_shifts = nullptr) {
     if (len <= 0) return;
     int baseline = row_y + (row_h + fl_height() - fl_descent() * 2) / 2;
+
+    auto xpos = [&](int i) -> double {
+        double x = fl_width(text, i);
+        if (sep_shifts && i < len) x += sep_shifts[i];
+        else if (sep_shifts && i == len && len > 0) x += sep_shifts[len - 1];
+        return x;
+    };
 
     // 第1パス: 背景色スパン
     for (int i = 0; i < len; ) {
@@ -35,8 +104,8 @@ static void draw_colored_spans(const char *text, int len,
         int j = i;
         while (j < len && bg[j] == bc) j++;
         if (bc != (Fl_Color)0) {
-            double x1 = fl_width(text, i);
-            double x2 = fl_width(text, j);
+            double x1 = xpos(i);
+            double x2 = xpos(j);
             fl_color(bc);
             fl_rectf(text_x + (int)x1, row_y, (int)(x2 - x1 + 0.5), row_h);
         }
@@ -44,22 +113,100 @@ static void draw_colored_spans(const char *text, int len,
     }
 
     // 第2パス: 前景色テキストスパン
+    // sep_shifts 使用時は、シフト値が変わるポイントでもスパンを分割する
     for (int i = 0; i < len; ) {
         Fl_Color fc = fg[i];
-        int j = i;
-        while (j < len && fg[j] == fc) j++;
+        int j = i + 1;
+        while (j < len && fg[j] == fc &&
+               (!sep_shifts || sep_shifts[j] == sep_shifts[i]))
+            j++;
         fl_color(fc);
-        fl_draw(text + i, j - i, text_x + (int)fl_width(text, i), baseline);
+        fl_draw(text + i, j - i, text_x + (int)xpos(i), baseline);
         i = j;
     }
+}
+
+// 式テキスト内の数値リテラルに対するセパレータシフトを計算する。
+// shifts は文字ごとの累積ピクセルオフセット。シフトが不要なら空を返す。
+static void calc_expr_separator_shifts(const char *expr, int len,
+                                        std::vector<double> &shifts) {
+    shifts.clear();
+    if (len == 0 || (!g_sep_thousands && !g_sep_hex)) return;
+
+    struct NumTokInfo { int pos; int tlen; val_fmt_t fmt; };
+    std::vector<NumTokInfo> num_tokens;
+
+    tok_queue_t q;
+    tok_queue_init(&q);
+    lexer_tokenize(expr, &q);
+    for (;;) {
+        const token_t *peek = tok_queue_peek(&q);
+        if (!peek || peek->type == TOK_EOS || peek->type == TOK_EMPTY) break;
+        token_t tok = tok_queue_pop(&q);
+        int p  = tok.pos;
+        int tl = (int)strlen(tok.text);
+        if (p >= 0 && p < len && tok.type == TOK_NUM_LIT && tok.val) {
+            val_fmt_t vfmt = tok.val->fmt;
+            int end = std::min(p + tl, len);
+            if (vfmt == FMT_REAL || vfmt == FMT_INT ||
+                vfmt == FMT_HEX || vfmt == FMT_BIN || vfmt == FMT_OCT)
+                num_tokens.push_back({p, end - p, vfmt});
+        }
+        tok_free(&tok);
+    }
+    tok_queue_free(&q);
+
+    if (num_tokens.empty()) return;
+
+    shifts.assign(len, 0.0);
+    double carry = 0.0;
+    int prev_end = 0;
+    for (auto &nt : num_tokens) {
+        for (int i = prev_end; i < nt.pos && i < len; i++)
+            shifts[i] = carry;
+        std::vector<double> tok_shifts;
+        calc_separator_shifts(expr + nt.pos, nt.tlen, nt.fmt, tok_shifts);
+        double max_tok_shift = 0.0;
+        for (int i = 0; i < nt.tlen; i++) {
+            shifts[nt.pos + i] = carry + tok_shifts[i];
+            if (tok_shifts[i] > max_tok_shift) max_tok_shift = tok_shifts[i];
+        }
+        carry += max_tok_shift;
+        prev_end = nt.pos + nt.tlen;
+    }
+    for (int i = prev_end; i < len; i++)
+        shifts[i] = carry;
+}
+
+// 文字位置 i のピクセル x 座標を返す (セパレータシフト込み)
+static double char_pos_to_x(const char *text, int i, const std::vector<double> &shifts) {
+    double xw = fl_width(text, i);
+    if (!shifts.empty()) {
+        if (i < (int)shifts.size()) xw += shifts[i];
+        else if (!shifts.empty()) xw += shifts.back();
+    }
+    return xw;
+}
+
+// ピクセル x 座標から文字位置を返す (セパレータシフト込み)
+static int x_to_char_pos(const char *text, int len, double target_x,
+                          const std::vector<double> &shifts) {
+    for (int i = 0; i < len; i++) {
+        double cx = char_pos_to_x(text, i, shifts);
+        double cw = fl_width(text + i, 1);
+        if (target_x <= cx + cw / 2.0) return i;
+    }
+    return len;
 }
 
 // 式テキストをトークンハイライト付きで描画する。
 // text_x: テキスト描画開始 x (PAD込み)
 // clip_* : クリップ矩形
+// sep_fmt: 桁区切り対象のフォーマット (結果値描画時のみ指定, -1 で無効)
 static void draw_expr_highlighted(const char *expr,
                                    int text_x,
-                                   int clip_x, int clip_y, int clip_w, int clip_h) {
+                                   int clip_x, int clip_y, int clip_w, int clip_h,
+                                   val_fmt_t sep_fmt = (val_fmt_t)-1) {
     int len = (int)strlen(expr);
     if (len == 0) return;
 
@@ -99,7 +246,6 @@ static void draw_expr_highlighted(const char *expr,
                         if (end - 2 >= p) fg[end - 2] = g_colors.si_pfx;
                         if (end - 1 >= p) fg[end - 1] = g_colors.si_pfx;
                     } else if (vfmt == FMT_WEB_COLOR) {
-                        // トークンテキストから色値をパース
                         unsigned int rgb = 0;
                         const char *hex = tok.text + 1;
                         int hlen = (int)strlen(hex);
@@ -119,7 +265,6 @@ static void draw_expr_highlighted(const char *expr,
                     } else if (vfmt == FMT_CHAR || vfmt == FMT_STRING || vfmt == FMT_DATETIME) {
                         for (int i = p; i < end; i++) fg[i] = g_colors.special;
                     } else {
-                        // 指数部 (e/E) ハイライト: 直前が数字の場合のみ
                         for (int i = p + 1; i < end; i++) {
                             if ((expr[i] == 'e' || expr[i] == 'E') &&
                                 isdigit((unsigned char)expr[i-1])) {
@@ -155,9 +300,22 @@ static void draw_expr_highlighted(const char *expr,
     }
     tok_queue_free(&q);
 
+    // セパレータシフト計算
+    std::vector<double> shifts;
+
+    if (sep_fmt != (val_fmt_t)-1) {
+        calc_separator_shifts(expr, len, sep_fmt, shifts);
+    } else {
+        calc_expr_separator_shifts(expr, len, shifts);
+    }
+
     fl_push_clip(clip_x, clip_y, clip_w, clip_h);
     fl_font(g_font_id, g_font_size);
-    draw_colored_spans(expr, len, fg.data(), bg.data(), text_x, clip_y, clip_h);
+    if (!shifts.empty()) {
+        draw_colored_spans(expr, len, fg.data(), bg.data(), text_x, clip_y, clip_h, shifts.data());
+    } else {
+        draw_colored_spans(expr, len, fg.data(), bg.data(), text_x, clip_y, clip_h);
+    }
     fl_pop_clip();
 }
 
@@ -168,8 +326,9 @@ static void draw_expr_highlighted(const char *expr,
 // editor_mode=false → 右辺 (読み取り専用、同じ描画ルール)
 // ================================================================
 class SheetLineInput : public Fl_Input {
-    bool     editor_mode_;
-    Fl_Color override_color_;  // 0 以外: シンタックスハイライトを使わず単色描画
+    bool      editor_mode_;
+    Fl_Color  override_color_;  // 0 以外: シンタックスハイライトを使わず単色描画
+    val_fmt_t result_fmt_ = FMT_REAL;  // 結果値のフォーマット (セパレータ用, 右辺のみ)
 
 public:
     SheetLineInput(int x, int y, int w, int h, bool editor_mode = true)
@@ -179,23 +338,32 @@ public:
     }
 
     void set_override_color(Fl_Color c) { override_color_ = c; }
+    void set_result_fmt(val_fmt_t f) { result_fmt_ = f; }
 
     void draw() override {
         fl_font(textfont(), textsize());
 
         const char *txt = value();
+        int len = (int)strlen(txt);
         int p1 = std::min(insert_position(), mark());
         int p2 = std::max(insert_position(), mark());
         int sx = xscroll();
         int tx = x() + PAD - sx;
+
+        // セパレータシフト計算
+        std::vector<double> shifts;
+        if (editor_mode_)
+            calc_expr_separator_shifts(txt, len, shifts);
+        else
+            calc_separator_shifts(txt, len, result_fmt_, shifts);
 
         // 背景
         fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colors.sel_bg);
 
         // 選択ハイライト背景 (フォーカスがある時のみ)
         if (p1 != p2 && Fl::focus() == this) {
-            int sx1 = tx + (int)fl_width(txt, p1);
-            int sx2 = tx + (int)fl_width(txt, p2);
+            int sx1 = tx + (int)char_pos_to_x(txt, p1, shifts);
+            int sx2 = tx + (int)char_pos_to_x(txt, p2, shifts);
             fl_push_clip(x(), y(), w(), h());
             fl_color(FL_SELECTION_COLOR);
             fl_rectf(sx1, y() + 1, sx2 - sx1, h() - 2);
@@ -204,7 +372,6 @@ public:
 
         // テキスト描画
         if (override_color_ != (Fl_Color)0) {
-            // エラーなど単色描画
             fl_push_clip(x(), y(), w(), h());
             fl_font(g_font_id, g_font_size);
             fl_color(override_color_);
@@ -212,12 +379,13 @@ public:
             fl_draw(txt, tx, baseline);
             fl_pop_clip();
         } else {
-            draw_expr_highlighted(txt, tx, x(), y(), w(), h());
+            draw_expr_highlighted(txt, tx, x(), y(), w(), h(),
+                                  editor_mode_ ? (val_fmt_t)-1 : result_fmt_);
         }
 
         // カーソル (非選択時のみ)
         if (Fl::focus() == this && p1 == p2) {
-            int cx = tx + (int)fl_width(txt, insert_position());
+            int cx = tx + (int)char_pos_to_x(txt, insert_position(), shifts);
             if (cx >= x() && cx < x() + w()) {
                 fl_color(cursor_color());
                 fl_line(cx, y() + 2, cx, y() + h() - 2);
@@ -332,6 +500,38 @@ public:
             return 1;
         }
 
+        // マウスクリック/ドラッグ: セパレータシフトを考慮して文字位置を計算
+        if (event == FL_PUSH || event == FL_DRAG) {
+            const char *txt = value();
+            int len = (int)strlen(txt);
+            std::vector<double> shifts;
+            if (editor_mode_)
+                calc_expr_separator_shifts(txt, len, shifts);
+            else
+                calc_separator_shifts(txt, len, result_fmt_, shifts);
+            if (!shifts.empty()) {
+                fl_font(textfont(), textsize());
+                int sx = xscroll();
+                double click_x = Fl::event_x() - x() - PAD + sx;
+                int pos = x_to_char_pos(txt, len, click_x, shifts);
+                if (event == FL_PUSH) {
+                    if (Fl::event_state(FL_SHIFT))
+                        insert_position(pos, mark());
+                    else
+                        insert_position(pos, pos);
+                    Fl::focus(this);
+                } else {
+                    insert_position(pos, mark());
+                }
+                if (parent()) {
+                    parent()->redraw();
+                    if (editor_mode_)
+                        static_cast<SheetView *>(parent())->completion_hide();
+                }
+                return 1;
+            }
+        }
+
         int ret = Fl_Input::handle(event);
         if (ret && parent()) {
             if (editor_mode_ && event == FL_KEYBOARD) {
@@ -354,8 +554,8 @@ public:
 // SheetView
 // ================================================================
 
-SheetView::SheetView(int x, int y, int w, int h)
-    : Fl_Group(x, y, w, h)
+SheetView::SheetView(int x, int y, int w, int h, bool preview)
+    : Fl_Group(x, y, w, h), preview_mode_(preview)
 {
     box(FL_FLAT_BOX);
     color(g_colors.bg);
@@ -364,6 +564,28 @@ SheetView::SheetView(int x, int y, int w, int h)
     fl_font(g_font_id, g_font_size);
     eq_w_   = (int)fl_width("==") + 4;
     eq_pos_ = (w - SB_W) * 3 / 5;
+
+    if (preview_mode_) {
+        vscroll_ = new Fl_Scrollbar(x + w - SB_W, y, SB_W, h);
+        vscroll_->type(FL_VERTICAL);
+        vscroll_->linesize(1);
+        vscroll_->visible_focus(0);
+        vscroll_->callback([](Fl_Widget *wb, void *d) {
+            auto *sv = static_cast<SheetView *>(d);
+            sv->scroll_top_ = static_cast<Fl_Scrollbar *>(wb)->value();
+            sv->redraw();
+        }, this);
+        editor_ = new SheetLineInput(0, 0, 1, 1);
+        editor_->hide();
+        auto *rd = new SheetLineInput(0, 0, 1, 1, false);
+        rd->hide();
+        result_display_ = rd;
+        end();
+        eval_ctx_init(&ctx_);
+        builtin_register_all(&ctx_);
+        focused_row_ = -1;
+        return;
+    }
 
     // 縦スクロールバー
     vscroll_ = new Fl_Scrollbar(x + w - SB_W, y, SB_W, h);
@@ -528,6 +750,7 @@ void SheetView::update_result_display() {
         // 通常: シンタックスハイライト (draw_expr_highlighted が自動判定)
         rd->color(g_colors.sel_bg);
         rd->set_override_color((Fl_Color)0);
+        rd->set_result_fmt(row.result_fmt);
     }
     rd->show();
     rd->redraw();
@@ -572,11 +795,35 @@ void SheetView::eval_all() {
         }
     }
     update_layout();  // 結果が変わったので = 位置を再計算
+
+    {
+        std::string snap;
+        for (int i = 0; i < (int)rows_.size(); i++) {
+            if (!rows_[i].expr.empty()) {
+                snap += rows_[i].expr;
+                if (!rows_[i].result.empty()) {
+                    snap += " = ";
+                    snap += rows_[i].result;
+                }
+                snap += '\n';
+            }
+        }
+        crash_handler_save_sheet(snap.c_str());
+    }
 }
 
 // ----------------------------------------------------------------
 // 移植元: Calctus/UI/SheetView.cs - validateLayout()
 // 全行の式幅・答え幅を計測し、最大値から "=" カラム位置を算出する。
+// セパレータシフト込みの表示幅を返す
+static int display_width_with_sep(const char *text, const std::vector<double> &shifts) {
+    int len = (int)strlen(text);
+    if (len == 0) return 0;
+    double w = fl_width(text);
+    if (!shifts.empty()) w += shifts.back();
+    return (int)w;
+}
+
 void SheetView::update_layout() {
     fl_font(g_font_id, g_font_size);
 
@@ -592,11 +839,16 @@ void SheetView::update_layout() {
     for (const auto &row : rows_) {
         if (row.result.empty() || !row.show_result) continue;
         has_result = true;
-        if (!row.expr.empty())
-            max_expr_w = std::max(max_expr_w, (int)fl_width(row.expr.c_str()) + PAD * 2);
-        // エラー行の結果は右にはみ出すことを許容するため幅計算に含めない
-        if (!row.error)
-            max_ans_w = std::max(max_ans_w, (int)fl_width(row.result.c_str()) + PAD * 2);
+        if (!row.expr.empty()) {
+            std::vector<double> shifts;
+            calc_expr_separator_shifts(row.expr.c_str(), (int)row.expr.size(), shifts);
+            max_expr_w = std::max(max_expr_w, display_width_with_sep(row.expr.c_str(), shifts) + PAD * 2);
+        }
+        if (!row.error) {
+            std::vector<double> shifts;
+            calc_separator_shifts(row.result.c_str(), (int)row.result.size(), row.result_fmt, shifts);
+            max_ans_w = std::max(max_ans_w, display_width_with_sep(row.result.c_str(), shifts) + PAD * 2);
+        }
     }
 
     // 結果が1行もない場合は eq_pos_ を変更しない (オリジナル: itemsHaveAns が空なら何もしない)
@@ -614,9 +866,19 @@ void SheetView::update_layout() {
 
     // 式幅が eq_pos_ を超える行は2行レイアウト (移植元: SheetViewItem.GetPreferredSize)
     for (auto &row : rows_) {
-        row.wrapped = !row.result.empty() && !row.expr.empty() &&
-                      (int)fl_width(row.expr.c_str()) > eq_pos_;
+        if (row.result.empty() || row.expr.empty()) { row.wrapped = false; continue; }
+        std::vector<double> shifts;
+        calc_expr_separator_shifts(row.expr.c_str(), (int)row.expr.size(), shifts);
+        row.wrapped = display_width_with_sep(row.expr.c_str(), shifts) > eq_pos_;
     }
+}
+
+void SheetView::preview_set_exprs(const std::vector<std::string> &exprs) {
+    rows_.clear();
+    for (auto &e : exprs) rows_.push_back(Row{e});
+    eval_all();
+    sync_scroll();
+    redraw();
 }
 
 void SheetView::apply_font() {
@@ -840,7 +1102,7 @@ void SheetView::draw() {
                 fl_pop_clip();
             }
         } else {
-            draw_expr_highlighted(row.result.c_str(), rx + PAD, rx, ary, rw, ROW_H);
+            draw_expr_highlighted(row.result.c_str(), rx + PAD, rx, ary, rw, ROW_H, row.result_fmt);
         }
     };
 
@@ -926,6 +1188,16 @@ void SheetView::draw() {
 
 // ----------------------------------------------------------------
 int SheetView::handle(int event) {
+    if (preview_mode_) {
+        if (event == FL_MOUSEWHEEL) {
+            scroll_top_ = std::clamp(scroll_top_ + Fl::event_dy(), 0,
+                                     std::max(0, (int)rows_.size() - 1));
+            sync_scroll();
+            redraw();
+            return 1;
+        }
+        return Fl_Group::handle(event);
+    }
     if (event == FL_KEYBOARD) {
         int key   = Fl::event_key();
         bool shift = Fl::event_state(FL_SHIFT) != 0;

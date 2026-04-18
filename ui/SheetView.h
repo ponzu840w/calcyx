@@ -20,7 +20,7 @@ extern "C" {
 
 class SheetView : public Fl_Group {
 public:
-    SheetView(int x, int y, int w, int h);
+    SheetView(int x, int y, int w, int h, bool preview = false);
     ~SheetView();
 
     // フォーカス行のフォーマットを変更 (移植元: SheetViewItem.ReplaceFormatterFunction)
@@ -71,6 +71,9 @@ public:
     bool can_undo() const { return undo_idx_ > 0; }
     bool can_redo() const { return undo_idx_ < (int)undo_buf_.size(); }
     bool has_uncommitted_edit() const;
+
+    // プレビュー用: 式をセットして評価 (preview_mode_ 専用)
+    void preview_set_exprs(const std::vector<std::string> &exprs);
 
     // テスト用ヘルパー
     int         row_count() const { return (int)rows_.size(); }
@@ -130,6 +133,8 @@ private:
 
     void (*row_change_cb_)(void *) = nullptr;
     void  *row_change_data_        = nullptr;
+
+    bool preview_mode_ = false;
 
     static const int ROW_H = 24;
     static const int SB_W  = 14;
