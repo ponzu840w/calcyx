@@ -576,8 +576,10 @@ dialog button.btn-primary:hover { background: #3a5a7a; }
 
 /* ---- About ダイアログ ---- */
 #about-dialog {
-  min-width: auto;
+  width: calc(100vw - 32px);
   max-width: 420px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   text-align: center;
   position: fixed;
   top: 50%;
@@ -585,11 +587,13 @@ dialog button.btn-primary:hover { background: #3a5a7a; }
   transform: translate(-50%, -50%);
   margin: 0;
 }
-.about-header { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 10px; }
-.about-icon { flex-shrink: 0; }
+.about-icon-wrap { text-align: center; margin-bottom: 8px; }
 .about-title { font-size: 16px; font-weight: bold; }
-.about-subtitle { font-size: 11px; color: #aaa; }
+.about-subtitle { font-size: 11px; color: #aaa; margin-bottom: 8px; }
 #about-dialog p { margin: 4px 0; font-size: 12px; }
-#about-dialog a { color: var(--symbol); }
-.about-licenses { margin: 10px 0; font-size: 11px; color: #ccc; display: flex; flex-direction: column; gap: 4px; text-align: left; }
+#about-dialog a { color: var(--symbol); word-break: break-all; }
+.about-licenses { margin: 10px 0; font-size: 11px; color: #ccc; display: flex; flex-direction: column; gap: 6px; text-align: left; }
 #about-dialog .dialog-buttons { justify-content: center; }
+@media (max-width: 360px) {
+  .about-icon { width: 48px; height: 48px; }
+}
