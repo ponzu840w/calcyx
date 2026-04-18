@@ -17,7 +17,7 @@ target_link_libraries(calcyx_cli PRIVATE
 
 target_compile_definitions(calcyx_cli PRIVATE
     CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
-    CALCYX_EDITION="${CALCYX_PLATFORM} CLI"
+    CALCYX_EDITION="${CALCYX_PLATFORM} CLI Edition"
 )
 
 set_target_properties(calcyx_cli PROPERTIES OUTPUT_NAME "calcyx")
