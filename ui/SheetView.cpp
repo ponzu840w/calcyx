@@ -715,8 +715,10 @@ void SheetView::sync_scroll() {
     for (int i = 0; i < n; i++) total_px += row_h(i);
 
     bool need_sb = total_px > h();
-    if (need_sb && !vscroll_->visible()) { vscroll_->show(); place_editor(); }
-    if (!need_sb && vscroll_->visible()) { vscroll_->hide(); scroll_top_ = 0; place_editor(); }
+    bool sb_changed = false;
+    if (need_sb && !vscroll_->visible()) { vscroll_->show(); place_editor(); sb_changed = true; }
+    if (!need_sb && vscroll_->visible()) { vscroll_->hide(); scroll_top_ = 0; place_editor(); sb_changed = true; }
+    if (sb_changed) update_layout();
 
     // 下から積み上げて h() に収まる最大 scroll_top_ を求める
     int cum = 0, max_top = 0;
