@@ -7,7 +7,7 @@
 #include <FL/Fl_Text_Display.H>
 #include <FL/Fl_Text_Buffer.H>
 #include <FL/Fl_Button.H>
-#include <FL/Fl.H>
+#include <FL/Fl_PNG_Image.H>
 #include "MainWindow.h"
 #include "app_prefs.h"
 #include "colors.h"
@@ -127,6 +127,11 @@ int main(int argc, char **argv) {
     win.icon(hicon);
 #elif !defined(__APPLE__)
     win.xclass("calcyx");
+    {
+        Fl_PNG_Image icon_img(CALCYX_ICON_PNG);
+        if (icon_img.fail() == 0)
+            win.icon(&icon_img);
+    }
 #endif
 
     win.show(argc, argv);

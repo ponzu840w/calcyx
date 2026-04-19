@@ -3,6 +3,7 @@ cmake_minimum_required(VERSION 3.15)
 # ---- FLTK (DEPS_DIR は親の CMakeLists.txt で deps.cmake により設定済み) ----
 set(FLTK_LIB         "${DEPS_DIR}/lib/libfltk.a")
 set(FLTK_IMAGES_LIB  "${DEPS_DIR}/lib/libfltk_images.a")
+set(FLTK_PNG_LIB     "${DEPS_DIR}/lib/libfltk_png.a")
 set(FLTK_Z_LIB       "${DEPS_DIR}/lib/libfltk_z.a")
 set(FLTK_INCLUDE_DIR "${DEPS_DIR}/include")
 
@@ -122,10 +123,16 @@ target_compile_definitions(calcyx_ui PRIVATE
     CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
     CALCYX_EDITION="${CALCYX_PLATFORM} GUI Edition"
 )
+if(NOT APPLE AND NOT WIN32)
+    target_compile_definitions(calcyx_ui PRIVATE
+        CALCYX_ICON_PNG="${CMAKE_CURRENT_SOURCE_DIR}/icon_128.png"
+    )
+endif()
 
 target_link_libraries(calcyx_ui PRIVATE
     calcyx_engine
     ${FLTK_IMAGES_LIB}
+    ${FLTK_PNG_LIB}
     ${FLTK_Z_LIB}
     ${FLTK_LIB}
     ${PLATFORM_LIBS}
