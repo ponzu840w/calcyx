@@ -106,19 +106,25 @@ static void show_tray_menu_cb(void *) {
     if (s_popup_active) return;  // 再入防止
     s_popup_active = true;
 
-    // FLTK の popup() はウィンドウ非表示時に座標がずれるため
     // XQueryPointer で現在のカーソル位置を直接取得する
     Display *dpy = fl_display;
+    int qp_x = -1, qp_y = -1;
     if (dpy) {
         Window root_ret, child_ret;
         int rx, ry, wx, wy;
         unsigned int mask;
         if (XQueryPointer(dpy, DefaultRootWindow(dpy),
                           &root_ret, &child_ret, &rx, &ry, &wx, &wy, &mask)) {
-            s_popup_x = rx;
-            s_popup_y = ry;
+            qp_x = rx;
+            qp_y = ry;
         }
     }
+    fprintf(stderr, "[tray] popup: xevent=(%d,%d) XQueryPointer=(%d,%d)\n",
+            s_popup_x, s_popup_y, qp_x, qp_y);
+    // XQueryPointer の結果を使う
+    if (qp_x >= 0) { s_popup_x = qp_x; s_popup_y = qp_y; }
+
+    fprintf(stderr, "[tray] popup: using (%d,%d)\n", s_popup_x, s_popup_y);
 
     static const Fl_Menu_Item menu[] = {
         {"Open", 0, nullptr, (void *)1},
@@ -127,6 +133,7 @@ static void show_tray_menu_cb(void *) {
     };
     const Fl_Menu_Item *picked = menu->popup(s_popup_x, s_popup_y);
     s_popup_active = false;
+    fprintf(stderr, "[tray] popup: done\n");
     if (picked) {
         long idx = (long)picked->user_data();
         if (idx == 1 && s_callbacks.on_open) s_callbacks.on_open();
