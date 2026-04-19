@@ -57,6 +57,7 @@ if(APPLE)
         builtin_docs.cpp
         app_prefs.cpp
         crash_handler.cpp
+        platform_mac.mm
         ${ICON_FILE}
         ${ICON_SVG}
         ${SAMPLE_FILES}

@@ -21,6 +21,7 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #include <libgen.h>
+extern "C" void mac_set_window_level(Fl_Window *win, int topmost);
 #endif
 #ifdef _WIN32
 #include <FL/platform.H>
@@ -498,9 +499,7 @@ void MainWindow::toggle_always_on_top() {
     SetWindowPos(hwnd, topmost_ ? HWND_TOPMOST : HWND_NOTOPMOST,
                  0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 #elif defined(__APPLE__)
-    // macOS: Fl_Window には直接の API がないが、FLTK 内部で対応不要
-    // Cocoa の NSWindow.level を操作する必要があるが、Objective-C++ なしでは困難
-    // → 将来 platform_mac.mm で対応
+    mac_set_window_level(this, topmost_ ? 1 : 0);
 #else
     Display *dpy = fl_display;
     Window xwin = fl_xid(this);
