@@ -591,6 +591,7 @@ void MainWindow::setup_tray() {
             Fl::add_timeout(0.0, [](void *d) {
                 static_cast<MainWindow *>(d)->toggle_visibility();
             }, this);
+            Fl::awake();  // ウィンドウ非表示でもタイムアウトを確実に発火させる
         };
         tray_active_ = plat_tray_create(this, cb);
     }
