@@ -46,6 +46,9 @@ void eval_ctx_init(eval_ctx_t *ctx) {
     memset(ctx, 0, sizeof(*ctx));
     ctx->settings.fraction_enabled  = true;
     ctx->settings.accuracy_priority = true;
+    ctx->settings.max_array_length  = 256;
+    ctx->settings.max_string_length = 256;
+    ctx->settings.max_call_depth    = 64;
 
     /* 定数 (移植元: EvalContext() コンストラクタ) */
     /* PI = 3.1415926535897932384626433833 */

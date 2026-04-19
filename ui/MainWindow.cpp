@@ -2,6 +2,8 @@
 
 #include "MainWindow.h"
 #include "PrefsDialog.h"
+#include "settings_globals.h"
+#include "colors.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Native_File_Chooser.H>
 #include "app_prefs.h"
@@ -39,9 +41,10 @@ static const int FMT_COUNT = 8;
 
 static std::string find_icon_svg();
 
-static const Fl_Color C_WIN_BG  = fl_rgb_color( 30,  30,  30);
-static const Fl_Color C_MENU_BG = fl_rgb_color( 40,  40,  45);
-static const Fl_Color C_MENU_FG = fl_rgb_color(210, 210, 220);
+// UI クロームカラーは g_colors.ui_* から取得
+#define C_WIN_BG   g_colors.ui_win_bg
+#define C_MENU_BG  g_colors.ui_menu
+#define C_MENU_FG  g_colors.ui_text
 
 MainWindow::MainWindow(int w, int h, const char *title)
     : Fl_Double_Window(w, h, title)
@@ -158,13 +161,28 @@ void MainWindow::resize(int nx, int ny, int nw, int nh) {
     fmt_choice_->resize(nw - CHOICE_W, 0, CHOICE_W, MENU_H);
 }
 
+void MainWindow::apply_ui_colors() {
+    colors_apply_fl_scheme();
+    color(C_WIN_BG);
+    menu_->color(C_MENU_BG);
+    menu_->textcolor(C_MENU_FG);
+    btn_undo_->color(C_MENU_BG);
+    btn_redo_->color(C_MENU_BG);
+    btn_about_->color(C_MENU_BG);
+    btn_about_->labelcolor(C_MENU_FG);
+    fmt_choice_->color(C_MENU_BG);
+    fmt_choice_->textcolor(C_MENU_FG);
+    update_toolbar();
+    redraw();
+}
+
 void MainWindow::update_toolbar() {
     bool u = sheet_->can_undo() || sheet_->has_uncommitted_edit();
     bool r = sheet_->can_redo();
 
     // ← → ボタン: deactivate() は白っぽくなるので labelcolor だけ変更
     // (undo/redo は内部でガードしているので、無効時にクリックしても安全)
-    static const Fl_Color C_DIM = fl_rgb_color(60, 60, 65);
+    Fl_Color C_DIM = g_colors.ui_dim;
     btn_undo_->labelcolor(u ? C_MENU_FG : C_DIM);
     btn_redo_->labelcolor(r ? C_MENU_FG : C_DIM);
     btn_undo_->redraw();
@@ -263,7 +281,7 @@ static void show_about(MainWindow *win) {
     const int DW = 420, DH = 380;
     Fl_Double_Window dlg(DW, DH, "About calcyx");
     dlg.set_modal();
-    dlg.color(fl_rgb_color(30, 30, 30));
+    dlg.color(g_colors.ui_bg);
 
     // アイコン
     Fl_Box icon_box(DW / 2 - 32, 10, 64, 64);
@@ -272,8 +290,8 @@ static void show_about(MainWindow *win) {
 
     // HTML コンテンツ
     Fl_Help_View hv(10, 80, DW - 20, DH - 120);
-    hv.color(fl_rgb_color(30, 30, 30));
-    hv.textcolor(fl_rgb_color(210, 210, 220));
+    hv.color(g_colors.ui_bg);
+    hv.textcolor(g_colors.ui_text);
     hv.textfont(FL_HELVETICA);
     hv.textsize(12);
     hv.link(about_link_cb);
@@ -358,7 +376,9 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         win->save_prefs();
         exit(0);
     } else if (strcmp(cmd, "prefs") == 0) {
-        PrefsDialog::run(win->sheet_);
+        PrefsDialog::run(win->sheet_, [](void *d) {
+            static_cast<MainWindow *>(d)->apply_ui_colors();
+        }, win);
     } else if (strcmp(cmd, "about") == 0) {
         show_about(win);
     } else {
@@ -454,6 +474,7 @@ bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
 }
 
 void MainWindow::save_prefs() {
+    if (!g_remember_position) return;
     AppPrefs prefs;
     prefs.set_int("geometry_valid", 1);
     prefs.set_int("x", x());

@@ -128,14 +128,17 @@ static val_t *apply_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
  * 移植元: RMath.Range + BinaryOp.OnEval
  * ====================================================== */
 
-static val_t *make_range(val_t *a, val_t *b, bool inclusive) {
+static val_t *make_range(val_t *a, val_t *b, bool inclusive, eval_ctx_t *ctx) {
     int64_t from = val_as_long(a);
     int64_t to   = val_as_long(b);
     int64_t step = (from <= to) ? 1 : -1;
     int64_t end  = inclusive ? to + step : to;
     int64_t count = (step > 0) ? (end - from) : (from - end);
     if (count < 0) count = 0;
-    if (count > 1000000) count = 1000000;  /* 上限 */
+    if (count > ctx->settings.max_array_length) {
+        EVAL_ERROR(ctx, 0, "Array length exceeds limit (%d).", ctx->settings.max_array_length);
+        return NULL;
+    }
 
     val_t **items = (val_t **)malloc((size_t)count * sizeof(val_t *));
     if (!items) return NULL;
@@ -190,8 +193,8 @@ static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
     }
     /* ユーザ定義 */
     if (!fd->body) { EVAL_ERROR(ctx, 0, "Function has no body."); return NULL; }
-    if (ctx->depth >= EVAL_DEPTH_MAX) {
-        EVAL_ERROR(ctx, 0, "Depth of recursion exceeds limit.");
+    if (ctx->depth >= ctx->settings.max_call_depth) {
+        EVAL_ERROR(ctx, 0, "Depth of recursion exceeds limit (%d).", ctx->settings.max_call_depth);
         return NULL;
     }
     eval_ctx_t child;
@@ -476,7 +479,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             if (!a || ctx->has_error) return NULL;
             val_t *b = expr_eval(e->child_b, ctx);
             if (!b || ctx->has_error) { val_free(a); return NULL; }
-            val_t *r = make_range(a, b, e->op == OP_INCL_RANGE);
+            val_t *r = make_range(a, b, e->op == OP_INCL_RANGE, ctx);
             val_free(a); val_free(b);
             return r;
         }
@@ -504,6 +507,10 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
 
     /* --- 配列リテラル (移植元: ArrayExpr.OnEval) --- */
     case EXPR_ARRAY: {
+        if (e->n_args > ctx->settings.max_array_length) {
+            EVAL_ERROR(ctx, 0, "Array length exceeds limit (%d).", ctx->settings.max_array_length);
+            return NULL;
+        }
         val_t **items = (val_t **)malloc((size_t)e->n_args * sizeof(val_t *));
         if (!items && e->n_args > 0) return NULL;
         for (int i = 0; i < e->n_args; i++) {

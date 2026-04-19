@@ -20,6 +20,17 @@ extern bool g_input_auto_close_brackets;
 extern bool g_sep_thousands;
 extern bool g_sep_hex;
 
+// ---- 計算リミット ----
+extern int g_limit_max_array_length;
+extern int g_limit_max_string_length;
+extern int g_limit_max_call_depth;
+
+// ---- 表示 ----
+extern bool g_show_rowlines;
+
+// ---- ウィンドウ ----
+extern bool g_remember_position;
+
 void settings_init_defaults();
 void settings_load();
 void settings_save();

@@ -1,9 +1,10 @@
-// PrefsDialog — 設定ダイアログ (4タブ: Font, Colors, Number Format, Input)
+// PrefsDialog — 設定ダイアログ (4タブ: General, Appearance, Number Format, Input)
 
 #include "PrefsDialog.h"
 #include "SheetView.h"
 #include "settings_globals.h"
 #include "colors.h"
+#include "app_prefs.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/filename.H>
@@ -12,6 +13,7 @@
 #include <FL/Fl_Hold_Browser.H>
 #include <FL/Fl_Spinner.H>
 #include <FL/Fl_Check_Button.H>
+#include <FL/Fl_Choice.H>
 #include <FL/Fl_Button.H>
 #include <FL/Fl_Box.H>
 #include <FL/fl_draw.H>
@@ -34,14 +36,14 @@ extern "C" {
 #include "types/val.h"
 }
 
-static const Fl_Color DLG_BG      = fl_rgb_color( 38,  38,  43);
-static const Fl_Color DLG_INPUT   = fl_rgb_color( 50,  52,  60);
-static const Fl_Color DLG_BTN     = fl_rgb_color( 55,  60,  75);
-static const Fl_Color DLG_TEXT    = fl_rgb_color(215, 215, 225);
-static const Fl_Color DLG_LABEL   = fl_rgb_color(180, 180, 190);
+#define DLG_BG     g_colors.ui_bg
+#define DLG_INPUT  g_colors.ui_input
+#define DLG_BTN    g_colors.ui_btn
+#define DLG_TEXT   g_colors.ui_text
+#define DLG_LABEL  g_colors.ui_label
 
 static const int DW = 540;
-static const int DH = 576;
+static const int DH = 600;
 
 // ---- Font tab ----
 struct SysFont {
@@ -130,7 +132,7 @@ static void open_font_picker(FontTab *ft, Fl_Window *parent) {
     browser.color(DLG_INPUT);
     browser.textcolor(DLG_TEXT);
     browser.textsize(13);
-    browser.selection_color(fl_rgb_color(60, 80, 120));
+    browser.selection_color(g_colors.cursor);
 
     Fl_Check_Button sys_chk(10, PH - 82, 180, 22, "Use system fonts");
     sys_chk.labelcolor(DLG_LABEL);
@@ -271,24 +273,16 @@ struct SwatchData {
     DlgState *dlg;
 };
 
+static const int MAX_SWATCHES = 24;
+
 struct ColorsTab {
-    Fl_Button *swatches[15];
-    ColorEntry entries[15];
-    SwatchData swatch_data[15];
+    Fl_Button *swatches[MAX_SWATCHES];
+    ColorEntry entries[MAX_SWATCHES];
+    SwatchData swatch_data[MAX_SWATCHES];
     int count;
 };
 
-static void swatch_cb(Fl_Widget *w, void *data) {
-    auto *sd = static_cast<SwatchData *>(data);
-    uchar r, g, b;
-    Fl::get_color(*sd->target, r, g, b);
-    if (fl_color_chooser("Color", r, g, b)) {
-        *sd->target = fl_rgb_color(r, g, b);
-        w->color(*sd->target);
-        w->redraw();
-        refresh_previews(sd->dlg);
-    }
-}
+static void swatch_cb(Fl_Widget *w, void *data);
 
 // ---- state for apply ----
 struct DlgState {
@@ -303,18 +297,35 @@ struct DlgState {
     Fl_Check_Button *sep_hex_chk;
     Fl_Check_Button *auto_complete_chk;
     Fl_Check_Button *auto_brackets_chk;
+    // General tab
+    Fl_Check_Button *show_rowlines_chk;
+    Fl_Check_Button *remember_pos_chk;
+    Fl_Spinner *limit_array_spin;
+    Fl_Spinner *limit_string_spin;
+    Fl_Spinner *limit_depth_spin;
+    Fl_Choice  *preset_choice;
+    CalcyxColors user_colors;
     SheetView  *sheet;
     CalcyxColors saved_colors;
-    // プレビュー用 SheetView (各タブに1つ)
+    int         saved_preset;
+    CalcyxColors saved_user_colors;
     SheetView  *font_preview_sv;
     SheetView  *color_preview_sv;
     SheetView  *fmt_preview_sv;
-    // apply 前の値を保存 (プレビュー後に復元)
     Fl_Font     saved_font_id;
     int         saved_font_size;
     fmt_settings_t saved_fmt;
     bool        saved_sep_thousands;
     bool        saved_sep_hex;
+    int         saved_limit_array;
+    int         saved_limit_string;
+    int         saved_limit_depth;
+    bool        saved_show_rowlines;
+    bool        saved_remember_pos;
+    PrefsApplyUiCb ui_cb;
+    void       *ui_data;
+    Fl_Window  *dlg_win;
+    Fl_Tabs    *tabs;
 };
 
 static const std::vector<std::string> COLOR_PREVIEW_EXPRS = {
@@ -345,6 +356,50 @@ static const std::vector<std::string> FMT_PREVIEW_EXPRS = {
     "sqrt(2)",
 };
 
+static void update_swatch_labels(DlgState *st);
+static void refresh_dlg_colors(DlgState *st);
+static void style_check(Fl_Check_Button *chk);
+static void style_spinner(Fl_Spinner *sp);
+
+static void swatch_cb(Fl_Widget *w, void *data) {
+    auto *sd = static_cast<SwatchData *>(data);
+    if (sd->dlg->preset_choice->value() != COLOR_PRESET_USER_DEFINED)
+        return;
+    uchar r, g, b;
+    Fl::get_color(*sd->target, r, g, b);
+    if (fl_color_chooser("Color", r, g, b)) {
+        *sd->target = fl_rgb_color(r, g, b);
+        sd->dlg->user_colors = g_colors;
+        update_swatch_labels(sd->dlg);
+        refresh_previews(sd->dlg);
+    }
+}
+
+static Fl_Color contrast_label_color(Fl_Color c) {
+    uchar r, g, b;
+    Fl::get_color(c, r, g, b);
+    int lum = r * 299 + g * 587 + b * 114;
+    return (lum > 128000) ? FL_BLACK : FL_WHITE;
+}
+
+static void update_swatch_labels(DlgState *st) {
+    for (int i = 0; i < st->colors.count; i++) {
+        Fl_Color c = *st->colors.entries[i].target;
+        uchar r, g, b;
+        Fl::get_color(c, r, g, b);
+        char buf[8];
+        snprintf(buf, sizeof(buf), "#%02X%02X%02X", r, g, b);
+        st->colors.swatches[i]->copy_label(buf);
+        st->colors.swatches[i]->labelcolor(contrast_label_color(c));
+        st->colors.swatches[i]->color(c);
+        st->colors.swatches[i]->redraw();
+    }
+}
+
+static void update_swatch_state(DlgState *st) {
+    update_swatch_labels(st);
+}
+
 static void write_dlg_to_globals(DlgState *st) {
     g_font_id   = st->font.selected_id;
     g_font_size = (int)st->font.size_spin->value();
@@ -355,6 +410,87 @@ static void write_dlg_to_globals(DlgState *st) {
     g_fmt_settings.e_alignment    = st->fmt_align_chk->value() != 0;
     g_sep_thousands = st->sep_thousands_chk->value() != 0;
     g_sep_hex       = st->sep_hex_chk->value() != 0;
+    g_limit_max_array_length  = (int)st->limit_array_spin->value();
+    g_limit_max_string_length = (int)st->limit_string_spin->value();
+    g_limit_max_call_depth    = (int)st->limit_depth_spin->value();
+    g_show_rowlines           = st->show_rowlines_chk->value() != 0;
+    g_remember_position       = st->remember_pos_chk->value() != 0;
+    g_color_preset = st->preset_choice->value();
+}
+
+// ダイアログ自身のウィジェットカラーを現在の g_colors.ui_* で更新
+static void refresh_dlg_colors_recurse(Fl_Group *grp, DlgState *st) {
+    for (int i = 0; i < grp->children(); i++) {
+        Fl_Widget *w = grp->child(i);
+        // スウォッチ (色見本ボタン) はスキップ
+        bool is_swatch = false;
+        for (int j = 0; j < st->colors.count; j++) {
+            if (w == st->colors.swatches[j]) { is_swatch = true; break; }
+        }
+        if (is_swatch) continue;
+        // プレビュー SheetView はスキップ (独自の色管理)
+        if (w == st->color_preview_sv || w == st->font_preview_sv || w == st->fmt_preview_sv)
+            continue;
+
+        if (auto *chk = dynamic_cast<Fl_Check_Button *>(w)) {
+            style_check(chk);
+        } else if (auto *sp = dynamic_cast<Fl_Spinner *>(w)) {
+            style_spinner(sp);
+            // Fl_Spinner の子ウィジェットも更新
+            if (auto *sg = dynamic_cast<Fl_Group *>(w)) {
+                for (int j = 0; j < sg->children(); j++) {
+                    Fl_Widget *c = sg->child(j);
+                    c->color(DLG_INPUT);
+                    c->labelcolor(DLG_TEXT);
+                    c->redraw();
+                }
+            }
+        } else if (auto *cho = dynamic_cast<Fl_Choice *>(w)) {
+            cho->color(DLG_INPUT);
+            cho->textcolor(DLG_TEXT);
+            cho->labelcolor(DLG_LABEL);
+            cho->selection_color(g_colors.cursor);
+        } else if (auto *btn = dynamic_cast<Fl_Button *>(w)) {
+            if (btn->box() == FL_DOWN_BOX) {
+                // フォント選択ボタン等
+                btn->color(DLG_INPUT);
+                btn->labelcolor(DLG_TEXT);
+            } else {
+                btn->color(DLG_BTN);
+                btn->labelcolor(DLG_TEXT);
+            }
+        } else if (auto *box = dynamic_cast<Fl_Box *>(w)) {
+            if (box->labelfont() == FL_BOLD)
+                box->labelcolor(DLG_LABEL);
+            else
+                box->labelcolor(DLG_LABEL);
+        }
+
+        if (auto *g = dynamic_cast<Fl_Group *>(w)) {
+            g->color(DLG_BG);
+            g->selection_color(DLG_BG);
+            if (dynamic_cast<Fl_Tabs *>(w))
+                g->labelcolor(DLG_LABEL);
+            else
+                g->labelcolor(DLG_TEXT);
+            refresh_dlg_colors_recurse(g, st);
+        }
+        w->redraw();
+    }
+}
+
+static void refresh_dlg_colors(DlgState *st) {
+    if (!st->dlg_win) return;
+    colors_apply_fl_scheme();
+    st->dlg_win->color(DLG_BG);
+    if (st->tabs) {
+        st->tabs->color(DLG_BG);
+        st->tabs->selection_color(DLG_BG);
+        st->tabs->labelcolor(DLG_LABEL);
+    }
+    refresh_dlg_colors_recurse(static_cast<Fl_Group *>(st->dlg_win), st);
+    update_swatch_labels(st);
+    st->dlg_win->redraw();
 }
 
 static void refresh_previews(DlgState *st) {
@@ -390,20 +526,49 @@ static void fmt_change_cb(Fl_Widget *, void *data) {
     refresh_previews(static_cast<DlgState *>(data));
 }
 
+static void preset_change_cb(Fl_Widget *, void *data) {
+    auto *st = static_cast<DlgState *>(data);
+    int preset = st->preset_choice->value();
+    if (preset == COLOR_PRESET_USER_DEFINED) {
+        g_colors = st->user_colors;
+    } else {
+        colors_init_preset(&g_colors, preset);
+    }
+    update_swatch_state(st);
+    refresh_dlg_colors(st);
+    refresh_previews(st);
+}
+
 static void apply_settings(DlgState *st) {
     write_dlg_to_globals(st);
     g_input_auto_completion     = st->auto_complete_chk->value() != 0;
     g_input_auto_close_brackets = st->auto_brackets_chk->value() != 0;
+
+    if (g_color_preset == COLOR_PRESET_USER_DEFINED)
+        st->user_colors = g_colors;
 
     st->saved_font_id       = g_font_id;
     st->saved_font_size     = g_font_size;
     st->saved_fmt           = g_fmt_settings;
     st->saved_sep_thousands = g_sep_thousands;
     st->saved_sep_hex       = g_sep_hex;
+    st->saved_limit_array   = g_limit_max_array_length;
+    st->saved_limit_string  = g_limit_max_string_length;
+    st->saved_limit_depth   = g_limit_max_call_depth;
+    st->saved_show_rowlines = g_show_rowlines;
+    st->saved_remember_pos  = g_remember_position;
+    st->saved_preset        = g_color_preset;
+    st->saved_colors        = g_colors;
+    st->saved_user_colors   = st->user_colors;
 
     st->sheet->apply_font();
     st->sheet->live_eval();
     st->sheet->redraw();
+
+    if (st->ui_cb) st->ui_cb(st->ui_data);
+
+    // ダイアログ自身のカラーも更新
+    refresh_dlg_colors(st);
 
     settings_save();
 }
@@ -417,26 +582,35 @@ static void reset_to_defaults(DlgState *st) {
     update_preview(&st->font);
 
     // Colors
-    CalcyxColors def;
-    colors_init_defaults(&def);
-    g_colors = def;
+    st->preset_choice->value(COLOR_PRESET_OTAKU_BLACK);
+    colors_init_preset(&g_colors, COLOR_PRESET_OTAKU_BLACK);
     for (int i = 0; i < st->colors.count; i++) {
         st->colors.swatches[i]->color(*st->colors.entries[i].target);
         st->colors.swatches[i]->redraw();
     }
+    update_swatch_state(st);
 
     // Number Format
-    st->fmt_decimal_spin->value(15);
+    st->fmt_decimal_spin->value(9);
     st->fmt_exp_chk->value(1);
-    st->fmt_exp_pos_spin->value(7);
-    st->fmt_exp_neg_spin->value(-4);
-    st->fmt_align_chk->value(1);
+    st->fmt_exp_pos_spin->value(15);
+    st->fmt_exp_neg_spin->value(-5);
+    st->fmt_align_chk->value(0);
     st->sep_thousands_chk->value(1);
     st->sep_hex_chk->value(1);
 
     // Input
     st->auto_complete_chk->value(1);
     st->auto_brackets_chk->value(0);
+
+    // General
+    st->show_rowlines_chk->value(1);
+    st->remember_pos_chk->value(1);
+    st->limit_array_spin->value(256);
+    st->limit_string_spin->value(256);
+    st->limit_depth_spin->value(64);
+
+    refresh_previews(st);
 }
 
 static void style_label(Fl_Widget *w) {
@@ -448,7 +622,7 @@ static void style_check(Fl_Check_Button *chk) {
     chk->color(DLG_BG);
     chk->labelcolor(DLG_TEXT);
     chk->labelsize(12);
-    chk->selection_color(fl_rgb_color(80, 140, 255));
+    chk->selection_color(g_colors.cursor);
 }
 
 static void style_spinner(Fl_Spinner *sp) {
@@ -457,42 +631,157 @@ static void style_spinner(Fl_Spinner *sp) {
     sp->labelcolor(DLG_LABEL);
     sp->labelsize(12);
     sp->textsize(12);
-    sp->selection_color(fl_rgb_color(60, 80, 120));
+    sp->selection_color(g_colors.cursor);
 }
 
-void PrefsDialog::run(SheetView *sheet) {
+void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     DlgState st;
     st.sheet = sheet;
+    st.ui_cb = ui_cb;
+    st.ui_data = ui_data;
     st.saved_colors = g_colors;
+    st.saved_preset = g_color_preset;
+    st.user_colors = g_colors;
+    st.saved_user_colors = g_colors;
 
     Fl_Double_Window dlg(DW, DH, "Preferences");
     dlg.set_modal();
     dlg.color(DLG_BG);
+    st.dlg_win = &dlg;
 
-    const int TAB_H = 496;
+    const int TAB_H = DH - 60;
     Fl_Tabs tabs(5, 5, DW - 10, TAB_H);
-    tabs.color(fl_rgb_color(28, 28, 32));
+    tabs.color(DLG_BG);
     tabs.labelcolor(DLG_LABEL);
     tabs.selection_color(DLG_BG);
+    st.tabs = &tabs;
 
-    // ======== Font tab ========
+    // ======== General tab ========
     {
-        Fl_Group *g = new Fl_Group(5, 30, DW - 10, TAB_H - 25, " Font ");
+        Fl_Group *g = new Fl_Group(5, 30, DW - 10, TAB_H - 25, " General ");
         g->color(DLG_BG);
         g->selection_color(DLG_BG);
         g->labelcolor(DLG_TEXT);
         g->labelsize(12);
 
-        int lx = 20, ly = 50, lw = 70;
+        int lx = 20, ly = 55;
 
+        // --- Window ---
+        Fl_Box *sec_win = new Fl_Box(lx, ly, 200, 20, "Window");
+        sec_win->labelcolor(DLG_LABEL);
+        sec_win->labelsize(12);
+        sec_win->labelfont(FL_BOLD);
+        sec_win->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 25;
+
+        st.remember_pos_chk = new Fl_Check_Button(lx + 10, ly, 300, 25, "Remember window position on exit");
+        style_check(st.remember_pos_chk);
+        st.remember_pos_chk->value(g_remember_position ? 1 : 0);
+        ly += 40;
+
+        // --- Calculation Limits ---
+        Fl_Box *sec_lim = new Fl_Box(lx, ly, 200, 20, "Calculation Limits");
+        sec_lim->labelcolor(DLG_LABEL);
+        sec_lim->labelsize(12);
+        sec_lim->labelfont(FL_BOLD);
+        sec_lim->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 25;
+
+        int slx = lx + 10, slw = 190, ssw = 100;
+
+        Fl_Box *lb_arr = new Fl_Box(slx, ly, slw, 25, "Max array length:");
+        style_label(lb_arr);
+        lb_arr->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        st.limit_array_spin = new Fl_Spinner(slx + slw, ly, ssw, 25);
+        style_spinner(st.limit_array_spin);
+        st.limit_array_spin->range(1, 1000000);
+        st.limit_array_spin->step(1);
+        st.limit_array_spin->value(g_limit_max_array_length);
+        ly += 30;
+
+        Fl_Box *lb_str = new Fl_Box(slx, ly, slw, 25, "Max string length:");
+        style_label(lb_str);
+        lb_str->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        st.limit_string_spin = new Fl_Spinner(slx + slw, ly, ssw, 25);
+        style_spinner(st.limit_string_spin);
+        st.limit_string_spin->range(1, 1000000);
+        st.limit_string_spin->step(1);
+        st.limit_string_spin->value(g_limit_max_string_length);
+        ly += 30;
+
+        Fl_Box *lb_dep = new Fl_Box(slx, ly, slw, 25, "Max call recursion depth:");
+        style_label(lb_dep);
+        lb_dep->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        st.limit_depth_spin = new Fl_Spinner(slx + slw, ly, ssw, 25);
+        style_spinner(st.limit_depth_spin);
+        st.limit_depth_spin->range(1, 1000);
+        st.limit_depth_spin->step(1);
+        st.limit_depth_spin->value(g_limit_max_call_depth);
+        ly += 40;
+
+        // --- Configuration ---
+        Fl_Box *sec_cfg = new Fl_Box(lx, ly, 200, 20, "Configuration");
+        sec_cfg->labelcolor(DLG_LABEL);
+        sec_cfg->labelsize(12);
+        sec_cfg->labelfont(FL_BOLD);
+        sec_cfg->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 25;
+
+        std::string cfg_dir = AppPrefs::config_dir();
+        Fl_Box *path_box = new Fl_Box(slx, ly, DW - 60, 20);
+        path_box->copy_label(cfg_dir.c_str());
+        path_box->labelcolor(DLG_TEXT);
+        path_box->labelsize(11);
+        path_box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 25;
+
+        Fl_Button *open_dir_btn = new Fl_Button(slx, ly, 120, 28, "Open folder");
+        open_dir_btn->color(DLG_BTN);
+        open_dir_btn->labelcolor(DLG_TEXT);
+        open_dir_btn->labelsize(12);
+        open_dir_btn->callback([](Fl_Widget *, void *) {
+            std::string dir = AppPrefs::config_dir();
+#if defined(_WIN32)
+            ShellExecuteA(NULL, "open", dir.c_str(), NULL, NULL, SW_SHOWNORMAL);
+#elif defined(__APPLE__)
+            std::string cmd = "open \"" + dir + "\"";
+            if (system(cmd.c_str())) {}
+#else
+            std::string cmd = "xdg-open \"" + dir + "\" 2>/dev/null &";
+            if (system(cmd.c_str())) {}
+#endif
+        }, nullptr);
+
+        g->end();
+    }
+
+    // ======== Appearance tab (Font + Colors) ========
+    {
+        Fl_Group *g = new Fl_Group(5, 30, DW - 10, TAB_H - 25, " Appearance ");
+        g->color(DLG_BG);
+        g->selection_color(DLG_BG);
+        g->labelcolor(DLG_TEXT);
+        g->labelsize(12);
+
+        int lx = 20, ly = 50;
+
+        // --- Font ---
+        Fl_Box *sec_font = new Fl_Box(lx, ly, 200, 20, "Font");
+        sec_font->labelcolor(DLG_LABEL);
+        sec_font->labelsize(12);
+        sec_font->labelfont(FL_BOLD);
+        sec_font->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 22;
+
+        int lw = 50;
         st.font.selected_id = g_font_id;
         st.font.selected_name = font_id_to_display_name(g_font_id);
 
-        Fl_Box *lb1 = new Fl_Box(lx, ly, lw, 25, "Font:");
+        Fl_Box *lb1 = new Fl_Box(lx + 10, ly, lw, 25, "Font:");
         style_label(lb1);
         lb1->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-        st.font.font_btn = new Fl_Button(lx + lw, ly, DW - lx - lw - 30, 25);
+        st.font.font_btn = new Fl_Button(lx + 10 + lw, ly, DW - lx - lw - 50, 25);
         st.font.font_btn->box(FL_DOWN_BOX);
         st.font.font_btn->color(DLG_INPUT);
         st.font.font_btn->labelcolor(DLG_TEXT);
@@ -501,33 +790,41 @@ void PrefsDialog::run(SheetView *sheet) {
         st.font.font_btn->callback(font_btn_cb, &st);
         update_font_btn(&st.font);
 
-        ly += 35;
-        Fl_Box *lb2 = new Fl_Box(lx, ly, lw, 25, "Size:");
+        ly += 28;
+        Fl_Box *lb2 = new Fl_Box(lx + 10, ly, lw, 25, "Size:");
         style_label(lb2);
         lb2->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-        st.font.size_spin = new Fl_Spinner(lx + lw, ly, 80, 25);
+        st.font.size_spin = new Fl_Spinner(lx + 10 + lw, ly, 80, 25);
         style_spinner(st.font.size_spin);
         st.font.size_spin->range(8, 36);
         st.font.size_spin->step(1);
         st.font.size_spin->value(g_font_size);
         st.font.size_spin->callback(size_change_cb, &st);
+        ly += 30;
 
-        ly += 35;
-        int preview_h = TAB_H - 25 - (ly - 30);
-        st.font_preview_sv = new SheetView(lx, ly, DW - 50, preview_h, true);
-        st.font.preview = nullptr;
+        // --- Colors ---
+        Fl_Box *sec_col = new Fl_Box(lx, ly, 200, 20, "Colors");
+        sec_col->labelcolor(DLG_LABEL);
+        sec_col->labelsize(12);
+        sec_col->labelfont(FL_BOLD);
+        sec_col->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 22;
 
-        g->end();
-    }
-
-    // ======== Colors tab ========
-    {
-        Fl_Group *g = new Fl_Group(5, 30, DW - 10, TAB_H - 25, " Colors ");
-        g->color(DLG_BG);
-        g->selection_color(DLG_BG);
-        g->labelcolor(DLG_TEXT);
-        g->labelsize(12);
+        Fl_Box *lb_preset = new Fl_Box(lx + 10, ly, 60, 25, "Preset:");
+        style_label(lb_preset);
+        lb_preset->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        st.preset_choice = new Fl_Choice(lx + 70, ly, 200, 25);
+        st.preset_choice->color(DLG_INPUT);
+        st.preset_choice->textcolor(DLG_TEXT);
+        st.preset_choice->labelsize(12);
+        st.preset_choice->textsize(12);
+        st.preset_choice->selection_color(g_colors.cursor);
+        for (int i = 0; i < COLOR_PRESET_COUNT; i++)
+            st.preset_choice->add(COLOR_PRESET_INFO[i].label);
+        st.preset_choice->value(g_color_preset);
+        st.preset_choice->callback(preset_change_cb, &st);
+        ly += 28;
 
         struct { const char *label; Fl_Color *color; } entries[] = {
             { "Background",   &g_colors.bg },
@@ -545,45 +842,59 @@ void PrefsDialog::run(SheetView *sheet) {
             { "Paren 3",      &g_colors.paren[2] },
             { "Paren 4",      &g_colors.paren[3] },
             { "Error",        &g_colors.error },
+            { "Win BG",       &g_colors.ui_win_bg },
+            { "Dlg BG",       &g_colors.ui_bg },
+            { "UI Input",     &g_colors.ui_input },
+            { "UI Button",    &g_colors.ui_btn },
+            { "Menu BG",      &g_colors.ui_menu },
+            { "UI Text",      &g_colors.ui_text },
+            { "UI Label",     &g_colors.ui_label },
+            { "UI Dim",       &g_colors.ui_dim },
         };
 
-        st.colors.count = 15;
-        int col1_x = 20, col2_x = DW / 2 + 10;
-        int sy = 50;
-        for (int i = 0; i < 15; i++) {
-            int cx = (i < 8) ? col1_x : col2_x;
-            int cy = sy + (i < 8 ? i : i - 8) * 30;
-            Fl_Box *lb = new Fl_Box(cx, cy, 100, 25, entries[i].label);
+        const int n_entries = 23;
+        st.colors.count = n_entries;
+        // 3カラム × 8行
+        const int cols = 3, rows = 8;
+        int col_w = (DW - 40) / cols;
+        int sy = ly;
+        for (int i = 0; i < n_entries; i++) {
+            int c = i / rows, r = i % rows;
+            int cx = lx + 10 + c * col_w;
+            int cy = sy + r * 24;
+            Fl_Box *lb = new Fl_Box(cx, cy, 70, 20, entries[i].label);
             style_label(lb);
+            lb->labelsize(11);
             lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-            auto *btn = new Fl_Button(cx + 105, cy, 80, 25);
+            auto *btn = new Fl_Button(cx + 70, cy, 80, 20);
             btn->box(FL_DOWN_BOX);
             btn->color(*entries[i].color);
+            btn->labelsize(10);
+            btn->align(FL_ALIGN_INSIDE);
             st.colors.swatch_data[i] = { entries[i].color, &st };
             btn->callback(swatch_cb, &st.colors.swatch_data[i]);
             st.colors.swatches[i] = btn;
             st.colors.entries[i] = { entries[i].label, entries[i].color };
         }
 
-        int color_bottom = sy + 8 * 30;
+        ly = sy + rows * 24 + 4;
 
-        // Reset ボタン
-        auto *reset = new Fl_Button(20, color_bottom, 80, 25, "Reset Colors");
-        reset->color(DLG_BTN);
-        reset->labelcolor(DLG_TEXT);
-        reset->labelsize(12);
-        reset->callback([](Fl_Widget *, void *data) {
+        st.show_rowlines_chk = new Fl_Check_Button(lx + 10, ly, 300, 22, "Show row separator lines");
+        style_check(st.show_rowlines_chk);
+        st.show_rowlines_chk->value(g_show_rowlines ? 1 : 0);
+        st.show_rowlines_chk->callback([](Fl_Widget *, void *data) {
             auto *st = static_cast<DlgState *>(data);
-            colors_init_defaults(&g_colors);
-            for (int i = 0; i < st->colors.count; i++)
-                st->colors.swatches[i]->color(*st->colors.entries[i].target);
+            g_show_rowlines = st->show_rowlines_chk->value() != 0;
             refresh_previews(st);
         }, &st);
+        ly += 26;
 
-        int preview_y = color_bottom + 35;
-        int preview_h = TAB_H - 25 - (preview_y - 30);
-        st.color_preview_sv = new SheetView(20, preview_y, DW - 50, preview_h, true);
+        // --- Preview ---
+        int preview_h = TAB_H - 25 - (ly - 30);
+        st.font_preview_sv = nullptr;
+        st.color_preview_sv = new SheetView(lx, ly, DW - 50, preview_h, true);
+        st.font.preview = nullptr;
 
         g->end();
     }
@@ -679,7 +990,13 @@ void PrefsDialog::run(SheetView *sheet) {
     st.saved_fmt           = g_fmt_settings;
     st.saved_sep_thousands = g_sep_thousands;
     st.saved_sep_hex       = g_sep_hex;
+    st.saved_limit_array   = g_limit_max_array_length;
+    st.saved_limit_string  = g_limit_max_string_length;
+    st.saved_limit_depth   = g_limit_max_call_depth;
+    st.saved_show_rowlines = g_show_rowlines;
+    st.saved_remember_pos  = g_remember_position;
     refresh_previews(&st);
+    update_swatch_state(&st);
 
     // ======== OK / Cancel / Apply / Open File ========
     int by = DH - 38;
@@ -687,37 +1004,13 @@ void PrefsDialog::run(SheetView *sheet) {
 
     Fl_Button reset_btn(8, by, 60, bh, "Reset");
     reset_btn.color(DLG_BTN);
-    reset_btn.labelcolor(DLG_LABEL);
-    reset_btn.labelsize(11);
+    reset_btn.labelcolor(DLG_TEXT);
+    reset_btn.labelsize(12);
     reset_btn.tooltip("Reset all settings to defaults");
     reset_btn.callback([](Fl_Widget *, void *data) {
         if (fl_choice("Reset all settings to defaults?", "Cancel", "Reset", nullptr) == 1)
             reset_to_defaults(static_cast<DlgState *>(data));
     }, &st);
-
-    Fl_Button open_btn(8 + 60 + 8, by, bw + 30, bh, "Open conf file");
-    open_btn.color(DLG_BTN);
-    open_btn.labelcolor(DLG_LABEL);
-    open_btn.labelsize(11);
-    open_btn.tooltip(settings_path());
-    open_btn.callback([](Fl_Widget *, void *) {
-        settings_save();
-        const char *path = settings_path();
-#if defined(_WIN32)
-        ShellExecuteA(NULL, "open", "notepad.exe", path, NULL, SW_SHOWNORMAL);
-#elif defined(__APPLE__)
-        std::string cmd = std::string("open -t \"") + path + "\"";
-        if (system(cmd.c_str())) {}
-#else
-        // Linux: open explicitly as text
-        std::string cmd = std::string("xdg-open \"") + path + "\" 2>/dev/null &";
-        const char *editor = getenv("VISUAL");
-        if (!editor || !editor[0]) editor = getenv("EDITOR");
-        if (editor && editor[0])
-            cmd = std::string(editor) + " \"" + path + "\" &";
-        if (system(cmd.c_str())) {}
-#endif
-    }, nullptr);
 
     Fl_Button ok_btn(DW - 3 * (bw + 8), by, bw, bh, "OK");
     ok_btn.color(DLG_BTN);
@@ -742,14 +1035,21 @@ void PrefsDialog::run(SheetView *sheet) {
     cancel_btn.callback([](Fl_Widget *w, void *data) {
         auto *st = static_cast<DlgState *>(data);
         g_colors        = st->saved_colors;
+        g_color_preset  = st->saved_preset;
         g_font_id       = st->saved_font_id;
         g_font_size     = st->saved_font_size;
         g_fmt_settings  = st->saved_fmt;
-        g_sep_thousands = st->saved_sep_thousands;
-        g_sep_hex       = st->saved_sep_hex;
+        g_sep_thousands           = st->saved_sep_thousands;
+        g_sep_hex                 = st->saved_sep_hex;
+        g_limit_max_array_length  = st->saved_limit_array;
+        g_limit_max_string_length = st->saved_limit_string;
+        g_limit_max_call_depth    = st->saved_limit_depth;
+        g_show_rowlines           = st->saved_show_rowlines;
+        g_remember_position       = st->saved_remember_pos;
         st->sheet->apply_font();
         st->sheet->live_eval();
         st->sheet->redraw();
+        if (st->ui_cb) st->ui_cb(st->ui_data);
         w->window()->hide();
     }, &st);
 

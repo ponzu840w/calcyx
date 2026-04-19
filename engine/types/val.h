@@ -55,6 +55,10 @@ typedef struct func_def_s {
 void       func_def_free(func_def_t *f);       /* param_names と body を解放 */
 func_def_t *func_def_dup (const func_def_t *f);
 
+/* 型操作レイヤーのハードリミット (eval_settings で上書き可能) */
+#define VAL_ARRAY_MAX_LEN   1000000
+#define VAL_STRING_MAX_LEN  1000000
+
 typedef enum {
     VAL_REAL  = 0,
     VAL_FRAC  = 1,

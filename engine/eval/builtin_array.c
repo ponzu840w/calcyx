@@ -41,7 +41,7 @@ static val_t *call_fd_1(func_def_t *fd, val_t *arg, eval_ctx_t *ctx) {
     val_t *args[1] = { arg };
     if (fd->builtin) return fd->builtin(args, 1, ctx);
     if (!fd->body || !ctx) return NULL;
-    if (ctx->depth >= EVAL_DEPTH_MAX) return NULL;
+    if (ctx->depth >= ctx->settings.max_call_depth) return NULL;
     eval_ctx_t child;
     eval_ctx_init_child(&child, ctx);
     if (fd->n_params >= 1 && fd->param_names && fd->param_names[0])
@@ -60,7 +60,7 @@ static val_t *call_fd_2(func_def_t *fd, val_t *a0, val_t *a1, eval_ctx_t *ctx) {
     val_t *args[2] = { a0, a1 };
     if (fd->builtin) return fd->builtin(args, 2, ctx);
     if (!fd->body || !ctx) return NULL;
-    if (ctx->depth >= EVAL_DEPTH_MAX) return NULL;
+    if (ctx->depth >= ctx->settings.max_call_depth) return NULL;
     eval_ctx_t child;
     eval_ctx_init_child(&child, ctx);
     if (fd->n_params >= 1 && fd->param_names && fd->param_names[0])
@@ -197,9 +197,14 @@ static val_t *bi_rangeIncl3(val_t **a, int n, void *ctx) {
  * ====================================================== */
 
 static val_t *bi_concat(val_t **a, int n, void *ctx) {
-    (void)ctx; (void)n;
+    (void)n;
+    eval_ctx_t *ec = (eval_ctx_t *)ctx;
     int na = a[0]->type == VAL_ARRAY ? a[0]->arr_len : 0;
     int nb = a[1]->type == VAL_ARRAY ? a[1]->arr_len : 0;
+    if (na + nb > ec->settings.max_array_length) {
+        EVAL_ERROR(ec, 0, "Array length exceeds limit (%d).", ec->settings.max_array_length);
+        return NULL;
+    }
     val_t **items = (val_t **)malloc((size_t)(na + nb) * sizeof(val_t *));
     if (!items) return NULL;
     for (int i = 0; i < na; i++) items[i]    = val_dup(a[0]->arr_items[i]);

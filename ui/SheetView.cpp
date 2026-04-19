@@ -761,6 +761,9 @@ void SheetView::eval_all() {
     eval_ctx_free(&ctx_);
     eval_ctx_init(&ctx_);
     builtin_register_all(&ctx_);
+    ctx_.settings.max_array_length  = g_limit_max_array_length;
+    ctx_.settings.max_string_length = g_limit_max_string_length;
+    ctx_.settings.max_call_depth    = g_limit_max_call_depth;
 
     for (auto &row : rows_) {
         if (row.expr.empty()) {
@@ -1126,9 +1129,10 @@ void SheetView::draw() {
             if (!row.expr.empty())
                 draw_expr_highlighted(row.expr.c_str(), x() + PAD, x(), ry, sheet_w(), ROW_H);
 
-            // 上段/下段の境界線
-            fl_color(g_colors.rowline);
-            fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
+            if (g_show_rowlines) {
+                fl_color(g_colors.rowline);
+                fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
+            }
 
             // 下段: "=" + 結果
             if (!row.result.empty() && !row.error && row.show_result) {
@@ -1140,9 +1144,10 @@ void SheetView::draw() {
             // 下段の結果 (フォーカス行は result_display_ が上書き)
             draw_result_at(row, ry2, bl_bot);
 
-            // 下段の区切り線
-            fl_color(g_colors.rowline);
-            fl_line(x(), ry2 + ROW_H - 1, x() + sheet_w(), ry2 + ROW_H - 1);
+            if (g_show_rowlines) {
+                fl_color(g_colors.rowline);
+                fl_line(x(), ry2 + ROW_H - 1, x() + sheet_w(), ry2 + ROW_H - 1);
+            }
 
         } else {
             // ---- 通常1行レイアウト ----
@@ -1171,9 +1176,10 @@ void SheetView::draw() {
             // 右カラム: 結果値 (フォーカス行は result_display_ が上書き)
             draw_result_at(row, ry, baseline);
 
-            // 横区切り線
-            fl_color(g_colors.rowline);
-            fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
+            if (g_show_rowlines) {
+                fl_color(g_colors.rowline);
+                fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
+            }
         }
 
         ry += rh;

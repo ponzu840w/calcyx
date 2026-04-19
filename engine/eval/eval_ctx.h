@@ -15,6 +15,9 @@
 typedef struct {
     bool fraction_enabled;   /* 分数モードを有効化 (デフォルト: true) */
     bool accuracy_priority;  /* 精度優先 (デフォルト: true) */
+    int  max_array_length;   /* 配列の最大要素数 (デフォルト: 256) */
+    int  max_string_length;  /* 文字列の最大長 (デフォルト: 256) */
+    int  max_call_depth;     /* 関数呼び出しの最大再帰深度 (デフォルト: 64) */
 } eval_settings_t;
 
 /* ======================================================

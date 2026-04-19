@@ -94,8 +94,9 @@ int main(int argc, char **argv) {
     // ウィンドウジオメトリを前回終了時の設定から復元
     int wx = 0, wy = 0, ww = 520, wh = 600;
     settings_load();
+    colors_apply_fl_scheme();
 
-    {
+    if (g_remember_position) {
         AppPrefs prefs;
         int valid = prefs.get_int("geometry_valid", 0);
         if (valid) {
@@ -116,7 +117,7 @@ int main(int argc, char **argv) {
             }
             if (!on_screen) { wx = 0; wy = 0; }
         }
-    }
+    }  // g_remember_position
 
     MainWindow win(ww, wh, "calcyx");
     if (wx || wy) win.position(wx, wy);

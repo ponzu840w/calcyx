@@ -20,6 +20,7 @@ public:
     // フォーカス行変更時に Fl_Choice とツールバーボタンを更新
     void update_fmt_choice();
     void update_toolbar();
+    void apply_ui_colors();
 
     int  handle(int event) override;
     void resize(int x, int y, int w, int h) override;

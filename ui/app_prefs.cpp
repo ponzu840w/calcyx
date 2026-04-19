@@ -8,6 +8,7 @@
 
 #if defined(_WIN32)
 #  include <windows.h>
+#  include <shlobj.h>
 #  include <direct.h>
 #  define MKDIR(p) _mkdir(p)
 #else
@@ -19,9 +20,21 @@
 std::string AppPrefs::config_dir() {
     char buf[1024];
 #if defined(_WIN32)
-    const char *appdata = getenv("APPDATA");
-    if (!appdata) appdata = ".";
-    snprintf(buf, sizeof(buf), "%s\\calcyx", appdata);
+    // SHGetFolderPathW で UTF-16 取得 → UTF-8 変換 (日本語ユーザー名対応)
+    wchar_t wpath[MAX_PATH];
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, wpath))) {
+        int len = WideCharToMultiByte(CP_UTF8, 0, wpath, -1, buf, sizeof(buf) - 8, NULL, NULL);
+        if (len > 0) {
+            buf[len - 1] = '\0';
+            strcat(buf, "\\calcyx");
+        } else {
+            snprintf(buf, sizeof(buf), ".\\calcyx");
+        }
+    } else {
+        const char *appdata = getenv("APPDATA");
+        if (!appdata) appdata = ".";
+        snprintf(buf, sizeof(buf), "%s\\calcyx", appdata);
+    }
 #elif defined(__APPLE__)
     const char *home = getenv("HOME");
     if (!home) home = ".";

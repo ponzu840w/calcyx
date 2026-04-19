@@ -104,6 +104,7 @@ val_t *val_new_double(double d, val_fmt_t fmt) {
 }
 
 val_t *val_new_array(val_t **items, int len, val_fmt_t fmt) {
+    if (len > VAL_ARRAY_MAX_LEN) return NULL;
     val_t *v = alloc_val(VAL_ARRAY, fmt);
     if (!v) return NULL;
     if (len > 0) {
@@ -432,9 +433,11 @@ val_t *val_mul(const val_t *a, const val_t *b) {
     /* 文字列繰り返し: "abc" * 3 = "abcabcabc" */
     if (a->type == VAL_STR && b->type == VAL_REAL) {
         if (!real_is_integer(&b->real_v)) return NULL;  /* 非整数は型エラー */
+        if (!real_fits_i64(&b->real_v)) return NULL;
         int n = (int)real_to_i64(&b->real_v);
         if (n <= 0) return val_new_str("");
         size_t slen = strlen(a->str_v);
+        if (slen * (size_t)n > VAL_STRING_MAX_LEN) return NULL;
         char *buf = (char *)malloc(slen * (size_t)n + 1);
         if (!buf) return NULL;
         buf[0] = '\0';
