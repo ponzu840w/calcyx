@@ -1666,7 +1666,7 @@ static val_t *bi_urlEnc(val_t **a, int n, void *ctx) {
             (c >= '0' && c <= '9') || c=='-' || c=='_' || c=='.' || c=='~') {
             buf[pos++] = (char)c;
         } else {
-            pos += snprintf(buf + pos, 4, "%%%02x", c);
+            pos += snprintf(buf + pos, 4, "%%%02X", c);
         }
     }
     buf[pos] = '\0';
