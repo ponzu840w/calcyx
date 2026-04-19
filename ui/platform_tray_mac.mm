@@ -163,7 +163,6 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
                    operation:NSCompositingOperationSourceOver
                     fraction:1.0];
             [small unlockFocus];
-            [small setTemplate:YES];
             s_status_item.button.image = small;
         }
 
