@@ -8,7 +8,8 @@
 #include <FL/Fl_Window.H>
 #include <FL/platform.H>
 #include <FL/Fl_PNG_Image.H>
-#include <FL/Fl_Menu_Item.H>
+#include <FL/Fl_Button.H>
+#include <FL/fl_draw.H>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -100,19 +101,99 @@ static bool s_window_withdrawn = false;  // XWithdrawWindow で隠した状態
 // ---- 右クリックメニュー ----
 
 static int s_popup_x = 0, s_popup_y = 0;
+static bool s_popup_active = false;
+
+// ---- カスタムポップアップメニュー (Fl_Menu_Item::popup の座標問題を回避) ----
+
+static Fl_Window *s_popup_win = nullptr;
+static int s_popup_result = 0;  // 0=未選択, 1=Open, 2=Exit
+
+// ホバー対応ボタン
+class HoverButton : public Fl_Button {
+public:
+    HoverButton(int x, int y, int w, int h, const char *l = nullptr)
+        : Fl_Button(x, y, w, h, l) {
+        box(FL_FLAT_BOX);
+        color(FL_BACKGROUND_COLOR);
+        align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+    }
+    int handle(int event) override {
+        switch (event) {
+        case FL_ENTER:
+            color(FL_SELECTION_COLOR);
+            labelcolor(fl_contrast(FL_FOREGROUND_COLOR, FL_SELECTION_COLOR));
+            redraw();
+            return 1;
+        case FL_LEAVE:
+            color(FL_BACKGROUND_COLOR);
+            labelcolor(FL_FOREGROUND_COLOR);
+            redraw();
+            return 1;
+        default:
+            return Fl_Button::handle(event);
+        }
+    }
+};
+
+// メニュー外クリックで閉じるためのウィンドウクラス
+class PopupMenuWindow : public Fl_Window {
+public:
+    PopupMenuWindow(int x, int y, int w, int h)
+        : Fl_Window(x, y, w, h) {}
+    int handle(int event) override {
+        if (event == FL_UNFOCUS) {
+            hide();
+            return 1;
+        }
+        return Fl_Window::handle(event);
+    }
+};
+
+static void popup_btn_cb(Fl_Widget *, void *data) {
+    s_popup_result = (int)(long)data;
+    if (s_popup_win) s_popup_win->hide();
+}
 
 static void show_tray_menu_cb(void *) {
-    static const Fl_Menu_Item menu[] = {
-        {"Open", 0, nullptr, (void *)1},
-        {"Exit", 0, nullptr, (void *)2},
-        {nullptr}
-    };
-    const Fl_Menu_Item *picked = menu->popup(s_popup_x, s_popup_y);
-    if (picked) {
-        long idx = (long)picked->user_data();
-        if (idx == 1 && s_callbacks.on_open) s_callbacks.on_open();
-        if (idx == 2 && s_callbacks.on_exit) s_callbacks.on_exit();
+    if (s_popup_active) return;  // 再入防止
+    s_popup_active = true;
+    s_popup_result = 0;
+
+    const int btn_w = 80, btn_h = 24, pad = 1;
+    const int win_w = btn_w + pad * 2;
+    const int win_h = btn_h * 2 + pad;
+
+    int mx = s_popup_x;
+    int my = s_popup_y;
+
+    if (!s_popup_win) {
+        s_popup_win = new PopupMenuWindow(mx, my, win_w, win_h);
+        s_popup_win->border(0);
+        s_popup_win->set_override();
+
+        auto *b1 = new HoverButton(pad, 0, btn_w, btn_h, " Open");
+        b1->callback(popup_btn_cb, (void *)1);
+
+        auto *b2 = new HoverButton(pad, btn_h, btn_w, btn_h, " Exit");
+        b2->callback(popup_btn_cb, (void *)2);
+
+        s_popup_win->end();
     }
+
+    s_popup_win->position(mx, my);
+    s_popup_win->show();
+
+    // ポップアップが閉じるまでモーダルループ
+    while (s_popup_win->visible()) {
+        Fl::wait();
+    }
+
+    s_popup_active = false;
+
+    if (s_popup_result == 1 && s_callbacks.on_open)
+        Fl::add_timeout(0.0, [](void *) { if (s_callbacks.on_open) s_callbacks.on_open(); }, nullptr);
+    if (s_popup_result == 2 && s_callbacks.on_exit)
+        Fl::add_timeout(0.0, [](void *) { if (s_callbacks.on_exit) s_callbacks.on_exit(); }, nullptr);
 }
 
 // ---- ホットキー状態 ----
@@ -189,18 +270,38 @@ static int tray_x11_handler(void *event, void *) {
                 int src_w = s_icon_img->w();
                 int src_h = s_icon_img->h();
                 int src_d = s_icon_img->d();
+                // トレイパネルの背景色を取得 (失敗時はグレー)
+                unsigned char bg_r = 0xD0, bg_g = 0xD0, bg_b = 0xD0;
+                {
+                    XWindowAttributes wa;
+                    Window parent = 0, root = 0, *children = nullptr;
+                    unsigned int nchildren = 0;
+                    if (XQueryTree(dpy, s_tray_win, &root, &parent, &children, &nchildren)) {
+                        if (children) XFree(children);
+                        if (parent && XGetWindowAttributes(dpy, parent, &wa) && wa.backing_pixel) {
+                            bg_r = (wa.backing_pixel >> 16) & 0xFF;
+                            bg_g = (wa.backing_pixel >> 8) & 0xFF;
+                            bg_b = wa.backing_pixel & 0xFF;
+                        }
+                    }
+                }
                 for (int y = 0; y < 24; y++) {
                     for (int x = 0; x < 24; x++) {
                         // ソース座標 (最近傍補間)
                         int sx = x * src_w / 24;
                         int sy = y * src_h / 24;
                         const unsigned char *p = src + (sy * src_w + sx) * src_d;
-                        unsigned long pixel;
-                        if (src_d >= 3)
-                            pixel = (p[0] << 16) | (p[1] << 8) | p[2];
-                        else
-                            pixel = (p[0] << 16) | (p[0] << 8) | p[0];
-                        XPutPixel(xi, x, y, pixel);
+                        unsigned char r, g, b;
+                        if (src_d >= 3) { r = p[0]; g = p[1]; b = p[2]; }
+                        else            { r = g = b = p[0]; }
+                        // アルファブレンド
+                        if (src_d == 4) {
+                            unsigned char a = p[3];
+                            r = (r * a + bg_r * (255 - a)) / 255;
+                            g = (g * a + bg_g * (255 - a)) / 255;
+                            b = (b * a + bg_b * (255 - a)) / 255;
+                        }
+                        XPutPixel(xi, x, y, ((unsigned long)r << 16) | ((unsigned long)g << 8) | b);
                     }
                 }
                 XPutImage(dpy, s_tray_win, s_tray_gc, xi, 0, 0, 0, 0, 24, 24);
@@ -290,6 +391,12 @@ void plat_tray_destroy() {
         if (s_tray_gc) { XFreeGC(dpy, s_tray_gc); s_tray_gc = 0; }
         XDestroyWindow(dpy, s_tray_win);
         s_tray_win = 0;
+    }
+
+    // ポップアップメニュー破棄
+    if (s_popup_win) {
+        delete s_popup_win;
+        s_popup_win = nullptr;
     }
 
     s_tray_active = false;
@@ -406,7 +513,6 @@ static void raise_and_focus(Fl_Window *win) {
     ev.xclient.data.l[1] = CurrentTime;
     XSendEvent(dpy, DefaultRootWindow(dpy), False,
                SubstructureNotifyMask | SubstructureRedirectMask, &ev);
-    XSetInputFocus(dpy, xwin, RevertToParent, CurrentTime);
     XFlush(dpy);
 }
 
