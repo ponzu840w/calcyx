@@ -635,14 +635,8 @@ void MainWindow::toggle_visibility() {
 }
 
 void MainWindow::show_and_activate() {
-    // 非表示なら表示、表示済みなら前面に持ってくる (常にオープン方向)
-    if (!visible()) {
-        plat_window_toggle(this, tray_active_);  // 非表示→表示
-    } else {
-        // 既に表示中: 前面に持ってくるだけ (plat_window_toggle は
-        // フォアグラウンド時に隠してしまうので、show だけ呼ぶ)
-        show();
-    }
+    // 常にウィンドウを表示+前面+フォーカス (Calctus 準拠)
+    plat_window_raise(this);
 }
 
 void MainWindow::hotkey_poll_cb(void *data) {

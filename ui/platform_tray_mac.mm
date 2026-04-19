@@ -281,3 +281,15 @@ void plat_window_toggle(void *fl_window, bool tray_mode) {
         }
     }
 }
+
+void plat_window_raise(void *fl_window) {
+    auto *win = static_cast<Fl_Window *>(fl_window);
+    if (!win) return;
+    @autoreleasepool {
+        win->show();
+        [NSApp activateIgnoringOtherApps:YES];
+        for (NSWindow *w in [NSApp windows]) {
+            if ([w isVisible]) { [w makeKeyAndOrderFront:nil]; break; }
+        }
+    }
+}

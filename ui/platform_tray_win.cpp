@@ -254,3 +254,12 @@ void plat_window_toggle(void *fl_window, bool tray_mode) {
         SetForegroundWindow(hwnd);
     }
 }
+
+void plat_window_raise(void *fl_window) {
+    auto *win = static_cast<Fl_Window *>(fl_window);
+    if (!win) return;
+    HWND hwnd = fl_xid(win);
+    if (!hwnd) return;
+    ShowWindow(hwnd, SW_RESTORE);
+    SetForegroundWindow(hwnd);
+}

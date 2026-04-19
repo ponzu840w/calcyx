@@ -45,6 +45,9 @@ void  plat_hotkey_poll();
 // tray_mode: true ならトレイに隠す、false ならタスクバーに最小化
 void  plat_window_toggle(void *fl_window, bool tray_mode);
 
+// ウィンドウを確実に表示+前面+フォーカス (トレイの "Open" 用)
+void  plat_window_raise(void *fl_window);
+
 // ---- キー名 ↔ FLTK キー定数 変換 ----
 int         plat_keyname_to_flkey(const char *name);
 const char *plat_flkey_to_keyname(int fl_key);

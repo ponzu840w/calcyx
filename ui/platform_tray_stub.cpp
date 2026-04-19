@@ -79,3 +79,4 @@ void plat_hotkey_unregister() {}
 void plat_hotkey_poll() {}
 
 void plat_window_toggle(void *, bool) {}
+void plat_window_raise(void *) {}

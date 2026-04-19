@@ -95,6 +95,7 @@ static Window s_tray_win = 0;
 static Atom s_tray_opcode = 0;
 static GC s_tray_gc = 0;
 static Fl_PNG_Image *s_icon_img = nullptr;
+static bool s_window_withdrawn = false;  // XWithdrawWindow で隠した状態
 
 // ---- 右クリックメニュー ----
 
@@ -379,6 +380,36 @@ void plat_hotkey_poll() {
 
 // ---- ウィンドウトグル ----
 
+// ウィンドウを前面に表示してフォーカスを与える
+static void raise_and_focus(Fl_Window *win) {
+    Display *dpy = fl_display;
+    if (!dpy || !win) return;
+
+    if (!win->shown()) win->show();
+
+    Window xwin = fl_xid(win);
+    if (!xwin) return;
+
+    if (s_window_withdrawn) {
+        XMapRaised(dpy, xwin);
+        s_window_withdrawn = false;
+    }
+
+    // _NET_ACTIVE_WINDOW で WM にフォーカス要求
+    Atom active = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+    XEvent ev = {};
+    ev.xclient.type = ClientMessage;
+    ev.xclient.window = xwin;
+    ev.xclient.message_type = active;
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = 1;  // source: application
+    ev.xclient.data.l[1] = CurrentTime;
+    XSendEvent(dpy, DefaultRootWindow(dpy), False,
+               SubstructureNotifyMask | SubstructureRedirectMask, &ev);
+    XSetInputFocus(dpy, xwin, RevertToParent, CurrentTime);
+    XFlush(dpy);
+}
+
 void plat_window_toggle(void *fl_window, bool tray_mode) {
     auto *win = static_cast<Fl_Window *>(fl_window);
     if (!win) return;
@@ -386,30 +417,24 @@ void plat_window_toggle(void *fl_window, bool tray_mode) {
     Display *dpy = fl_display;
     if (!dpy) return;
 
-    if (win->visible()) {
-        // 現在表示中 → 隠す
-        if (tray_mode) {
-            win->hide();
-        } else {
-            win->iconize();
-        }
-    } else {
-        // 非表示 → 表示して前面に
-        win->show();
+    if (s_window_withdrawn) {
+        // Withdraw 状態 → 表示
+        raise_and_focus(win);
+    } else if (win->shown() && !tray_mode) {
+        win->iconize();
+    } else if (win->shown()) {
+        // 表示中 → XWithdrawWindow で隠す (X ウィンドウは保持)
         Window xwin = fl_xid(win);
         if (xwin) {
-            // _NET_ACTIVE_WINDOW で前面に
-            Atom active = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
-            XEvent ev = {};
-            ev.xclient.type = ClientMessage;
-            ev.xclient.window = xwin;
-            ev.xclient.message_type = active;
-            ev.xclient.format = 32;
-            ev.xclient.data.l[0] = 1;  // source indication: application
-            ev.xclient.data.l[1] = CurrentTime;
-            XSendEvent(dpy, DefaultRootWindow(dpy), False,
-                       SubstructureNotifyMask | SubstructureRedirectMask, &ev);
+            XWithdrawWindow(dpy, xwin, DefaultScreen(dpy));
+            s_window_withdrawn = true;
             XFlush(dpy);
         }
+    } else {
+        raise_and_focus(win);
     }
+}
+
+void plat_window_raise(void *fl_window) {
+    raise_and_focus(static_cast<Fl_Window *>(fl_window));
 }

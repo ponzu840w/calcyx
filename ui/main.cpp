@@ -138,9 +138,15 @@ int main(int argc, char **argv) {
 
     // Fl::run() はウィンドウが全て非表示になると終了するが、
     // トレイ常駐中はウィンドウ非表示でもイベントループを継続する必要がある。
-    while (Fl::wait() >= 0) {
-        if (!Fl::first_window() && !win.should_keep_running())
-            break;
+    for (;;) {
+        if (Fl::first_window()) {
+            // ウィンドウあり: 通常の FLTK イベント待ち
+            if (Fl::wait() < 0) break;
+        } else {
+            // ウィンドウなし: トレイ常駐中ならスリープしながら待機
+            if (!win.should_keep_running()) break;
+            Fl::wait(0.2);  // 200ms 間隔でポーリング (CPU 暴走防止)
+        }
     }
     return 0;
 }
