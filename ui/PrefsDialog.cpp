@@ -575,15 +575,15 @@ static void apply_settings(DlgState *st) {
 
 static void reset_to_defaults(DlgState *st) {
     // Font
-    st->font.selected_id = FL_COURIER;
-    st->font.selected_name = "Courier";
+    st->font.selected_id = DEFAULT_FONT_ID;
+    st->font.selected_name = font_id_to_display_name(DEFAULT_FONT_ID);
     update_font_btn(&st->font);
-    st->font.size_spin->value(13);
+    st->font.size_spin->value(DEFAULT_FONT_SIZE);
     update_preview(&st->font);
 
     // Colors
-    st->preset_choice->value(COLOR_PRESET_OTAKU_BLACK);
-    colors_init_preset(&g_colors, COLOR_PRESET_OTAKU_BLACK);
+    st->preset_choice->value(DEFAULT_COLOR_PRESET);
+    colors_init_preset(&g_colors, DEFAULT_COLOR_PRESET);
     for (int i = 0; i < st->colors.count; i++) {
         st->colors.swatches[i]->color(*st->colors.entries[i].target);
         st->colors.swatches[i]->redraw();
@@ -591,24 +591,24 @@ static void reset_to_defaults(DlgState *st) {
     update_swatch_state(st);
 
     // Number Format
-    st->fmt_decimal_spin->value(9);
-    st->fmt_exp_chk->value(1);
-    st->fmt_exp_pos_spin->value(15);
-    st->fmt_exp_neg_spin->value(-5);
-    st->fmt_align_chk->value(0);
-    st->sep_thousands_chk->value(1);
-    st->sep_hex_chk->value(1);
+    st->fmt_decimal_spin->value(DEFAULT_FMT_DECIMAL_LEN);
+    st->fmt_exp_chk->value(DEFAULT_FMT_E_NOTATION ? 1 : 0);
+    st->fmt_exp_pos_spin->value(DEFAULT_FMT_E_POSITIVE_MIN);
+    st->fmt_exp_neg_spin->value(DEFAULT_FMT_E_NEGATIVE_MAX);
+    st->fmt_align_chk->value(DEFAULT_FMT_E_ALIGNMENT ? 1 : 0);
+    st->sep_thousands_chk->value(DEFAULT_SEP_THOUSANDS ? 1 : 0);
+    st->sep_hex_chk->value(DEFAULT_SEP_HEX ? 1 : 0);
 
     // Input
-    st->auto_complete_chk->value(1);
-    st->auto_brackets_chk->value(0);
+    st->auto_complete_chk->value(DEFAULT_AUTO_COMPLETION ? 1 : 0);
+    st->auto_brackets_chk->value(DEFAULT_AUTO_CLOSE_BRACKETS ? 1 : 0);
 
     // General
-    st->show_rowlines_chk->value(1);
-    st->remember_pos_chk->value(1);
-    st->limit_array_spin->value(256);
-    st->limit_string_spin->value(256);
-    st->limit_depth_spin->value(64);
+    st->show_rowlines_chk->value(DEFAULT_SHOW_ROWLINES ? 1 : 0);
+    st->remember_pos_chk->value(DEFAULT_REMEMBER_POSITION ? 1 : 0);
+    st->limit_array_spin->value(DEFAULT_MAX_ARRAY_LENGTH);
+    st->limit_string_spin->value(DEFAULT_MAX_STRING_LENGTH);
+    st->limit_depth_spin->value(DEFAULT_MAX_CALL_DEPTH);
 
     refresh_previews(st);
 }

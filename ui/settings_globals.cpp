@@ -19,18 +19,18 @@ extern "C" {
 #include "types/val.h"
 }
 
-// ---- グローバル変数 ----
-int  g_font_id   = FL_COURIER;
-int  g_font_size  = 13;
-bool g_input_auto_completion    = true;
-bool g_input_auto_close_brackets = false;
-bool g_sep_thousands = true;
-bool g_sep_hex       = true;
-int  g_limit_max_array_length  = 256;
-int  g_limit_max_string_length = 256;
-int  g_limit_max_call_depth    = 64;
-bool g_show_rowlines = true;
-bool g_remember_position = true;
+// ---- グローバル変数 (初期値は settings_globals.h の DEFAULT_* 定数) ----
+int  g_font_id   = DEFAULT_FONT_ID;
+int  g_font_size  = DEFAULT_FONT_SIZE;
+bool g_input_auto_completion    = DEFAULT_AUTO_COMPLETION;
+bool g_input_auto_close_brackets = DEFAULT_AUTO_CLOSE_BRACKETS;
+bool g_sep_thousands = DEFAULT_SEP_THOUSANDS;
+bool g_sep_hex       = DEFAULT_SEP_HEX;
+int  g_limit_max_array_length  = DEFAULT_MAX_ARRAY_LENGTH;
+int  g_limit_max_string_length = DEFAULT_MAX_STRING_LENGTH;
+int  g_limit_max_call_depth    = DEFAULT_MAX_CALL_DEPTH;
+bool g_show_rowlines = DEFAULT_SHOW_ROWLINES;
+bool g_remember_position = DEFAULT_REMEMBER_POSITION;
 
 static std::string s_conf_path;
 
@@ -96,25 +96,24 @@ const char *settings_path() {
 
 static void update_crash_config_snapshot();
 
-// ---- デフォルト値 ----
 void settings_init_defaults() {
-    g_font_id   = FL_COURIER;
-    g_font_size  = 13;
-    g_input_auto_completion    = true;
-    g_input_auto_close_brackets = false;
-    g_sep_thousands = true;
-    g_sep_hex       = true;
-    g_limit_max_array_length  = 256;
-    g_limit_max_string_length = 256;
-    g_limit_max_call_depth    = 64;
-    g_show_rowlines = true;
-    g_remember_position = true;
+    g_font_id                   = DEFAULT_FONT_ID;
+    g_font_size                 = DEFAULT_FONT_SIZE;
+    g_input_auto_completion     = DEFAULT_AUTO_COMPLETION;
+    g_input_auto_close_brackets = DEFAULT_AUTO_CLOSE_BRACKETS;
+    g_sep_thousands             = DEFAULT_SEP_THOUSANDS;
+    g_sep_hex                   = DEFAULT_SEP_HEX;
+    g_limit_max_array_length    = DEFAULT_MAX_ARRAY_LENGTH;
+    g_limit_max_string_length   = DEFAULT_MAX_STRING_LENGTH;
+    g_limit_max_call_depth      = DEFAULT_MAX_CALL_DEPTH;
+    g_show_rowlines             = DEFAULT_SHOW_ROWLINES;
+    g_remember_position         = DEFAULT_REMEMBER_POSITION;
 
-    g_fmt_settings.decimal_len     = 9;
-    g_fmt_settings.e_notation      = true;
-    g_fmt_settings.e_positive_min  = 15;
-    g_fmt_settings.e_negative_max  = -5;
-    g_fmt_settings.e_alignment     = false;
+    g_fmt_settings.decimal_len     = DEFAULT_FMT_DECIMAL_LEN;
+    g_fmt_settings.e_notation      = DEFAULT_FMT_E_NOTATION;
+    g_fmt_settings.e_positive_min  = DEFAULT_FMT_E_POSITIVE_MIN;
+    g_fmt_settings.e_negative_max  = DEFAULT_FMT_E_NEGATIVE_MAX;
+    g_fmt_settings.e_alignment     = DEFAULT_FMT_E_ALIGNMENT;
 
     update_crash_config_snapshot();
 }
@@ -189,23 +188,23 @@ void settings_load() {
     if (kv.empty()) return;
 
     g_font_id   = font_name_to_id(get(kv, "font", "Courier"));
-    g_font_size  = std::clamp(get_int(kv, "font_size", 13), 8, 36);
-    g_input_auto_completion     = get_bool(kv, "auto_completion", true);
-    g_input_auto_close_brackets = get_bool(kv, "auto_close_brackets", false);
-    g_sep_thousands = get_bool(kv, "thousands_separator", true);
-    g_sep_hex       = get_bool(kv, "hex_separator", true);
+    g_font_size  = std::clamp(get_int(kv, "font_size", DEFAULT_FONT_SIZE), 8, 36);
+    g_input_auto_completion     = get_bool(kv, "auto_completion", DEFAULT_AUTO_COMPLETION);
+    g_input_auto_close_brackets = get_bool(kv, "auto_close_brackets", DEFAULT_AUTO_CLOSE_BRACKETS);
+    g_sep_thousands = get_bool(kv, "thousands_separator", DEFAULT_SEP_THOUSANDS);
+    g_sep_hex       = get_bool(kv, "hex_separator", DEFAULT_SEP_HEX);
 
-    g_limit_max_array_length  = std::clamp(get_int(kv, "max_array_length", 256), 1, 1000000);
-    g_limit_max_string_length = std::clamp(get_int(kv, "max_string_length", 256), 1, 1000000);
-    g_limit_max_call_depth    = std::clamp(get_int(kv, "max_call_depth", 64), 1, 1000);
-    g_show_rowlines           = get_bool(kv, "show_rowlines", true);
-    g_remember_position       = get_bool(kv, "remember_position", true);
+    g_limit_max_array_length  = std::clamp(get_int(kv, "max_array_length", DEFAULT_MAX_ARRAY_LENGTH), 1, 1000000);
+    g_limit_max_string_length = std::clamp(get_int(kv, "max_string_length", DEFAULT_MAX_STRING_LENGTH), 1, 1000000);
+    g_limit_max_call_depth    = std::clamp(get_int(kv, "max_call_depth", DEFAULT_MAX_CALL_DEPTH), 1, 1000);
+    g_show_rowlines           = get_bool(kv, "show_rowlines", DEFAULT_SHOW_ROWLINES);
+    g_remember_position       = get_bool(kv, "remember_position", DEFAULT_REMEMBER_POSITION);
 
-    g_fmt_settings.decimal_len    = std::clamp(get_int(kv, "decimal_digits", 9), 1, 34);
-    g_fmt_settings.e_notation     = get_bool(kv, "e_notation", true);
-    g_fmt_settings.e_positive_min = std::clamp(get_int(kv, "e_positive_min", 15), 1, 30);
-    g_fmt_settings.e_negative_max = std::clamp(get_int(kv, "e_negative_max", -5), -30, -1);
-    g_fmt_settings.e_alignment    = get_bool(kv, "e_alignment", false);
+    g_fmt_settings.decimal_len    = std::clamp(get_int(kv, "decimal_digits", DEFAULT_FMT_DECIMAL_LEN), 1, 34);
+    g_fmt_settings.e_notation     = get_bool(kv, "e_notation", DEFAULT_FMT_E_NOTATION);
+    g_fmt_settings.e_positive_min = std::clamp(get_int(kv, "e_positive_min", DEFAULT_FMT_E_POSITIVE_MIN), 1, 30);
+    g_fmt_settings.e_negative_max = std::clamp(get_int(kv, "e_negative_max", DEFAULT_FMT_E_NEGATIVE_MAX), -30, -1);
+    g_fmt_settings.e_alignment    = get_bool(kv, "e_alignment", DEFAULT_FMT_E_ALIGNMENT);
 
     std::string preset_str = get(kv, "color_preset", "otaku-black");
     g_color_preset = COLOR_PRESET_OTAKU_BLACK;
@@ -290,7 +289,7 @@ void settings_save() {
         "hex_separator = %s\n"
         "\n"
         "# ---- Colors ----\n"
-        "# Preset: otaku-black, gyakubari-white, saboten-black, saboten-white, user\n"
+        "# Preset: otaku-black, gyakubari-white, saboten-grey, saboten-white, user\n"
         "color_preset = %s\n",
         font_id_to_name(g_font_id).c_str(), g_font_size,
         g_remember_position ? "true" : "false",

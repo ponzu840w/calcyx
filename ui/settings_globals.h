@@ -1,36 +1,64 @@
 // settings_globals.h — ユーザー設定 (calcyx.conf)
 // アプリ状態 (state.ini) とは分離されたユーザー編集可能な設定ファイル。
 // ダイアログからも手動テキスト編集からも変更できる。
+//
+// デフォルト値は DEFAULT_* 定数で一元管理する。
+// settings_init_defaults(), settings_load(), PrefsDialog の reset は
+// すべてここの定数を参照する。
 
 #pragma once
+
+#include <FL/Fl.H>
 
 extern "C" {
 #include "types/val.h"
 }
 
-// ---- フォント ----
-extern int g_font_id;    // default FL_COURIER
-extern int g_font_size;  // default 13
+// ---- デフォルト値 (唯一の定義) ----
+constexpr int  DEFAULT_FONT_ID              = FL_COURIER;
+constexpr int  DEFAULT_FONT_SIZE            = 15;
+constexpr bool DEFAULT_AUTO_COMPLETION      = true;
+constexpr bool DEFAULT_AUTO_CLOSE_BRACKETS  = false;
+constexpr bool DEFAULT_SEP_THOUSANDS        = true;
+constexpr bool DEFAULT_SEP_HEX             = true;
+constexpr int  DEFAULT_MAX_ARRAY_LENGTH     = 256;
+constexpr int  DEFAULT_MAX_STRING_LENGTH    = 256;
+constexpr int  DEFAULT_MAX_CALL_DEPTH       = 64;
+constexpr bool DEFAULT_SHOW_ROWLINES        = true;
+constexpr bool DEFAULT_REMEMBER_POSITION    = true;
+constexpr int  DEFAULT_FMT_DECIMAL_LEN      = 9;
+constexpr bool DEFAULT_FMT_E_NOTATION       = true;
+constexpr int  DEFAULT_FMT_E_POSITIVE_MIN   = 15;
+constexpr int  DEFAULT_FMT_E_NEGATIVE_MAX   = -5;
+constexpr bool DEFAULT_FMT_E_ALIGNMENT      = false;
+constexpr int  DEFAULT_COLOR_PRESET         = 0;  // COLOR_PRESET_OTAKU_BLACK
 
-// ---- 入力 ----
+// ---- グローバル変数 ----
+
+// フォント
+extern int g_font_id;
+extern int g_font_size;
+
+// 入力
 extern bool g_input_auto_completion;
 extern bool g_input_auto_close_brackets;
 
-// ---- 桁区切り ----
+// 桁区切り
 extern bool g_sep_thousands;
 extern bool g_sep_hex;
 
-// ---- 計算リミット ----
+// 計算リミット
 extern int g_limit_max_array_length;
 extern int g_limit_max_string_length;
 extern int g_limit_max_call_depth;
 
-// ---- 表示 ----
+// 表示
 extern bool g_show_rowlines;
 
-// ---- ウィンドウ ----
+// ウィンドウ
 extern bool g_remember_position;
 
+// ---- 関数 ----
 void settings_init_defaults();
 void settings_load();
 void settings_save();

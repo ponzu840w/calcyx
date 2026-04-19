@@ -37,7 +37,7 @@ static void init_otaku_black(CalcyxColors *c) {
     c->ui_menu    = fl_rgb_color( 40,  40,  45);
     c->ui_text    = fl_rgb_color(215, 215, 225);
     c->ui_label   = fl_rgb_color(180, 180, 190);
-    c->ui_dim     = fl_rgb_color( 60,  60,  65);
+    c->ui_dim     = fl_rgb_color(110, 110, 115);
 }
 
 static void init_gyakubari_white(CalcyxColors *c) {
@@ -89,7 +89,7 @@ static void init_saboten_grey(CalcyxColors *c) {
     c->ui_menu    = fl_rgb_color( 50,  50,  55);
     c->ui_text    = fl_rgb_color(240, 240, 240);
     c->ui_label   = fl_rgb_color(180, 180, 180);
-    c->ui_dim     = fl_rgb_color( 70,  70,  70);
+    c->ui_dim     = fl_rgb_color(110, 110, 110);
 }
 
 static void init_saboten_white(CalcyxColors *c) {
