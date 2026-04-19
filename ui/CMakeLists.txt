@@ -69,6 +69,7 @@ if(APPLE)
         builtin_docs.cpp
         app_prefs.cpp
         crash_handler.cpp
+        platform_mac.mm
         ${PLATFORM_TRAY_SRC}
         ${ICON_FILE}
         ${ICON_SVG}
