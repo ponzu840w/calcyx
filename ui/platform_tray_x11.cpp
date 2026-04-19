@@ -8,7 +8,7 @@
 #include <FL/Fl_Window.H>
 #include <FL/platform.H>
 #include <FL/Fl_PNG_Image.H>
-#include <FL/Fl_Menu_Button.H>
+#include <FL/Fl_Menu_Item.H>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -95,6 +95,24 @@ static Window s_tray_win = 0;
 static Atom s_tray_opcode = 0;
 static GC s_tray_gc = 0;
 static Fl_PNG_Image *s_icon_img = nullptr;
+
+// ---- 右クリックメニュー ----
+
+static int s_popup_x = 0, s_popup_y = 0;
+
+static void show_tray_menu_cb(void *) {
+    static const Fl_Menu_Item menu[] = {
+        {"Open", 0, nullptr, (void *)1},
+        {"Exit", 0, nullptr, (void *)2},
+        {nullptr}
+    };
+    const Fl_Menu_Item *picked = menu->popup(s_popup_x, s_popup_y);
+    if (picked) {
+        long idx = (long)picked->user_data();
+        if (idx == 1 && s_callbacks.on_open) s_callbacks.on_open();
+        if (idx == 2 && s_callbacks.on_exit) s_callbacks.on_exit();
+    }
+}
 
 // ---- ホットキー状態 ----
 
@@ -204,17 +222,11 @@ static int tray_x11_handler(void *event, void *) {
             if (s_callbacks.on_open) s_callbacks.on_open();
         } else if (xev->xbutton.button == 3) {
             // 右クリック: コンテキストメニュー
-            Fl_Menu_Button popup(Fl::event_x_root(), Fl::event_y_root(), 0, 0);
-            popup.type(Fl_Menu_Button::POPUP3);
-            popup.add("Open", 0, nullptr, (void *)1);
-            popup.add("Exit", 0, nullptr, (void *)2);
-            popup.textsize(12);
-            const Fl_Menu_Item *picked = popup.popup();
-            if (picked) {
-                long idx = (long)picked->user_data();
-                if (idx == 1 && s_callbacks.on_open) s_callbacks.on_open();
-                if (idx == 2 && s_callbacks.on_exit) s_callbacks.on_exit();
-            }
+            // X11 ハンドラ内から FLTK ポップアップを直接呼ぶとクラッシュするため
+            // 座標を保存して次のイベントループで表示する
+            s_popup_x = xev->xbutton.x_root;
+            s_popup_y = xev->xbutton.y_root;
+            Fl::add_timeout(0.0, show_tray_menu_cb, nullptr);
         }
         return 1;
     }
