@@ -56,10 +56,12 @@ static void calc_separator_shifts(const char *text, int len, val_fmt_t fmt,
         if ((text[i] == 'e' || text[i] == 'E') && fmt != FMT_HEX) { int_end = i; break; }
     }
 
-    // 整数部: 右端基準で group 桁ごとにギャップ (左→右に累積)
+    // acc はセクション間で累積する (整数部→小数点→小数部→指数部)
+    double acc = 0.0;
+
+    // 整数部: 右端基準で group 桁ごとにギャップ
     int digits = int_end - start;
     if (digits > group) {
-        double acc = 0.0;
         for (int i = start; i < int_end; i++) {
             int from_right = int_end - i;
             if (from_right % group == 0 && i > start)
@@ -68,16 +70,24 @@ static void calc_separator_shifts(const char *text, int len, val_fmt_t fmt,
         }
     }
 
+    // 整数部以降 (小数点, 小数部, 指数部) に整数部のシフトを伝搬
+    for (int i = int_end; i < len; i++)
+        shifts[i] = acc;
+
     // 小数部: 左端から group 桁ごとにギャップ (10進のみ)
     if (!is_hex_family && frac_start >= 0 && frac_start < len) {
-        double acc = 0.0;
         int count = 0;
+        int frac_end = frac_start;
         for (int i = frac_start; i < len; i++) {
             if (!isdigit((unsigned char)text[i])) break;
             if (count > 0 && count % group == 0) acc += gap;
             count++;
             shifts[i] = acc;
+            frac_end = i + 1;
         }
+        // 指数部 ('e' 以降) に小数部のシフトを伝搬
+        for (int i = frac_end; i < len; i++)
+            shifts[i] = acc;
     }
 }
 
@@ -1233,7 +1243,7 @@ int SheetView::handle(int event) {
         }
 
         // ---- Enter ----
-        if (key == FL_Enter && !cmd) {
+        if ((key == FL_Enter || key == FL_KP_Enter) && !cmd) {
             commit();
             if (shift) {
                 // Shift+Enter: 現在行の上に新規行を挿入
