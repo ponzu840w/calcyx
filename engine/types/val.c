@@ -917,10 +917,10 @@ static void format_plain(const real_t *r, int decimal_len, char *buf, size_t buf
 }
 
 /* 10^n (n >= 0) を out に書く */
-static void real_pow10_pos(real_t *out, int n) {
+static void real_pow10_pos(real_t *out, int64_t n) {
     real_t base;
     real_from_i64(&base, 10);
-    real_pown(out, &base, (int64_t)n);
+    real_pown(out, &base, n);
 }
 
 /* 移植元: NumberFormatter.cs - NumberFormatter.RealToString() */
@@ -928,26 +928,33 @@ void real_to_str_with_settings(const real_t *r, const fmt_settings_t *fs,
                                 char *buf, size_t buflen) {
     if (real_is_zero(r)) { snprintf(buf, buflen, "0"); return; }
 
-    int exp = (int)mpd_adjexp((mpd_t *)&r->mpd);
+    int64_t exp = (int64_t)mpd_adjexp((mpd_t *)&r->mpd);
+
+    /* 指数が極端に大きい場合、format_plain は桁数分のメモリを確保しようとして
+     * クラッシュするため、mpd_to_sci にフォールバックする */
+    if (exp > 999999999LL || exp < -999999999LL) {
+        real_to_str(r, buf, buflen);
+        return;
+    }
 
     char frac_buf[512];
 
     if (fs->e_notation && exp >= fs->e_positive_min) {
-        int eexp = exp;
-        if (fs->e_alignment) eexp = (int)floor(eexp / 3.0) * 3;
+        int64_t eexp = exp;
+        if (fs->e_alignment) eexp = ((int64_t)floor((double)eexp / 3.0)) * 3;
         real_t pow_ten, frac;
         real_pow10_pos(&pow_ten, eexp);
         real_div(&frac, r, &pow_ten);
         format_plain(&frac, fs->decimal_len, frac_buf, sizeof(frac_buf));
-        snprintf(buf, buflen, "%se%d", frac_buf, eexp);
+        snprintf(buf, buflen, "%se%lld", frac_buf, (long long)eexp);
     } else if (fs->e_notation && exp <= fs->e_negative_max) {
-        int eexp = exp;
-        if (fs->e_alignment) eexp = (int)floor(eexp / 3.0) * 3;
+        int64_t eexp = exp;
+        if (fs->e_alignment) eexp = ((int64_t)floor((double)eexp / 3.0)) * 3;
         real_t pow_ten, frac;
         real_pow10_pos(&pow_ten, -eexp);
         real_mul(&frac, r, &pow_ten);
         format_plain(&frac, fs->decimal_len, frac_buf, sizeof(frac_buf));
-        snprintf(buf, buflen, "%se%d", frac_buf, eexp);
+        snprintf(buf, buflen, "%se%lld", frac_buf, (long long)eexp);
     } else {
         format_plain(r, fs->decimal_len, buf, buflen);
     }
