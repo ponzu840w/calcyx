@@ -100,14 +100,18 @@ static bool s_window_withdrawn = false;  // XWithdrawWindow で隠した状態
 // ---- 右クリックメニュー ----
 
 static int s_popup_x = 0, s_popup_y = 0;
+static bool s_popup_active = false;
 
 static void show_tray_menu_cb(void *) {
+    if (s_popup_active) return;  // 再入防止
+    s_popup_active = true;
     static const Fl_Menu_Item menu[] = {
         {"Open", 0, nullptr, (void *)1},
         {"Exit", 0, nullptr, (void *)2},
         {nullptr}
     };
     const Fl_Menu_Item *picked = menu->popup(s_popup_x, s_popup_y);
+    s_popup_active = false;
     if (picked) {
         long idx = (long)picked->user_data();
         if (idx == 1 && s_callbacks.on_open) s_callbacks.on_open();
@@ -406,7 +410,6 @@ static void raise_and_focus(Fl_Window *win) {
     ev.xclient.data.l[1] = CurrentTime;
     XSendEvent(dpy, DefaultRootWindow(dpy), False,
                SubstructureNotifyMask | SubstructureRedirectMask, &ev);
-    XSetInputFocus(dpy, xwin, RevertToParent, CurrentTime);
     XFlush(dpy);
 }
 
