@@ -102,31 +102,34 @@ static bool s_window_withdrawn = false;  // XWithdrawWindow で隠した状態
 static int s_popup_x = 0, s_popup_y = 0;
 static bool s_popup_active = false;
 
-// 永続メニューウィンドウ (FLTK がウィンドウコンテキストを必要とするため)
-static Fl_Window *s_menu_win = nullptr;
-static Fl_Menu_Button *s_menu_btn = nullptr;
+// 永続のアンカーウィンドウ (FLTK が popup() の座標計算に使う)
+static Fl_Window *s_anchor_win = nullptr;
 
-static void ensure_menu_win() {
-    if (s_menu_win) return;
-    s_menu_win = new Fl_Window(0, 0, 1, 1);
-    s_menu_win->border(0);
-    s_menu_win->set_override();  // WM 配置調整を抑制
-    s_menu_btn = new Fl_Menu_Button(0, 0, 1, 1);
-    s_menu_btn->add("Open", 0, nullptr, (void *)1);
-    s_menu_btn->add("Exit", 0, nullptr, (void *)2);
-    s_menu_win->end();
+static void ensure_anchor_win() {
+    if (s_anchor_win) return;
+    s_anchor_win = new Fl_Window(0, 0, 1, 1);
+    s_anchor_win->border(0);
+    s_anchor_win->set_override();  // WM 配置調整を抑制
+    s_anchor_win->end();
 }
 
 static void show_tray_menu_cb(void *) {
     if (s_popup_active) return;  // 再入防止
     s_popup_active = true;
 
-    ensure_menu_win();
-    s_menu_win->position(s_popup_x, s_popup_y);
-    s_menu_win->show();
+    // アンカーウィンドウをカーソル位置に移動して表示
+    ensure_anchor_win();
+    s_anchor_win->position(s_popup_x, s_popup_y);
+    s_anchor_win->show();
 
-    const Fl_Menu_Item *picked = s_menu_btn->popup();
-    s_menu_win->hide();
+    static const Fl_Menu_Item menu[] = {
+        {"Open", 0, nullptr, (void *)1},
+        {"Exit", 0, nullptr, (void *)2},
+        {nullptr}
+    };
+    const Fl_Menu_Item *picked = menu->popup(s_popup_x, s_popup_y);
+
+    s_anchor_win->hide();
     s_popup_active = false;
 
     if (picked) {
@@ -315,11 +318,10 @@ void plat_tray_destroy() {
         s_tray_win = 0;
     }
 
-    // メニューウィンドウ破棄
-    if (s_menu_win) {
-        delete s_menu_win;  // 子の s_menu_btn も破棄される
-        s_menu_win = nullptr;
-        s_menu_btn = nullptr;
+    // アンカーウィンドウ破棄
+    if (s_anchor_win) {
+        delete s_anchor_win;
+        s_anchor_win = nullptr;
     }
 
     s_tray_active = false;
