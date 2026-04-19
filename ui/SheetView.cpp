@@ -879,7 +879,7 @@ void SheetView::update_layout() {
 
     // 式幅が eq_pos_ を超える行は2行レイアウト (移植元: SheetViewItem.GetPreferredSize)
     for (auto &row : rows_) {
-        if (row.result.empty() || row.expr.empty()) { row.wrapped = false; continue; }
+        if (row.result.empty() || row.expr.empty() || !row.show_result) { row.wrapped = false; continue; }
         std::vector<double> shifts;
         calc_expr_separator_shifts(row.expr.c_str(), (int)row.expr.size(), shifts);
         row.wrapped = display_width_with_sep(row.expr.c_str(), shifts) > eq_pos_;
@@ -899,6 +899,7 @@ void SheetView::apply_font() {
     editor_->textsize(g_font_size);
     result_display_->textfont(g_font_id);
     result_display_->textsize(g_font_size);
+    if (popup_) popup_->apply_colors();
     update_layout();
     redraw();
 }
