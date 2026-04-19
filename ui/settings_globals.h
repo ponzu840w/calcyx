@@ -58,6 +58,23 @@ extern bool g_show_rowlines;
 // ウィンドウ
 extern bool g_remember_position;
 
+// ---- システムトレイ・ホットキー ----
+constexpr bool DEFAULT_TRAY_ICON       = false;
+constexpr bool DEFAULT_HOTKEY_ENABLED  = false;
+constexpr bool DEFAULT_HOTKEY_WIN      = false;
+constexpr bool DEFAULT_HOTKEY_ALT      = true;
+constexpr bool DEFAULT_HOTKEY_CTRL     = false;
+constexpr bool DEFAULT_HOTKEY_SHIFT    = false;
+constexpr int  DEFAULT_HOTKEY_KEYCODE  = ' ';  // Space
+
+extern bool g_tray_icon;
+extern bool g_hotkey_enabled;
+extern bool g_hotkey_win;
+extern bool g_hotkey_alt;
+extern bool g_hotkey_ctrl;
+extern bool g_hotkey_shift;
+extern int  g_hotkey_keycode;
+
 // ---- 関数 ----
 void settings_init_defaults();
 void settings_load();

@@ -13,16 +13,28 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---- プラットフォーム別リンクフラグ ----
+# ---- プラットフォーム別トレイ/ホットキーソース ----
+if(APPLE)
+    set(PLATFORM_TRAY_SRC platform_tray_mac.mm)
+elseif(WIN32)
+    set(PLATFORM_TRAY_SRC platform_tray_win.cpp)
+elseif(EMSCRIPTEN)
+    set(PLATFORM_TRAY_SRC platform_tray_stub.cpp)
+else()
+    set(PLATFORM_TRAY_SRC platform_tray_x11.cpp)
+endif()
+
 set(PLATFORM_LIBS "")
 if(APPLE)
     list(APPEND PLATFORM_LIBS
         "-framework Cocoa"
+        "-framework Carbon"
         "-weak_framework UniformTypeIdentifiers"
         "-weak_framework ScreenCaptureKit"
     )
 elseif(WIN32)
     list(APPEND PLATFORM_LIBS
-        comctl32 gdi32 ole32 uuid ws2_32 imm32 gdiplus dbghelp
+        comctl32 shell32 gdi32 ole32 uuid ws2_32 imm32 gdiplus dbghelp
         -static -static-libgcc -static-libstdc++
     )
 else()
@@ -57,6 +69,7 @@ if(APPLE)
         builtin_docs.cpp
         app_prefs.cpp
         crash_handler.cpp
+        ${PLATFORM_TRAY_SRC}
         ${ICON_FILE}
         ${ICON_SVG}
         ${SAMPLE_FILES}
@@ -82,6 +95,7 @@ elseif(WIN32)
         builtin_docs.cpp
         app_prefs.cpp
         crash_handler.cpp
+        ${PLATFORM_TRAY_SRC}
         calcyx.rc
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx-gui")
@@ -104,6 +118,7 @@ else()
         builtin_docs.cpp
         app_prefs.cpp
         crash_handler.cpp
+        ${PLATFORM_TRAY_SRC}
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx-gui")
     # Linux: exe の隣に samples/ をコピー
@@ -172,6 +187,7 @@ add_executable(test_undo
     builtin_docs.cpp
     app_prefs.cpp
     crash_handler.cpp
+    platform_tray_stub.cpp
 )
 
 target_include_directories(test_undo PRIVATE

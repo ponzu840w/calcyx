@@ -3,6 +3,7 @@
 #include "MainWindow.h"
 #include "PrefsDialog.h"
 #include "settings_globals.h"
+#include "platform_tray.h"
 #include "colors.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Native_File_Chooser.H>
@@ -157,6 +158,12 @@ MainWindow::MainWindow(int w, int h, const char *title)
 
     // 初期状態のグレーアウトを反映
     update_toolbar();
+
+    // WM close を横取りしてトレイ最小化に対応
+    callback(close_cb, this);
+
+    // setup_tray() はウィンドウが shown() になってから実行する
+    // (fl_xid が有効になるタイミング = handle(FL_SHOW) 初回)
 }
 
 void MainWindow::resize(int nx, int ny, int nw, int nh) {
@@ -216,6 +223,15 @@ void MainWindow::update_toolbar() {
 }
 
 int MainWindow::handle(int event) {
+    // ウィンドウ表示後に初回のみトレイ/ホットキーを初期化
+    if (event == FL_SHOW && !tray_initialized_) {
+        tray_initialized_ = true;
+        // 次の event loop iteration で実行 (fl_xid が確実に有効になるタイミング)
+        Fl::add_timeout(0.0, [](void *d) {
+            static_cast<MainWindow *>(d)->setup_tray();
+        }, this);
+    }
+
     // ポップアップ表示中にポップアップ外をクリックしたら閉じる
     if (event == FL_PUSH && popup_->is_shown()) {
         int ex = Fl::event_x(), ey = Fl::event_y();
@@ -389,11 +405,14 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
     } else if (strcmp(cmd, "redo") == 0) {
         win->sheet_->redo();
     } else if (strcmp(cmd, "exit") == 0) {
+        win->teardown_tray();
         win->save_prefs();
         exit(0);
     } else if (strcmp(cmd, "prefs") == 0) {
         PrefsDialog::run(win->sheet_, [](void *d) {
-            static_cast<MainWindow *>(d)->apply_ui_colors();
+            auto *mw = static_cast<MainWindow *>(d);
+            mw->apply_ui_colors();
+            mw->apply_tray_settings();
         }, win);
     } else if (strcmp(cmd, "topmost") == 0) {
         win->toggle_always_on_top();
@@ -536,6 +555,113 @@ void MainWindow::save_prefs() {
 void MainWindow::hide() {
     save_prefs();
     Fl_Double_Window::hide();
+}
+
+// ---- WM close 横取り ----
+void MainWindow::close_cb(Fl_Widget *w, void *data) {
+    auto *win = static_cast<MainWindow *>(data);
+    if (win->tray_active_) {
+        // トレイに隠す (ウィンドウを閉じない)
+        plat_window_toggle(win, true);
+        return;
+    }
+    win->hide();
+}
+
+// ---- トレイ/ホットキー管理 ----
+void MainWindow::setup_tray() {
+    if (g_tray_icon) {
+        TrayCallbacks cb;
+        cb.on_open   = [this]() {
+            // 常に表示+前面に (Calctus 準拠)。トグルはホットキーの役割。
+            Fl::add_timeout(0.0, [](void *d) {
+                static_cast<MainWindow *>(d)->show_and_activate();
+            }, this);
+        };
+        cb.on_exit   = [this]() {
+            // Windows: TrackPopupMenu → RemoveWindowSubclass → exit() の再入を避ける
+            Fl::add_timeout(0.0, [](void *d) {
+                auto *win = static_cast<MainWindow *>(d);
+                win->teardown_tray();
+                win->save_prefs();
+                exit(0);
+            }, this);
+            Fl::awake();  // ウィンドウ非表示でもタイムアウトを確実に発火させる
+        };
+        cb.on_hotkey = [this]() {
+            Fl::add_timeout(0.0, [](void *d) {
+                static_cast<MainWindow *>(d)->toggle_visibility();
+            }, this);
+        };
+        tray_active_ = plat_tray_create(this, cb);
+    }
+
+    if (g_hotkey_enabled) {
+        int mods = 0;
+        if (g_hotkey_alt)   mods |= PMOD_ALT;
+        if (g_hotkey_ctrl)  mods |= PMOD_CTRL;
+        if (g_hotkey_shift) mods |= PMOD_SHIFT;
+        if (g_hotkey_win)   mods |= PMOD_WIN;
+        plat_hotkey_register(mods, g_hotkey_keycode);
+    }
+
+    // Linux: ホットキーポーリング開始
+    if (g_hotkey_enabled)
+        Fl::add_timeout(0.05, hotkey_poll_cb, this);
+}
+
+void MainWindow::teardown_tray() {
+    Fl::remove_timeout(hotkey_poll_cb, this);
+    plat_hotkey_unregister();
+    if (tray_active_) {
+        plat_tray_destroy();
+        tray_active_ = false;
+    }
+}
+
+void MainWindow::apply_tray_settings() {
+    bool was_tray = tray_active_;
+    teardown_tray();
+    setup_tray();
+
+    // トレイが無効化された場合、ウィンドウが非表示ならば表示する
+    // (非表示 + トレイなし = ゾンビ状態の防止)
+    if (was_tray && !tray_active_ && !visible()) {
+        show();
+    }
+}
+
+void MainWindow::toggle_visibility() {
+    plat_window_toggle(this, tray_active_);
+}
+
+void MainWindow::show_and_activate() {
+    // 非表示なら表示、表示済みなら前面に持ってくる (常にオープン方向)
+    if (!visible()) {
+        plat_window_toggle(this, tray_active_);  // 非表示→表示
+    } else {
+        // 既に表示中: 前面に持ってくるだけ (plat_window_toggle は
+        // フォアグラウンド時に隠してしまうので、show だけ呼ぶ)
+        show();
+    }
+}
+
+void MainWindow::hotkey_poll_cb(void *data) {
+    plat_hotkey_poll();
+    Fl::repeat_timeout(0.05, hotkey_poll_cb, data);
+}
+
+bool MainWindow::should_keep_running() {
+    if (!tray_active_) return false;
+
+    // トレイマネージャーが死んだ場合 (Explorer 再起動等) のゾンビ防止:
+    // プラットフォーム側でトレイが消えていたらウィンドウを復帰して終了
+    if (!plat_tray_is_active()) {
+        tray_active_ = false;
+        show();
+        return false;
+    }
+    return true;
 }
 
 void MainWindow::choice_cb(Fl_Widget *w, void *data) {

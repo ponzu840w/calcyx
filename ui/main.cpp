@@ -136,5 +136,11 @@ int main(int argc, char **argv) {
 
     win.show(argc, argv);
 
-    return Fl::run();
+    // Fl::run() はウィンドウが全て非表示になると終了するが、
+    // トレイ常駐中はウィンドウ非表示でもイベントループを継続する必要がある。
+    while (Fl::wait() >= 0) {
+        if (!Fl::first_window() && !win.should_keep_running())
+            break;
+    }
+    return 0;
 }

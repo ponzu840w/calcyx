@@ -21,6 +21,8 @@ public:
     void update_fmt_choice();
     void update_toolbar();
     void apply_ui_colors();
+    void apply_tray_settings();  // PrefsDialog 変更後にトレイ再構築
+    bool should_keep_running();  // トレイ常駐中は true、トレイ消失時は復帰
 
     int  handle(int event) override;
     void resize(int x, int y, int w, int h) override;
@@ -57,8 +59,16 @@ private:
     void populate_samples_menu();
     static bool open_sample_file(MainWindow *win, const char *filename);
     void toggle_always_on_top();
+    void setup_tray();
+    void teardown_tray();
+    void toggle_visibility();
+    void show_and_activate();
+    static void close_cb(Fl_Widget *w, void *data);
+    static void hotkey_poll_cb(void *data);
+    bool tray_initialized_ = false;  // setup_tray 初回実行済みフラグ
 
     bool topmost_ = false;
+    bool tray_active_ = false;
     int  mi_topmost_ = -1;  // View/Always on Top メニュー項目インデックス
     std::vector<std::string> sample_files_;  // メニュー文字列の安定した記憶域
 };

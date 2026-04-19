@@ -7,6 +7,7 @@
 #include "settings_globals.h"
 #include "app_prefs.h"
 #include "colors.h"
+#include "platform_tray.h"
 #include "crash_handler.h"
 #include <FL/Fl.H>
 #include <cstdio>
@@ -31,6 +32,13 @@ int  g_limit_max_string_length = DEFAULT_MAX_STRING_LENGTH;
 int  g_limit_max_call_depth    = DEFAULT_MAX_CALL_DEPTH;
 bool g_show_rowlines = DEFAULT_SHOW_ROWLINES;
 bool g_remember_position = DEFAULT_REMEMBER_POSITION;
+bool g_tray_icon       = DEFAULT_TRAY_ICON;
+bool g_hotkey_enabled  = DEFAULT_HOTKEY_ENABLED;
+bool g_hotkey_win      = DEFAULT_HOTKEY_WIN;
+bool g_hotkey_alt      = DEFAULT_HOTKEY_ALT;
+bool g_hotkey_ctrl     = DEFAULT_HOTKEY_CTRL;
+bool g_hotkey_shift    = DEFAULT_HOTKEY_SHIFT;
+int  g_hotkey_keycode  = DEFAULT_HOTKEY_KEYCODE;
 
 static std::string s_conf_path;
 
@@ -108,6 +116,13 @@ void settings_init_defaults() {
     g_limit_max_call_depth      = DEFAULT_MAX_CALL_DEPTH;
     g_show_rowlines             = DEFAULT_SHOW_ROWLINES;
     g_remember_position         = DEFAULT_REMEMBER_POSITION;
+    g_tray_icon                 = DEFAULT_TRAY_ICON;
+    g_hotkey_enabled            = DEFAULT_HOTKEY_ENABLED;
+    g_hotkey_win                = DEFAULT_HOTKEY_WIN;
+    g_hotkey_alt                = DEFAULT_HOTKEY_ALT;
+    g_hotkey_ctrl               = DEFAULT_HOTKEY_CTRL;
+    g_hotkey_shift              = DEFAULT_HOTKEY_SHIFT;
+    g_hotkey_keycode            = DEFAULT_HOTKEY_KEYCODE;
 
     g_fmt_settings.decimal_len     = DEFAULT_FMT_DECIMAL_LEN;
     g_fmt_settings.e_notation      = DEFAULT_FMT_E_NOTATION;
@@ -199,6 +214,18 @@ void settings_load() {
     g_limit_max_call_depth    = std::clamp(get_int(kv, "max_call_depth", DEFAULT_MAX_CALL_DEPTH), 1, 1000);
     g_show_rowlines           = get_bool(kv, "show_rowlines", DEFAULT_SHOW_ROWLINES);
     g_remember_position       = get_bool(kv, "remember_position", DEFAULT_REMEMBER_POSITION);
+
+    g_tray_icon       = get_bool(kv, "tray_icon", DEFAULT_TRAY_ICON);
+    g_hotkey_enabled  = get_bool(kv, "hotkey_enabled", DEFAULT_HOTKEY_ENABLED);
+    g_hotkey_win      = get_bool(kv, "hotkey_win", DEFAULT_HOTKEY_WIN);
+    g_hotkey_alt      = get_bool(kv, "hotkey_alt", DEFAULT_HOTKEY_ALT);
+    g_hotkey_ctrl     = get_bool(kv, "hotkey_ctrl", DEFAULT_HOTKEY_CTRL);
+    g_hotkey_shift    = get_bool(kv, "hotkey_shift", DEFAULT_HOTKEY_SHIFT);
+    {
+        std::string kn = get(kv, "hotkey_key", "Space");
+        int k = plat_keyname_to_flkey(kn.c_str());
+        g_hotkey_keycode = k ? k : DEFAULT_HOTKEY_KEYCODE;
+    }
 
     g_fmt_settings.decimal_len    = std::clamp(get_int(kv, "decimal_digits", DEFAULT_FMT_DECIMAL_LEN), 1, 34);
     g_fmt_settings.e_notation     = get_bool(kv, "e_notation", DEFAULT_FMT_E_NOTATION);
@@ -294,6 +321,15 @@ void settings_save() {
         "thousands_separator = %s\n"
         "hex_separator = %s\n"
         "\n"
+        "# ---- System Tray ----\n"
+        "tray_icon = %s\n"
+        "hotkey_enabled = %s\n"
+        "hotkey_win = %s\n"
+        "hotkey_alt = %s\n"
+        "hotkey_ctrl = %s\n"
+        "hotkey_shift = %s\n"
+        "hotkey_key = %s\n"
+        "\n"
         "# ---- Colors ----\n"
         "# Preset: otaku-black, gyakubari-white, saboten-grey, saboten-white, user\n"
         "color_preset = %s\n",
@@ -312,6 +348,13 @@ void settings_save() {
         g_fmt_settings.e_alignment ? "true" : "false",
         g_sep_thousands ? "true" : "false",
         g_sep_hex ? "true" : "false",
+        g_tray_icon ? "true" : "false",
+        g_hotkey_enabled ? "true" : "false",
+        g_hotkey_win ? "true" : "false",
+        g_hotkey_alt ? "true" : "false",
+        g_hotkey_ctrl ? "true" : "false",
+        g_hotkey_shift ? "true" : "false",
+        plat_flkey_to_keyname(g_hotkey_keycode),
         COLOR_PRESET_INFO[g_color_preset].id);
 
     if (g_color_preset == COLOR_PRESET_USER_DEFINED) {

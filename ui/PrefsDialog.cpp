@@ -1,8 +1,9 @@
-// PrefsDialog — 設定ダイアログ (4タブ: General, Appearance, Number Format, Input)
+// PrefsDialog — 設定ダイアログ (5タブ: General, Appearance, Number Format, Input, System)
 
 #include "PrefsDialog.h"
 #include "SheetView.h"
 #include "settings_globals.h"
+#include "platform_tray.h"
 #include "colors.h"
 #include "app_prefs.h"
 #include <FL/Fl.H>
@@ -300,6 +301,21 @@ struct DlgState {
     // General tab
     Fl_Check_Button *show_rowlines_chk;
     Fl_Check_Button *remember_pos_chk;
+    // System tab
+    Fl_Check_Button *tray_chk;
+    Fl_Check_Button *hotkey_chk;
+    Fl_Check_Button *hotkey_win_chk;
+    Fl_Check_Button *hotkey_alt_chk;
+    Fl_Check_Button *hotkey_ctrl_chk;
+    Fl_Check_Button *hotkey_shift_chk;
+    Fl_Choice       *hotkey_key_choice;
+    bool saved_tray_icon;
+    bool saved_hotkey_enabled;
+    bool saved_hotkey_win;
+    bool saved_hotkey_alt;
+    bool saved_hotkey_ctrl;
+    bool saved_hotkey_shift;
+    int  saved_hotkey_keycode;
     Fl_Spinner *limit_array_spin;
     Fl_Spinner *limit_string_spin;
     Fl_Spinner *limit_depth_spin;
@@ -544,6 +560,20 @@ static void apply_settings(DlgState *st) {
     g_input_auto_completion     = st->auto_complete_chk->value() != 0;
     g_input_auto_close_brackets = st->auto_brackets_chk->value() != 0;
 
+    // System tab
+    g_tray_icon      = st->tray_chk->value() != 0;
+    g_hotkey_enabled = st->hotkey_chk->value() != 0;
+    g_hotkey_win     = st->hotkey_win_chk->value() != 0;
+    g_hotkey_alt     = st->hotkey_alt_chk->value() != 0;
+    g_hotkey_ctrl    = st->hotkey_ctrl_chk->value() != 0;
+    g_hotkey_shift   = st->hotkey_shift_chk->value() != 0;
+    {
+        int ki = st->hotkey_key_choice->value();
+        const char *const *names = plat_key_names();
+        if (ki >= 0 && ki < plat_key_names_count())
+            g_hotkey_keycode = plat_keyname_to_flkey(names[ki]);
+    }
+
     if (g_color_preset == COLOR_PRESET_USER_DEFINED)
         st->user_colors = g_colors;
 
@@ -555,11 +585,18 @@ static void apply_settings(DlgState *st) {
     st->saved_limit_array   = g_limit_max_array_length;
     st->saved_limit_string  = g_limit_max_string_length;
     st->saved_limit_depth   = g_limit_max_call_depth;
-    st->saved_show_rowlines = g_show_rowlines;
-    st->saved_remember_pos  = g_remember_position;
-    st->saved_preset        = g_color_preset;
-    st->saved_colors        = g_colors;
-    st->saved_user_colors   = st->user_colors;
+    st->saved_show_rowlines   = g_show_rowlines;
+    st->saved_remember_pos    = g_remember_position;
+    st->saved_preset          = g_color_preset;
+    st->saved_colors          = g_colors;
+    st->saved_user_colors     = st->user_colors;
+    st->saved_tray_icon       = g_tray_icon;
+    st->saved_hotkey_enabled  = g_hotkey_enabled;
+    st->saved_hotkey_win      = g_hotkey_win;
+    st->saved_hotkey_alt      = g_hotkey_alt;
+    st->saved_hotkey_ctrl     = g_hotkey_ctrl;
+    st->saved_hotkey_shift    = g_hotkey_shift;
+    st->saved_hotkey_keycode  = g_hotkey_keycode;
 
     st->sheet->apply_font();
     st->sheet->live_eval();
@@ -609,6 +646,24 @@ static void reset_to_defaults(DlgState *st) {
     st->limit_array_spin->value(DEFAULT_MAX_ARRAY_LENGTH);
     st->limit_string_spin->value(DEFAULT_MAX_STRING_LENGTH);
     st->limit_depth_spin->value(DEFAULT_MAX_CALL_DEPTH);
+
+    // System
+    st->tray_chk->value(DEFAULT_TRAY_ICON ? 1 : 0);
+    st->hotkey_chk->value(DEFAULT_HOTKEY_ENABLED ? 1 : 0);
+    st->hotkey_win_chk->value(DEFAULT_HOTKEY_WIN ? 1 : 0);
+    st->hotkey_alt_chk->value(DEFAULT_HOTKEY_ALT ? 1 : 0);
+    st->hotkey_ctrl_chk->value(DEFAULT_HOTKEY_CTRL ? 1 : 0);
+    st->hotkey_shift_chk->value(DEFAULT_HOTKEY_SHIFT ? 1 : 0);
+    {
+        const char *def_name = plat_flkey_to_keyname(DEFAULT_HOTKEY_KEYCODE);
+        int idx = 0;
+        int n = plat_key_names_count();
+        const char *const *names = plat_key_names();
+        for (int i = 0; i < n; i++) {
+            if (strcmp(names[i], def_name) == 0) { idx = i; break; }
+        }
+        st->hotkey_key_choice->value(idx);
+    }
 
     refresh_previews(st);
 }
@@ -988,6 +1043,94 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
         g->end();
     }
 
+    // ======== System tab (Tray + Hotkey) ========
+    {
+        Fl_Group *g = new Fl_Group(5, 30, DW - 10, TAB_H - 25, " System ");
+        g->color(DLG_BG);
+        g->selection_color(DLG_BG);
+        g->labelcolor(DLG_TEXT);
+        g->labelsize(12);
+
+        int lx = 20, ly = 55;
+
+        // --- System Tray ---
+        Fl_Box *sec_tray = new Fl_Box(lx, ly, 200, 20, "System Tray");
+        sec_tray->labelcolor(DLG_LABEL);
+        sec_tray->labelsize(12);
+        sec_tray->labelfont(FL_BOLD);
+        sec_tray->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 25;
+
+        st.tray_chk = new Fl_Check_Button(lx + 10, ly, 300, 25, "Enable system tray icon");
+        style_check(st.tray_chk);
+        st.tray_chk->value(g_tray_icon ? 1 : 0);
+        ly += 25;
+
+        Fl_Box *tray_note = new Fl_Box(lx + 30, ly, 400, 20, "When enabled, closing the window minimizes to tray.");
+        tray_note->labelcolor(DLG_LABEL);
+        tray_note->labelsize(11);
+        tray_note->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 35;
+
+        // --- Global Hotkey ---
+        Fl_Box *sec_hk = new Fl_Box(lx, ly, 200, 20, "Global Hotkey");
+        sec_hk->labelcolor(DLG_LABEL);
+        sec_hk->labelsize(12);
+        sec_hk->labelfont(FL_BOLD);
+        sec_hk->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        ly += 25;
+
+        st.hotkey_chk = new Fl_Check_Button(lx + 10, ly, 300, 25, "Enable global hotkey");
+        style_check(st.hotkey_chk);
+        st.hotkey_chk->value(g_hotkey_enabled ? 1 : 0);
+        ly += 30;
+
+        // 修飾キーチェックボックス (横並び)
+        Fl_Box *mod_label = new Fl_Box(lx + 30, ly, 80, 25, "Modifiers:");
+        style_label(mod_label);
+        mod_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+        int mx = lx + 110;
+        st.hotkey_win_chk = new Fl_Check_Button(mx, ly, 55, 25, "Win");
+        style_check(st.hotkey_win_chk);
+        st.hotkey_win_chk->value(g_hotkey_win ? 1 : 0);
+        mx += 55;
+        st.hotkey_alt_chk = new Fl_Check_Button(mx, ly, 50, 25, "Alt");
+        style_check(st.hotkey_alt_chk);
+        st.hotkey_alt_chk->value(g_hotkey_alt ? 1 : 0);
+        mx += 50;
+        st.hotkey_ctrl_chk = new Fl_Check_Button(mx, ly, 55, 25, "Ctrl");
+        style_check(st.hotkey_ctrl_chk);
+        st.hotkey_ctrl_chk->value(g_hotkey_ctrl ? 1 : 0);
+        mx += 55;
+        st.hotkey_shift_chk = new Fl_Check_Button(mx, ly, 60, 25, "Shift");
+        style_check(st.hotkey_shift_chk);
+        st.hotkey_shift_chk->value(g_hotkey_shift ? 1 : 0);
+        ly += 30;
+
+        // キー選択
+        Fl_Box *key_label = new Fl_Box(lx + 30, ly, 80, 25, "Key:");
+        style_label(key_label);
+        key_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+        st.hotkey_key_choice = new Fl_Choice(lx + 110, ly, 100, 25);
+        st.hotkey_key_choice->color(DLG_INPUT);
+        st.hotkey_key_choice->textcolor(DLG_TEXT);
+        st.hotkey_key_choice->labelcolor(DLG_LABEL);
+        st.hotkey_key_choice->textsize(12);
+        int key_count = plat_key_names_count();
+        const char *const *key_names = plat_key_names();
+        int sel_idx = 0;
+        for (int i = 0; i < key_count; i++) {
+            st.hotkey_key_choice->add(key_names[i]);
+            if (plat_keyname_to_flkey(key_names[i]) == g_hotkey_keycode)
+                sel_idx = i;
+        }
+        st.hotkey_key_choice->value(sel_idx);
+
+        g->end();
+    }
+
     tabs.end();
 
     // プレビューの初期化
@@ -999,8 +1142,15 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     st.saved_limit_array   = g_limit_max_array_length;
     st.saved_limit_string  = g_limit_max_string_length;
     st.saved_limit_depth   = g_limit_max_call_depth;
-    st.saved_show_rowlines = g_show_rowlines;
-    st.saved_remember_pos  = g_remember_position;
+    st.saved_show_rowlines    = g_show_rowlines;
+    st.saved_remember_pos     = g_remember_position;
+    st.saved_tray_icon        = g_tray_icon;
+    st.saved_hotkey_enabled   = g_hotkey_enabled;
+    st.saved_hotkey_win       = g_hotkey_win;
+    st.saved_hotkey_alt       = g_hotkey_alt;
+    st.saved_hotkey_ctrl      = g_hotkey_ctrl;
+    st.saved_hotkey_shift     = g_hotkey_shift;
+    st.saved_hotkey_keycode   = g_hotkey_keycode;
     refresh_previews(&st);
     update_swatch_state(&st);
 
@@ -1052,6 +1202,13 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
         g_limit_max_call_depth    = st->saved_limit_depth;
         g_show_rowlines           = st->saved_show_rowlines;
         g_remember_position       = st->saved_remember_pos;
+        g_tray_icon               = st->saved_tray_icon;
+        g_hotkey_enabled          = st->saved_hotkey_enabled;
+        g_hotkey_win              = st->saved_hotkey_win;
+        g_hotkey_alt              = st->saved_hotkey_alt;
+        g_hotkey_ctrl             = st->saved_hotkey_ctrl;
+        g_hotkey_shift            = st->saved_hotkey_shift;
+        g_hotkey_keycode          = st->saved_hotkey_keycode;
         st->sheet->apply_font();
         st->sheet->live_eval();
         st->sheet->redraw();
