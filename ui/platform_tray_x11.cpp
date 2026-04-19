@@ -8,7 +8,7 @@
 #include <FL/Fl_Window.H>
 #include <FL/platform.H>
 #include <FL/Fl_PNG_Image.H>
-#include <FL/Fl_Menu_Item.H>
+#include <FL/Fl_Menu_Button.H>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -102,43 +102,38 @@ static bool s_window_withdrawn = false;  // XWithdrawWindow で隠した状態
 static int s_popup_x = 0, s_popup_y = 0;
 static bool s_popup_active = false;
 
+static void menu_cb(Fl_Widget *w, void *) {
+    auto *btn = static_cast<Fl_Menu_Button *>(w);
+    const Fl_Menu_Item *picked = btn->mvalue();
+    if (!picked) return;
+    long idx = (long)picked->user_data();
+    // コールバックはメニューウィンドウ破棄後に呼ぶ (deferred)
+    if (idx == 1 && s_callbacks.on_open)
+        Fl::add_timeout(0.0, [](void *) { if (s_callbacks.on_open) s_callbacks.on_open(); }, nullptr);
+    if (idx == 2 && s_callbacks.on_exit)
+        Fl::add_timeout(0.0, [](void *) { if (s_callbacks.on_exit) s_callbacks.on_exit(); }, nullptr);
+}
+
 static void show_tray_menu_cb(void *) {
     if (s_popup_active) return;  // 再入防止
     s_popup_active = true;
 
-    // XQueryPointer で現在のカーソル位置を直接取得する
-    Display *dpy = fl_display;
-    int qp_x = -1, qp_y = -1;
-    if (dpy) {
-        Window root_ret, child_ret;
-        int rx, ry, wx, wy;
-        unsigned int mask;
-        if (XQueryPointer(dpy, DefaultRootWindow(dpy),
-                          &root_ret, &child_ret, &rx, &ry, &wx, &wy, &mask)) {
-            qp_x = rx;
-            qp_y = ry;
-        }
-    }
-    fprintf(stderr, "[tray] popup: xevent=(%d,%d) XQueryPointer=(%d,%d)\n",
-            s_popup_x, s_popup_y, qp_x, qp_y);
-    // XQueryPointer の結果を使う
-    if (qp_x >= 0) { s_popup_x = qp_x; s_popup_y = qp_y; }
+    // カーソル位置に 1x1 の一時ウィンドウを作り、そこから Fl_Menu_Button で
+    // ポップアップする。FLTK はウィンドウコンテキストがないと popup() の
+    // 座標変換が不安定になるため。
+    Fl_Window tmp(s_popup_x, s_popup_y, 1, 1);
+    tmp.border(0);
+    tmp.set_override();  // WM による配置調整を抑制
+    Fl_Menu_Button btn(0, 0, 1, 1);
+    btn.add("Open", 0, menu_cb, (void *)1);
+    btn.add("Exit", 0, menu_cb, (void *)2);
+    btn.callback(menu_cb);
+    tmp.end();
+    tmp.show();
+    btn.popup();
+    tmp.hide();
 
-    fprintf(stderr, "[tray] popup: using (%d,%d)\n", s_popup_x, s_popup_y);
-
-    static const Fl_Menu_Item menu[] = {
-        {"Open", 0, nullptr, (void *)1},
-        {"Exit", 0, nullptr, (void *)2},
-        {nullptr}
-    };
-    const Fl_Menu_Item *picked = menu->popup(s_popup_x, s_popup_y);
     s_popup_active = false;
-    fprintf(stderr, "[tray] popup: done\n");
-    if (picked) {
-        long idx = (long)picked->user_data();
-        if (idx == 1 && s_callbacks.on_open) s_callbacks.on_open();
-        if (idx == 2 && s_callbacks.on_exit) s_callbacks.on_exit();
-    }
 }
 
 // ---- ホットキー状態 ----
