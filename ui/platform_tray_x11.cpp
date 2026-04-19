@@ -8,7 +8,8 @@
 #include <FL/Fl_Window.H>
 #include <FL/platform.H>
 #include <FL/Fl_PNG_Image.H>
-#include <FL/Fl_Menu_Button.H>
+#include <FL/Fl_Box.H>
+#include <FL/Fl_Button.H>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
 #include <X11/Xutil.h>
@@ -102,43 +103,59 @@ static bool s_window_withdrawn = false;  // XWithdrawWindow で隠した状態
 static int s_popup_x = 0, s_popup_y = 0;
 static bool s_popup_active = false;
 
-// 永続のアンカーウィンドウ (FLTK が popup() の座標計算に使う)
-static Fl_Window *s_anchor_win = nullptr;
+// ---- カスタムポップアップメニュー (Fl_Menu_Item::popup の座標問題を回避) ----
 
-static void ensure_anchor_win() {
-    if (s_anchor_win) return;
-    s_anchor_win = new Fl_Window(0, 0, 1, 1);
-    s_anchor_win->border(0);
-    s_anchor_win->set_override();  // WM 配置調整を抑制
-    s_anchor_win->end();
+static Fl_Window *s_popup_win = nullptr;
+static int s_popup_result = 0;  // 0=未選択, 1=Open, 2=Exit
+
+static void popup_btn_cb(Fl_Widget *, void *data) {
+    s_popup_result = (int)(long)data;
+    if (s_popup_win) s_popup_win->hide();
 }
 
 static void show_tray_menu_cb(void *) {
     if (s_popup_active) return;  // 再入防止
     s_popup_active = true;
+    s_popup_result = 0;
 
-    // アンカーウィンドウをカーソル位置に移動して表示
-    ensure_anchor_win();
-    s_anchor_win->position(s_popup_x, s_popup_y);
-    s_anchor_win->show();
+    const int btn_w = 80, btn_h = 24, pad = 2;
+    const int win_w = btn_w + pad * 2;
+    const int win_h = btn_h * 2 + pad * 3;
 
-    static const Fl_Menu_Item menu[] = {
-        {"Open", 0, nullptr, (void *)1},
-        {"Exit", 0, nullptr, (void *)2},
-        {nullptr}
-    };
-    const Fl_Menu_Item *picked = menu->popup(s_popup_x, s_popup_y);
+    // メニューはカーソルの下に表示。画面上端なら下に伸ばす
+    int mx = s_popup_x;
+    int my = s_popup_y;
 
-    s_anchor_win->hide();
+    if (!s_popup_win) {
+        s_popup_win = new Fl_Window(mx, my, win_w, win_h);
+        s_popup_win->border(0);
+        s_popup_win->set_override();
+
+        auto *b1 = new Fl_Button(pad, pad, btn_w, btn_h, "Open");
+        b1->callback(popup_btn_cb, (void *)1);
+        b1->box(FL_FLAT_BOX);
+
+        auto *b2 = new Fl_Button(pad, pad + btn_h + pad, btn_w, btn_h, "Exit");
+        b2->callback(popup_btn_cb, (void *)2);
+        b2->box(FL_FLAT_BOX);
+
+        s_popup_win->end();
+    }
+
+    s_popup_win->position(mx, my);
+    s_popup_win->show();
+
+    // ポップアップが閉じるまでモーダルループ
+    while (s_popup_win->visible()) {
+        Fl::wait();
+    }
+
     s_popup_active = false;
 
-    if (picked) {
-        long idx = (long)picked->user_data();
-        if (idx == 1 && s_callbacks.on_open)
-            Fl::add_timeout(0.0, [](void *) { if (s_callbacks.on_open) s_callbacks.on_open(); }, nullptr);
-        if (idx == 2 && s_callbacks.on_exit)
-            Fl::add_timeout(0.0, [](void *) { if (s_callbacks.on_exit) s_callbacks.on_exit(); }, nullptr);
-    }
+    if (s_popup_result == 1 && s_callbacks.on_open)
+        Fl::add_timeout(0.0, [](void *) { if (s_callbacks.on_open) s_callbacks.on_open(); }, nullptr);
+    if (s_popup_result == 2 && s_callbacks.on_exit)
+        Fl::add_timeout(0.0, [](void *) { if (s_callbacks.on_exit) s_callbacks.on_exit(); }, nullptr);
 }
 
 // ---- ホットキー状態 ----
@@ -318,10 +335,10 @@ void plat_tray_destroy() {
         s_tray_win = 0;
     }
 
-    // アンカーウィンドウ破棄
-    if (s_anchor_win) {
-        delete s_anchor_win;
-        s_anchor_win = nullptr;
+    // ポップアップメニュー破棄
+    if (s_popup_win) {
+        delete s_popup_win;
+        s_popup_win = nullptr;
     }
 
     s_tray_active = false;
