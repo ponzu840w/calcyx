@@ -21,6 +21,19 @@ static void *body_dup (const void *e) { return (void *)expr_dup((const expr_t *)
  * ユーティリティ
  * ====================================================== */
 
+/* 配列ブロードキャスト共通: 部分構築済みの要素配列を解放 */
+static void free_partial_array(val_t **items, int count) {
+    for (int i = 0; i < count; i++) val_free(items[i]);
+    free(items);
+}
+
+/* 配列ブロードキャスト共通: 要素配列を val_new_array で包み、元配列を解放して返す */
+static val_t *wrap_and_free_array(val_t **items, int len, val_fmt_t fmt) {
+    val_t *out = val_new_array(items, len, fmt);
+    free_partial_array(items, len);
+    return out;
+}
+
 /* 配列の各要素に単項演算を適用 (UnaryOp.cs の array broadcast) */
 static val_t *apply_unary_array(val_t *arr,
         val_t *(*op)(const val_t *)) {
@@ -29,15 +42,11 @@ static val_t *apply_unary_array(val_t *arr,
     for (int i = 0; i < arr->arr_len; i++) {
         res[i] = op(arr->arr_items[i]);
         if (!res[i]) {
-            for (int j = 0; j < i; j++) val_free(res[j]);
-            free(res);
+            free_partial_array(res, i);
             return NULL;
         }
     }
-    val_t *out = val_new_array(res, arr->arr_len, arr->fmt);
-    for (int i = 0; i < arr->arr_len; i++) val_free(res[i]);
-    free(res);
-    return out;
+    return wrap_and_free_array(res, arr->arr_len, arr->fmt);
 }
 
 /* 結果の val_t が NaN/Infinity を含んでいたらエラーにする
@@ -103,15 +112,11 @@ static val_t *broadcast_op(op_id_t op, const val_t *a, const val_t *b,
         const val_t *bi = (b->type == VAL_ARRAY) ? b->arr_items[i] : b;
         res[i] = scalar_binop(op, (val_t *)ai, (val_t *)bi, ctx);
         if (!res[i] || ctx->has_error) {
-            for (int j = 0; j < i; j++) val_free(res[j]);
-            free(res);
+            free_partial_array(res, i);
             return NULL;
         }
     }
-    val_t *out = val_new_array(res, len, fmt);
-    for (int i = 0; i < len; i++) val_free(res[i]);
-    free(res);
-    return out;
+    return wrap_and_free_array(res, len, fmt);
 }
 
 /* 2項演算 (配列ブロードキャスト付き, 移植元: BinaryOp.scalarOperation + 配列分岐) */
@@ -152,10 +157,7 @@ static val_t *make_range(val_t *a, val_t *b, bool inclusive, eval_ctx_t *ctx) {
     int64_t v = from;
     for (int64_t i = 0; i < count; i++, v += step)
         items[i] = val_new_i64(v, a->fmt);
-    val_t *out = val_new_array(items, (int)count, a->fmt);
-    for (int i = 0; i < (int)count; i++) val_free(items[i]);
-    free(items);
-    return out;
+    return wrap_and_free_array(items, (int)count, a->fmt);
 }
 
 /* ======================================================
@@ -175,8 +177,7 @@ static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
         for (int i = 0; i < len; i++) {
             val_t **tmp_args = (val_t **)malloc((size_t)n_args * sizeof(val_t *));
             if (!tmp_args) {
-                for (int j = 0; j < i; j++) val_free(res[j]);
-                free(res);
+                free_partial_array(res, i);
                 return NULL;
             }
             for (int j = 0; j < n_args; j++) tmp_args[j] = args[j];
@@ -184,15 +185,11 @@ static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
             res[i] = call_func(fd, tmp_args, n_args, ctx);
             free(tmp_args);
             if (!res[i] || ctx->has_error) {
-                for (int j = 0; j < i; j++) val_free(res[j]);
-                free(res);
+                free_partial_array(res, i);
                 return NULL;
             }
         }
-        val_t *out = val_new_array(res, len, arr->fmt);
-        for (int i = 0; i < len; i++) val_free(res[i]);
-        free(res);
-        return out;
+        return wrap_and_free_array(res, len, arr->fmt);
     }
     /* 組み込み */
     if (fd->builtin) {
