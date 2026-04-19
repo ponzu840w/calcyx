@@ -30,6 +30,11 @@ static void calc_separator_shifts(const char *text, int len, val_fmt_t fmt,
     shifts.assign(len, 0.0);
     if (len == 0) return;
 
+    // 数値フォーマット以外はセパレータ不要
+    if (fmt != FMT_REAL && fmt != FMT_INT && fmt != FMT_HEX &&
+        fmt != FMT_BIN  && fmt != FMT_OCT)
+        return;
+
     bool is_hex_family = (fmt == FMT_HEX || fmt == FMT_BIN || fmt == FMT_OCT);
     if (is_hex_family ? !g_sep_hex : !g_sep_thousands) return;
 
@@ -124,12 +129,15 @@ static void draw_colored_spans(const char *text, int len,
 
     // 第2パス: 前景色テキストスパン
     // sep_shifts 使用時は、シフト値が変わるポイントでもスパンを分割する
+    // UTF-8 マルチバイトシーケンスの途中では分割しない
     for (int i = 0; i < len; ) {
         Fl_Color fc = fg[i];
         int j = i + 1;
         while (j < len && fg[j] == fc &&
                (!sep_shifts || sep_shifts[j] == sep_shifts[i]))
             j++;
+        // UTF-8 継続バイト (10xxxxxx) で切らないよう後ろに延ばす
+        while (j < len && ((unsigned char)text[j] & 0xC0) == 0x80) j++;
         fl_color(fc);
         fl_draw(text + i, j - i, text_x + (int)xpos(i), baseline);
         i = j;
@@ -770,7 +778,6 @@ void SheetView::update_result_display() {
 void SheetView::eval_all() {
     eval_ctx_free(&ctx_);
     eval_ctx_init(&ctx_);
-    builtin_register_all(&ctx_);
     ctx_.settings.max_array_length  = g_limit_max_array_length;
     ctx_.settings.max_string_length = g_limit_max_string_length;
     ctx_.settings.max_call_depth    = g_limit_max_call_depth;
