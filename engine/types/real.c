@@ -12,6 +12,10 @@ void real_ctx_init(void) {
     real_ctx.emax  = MPD_MAX_EMAX;
     real_ctx.emin  = MPD_MIN_EMIN;
     real_ctx.clamp = 1;
+    /* デフォルトでは Overflow/Underflow 等で SIGFPE を発生させるが、
+     * 電卓アプリでは異常入力でクラッシュすべきではないのでトラップを無効化。
+     * 結果は Infinity/NaN/0 として返され、UI 側でエラー表示される。 */
+    real_ctx.traps = 0;
 }
 
 void real_init(real_t *r) {
@@ -89,6 +93,18 @@ bool real_fits_i64(const real_t *a) {
     uint32_t status = 0;
     mpd_qget_i64((mpd_t *)&a->mpd, &status);
     return (status & MPD_Invalid_operation) == 0;
+}
+
+bool real_is_nan(const real_t *a) {
+    return mpd_isnan((mpd_t *)&a->mpd) != 0;
+}
+
+bool real_is_infinite(const real_t *a) {
+    return mpd_isinfinite((mpd_t *)&a->mpd) != 0;
+}
+
+bool real_is_special(const real_t *a) {
+    return mpd_isspecial((mpd_t *)&a->mpd) != 0;
 }
 
 int real_sign(const real_t *a) {
@@ -234,13 +250,18 @@ void real_ln(real_t *out, const real_t *a) {
     mpd_ln(&out->mpd, (mpd_t *)&a->mpd, &real_ctx);
 }
 
-/* pow(base, exp): 整数指数なら real_pown を使用 (正確) */
+/* pow(base, exp): 整数指数なら real_pown を使用 (正確)
+ * ただし指数が大きすぎると real_pown の繰り返し二乗法で中間結果が
+ * mpdecimal の内部表現を超え SIGFPE になるため、mpd_pow にフォールバック。 */
 void real_pow(real_t *out, const real_t *base, const real_t *exp) {
-    if (real_is_integer(exp)) {
+    if (real_is_integer(exp) && real_fits_i64(exp)) {
         int64_t n = real_to_i64(exp);
-        real_pown(out, base, n);
-    } else {
-        real_init(out);
-        mpd_pow(&out->mpd, (mpd_t *)&base->mpd, (mpd_t *)&exp->mpd, &real_ctx);
+        /* 指数が大きすぎる場合は mpd_pow に任せる (内部で丸める) */
+        if (n > -1000000000LL && n < 1000000000LL) {
+            real_pown(out, base, n);
+            return;
+        }
     }
+    real_init(out);
+    mpd_pow(&out->mpd, (mpd_t *)&base->mpd, (mpd_t *)&exp->mpd, &real_ctx);
 }

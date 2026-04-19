@@ -44,9 +44,12 @@ bool real_eq (const real_t *a, const real_t *b);
 bool real_is_zero(const real_t *a);
 
 /* 判定 */
-bool real_is_integer(const real_t *a);
-bool real_fits_i64  (const real_t *a);
-int  real_sign      (const real_t *a);   /* -1 / 0 / 1 */
+bool real_is_integer (const real_t *a);
+bool real_fits_i64   (const real_t *a);
+bool real_is_nan     (const real_t *a);
+bool real_is_infinite(const real_t *a);
+bool real_is_special (const real_t *a);  /* NaN or Inf */
+int  real_sign       (const real_t *a);  /* -1 / 0 / 1 */
 void real_gcd       (real_t *out, const real_t *a, const real_t *b);
 
 /* 算術 (out に結果を書く) */

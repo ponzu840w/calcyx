@@ -40,10 +40,23 @@ static val_t *apply_unary_array(val_t *arr,
     return out;
 }
 
+/* 結果の val_t が NaN/Infinity を含んでいたらエラーにする
+ * (Calctus の Expr.Eval() 例外キャッチに相当) */
+static val_t *check_overflow(val_t *v, eval_ctx_t *ctx) {
+    if (!v) return NULL;
+    if (v->type == VAL_REAL && real_is_special(&v->real_v)) {
+        val_free(v);
+        EVAL_ERROR(ctx, 0, "Result too large.");
+        return NULL;
+    }
+    return v;
+}
+
 /* 2項演算の scalar 演算 */
 static val_t *scalar_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
+    val_t *r;
     switch (op) {
-        case OP_MUL:       return val_mul (a, b);
+        case OP_MUL:       r = val_mul (a, b); break;
         case OP_DIV:
         case OP_IDIV:
         case OP_MOD: {
@@ -52,38 +65,32 @@ static val_t *scalar_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
                 EVAL_ERROR(ctx, 0, "Division by zero.");
                 return NULL;
             }
-            if (op == OP_DIV)  return val_div (a, b);
-            if (op == OP_IDIV) return val_idiv(a, b);
-            return val_mod(a, b);
+            if (op == OP_DIV)  r = val_div (a, b);
+            else if (op == OP_IDIV) r = val_idiv(a, b);
+            else               r = val_mod(a, b);
+            break;
         }
-        case OP_ADD:       return val_add (a, b);
-        case OP_SUB:       return val_sub (a, b);
-        case OP_LSL:       return val_lsl (a, b);
-        case OP_LSR:       return val_lsr (a, b);
-        case OP_ASL:       return val_asl (a, b);
-        case OP_ASR:       return val_asr (a, b);
-        case OP_GT:        return val_gt  (a, b);
-        case OP_GE:        return val_ge  (a, b);
-        case OP_LT:        return val_lt  (a, b);
-        case OP_LE:        return val_le  (a, b);
-        case OP_EQ:        return val_eq  (a, b);
-        case OP_NE:        return val_ne  (a, b);
-        case OP_BIT_AND:   return val_bit_and(a, b);
-        case OP_BIT_XOR:   return val_bit_xor(a, b);
-        case OP_BIT_OR:    return val_bit_or (a, b);
-        case OP_LOGIC_AND: return val_logic_and(a, b);
-        case OP_LOGIC_OR:  return val_logic_or (a, b);
-        case OP_POW: {
-            real_t ra, rb, rout;
-            real_init(&ra); real_init(&rb); real_init(&rout);
-            val_as_real(&ra, a);
-            val_as_real(&rb, b);
-            real_pow(&rout, &ra, &rb);
-            return val_new_real(&rout, a->fmt);
-        }
-        default:
-            return NULL;
+        case OP_ADD:       r = val_add (a, b); break;
+        case OP_SUB:       r = val_sub (a, b); break;
+        case OP_LSL:       r = val_lsl (a, b); break;
+        case OP_LSR:       r = val_lsr (a, b); break;
+        case OP_ASL:       r = val_asl (a, b); break;
+        case OP_ASR:       r = val_asr (a, b); break;
+        case OP_GT:        r = val_gt  (a, b); break;
+        case OP_GE:        r = val_ge  (a, b); break;
+        case OP_LT:        r = val_lt  (a, b); break;
+        case OP_LE:        r = val_le  (a, b); break;
+        case OP_EQ:        r = val_eq  (a, b); break;
+        case OP_NE:        r = val_ne  (a, b); break;
+        case OP_BIT_AND:   r = val_bit_and(a, b); break;
+        case OP_BIT_XOR:   r = val_bit_xor(a, b); break;
+        case OP_BIT_OR:    r = val_bit_or (a, b); break;
+        case OP_LOGIC_AND: r = val_logic_and(a, b); break;
+        case OP_LOGIC_OR:  r = val_logic_or (a, b); break;
+        case OP_POW:       r = val_pow (a, b); break;
+        default:           return NULL;
     }
+    return check_overflow(r, ctx);
 }
 
 /* 配列ブロードキャスト共通ループ: a/b の arr_items[i] か scalar を選択して演算 */

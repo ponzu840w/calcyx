@@ -73,12 +73,16 @@ UNARY_DOUBLE_FN(bi_tanh,  tanh)
 
 /* bi_pow: mpdecimal 整数べき乗 (E^10 との一致のため) */
 static val_t *bi_pow(val_t **a, int n, void *ctx) {
-    (void)ctx; (void)n;
+    (void)n;
     real_t ra, rb, out;
     real_init(&ra); real_init(&rb); real_init(&out);
     val_as_real(&ra, a[0]);
     val_as_real(&rb, a[1]);
     real_pow(&out, &ra, &rb);
+    if (real_is_special(&out)) {
+        EVAL_ERROR((eval_ctx_t *)ctx, 0, "Result too large.");
+        return NULL;
+    }
     return val_new_real(&out, a[0]->fmt);
 }
 BINARY_DOUBLE_FN(bi_atan2, atan2)

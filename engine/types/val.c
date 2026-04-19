@@ -522,6 +522,14 @@ val_t *val_mod(const val_t *a, const val_t *b) {
     return val_new_real(&rc, fmt);
 }
 
+val_t *val_pow(const val_t *a, const val_t *b) {
+    val_fmt_t fmt = val_fmt_select(a->fmt, b->fmt);
+    real_t ra, rb, rc;
+    val_as_real(&ra, a); val_as_real(&rb, b);
+    real_pow(&rc, &ra, &rb);
+    return val_new_real(&rc, fmt);
+}
+
 /* ======================================================
  * ビット演算
  * ====================================================== */

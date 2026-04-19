@@ -128,6 +128,7 @@ val_t *val_mul  (const val_t *a, const val_t *b);
 val_t *val_div  (const val_t *a, const val_t *b);
 val_t *val_idiv (const val_t *a, const val_t *b);  /* 整数除算 */
 val_t *val_mod  (const val_t *a, const val_t *b);
+val_t *val_pow  (const val_t *a, const val_t *b);  /* べき乗 */
 
 /* --- ビット演算 --- */
 val_t *val_bit_and (const val_t *a, const val_t *b);
