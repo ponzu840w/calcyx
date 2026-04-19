@@ -31,6 +31,7 @@ private:
     Fl_Menu_Bar     *menu_;
     Fl_Button       *btn_undo_;   // ← ツールバー Undo
     Fl_Button       *btn_redo_;   // → ツールバー Redo
+    Fl_Button       *btn_topmost_; // 📌 Always on Top トグル
     Fl_Button       *btn_about_;  // ? About ボタン (右寄せ)
     Fl_Choice       *fmt_choice_;
     SheetView       *sheet_;
@@ -42,11 +43,12 @@ private:
     static const int CHOICE_W = 110;
     static const int BTN_W    = 22;   // ← → ボタン幅
     static const int ABOUT_W  = 22;   // ? ボタン幅
+    static const int PIN_W    = 22;   // 📌 ピンボタン幅
     static const int PAD      = 4;
 
     // メニューバー幅 = ウィンドウ幅 − 右側ウィジェット群
     static int calc_menu_w(int win_w) {
-        return win_w - BTN_W * 2 - PAD - ABOUT_W - PAD - CHOICE_W;
+        return win_w - BTN_W * 2 - PIN_W - PAD - ABOUT_W - PAD - CHOICE_W;
     }
 
     static void menu_cb  (Fl_Widget *w, void *data);
@@ -54,6 +56,9 @@ private:
     static void row_change_cb(void *data);  // SheetView からのコールバック
     void populate_samples_menu();
     static bool open_sample_file(MainWindow *win, const char *filename);
+    void toggle_always_on_top();
 
+    bool topmost_ = false;
+    int  mi_topmost_ = -1;  // View/Always on Top メニュー項目インデックス
     std::vector<std::string> sample_files_;  // メニュー文字列の安定した記憶域
 };

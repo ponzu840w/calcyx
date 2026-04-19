@@ -24,6 +24,11 @@
 #endif
 #ifdef _WIN32
 #include <FL/platform.H>
+#include <windows.h>
+#elif !defined(__APPLE__)
+#include <FL/platform.H>
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
 #endif
 
 // フォーマット定義 (移植元: RepresentaionFuncs.cs)
@@ -69,13 +74,14 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&Edit/Move Row &Up",      FL_COMMAND | FL_SHIFT | FL_Up,   menu_cb, (void*)"move_up");
     menu_->add("&Edit/Move Row Do&wn",    FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Recalculate", FL_F + 5, menu_cb, (void*)"recalc");
+    menu_->add("&View/Always on &Top", FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
     populate_samples_menu();
     menu_->add("&File/&Preferences...", FL_COMMAND + ',', menu_cb, (void*)"prefs", FL_MENU_DIVIDER);
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
 
     // 全メニュー追加後にインデックスを取得
     // find_index(path) はショートカット付きラベルで失敗するので手動検索
-    mi_undo_ = mi_redo_ = -1;
+    mi_undo_ = mi_redo_ = mi_topmost_ = -1;
     for (int i = 0; i < menu_->size(); i++) {
         const Fl_Menu_Item &it = menu_->menu()[i];
         if (!it.label()) continue;
@@ -83,12 +89,13 @@ MainWindow::MainWindow(int w, int h, const char *title)
             const char *d = (const char *)it.user_data();
             if (d && strcmp(d, "undo") == 0) mi_undo_ = i;
             if (d && strcmp(d, "redo") == 0) mi_redo_ = i;
+            if (d && strcmp(d, "topmost") == 0) mi_topmost_ = i;
         }
     }
 
-    // ---- ← → ツールバーボタン (右寄せ: ? の左隣) ----
-    auto make_btn = [&](int bx, const char *label, const char *cmd) {
-        auto *b = new Fl_Button(bx, 0, BTN_W, MENU_H, label);
+    // ---- ← → 📌 ? ツールバーボタン (右寄せ) ----
+    auto make_btn = [&](int bx, int bw, const char *label, const char *cmd) {
+        auto *b = new Fl_Button(bx, 0, bw, MENU_H, label);
         b->box(FL_FLAT_BOX);
         b->color(C_MENU_BG);
         b->labelcolor(C_MENU_FG);
@@ -97,17 +104,18 @@ MainWindow::MainWindow(int w, int h, const char *title)
         b->visible_focus(0);
         return b;
     };
-    btn_undo_  = make_btn(w - CHOICE_W - PAD - ABOUT_W - PAD - BTN_W * 2, "@<-", "undo");
-    btn_redo_  = make_btn(w - CHOICE_W - PAD - ABOUT_W - PAD - BTN_W,     "@->", "redo");
-
-    // ---- ? About ボタン (右寄せ、フォーマット選択の左) ----
-    btn_about_ = new Fl_Button(w - CHOICE_W - PAD - ABOUT_W, 0, ABOUT_W, MENU_H, "?");
-    btn_about_->box(FL_FLAT_BOX);
-    btn_about_->color(C_MENU_BG);
-    btn_about_->labelcolor(C_MENU_FG);
+    // 右端から: [Format▼] PAD [?] PAD [📌] [← →]
+    int rx = w - CHOICE_W;                              // Format▼
+    rx -= PAD + ABOUT_W;                                // ?
+    btn_about_ = make_btn(rx, ABOUT_W, "?", "about");
     btn_about_->labelsize(13);
-    btn_about_->callback(menu_cb, (void*)"about");
-    btn_about_->visible_focus(0);
+    rx -= PIN_W;                                        // 📌
+    btn_topmost_ = make_btn(rx, PIN_W, "@menu", "topmost");
+    btn_topmost_->labelsize(10);
+    rx -= BTN_W;                                        // →
+    btn_redo_ = make_btn(rx, BTN_W, "@->", "redo");
+    rx -= BTN_W;                                        // ←
+    btn_undo_ = make_btn(rx, BTN_W, "@<-", "undo");
 
     // ---- フォーマット選択ドロップダウン (右端) ----
     fmt_choice_ = new Fl_Choice(w - CHOICE_W, 0, CHOICE_W, MENU_H);
@@ -155,10 +163,16 @@ void MainWindow::resize(int nx, int ny, int nw, int nh) {
     Fl_Double_Window::resize(nx, ny, nw, nh);
     int mw = calc_menu_w(nw);
     menu_->resize(0, 0, mw, MENU_H);
-    btn_undo_->resize(nw - CHOICE_W - PAD - ABOUT_W - PAD - BTN_W * 2, 0, BTN_W, MENU_H);
-    btn_redo_->resize(nw - CHOICE_W - PAD - ABOUT_W - PAD - BTN_W,     0, BTN_W, MENU_H);
-    btn_about_->resize(nw - CHOICE_W - PAD - ABOUT_W, 0, ABOUT_W, MENU_H);
-    fmt_choice_->resize(nw - CHOICE_W, 0, CHOICE_W, MENU_H);
+    int rx = nw - CHOICE_W;
+    fmt_choice_->resize(rx, 0, CHOICE_W, MENU_H);
+    rx -= PAD + ABOUT_W;
+    btn_about_->resize(rx, 0, ABOUT_W, MENU_H);
+    rx -= PIN_W;
+    btn_topmost_->resize(rx, 0, PIN_W, MENU_H);
+    rx -= BTN_W;
+    btn_redo_->resize(rx, 0, BTN_W, MENU_H);
+    rx -= BTN_W;
+    btn_undo_->resize(rx, 0, BTN_W, MENU_H);
 }
 
 void MainWindow::apply_ui_colors() {
@@ -168,6 +182,8 @@ void MainWindow::apply_ui_colors() {
     menu_->textcolor(C_MENU_FG);
     btn_undo_->color(C_MENU_BG);
     btn_redo_->color(C_MENU_BG);
+    btn_topmost_->color(C_MENU_BG);
+    btn_topmost_->labelcolor(topmost_ ? C_MENU_FG : fl_inactive(C_MENU_FG));
     btn_about_->color(C_MENU_BG);
     btn_about_->labelcolor(C_MENU_FG);
     fmt_choice_->color(C_MENU_BG);
@@ -379,6 +395,8 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         PrefsDialog::run(win->sheet_, [](void *d) {
             static_cast<MainWindow *>(d)->apply_ui_colors();
         }, win);
+    } else if (strcmp(cmd, "topmost") == 0) {
+        win->toggle_always_on_top();
     } else if (strcmp(cmd, "about") == 0) {
         show_about(win);
     } else {
@@ -471,6 +489,38 @@ bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
     }
     fl_alert("File not found:\n%s", filename);
     return false;
+}
+
+void MainWindow::toggle_always_on_top() {
+    topmost_ = !topmost_;
+#if defined(_WIN32)
+    HWND hwnd = fl_xid(this);
+    SetWindowPos(hwnd, topmost_ ? HWND_TOPMOST : HWND_NOTOPMOST,
+                 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+#elif defined(__APPLE__)
+    // macOS: Fl_Window には直接の API がないが、FLTK 内部で対応不要
+    // Cocoa の NSWindow.level を操作する必要があるが、Objective-C++ なしでは困難
+    // → 将来 platform_mac.mm で対応
+#else
+    Display *dpy = fl_display;
+    Window xwin = fl_xid(this);
+    Atom wm_state = XInternAtom(dpy, "_NET_WM_STATE", False);
+    Atom wm_above = XInternAtom(dpy, "_NET_WM_STATE_ABOVE", False);
+    XEvent ev = {};
+    ev.xclient.type = ClientMessage;
+    ev.xclient.window = xwin;
+    ev.xclient.message_type = wm_state;
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = topmost_ ? 1 : 0;  // _NET_WM_STATE_ADD / REMOVE
+    ev.xclient.data.l[1] = (long)wm_above;
+    ev.xclient.data.l[2] = 0;
+    XSendEvent(dpy, DefaultRootWindow(dpy), False,
+               SubstructureNotifyMask | SubstructureRedirectMask, &ev);
+    XFlush(dpy);
+#endif
+    // ボタンの見た目を更新 (ON: 通常色, OFF: 薄色)
+    btn_topmost_->labelcolor(topmost_ ? C_MENU_FG : fl_inactive(C_MENU_FG));
+    btn_topmost_->redraw();
 }
 
 void MainWindow::save_prefs() {
