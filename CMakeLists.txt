@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.25)
 # タグ上: v0.2.0-alpha → 0.2.0-alpha
 # タグなし: v0.2.0-alpha の 3 コミット後 → 0.2.0-alpha-dev-3-gabcdef1
 execute_process(
-    COMMAND git describe --tags --match "v*" --long
+    COMMAND git describe --tags --match "v*" --long --dirty
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     OUTPUT_VARIABLE _git_describe
     OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -13,7 +13,13 @@ execute_process(
     RESULT_VARIABLE _git_result
 )
 if(_git_result EQUAL 0 AND _git_describe MATCHES "^v[0-9]")
-    # _git_describe の形式: v0.2.0-alpha-3-gabcdef1
+    # _git_describe の形式: v0.2.0-alpha-3-gabcdef1[-dirty]
+    # 末尾の -dirty を分離
+    set(_dirty "")
+    if(_git_describe MATCHES "-dirty$")
+        set(_dirty "-dirty")
+        string(REGEX REPLACE "-dirty$" "" _git_describe "${_git_describe}")
+    endif()
     # 末尾の -<n>-g<hash> を分離する
     string(REGEX MATCH "^(v.+)-([0-9]+)-g([0-9a-f]+)$" _m "${_git_describe}")
     set(_base_tag  "${CMAKE_MATCH_1}")   # v0.2.0-alpha
@@ -26,10 +32,10 @@ if(_git_result EQUAL 0 AND _git_describe MATCHES "^v[0-9]")
 
     if(_n_commits EQUAL 0)
         # HEAD がタグ上: リリースビルド
-        set(CALCYX_VERSION_FULL "${_tag_no_v}")
+        set(CALCYX_VERSION_FULL "${_tag_no_v}${_dirty}")
     else()
         # タグからコミットが進んでいる: 開発中
-        set(CALCYX_VERSION_FULL "${_tag_no_v}-dev-${_n_commits}-g${_hash}")
+        set(CALCYX_VERSION_FULL "${_tag_no_v}-dev-${_n_commits}-g${_hash}${_dirty}")
     endif()
 else()
     set(CALCYX_VERSION      "0.0.0")
