@@ -297,7 +297,7 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
     if (lhs->type == EXPR_PART_REF && lhs->child_a->type == EXPR_ID) {
         eval_var_t *var = eval_ctx_ref_var(ctx, lhs->child_a->name, false);
         if (!var) {
-            EVAL_ERROR(ctx, lhs->child_a->tok.pos, "Variable not found: '%.200s'",
+            EVAL_ERROR(ctx, lhs->child_a->tok.pos, "Variable '%.200s' not found.",
                        lhs->child_a->name);
             val_free(rval); return NULL;
         }
@@ -384,7 +384,7 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
             /* ビットフィールド書き換え (from >= to) */
             if (from < to) {
                 EVAL_ERROR(ctx, lhs->tok.pos,
-                           "Bit field range: MSB must be >= LSB.");
+                           "Bit field: MSB index must be >= LSB index.");
                 val_free(rval); return NULL;
             }
             if (from < 0 || from > 63 || to < 0 || to > 63) {
@@ -456,7 +456,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             }
         }
         val_free(a);
-        if (!result) EVAL_ERROR(ctx, e->tok.pos, "Unknown unary operator.");
+        if (!result) EVAL_ERROR(ctx, e->tok.pos, "Unary operator not supported.");
         return result;
     }
 
@@ -495,7 +495,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
             val_t *r = apply_binop(e->op, a, b, ctx);
             val_free(a); val_free(b);
             if (!r && !ctx->has_error)
-                EVAL_ERROR(ctx, e->tok.pos, "Binary operation failed.");
+                EVAL_ERROR(ctx, e->tok.pos, "Binary operator not supported.");
             return r;
         }
     }
