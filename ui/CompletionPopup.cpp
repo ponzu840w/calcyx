@@ -1,18 +1,11 @@
 // 移植元: Calctus/UI/Sheets/InputCandidateForm.cs (簡略版)
 
 #include "CompletionPopup.h"
+#include "colors.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <algorithm>
 #include <cctype>
-
-// ---- カラー ----
-static const Fl_Color C_POP_BG    = fl_rgb_color( 28,  28,  35);
-static const Fl_Color C_POP_SEL   = fl_rgb_color( 40,  80, 140);
-static const Fl_Color C_POP_TEXT  = fl_rgb_color(220, 220, 220);
-static const Fl_Color C_POP_DESC  = fl_rgb_color(150, 150, 160);
-static const Fl_Color C_POP_BORDER= fl_rgb_color( 80,  80, 100);
-static const Fl_Color C_POP_DESC_BG = fl_rgb_color(20, 20, 28);
 
 // ---- 大小無視の文字列マッチ ----
 static bool icontains(const std::string &hay, const std::string &needle) {
@@ -37,9 +30,6 @@ CompletionPopup::CompletionPopup()
     : Fl_Group(0, 0, POP_W, 0)
 {
     list_ = new Fl_Select_Browser(0, 0, POP_W, 0);
-    list_->color(C_POP_BG);
-    list_->selection_color(C_POP_SEL);
-    list_->textcolor(C_POP_TEXT);
     list_->textfont(FL_COURIER);
     list_->textsize(13);
     list_->box(FL_FLAT_BOX);
@@ -47,21 +37,29 @@ CompletionPopup::CompletionPopup()
 
     desc_ = new Fl_Box(0, 0, POP_W, DESC_H);
     desc_->box(FL_FLAT_BOX);
-    desc_->color(C_POP_DESC_BG);
-    desc_->labelcolor(C_POP_DESC);
     desc_->labelfont(FL_HELVETICA);
     desc_->labelsize(11);
     desc_->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE | FL_ALIGN_WRAP);
+
+    apply_colors();
 
     end();
     hide();  // 最初は非表示
 }
 
+void CompletionPopup::apply_colors() {
+    list_->color(g_colors.pop_bg);
+    list_->selection_color(g_colors.pop_sel);
+    list_->textcolor(g_colors.pop_text);
+    desc_->color(g_colors.pop_desc_bg);
+    desc_->labelcolor(g_colors.pop_desc);
+}
+
 // ---- draw: 背景・枠線を描いてから子ウィジェットを描画 ----
 void CompletionPopup::draw() {
-    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), C_POP_BG);
+    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colors.pop_bg);
     draw_children();
-    fl_color(C_POP_BORDER);
+    fl_color(g_colors.pop_border);
     fl_rect(x(), y(), w(), h());
 }
 

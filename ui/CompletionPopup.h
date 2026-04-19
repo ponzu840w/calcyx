@@ -42,6 +42,7 @@ public:
     // 現在選択されている候補（なければ nullptr）
     const Candidate *selected() const;
 
+    void apply_colors();   // g_colors からポップアップ色を再適用
     void draw()   override;
     void resize(int x, int y, int w, int h) override;
 

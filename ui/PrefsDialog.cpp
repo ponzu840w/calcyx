@@ -273,7 +273,7 @@ struct SwatchData {
     DlgState *dlg;
 };
 
-static const int MAX_SWATCHES = 24;
+static const int MAX_SWATCHES = 30;
 
 struct ColorsTab {
     Fl_Button *swatches[MAX_SWATCHES];
@@ -850,12 +850,18 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
             { "UI Text",      &g_colors.ui_text },
             { "UI Label",     &g_colors.ui_label },
             { "UI Dim",       &g_colors.ui_dim },
+            { "Popup BG",     &g_colors.pop_bg },
+            { "Popup Sel",    &g_colors.pop_sel },
+            { "Popup Text",   &g_colors.pop_text },
+            { "Popup Desc",   &g_colors.pop_desc },
+            { "Popup DescBG", &g_colors.pop_desc_bg },
+            { "Popup Border", &g_colors.pop_border },
         };
 
-        const int n_entries = 23;
+        const int n_entries = 29;
         st.colors.count = n_entries;
-        // 3カラム × 8行
-        const int cols = 3, rows = 8;
+        // 3カラム × 10行
+        const int cols = 3, rows = 10;
         int col_w = (DW - 40) / cols;
         int sy = ly;
         for (int i = 0; i < n_entries; i++) {

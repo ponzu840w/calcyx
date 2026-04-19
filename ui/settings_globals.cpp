@@ -244,6 +244,12 @@ void settings_load() {
         g_colors.ui_text  = lc("color_ui_text",  def.ui_text);
         g_colors.ui_label = lc("color_ui_label", def.ui_label);
         g_colors.ui_dim   = lc("color_ui_dim",   def.ui_dim);
+        g_colors.pop_bg   = lc("color_pop_bg",   def.pop_bg);
+        g_colors.pop_sel  = lc("color_pop_sel",  def.pop_sel);
+        g_colors.pop_text = lc("color_pop_text", def.pop_text);
+        g_colors.pop_desc = lc("color_pop_desc", def.pop_desc);
+        g_colors.pop_desc_bg = lc("color_pop_desc_bg", def.pop_desc_bg);
+        g_colors.pop_border  = lc("color_pop_border",  def.pop_border);
     } else {
         colors_init_preset(&g_colors, g_color_preset);
     }
@@ -357,6 +363,19 @@ void settings_save() {
             color_to_hex(g_colors.ui_text).c_str(),
             color_to_hex(g_colors.ui_label).c_str(),
             color_to_hex(g_colors.ui_dim).c_str());
+        fprintf(fp,
+            "color_pop_bg = %s\n"
+            "color_pop_sel = %s\n"
+            "color_pop_text = %s\n"
+            "color_pop_desc = %s\n"
+            "color_pop_desc_bg = %s\n"
+            "color_pop_border = %s\n",
+            color_to_hex(g_colors.pop_bg).c_str(),
+            color_to_hex(g_colors.pop_sel).c_str(),
+            color_to_hex(g_colors.pop_text).c_str(),
+            color_to_hex(g_colors.pop_desc).c_str(),
+            color_to_hex(g_colors.pop_desc_bg).c_str(),
+            color_to_hex(g_colors.pop_border).c_str());
     }
 
     fclose(fp);

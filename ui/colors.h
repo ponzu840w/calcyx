@@ -35,6 +35,14 @@ typedef struct {
     Fl_Color ui_text;    /* UI テキスト */
     Fl_Color ui_label;   /* UI ラベル (やや暗め) */
     Fl_Color ui_dim;     /* 無効状態のアイコン等 */
+
+    /* 補完ポップアップ */
+    Fl_Color pop_bg;     /* ポップアップ背景 */
+    Fl_Color pop_sel;    /* 選択行背景 */
+    Fl_Color pop_text;   /* ポップアップテキスト */
+    Fl_Color pop_desc;   /* 説明文テキスト */
+    Fl_Color pop_desc_bg;/* 説明文背景 */
+    Fl_Color pop_border; /* 枠線 */
 } CalcyxColors;
 
 /* ---- カラープリセット ---- */
