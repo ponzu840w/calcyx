@@ -105,6 +105,21 @@ static bool s_popup_active = false;
 static void show_tray_menu_cb(void *) {
     if (s_popup_active) return;  // 再入防止
     s_popup_active = true;
+
+    // FLTK の popup() はウィンドウ非表示時に座標がずれるため
+    // XQueryPointer で現在のカーソル位置を直接取得する
+    Display *dpy = fl_display;
+    if (dpy) {
+        Window root_ret, child_ret;
+        int rx, ry, wx, wy;
+        unsigned int mask;
+        if (XQueryPointer(dpy, DefaultRootWindow(dpy),
+                          &root_ret, &child_ret, &rx, &ry, &wx, &wy, &mask)) {
+            s_popup_x = rx;
+            s_popup_y = ry;
+        }
+    }
+
     static const Fl_Menu_Item menu[] = {
         {"Open", 0, nullptr, (void *)1},
         {"Exit", 0, nullptr, (void *)2},
