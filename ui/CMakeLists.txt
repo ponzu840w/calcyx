@@ -152,7 +152,6 @@ target_link_libraries(calcyx_ui PRIVATE
     ${FLTK_Z_LIB}
     ${FLTK_LIB}
     ${PLATFORM_LIBS}
-    m
 )
 
 # ExternalProject のビルド完了を待ってからリンクする
@@ -200,7 +199,6 @@ target_link_libraries(test_undo PRIVATE
     calcyx_engine
     ${FLTK_LIB}
     ${PLATFORM_LIBS}
-    m
 )
 
 if(TARGET dep_mpdecimal)

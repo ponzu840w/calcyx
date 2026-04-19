@@ -1091,6 +1091,23 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
         mod_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
         int mx = lx + 110;
+
+#ifdef __APPLE__
+        // macOS: Win→Cmd, Alt→Option (Carbon の cmdKey / optionKey に対応)
+        st.hotkey_win_chk = new Fl_Check_Button(mx, ly, 60, 25, "Cmd");
+        style_check(st.hotkey_win_chk);
+        st.hotkey_win_chk->value(g_hotkey_win ? 1 : 0);
+        mx += 60;
+        st.hotkey_alt_chk = new Fl_Check_Button(mx, ly, 65, 25, "Option");
+        style_check(st.hotkey_alt_chk);
+        st.hotkey_alt_chk->value(g_hotkey_alt ? 1 : 0);
+        mx += 65;
+        st.hotkey_ctrl_chk = new Fl_Check_Button(mx, ly, 60, 25, "Ctrl");
+        style_check(st.hotkey_ctrl_chk);
+        st.hotkey_ctrl_chk->value(g_hotkey_ctrl ? 1 : 0);
+        mx += 60;
+        st.hotkey_shift_chk = new Fl_Check_Button(mx, ly, 60, 25, "Shift");
+#else
         st.hotkey_win_chk = new Fl_Check_Button(mx, ly, 55, 25, "Win");
         style_check(st.hotkey_win_chk);
         st.hotkey_win_chk->value(g_hotkey_win ? 1 : 0);
@@ -1104,6 +1121,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
         st.hotkey_ctrl_chk->value(g_hotkey_ctrl ? 1 : 0);
         mx += 55;
         st.hotkey_shift_chk = new Fl_Check_Button(mx, ly, 60, 25, "Shift");
+#endif
         style_check(st.hotkey_shift_chk);
         st.hotkey_shift_chk->value(g_hotkey_shift ? 1 : 0);
         ly += 30;

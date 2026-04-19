@@ -109,12 +109,29 @@ static bool s_hotkey_registered = false;
 
 // ---- メニューデリゲート ----
 
+static NSMenu *s_tray_menu = nil;
+
 @interface CalcyxTrayDelegate : NSObject
+- (void)statusItemClicked:(id)sender;
 - (void)openAction:(id)sender;
 - (void)exitAction:(id)sender;
 @end
 
 @implementation CalcyxTrayDelegate
+- (void)statusItemClicked:(id)sender {
+    (void)sender;
+    NSEvent *event = [NSApp currentEvent];
+    if (event.type == NSEventTypeRightMouseUp ||
+        (event.modifierFlags & NSEventModifierFlagControl)) {
+        // 右クリック or Ctrl+クリック → メニューを表示
+        [s_tray_menu popUpMenuPositioningItem:nil
+                                  atLocation:NSMakePoint(0, s_status_item.button.bounds.size.height)
+                                      inView:s_status_item.button];
+    } else {
+        // 左クリック → ウィンドウを開く
+        if (s_callbacks.on_open) s_callbacks.on_open();
+    }
+}
 - (void)openAction:(id)sender {
     (void)sender;
     if (s_callbacks.on_open) s_callbacks.on_open();
@@ -131,10 +148,13 @@ static CalcyxTrayDelegate *s_delegate = nil;
 
 static OSStatus hotkey_handler(EventHandlerCallRef, EventRef, void *) {
     if (s_callbacks.on_hotkey) {
-        // FLTK イベントループで安全に呼ぶ
-        Fl::awake([](void *) {
-            if (s_callbacks.on_hotkey) s_callbacks.on_hotkey();
-        }, nullptr);
+        // dispatch_async で GCD メインキューに投げる。
+        // Fl::awake() だと [NSApp hide:] 後にランループモードの問題で
+        // コールバックが発火しないことがある。
+        auto cb = s_callbacks.on_hotkey;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            cb();
+        });
     }
     return noErr;
 }
@@ -166,25 +186,25 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
             s_status_item.button.image = small;
         }
 
-        // メニュー
+        // メニュー (右クリック用に保持、直接 menu に設定しない)
         s_delegate = [[CalcyxTrayDelegate alloc] init];
-        NSMenu *menu = [[NSMenu alloc] init];
+        s_tray_menu = [[NSMenu alloc] init];
         NSMenuItem *openItem = [[NSMenuItem alloc] initWithTitle:@"Open"
                                                           action:@selector(openAction:)
                                                    keyEquivalent:@""];
         openItem.target = s_delegate;
-        [menu addItem:openItem];
+        [s_tray_menu addItem:openItem];
 
         NSMenuItem *exitItem = [[NSMenuItem alloc] initWithTitle:@"Exit"
                                                           action:@selector(exitAction:)
                                                    keyEquivalent:@""];
         exitItem.target = s_delegate;
-        [menu addItem:exitItem];
+        [s_tray_menu addItem:exitItem];
 
-        s_status_item.menu = menu;
-
-        // ボタンクリック (メニューなしの場合の左クリック対応)
-        // NSMenu が設定されている場合、左クリックでメニューが表示される
+        // menu を設定しない → 左クリックで action が呼ばれる
+        s_status_item.button.action = @selector(statusItemClicked:);
+        s_status_item.button.target = s_delegate;
+        [s_status_item.button sendActionOn:(NSEventMaskLeftMouseUp | NSEventMaskRightMouseUp)];
     }
 
     s_tray_active = true;
@@ -199,6 +219,10 @@ void plat_tray_destroy() {
             [[NSStatusBar systemStatusBar] removeStatusItem:s_status_item];
             [s_status_item release];
             s_status_item = nil;
+        }
+        if (s_tray_menu) {
+            [s_tray_menu release];
+            s_tray_menu = nil;
         }
         if (s_delegate) {
             [s_delegate release];
@@ -258,6 +282,9 @@ void plat_hotkey_poll() {}
 void plat_window_toggle(void *fl_window, bool tray_mode) {
     auto *win = static_cast<Fl_Window *>(fl_window);
     if (!win) return;
+
+    fprintf(stderr, "DEBUG plat_window_toggle: visible=%d shown=%d tray_mode=%d\n",
+            win->visible(), win->shown(), tray_mode);
 
     @autoreleasepool {
         if (win->visible()) {
