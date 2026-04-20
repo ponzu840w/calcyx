@@ -93,15 +93,16 @@ cmake --build --preset win
 `ui/icon.svg` を編集後、以下で `ui/icon.ico` を再生成する（WSL 上; `librsvg2-bin` と ImageMagick が必要）:
 
 ```sh
-for size in 16 32 48 64 128 256; do
+for size in 16 32 48 256; do
     rsvg-convert -w $size -h $size ui/icon.svg -o /tmp/icon_${size}.png
 done
-magick /tmp/icon_16.png /tmp/icon_32.png /tmp/icon_48.png \
-       /tmp/icon_64.png /tmp/icon_128.png /tmp/icon_256.png \
+magick /tmp/icon_16.png /tmp/icon_32.png /tmp/icon_48.png /tmp/icon_256.png \
        ui/icon.ico
 ```
 
 `ui/icon.ico` はリポジトリに含める（`ui/calcyx.rc` から参照される）。
+サイズは 16/32/48 (タイトルバー／タスクバー) と 256 (Explorer の大プレビュー) のみ。
+中間サイズ (64/128) は Windows が必要に応じて自動スケールするため不要。
 
 ### アイコンの更新 (macOS)
 
@@ -109,18 +110,19 @@ magick /tmp/icon_16.png /tmp/icon_32.png /tmp/icon_48.png \
 
 ```sh
 mkdir -p ui/icon.iconset
-for size in 16 32 64 128 256 512 1024; do
+for size in 16 32 64 128 256 512; do
     rsvg-convert -w $size -h $size ui/icon.svg -o ui/icon.iconset/icon_${size}x${size}.png
 done
-cp ui/icon.iconset/icon_32x32.png    ui/icon.iconset/icon_16x16@2x.png
-cp ui/icon.iconset/icon_64x64.png    ui/icon.iconset/icon_32x32@2x.png
-cp ui/icon.iconset/icon_256x256.png  ui/icon.iconset/icon_128x128@2x.png
-cp ui/icon.iconset/icon_512x512.png  ui/icon.iconset/icon_256x256@2x.png
-cp ui/icon.iconset/icon_1024x1024.png ui/icon.iconset/icon_512x512@2x.png
+cp ui/icon.iconset/icon_32x32.png   ui/icon.iconset/icon_16x16@2x.png
+cp ui/icon.iconset/icon_64x64.png   ui/icon.iconset/icon_32x32@2x.png
+cp ui/icon.iconset/icon_256x256.png ui/icon.iconset/icon_128x128@2x.png
+cp ui/icon.iconset/icon_512x512.png ui/icon.iconset/icon_256x256@2x.png
 iconutil -c icns ui/icon.iconset -o ui/icon.icns
 ```
 
 `ui/icon.iconset/` は中間成果物なので `.gitignore` に含まれている。
+1024x1024 (512x512@2x) は Mac App Store 配布用の巨大アイコンなので、ローカル
+ユーティリティでは不要として外してある。
 
 ### 実行ファイル
 
