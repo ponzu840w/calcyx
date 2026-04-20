@@ -57,6 +57,28 @@ endif()
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+# ---- バイナリサイズ最適化 (Release 時の LTO + gc-sections) ----
+# Emscripten は独自に最適化フラグを制御するためスキップ。
+# Debug/RelWithDebInfo では無効 (デバッグ性を優先)。
+if(NOT EMSCRIPTEN AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
+    include(CheckIPOSupported)
+    check_ipo_supported(RESULT _ipo_ok OUTPUT _ipo_msg)
+    if(_ipo_ok)
+        set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
+        message(STATUS "LTO (IPO) enabled for Release build")
+    else()
+        message(STATUS "LTO (IPO) not supported: ${_ipo_msg}")
+    endif()
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+        add_compile_options(-ffunction-sections -fdata-sections)
+        if(APPLE)
+            add_link_options(-Wl,-dead_strip)
+        else()
+            add_link_options(-Wl,--gc-sections)
+        endif()
+    endif()
+endif()
+
 # ---- 依存ライブラリ (mpdecimal, FLTK) ----
 # WASM: Emscripten 専用の deps (mpdecimal のみ、FLTK なし)
 # その他: ソースから自動ビルド (deps/ 以下に配置)
