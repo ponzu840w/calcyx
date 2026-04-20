@@ -30,8 +30,9 @@ target_link_options(calcyx_wasm PRIVATE
     "-sENVIRONMENT=web"
     # スタックサイズを増やす (再帰的評価器対策)
     "-sSTACK_SIZE=1mb"
-    # ヒープを 32MB に拡大し mpdecimal の動的確保に対応
-    "-sINITIAL_MEMORY=33554432"
+    # 初期ヒープは 8MB に抑え、必要に応じて自動拡張する
+    # (mpdecimal の大きな計算時のみヒープが伸びる想定)
+    "-sINITIAL_MEMORY=8388608"
     # ヒープ自動拡張を有効化 (大きな値の計算に備える)
     "-sALLOW_MEMORY_GROWTH=1"
     # クラッシュ時に関数名付きスタックトレースを出力 (デバッグ用)
