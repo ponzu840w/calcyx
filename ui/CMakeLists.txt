@@ -14,14 +14,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---- プラットフォーム別リンクフラグ ----
 # ---- プラットフォーム別トレイ/ホットキーソース ----
+# platform_tray_common.cpp はキー名テーブルと変換関数を提供し、
+# プラットフォーム固有実装の各ファイルと一緒にリンクされる。
 if(APPLE)
-    set(PLATFORM_TRAY_SRC platform_tray_mac.mm)
+    set(PLATFORM_TRAY_SRC platform_tray_mac.mm platform_tray_common.cpp)
 elseif(WIN32)
-    set(PLATFORM_TRAY_SRC platform_tray_win.cpp)
+    set(PLATFORM_TRAY_SRC platform_tray_win.cpp platform_tray_common.cpp)
 elseif(EMSCRIPTEN)
-    set(PLATFORM_TRAY_SRC platform_tray_stub.cpp)
+    set(PLATFORM_TRAY_SRC platform_tray_stub.cpp platform_tray_common.cpp)
 else()
-    set(PLATFORM_TRAY_SRC platform_tray_x11.cpp)
+    set(PLATFORM_TRAY_SRC platform_tray_x11.cpp platform_tray_common.cpp)
 endif()
 
 set(PLATFORM_LIBS "")
@@ -188,6 +190,7 @@ add_executable(test_undo
     app_prefs.cpp
     crash_handler.cpp
     platform_tray_stub.cpp
+    platform_tray_common.cpp
 )
 
 target_include_directories(test_undo PRIVATE
