@@ -397,20 +397,17 @@ void lexer_init(lexer_t *lx, const char *src) {
 }
 
 bool lexer_eos(lexer_t *lx) {
-    /* 空白スキップ */
-    while (lx->pos < lx->len &&
-           (lx->src[lx->pos] == ' '  || lx->src[lx->pos] == '\t' ||
-            lx->src[lx->pos] == '\r' || lx->src[lx->pos] == '\n' ||
-            (unsigned char)lx->src[lx->pos] == 0xE3 ||  /* U+3000 IDEOGRAPHIC SPACE UTF-8 先頭 */
-            (unsigned char)lx->src[lx->pos] == 0x80 ||
-            (unsigned char)lx->src[lx->pos] == 0x80)) {
-        /* U+3000 IDEOGRAPHIC SPACE (全角スペース) = E3 80 80 */
-        if ((unsigned char)lx->src[lx->pos] == 0xE3 &&
-            (unsigned char)lx->src[lx->pos+1] == 0x80 &&
-            (unsigned char)lx->src[lx->pos+2] == 0x80) {
+    /* 空白スキップ: ASCII 空白と U+3000 IDEOGRAPHIC SPACE (E3 80 80) のみ */
+    while (lx->pos < lx->len) {
+        unsigned char c = (unsigned char)lx->src[lx->pos];
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+            lx->pos++;
+        } else if (c == 0xE3 && lx->pos + 2 < lx->len &&
+                   (unsigned char)lx->src[lx->pos+1] == 0x80 &&
+                   (unsigned char)lx->src[lx->pos+2] == 0x80) {
             lx->pos += 3;
         } else {
-            lx->pos++;
+            break;
         }
     }
     return lx->pos >= lx->len;
