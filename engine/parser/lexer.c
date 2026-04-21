@@ -401,10 +401,10 @@ bool lexer_eos(lexer_t *lx) {
     while (lx->pos < lx->len &&
            (lx->src[lx->pos] == ' '  || lx->src[lx->pos] == '\t' ||
             lx->src[lx->pos] == '\r' || lx->src[lx->pos] == '\n' ||
-            (unsigned char)lx->src[lx->pos] == 0xE3 ||  /* 全角スペース UTF-8 先頭 */
+            (unsigned char)lx->src[lx->pos] == 0xE3 ||  /* U+3000 IDEOGRAPHIC SPACE UTF-8 先頭 */
             (unsigned char)lx->src[lx->pos] == 0x80 ||
             (unsigned char)lx->src[lx->pos] == 0x80)) {
-        /* 全角スペース U+3000 = E3 80 80 */
+        /* U+3000 IDEOGRAPHIC SPACE (全角スペース) = E3 80 80 */
         if ((unsigned char)lx->src[lx->pos] == 0xE3 &&
             (unsigned char)lx->src[lx->pos+1] == 0x80 &&
             (unsigned char)lx->src[lx->pos+2] == 0x80) {

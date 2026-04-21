@@ -322,8 +322,8 @@ static expr_t *p_expr(parser_t *p, bool root) {
             if (val_top < 2) { PERROR(p, op_stk[op_top-1], "Stack error"); break; }
             expr_t *b = val_stk[--val_top];
             expr_t *a = val_stk[--val_top];
-            token_t otok = op_stk[--op_top];
-            expr_t *node = expr_new(EXPR_BINARY, &otok);
+            token_t op_tok = op_stk[--op_top];
+            expr_t *node = expr_new(EXPR_BINARY, &op_tok);
             if (!node) { expr_free(a); expr_free(b); tok_free(&rtok); goto cleanup; }
             node->op      = lop->id;
             node->child_a = a;
@@ -343,10 +343,10 @@ static expr_t *p_expr(parser_t *p, bool root) {
         if (val_top < 2) { PERROR(p, op_stk[op_top-1], "Stack error"); break; }
         expr_t *b = val_stk[--val_top];
         expr_t *a = val_stk[--val_top];
-        token_t otok = op_stk[--op_top];
-        const op_def_t *op = op_find(OPTYPE_BINARY, otok.text);
-        if (!op) { PERROR(p, otok, "Unknown operator"); expr_free(a); expr_free(b); break; }
-        expr_t *node = expr_new(EXPR_BINARY, &otok);
+        token_t op_tok = op_stk[--op_top];
+        const op_def_t *op = op_find(OPTYPE_BINARY, op_tok.text);
+        if (!op) { PERROR(p, op_tok, "Unknown operator"); expr_free(a); expr_free(b); break; }
+        expr_t *node = expr_new(EXPR_BINARY, &op_tok);
         if (!node) { expr_free(a); expr_free(b); goto cleanup; }
         node->op      = op->id;
         node->child_a = a;
