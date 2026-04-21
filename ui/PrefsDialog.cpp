@@ -62,7 +62,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     refresh_previews(&st);
     update_swatch_state(&st);
 
-    // ======== OK / Cancel / Apply / Reset ========
+    // --- OK / Cancel / Apply / Reset ---
     int by = DH - 38;
     int bw = 80, bh = 28;
 

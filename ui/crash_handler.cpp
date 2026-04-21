@@ -264,9 +264,7 @@ static void relaunch_with_crash_dialog() {
 #endif
 }
 
-// ================================================================
-// シグナルハンドラ (全プラットフォーム共通)
-// ================================================================
+// --- シグナルハンドラ (全プラットフォーム共通) ---
 static void signal_handler(int sig) {
     const char *name = "UNKNOWN";
     switch (sig) {
@@ -292,9 +290,7 @@ static void signal_handler(int sig) {
     raise(sig);
 }
 
-// ================================================================
-// std::terminate ハンドラ (未捕捉 C++ 例外)
-// ================================================================
+// --- std::terminate ハンドラ (未捕捉 C++ 例外) ---
 static void terminate_handler() {
     int fd = open_crash_log("std::terminate (uncaught C++ exception)");
     if (fd >= 0) {
@@ -306,9 +302,7 @@ static void terminate_handler() {
     abort();
 }
 
-// ================================================================
-// Windows SEH (バックアップ)
-// ================================================================
+// --- Windows SEH (バックアップ) ---
 #if defined(_WIN32)
 static void wr_registers(int fd, CONTEXT *ctx) {
     wr(fd, "\n--- registers ---\n");
@@ -380,9 +374,7 @@ static LONG WINAPI seh_handler(EXCEPTION_POINTERS *ep) {
 }
 #endif
 
-// ================================================================
-// public API
-// ================================================================
+// --- public API ---
 void crash_handler_install() {
     std::string dir = AppPrefs::config_dir();
 #if defined(_WIN32)

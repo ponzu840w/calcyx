@@ -18,10 +18,7 @@
 // カラーは g_colors (colors.h) を参照する。
 static const int PAD = 3;
 
-// ================================================================
-// ハイライト描画ユーティリティ
-// ================================================================
-
+// --- ハイライト描画ユーティリティ ---
 // 桁区切り用のピクセルシフトを計算する。
 // shifts[i] は文字 i の描画前に加算する累積オフセット。
 // gap は挿入する隙間ピクセル幅 (フォントサイズの 1/3 程度)。
@@ -336,13 +333,9 @@ static void draw_expr_highlighted(const char *expr,
     }
     fl_pop_clip();
 }
-
-
-// ================================================================
 // SheetLineInput: シンタックスハイライト付き Fl_Input。
 // editor_mode=true  → 左辺 (式編集、Up/Down/Enter を親に委譲、live_eval 呼び出し)
 // editor_mode=false → 右辺 (読み取り専用、同じ描画ルール)
-// ================================================================
 class SheetLineInput : public Fl_Input {
     bool      editor_mode_;
     Fl_Color  override_color_;  // 0 以外: シンタックスハイライトを使わず単色描画
@@ -568,10 +561,7 @@ public:
     }
 };
 
-// ================================================================
-// SheetView
-// ================================================================
-
+// --- SheetView ---
 SheetView::SheetView(int x, int y, int w, int h, bool preview)
     : Fl_Group(x, y, w, h), preview_mode_(preview)
 {
@@ -654,8 +644,6 @@ SheetView::~SheetView() {
     eval_ctx_free(&ctx_);
     // popup_ は MainWindow が所有・削除する
 }
-
-// ----------------------------------------------------------------
 void SheetView::resize(int x, int y, int w, int h) {
     Fl_Group::resize(x, y, w, h);
     vscroll_->resize(x + w - SB_W, y, SB_W, h);
@@ -775,8 +763,6 @@ void SheetView::update_result_display() {
     rd->show();
     rd->redraw();
 }
-
-// ----------------------------------------------------------------
 void SheetView::eval_all() {
     eval_ctx_free(&ctx_);
     eval_ctx_init(&ctx_);
@@ -833,8 +819,6 @@ void SheetView::eval_all() {
         crash_handler_save_sheet(snap.c_str());
     }
 }
-
-// ----------------------------------------------------------------
 // 移植元: Calctus/UI/SheetView.cs - validateLayout()
 // 全行の式幅・答え幅を計測し、最大値から "=" カラム位置を算出する。
 // セパレータシフト込みの表示幅を返す
@@ -1081,8 +1065,6 @@ void SheetView::apply_fmt(const char *func_name) {
     editor_->insert_position(editor_->size());
     commit();
 }
-
-// ----------------------------------------------------------------
 void SheetView::draw() {
     fl_push_no_clip();
     fl_push_clip(x(), y(), w(), h());
@@ -1211,8 +1193,6 @@ void SheetView::draw() {
     fl_pop_clip();
     fl_pop_clip();
 }
-
-// ----------------------------------------------------------------
 int SheetView::handle(int event) {
     if (preview_mode_) {
         if (event == FL_MOUSEWHEEL) {
@@ -1344,8 +1324,6 @@ int SheetView::handle(int event) {
 
     return Fl_Group::handle(event);
 }
-
-// ----------------------------------------------------------------
 bool SheetView::load_file(const char *path) {
     FILE *fp = fopen(path, "r");
     if (!fp) return false;
@@ -1384,11 +1362,7 @@ bool SheetView::save_file(const char *path) {
     fclose(fp);
     return true;
 }
-
-// ----------------------------------------------------------------
 // Undo / Redo (移植元: Calctus/UI/SheetOperator.cs)
-// ----------------------------------------------------------------
-
 SheetView::UndoViewState SheetView::capture_view_state() const {
     return { focused_row_, editor_->insert_position() };
 }
@@ -1484,10 +1458,7 @@ void SheetView::redo() {
     redraw();
 }
 
-// ================================================================
-// 入力補完
-// ================================================================
-
+// --- 入力補完 ---
 // 引数情報を含むラベル文字列を生成
 static std::string make_label(const char *name, int n_params) {
     if (n_params == 0)  return std::string(name) + "()";

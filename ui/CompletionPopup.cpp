@@ -24,8 +24,6 @@ static bool istartswith(const std::string &s, const std::string &p) {
             return false;
     return true;
 }
-
-// ================================================================
 CompletionPopup::CompletionPopup()
     : Fl_Group(0, 0, POP_W, 0)
 {
