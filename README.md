@@ -111,8 +111,10 @@ cd build-web/web && python3 -m http.server 8080
 
 ```sh
 ctest --preset unix           # 全テスト (macOS / Linux)
-ctest --preset unix-headless  # GUI テストを除く (macOS / Linux)
-ctest --preset win-headless   # GUI テストを除く (Windows クロスビルド)
+ctest --preset unix-debug     # AddressSanitizer ビルドで全テスト
+ctest --preset unix-headless  # GUI テストを除く (DISPLAY のない環境向け)
+ctest --preset win-headless   # Windows クロスビルド (WSL native / wine)、GUI 除外
+ctest --preset web            # WebAssembly を node 経由で実行 (engine/types + engine/parser のみ)
 ```
 
 ## アーキテクチャ
