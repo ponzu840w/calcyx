@@ -10,6 +10,12 @@ add_library(calcyx_engine STATIC
     eval/eval.c
     eval/builtin.c
     eval/builtin_array.c
+    eval/builtin_array_ops.c
+    eval/builtin_array_stats.c
+    eval/builtin_array_string.c
+    eval/builtin_array_bits.c
+    eval/builtin_array_color.c
+    eval/builtin_array_encode.c
 )
 
 target_include_directories(calcyx_engine PUBLIC . ${MPDECIMAL_INCLUDE})
