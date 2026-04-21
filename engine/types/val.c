@@ -73,9 +73,10 @@ val_t *val_new_bool(bool b) {
 val_t *val_new_str(const char *s) {
     val_t *v = alloc_val(VAL_STR, FMT_STRING);
     if (!v) return NULL;
-    v->str_v = (char *)malloc(strlen(s) + 1);
+    size_t len = strlen(s);
+    v->str_v = (char *)malloc(len + 1);
     if (!v->str_v) { free(v); return NULL; }
-    strcpy(v->str_v, s);
+    memcpy(v->str_v, s, len + 1);
     return v;
 }
 
