@@ -6,9 +6,7 @@
 #include "token.h"
 #include <stdbool.h>
 
-/* ======================================================
- * 演算子定義 (移植元: OpDef.cs)
- * ====================================================== */
+/* --- 演算子定義 (移植元: OpDef.cs) --- */
 
 typedef enum {
     /* 単項演算子 */
@@ -62,9 +60,7 @@ typedef struct {
 extern const op_def_t OP_TABLE[OP_COUNT];
 const op_def_t *op_find(op_type_t type, const char *symbol);
 
-/* ======================================================
- * 引数定義リスト (移植元: ArgDefList.cs)
- * ====================================================== */
+/* --- 引数定義リスト (移植元: ArgDefList.cs) --- */
 
 typedef struct {
     char  **names;       /* malloc'd 文字列配列 */
@@ -75,9 +71,7 @@ typedef struct {
 
 void arg_def_list_free(arg_def_list_t *a);
 
-/* ======================================================
- * AST ノード型 (移植元: Calctus/Model/Expressions/ 各クラス)
- * ====================================================== */
+/* --- AST ノード型 (移植元: Calctus/Model/Expressions/ 各クラス) --- */
 
 typedef enum {
     EXPR_NUM_LIT,  /* 数値リテラル (val) */

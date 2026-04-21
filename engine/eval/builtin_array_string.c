@@ -3,9 +3,7 @@
 
 #include "builtin_array_internal.h"
 
-/* ======================================================
- * 文字列関数 (移植元: StringFuncs.cs)
- * ====================================================== */
+/* --- 文字列関数 (移植元: StringFuncs.cs) --- */
 
 val_t *bi_str(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
@@ -203,9 +201,7 @@ val_t *bi_join(val_t **a, int n, void *ctx) {
     return val_new_str(buf);
 }
 
-/* ======================================================
- * GrayCode (移植元: GrayCodeFuncs.cs)
- * ====================================================== */
+/* --- GrayCode (移植元: GrayCodeFuncs.cs) --- */
 
 val_t *bi_toGray(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;

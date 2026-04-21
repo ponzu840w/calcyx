@@ -10,16 +10,12 @@
 #include <stdint.h>
 #include <math.h>
 
-/* ======================================================
- * expr_free で使う body 解放用ラッパー (func_def_t から呼ばれる)
- * ====================================================== */
+/* --- expr_free で使う body 解放用ラッパー (func_def_t から呼ばれる) --- */
 
 static void body_free(void *e) { expr_free((expr_t *)e); }
 static void *body_dup (const void *e) { return (void *)expr_dup((const expr_t *)e); }
 
-/* ======================================================
- * ユーティリティ
- * ====================================================== */
+/* --- ユーティリティ --- */
 
 /* 配列ブロードキャスト共通: 部分構築済みの要素配列を解放 */
 static void free_partial_array(val_t **items, int count) {
@@ -135,10 +131,9 @@ static val_t *apply_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
     return scalar_binop(op, a, b, ctx);
 }
 
-/* ======================================================
- * 範囲配列 (BinaryOp: OP_EXCL_RANGE / OP_INCL_RANGE)
+/* --- 範囲配列 (BinaryOp: OP_EXCL_RANGE / OP_INCL_RANGE) ---
  * 移植元: RMath.Range + BinaryOp.OnEval
- * ====================================================== */
+ */
 
 static val_t *make_range(val_t *a, val_t *b, bool inclusive, eval_ctx_t *ctx) {
     int64_t from = val_as_long(a);
@@ -160,9 +155,7 @@ static val_t *make_range(val_t *a, val_t *b, bool inclusive, eval_ctx_t *ctx) {
     return wrap_and_free_array(items, (int)count, a->fmt);
 }
 
-/* ======================================================
- * 関数呼び出し実行
- * ====================================================== */
+/* --- 関数呼び出し実行 --- */
 
 /* func_def_t を使って引数を束縛し、本体を評価する */
 static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
@@ -227,9 +220,7 @@ static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
     return result;
 }
 
-/* ======================================================
- * ラムダ/def 共通: func_def_t を式ノードから生成
- * ====================================================== */
+/* --- ラムダ/def 共通: func_def_t を式ノードから生成 --- */
 
 static func_def_t *make_func_def(const expr_t *e, const char *name) {
     func_def_t *fd = (func_def_t *)calloc(1, sizeof(func_def_t));
@@ -257,9 +248,7 @@ static func_def_t *make_func_def(const expr_t *e, const char *name) {
     return fd;
 }
 
-/* ======================================================
- * 代入ヘルパー
- * ====================================================== */
+/* --- 代入ヘルパー --- */
 
 static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
                            eval_ctx_t *ctx) {
@@ -411,9 +400,7 @@ static val_t *eval_assign(const expr_t *lhs, const expr_t *rhs,
     return NULL;
 }
 
-/* ======================================================
- * メイン評価関数
- * ====================================================== */
+/* --- メイン評価関数 --- */
 
 val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
     if (!e || ctx->has_error) return NULL;
@@ -704,9 +691,7 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
     return NULL;
 }
 
-/* ======================================================
- * eval_str: 文字列の解析・評価
- * ====================================================== */
+/* --- eval_str: 文字列の解析・評価 --- */
 
 /* ; 以降の行末コメントを除去。文字列リテラル ('...' / "...") 内の ; は除く。
  * エスケープシーケンス (\' / \") も正しく読み飛ばす。 */
@@ -761,10 +746,9 @@ val_t *eval_str(const char *src, eval_ctx_t *ctx,
     return result;
 }
 
-/* ======================================================
- * eval_result_visible: = と右辺を表示するか
+/* --- eval_result_visible: = と右辺を表示するか ---
  * 移植元: Calctus SheetViewItem ansVisible 判定
- * ====================================================== */
+ */
 
 bool eval_result_visible(const char *src) {
     if (!src || !*src) return false;

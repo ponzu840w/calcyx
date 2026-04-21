@@ -3,9 +3,7 @@
 
 #include "builtin_array_internal.h"
 
-/* ======================================================
- * エンコーディング (移植元: EncodingFuncs.cs)
- * ====================================================== */
+/* --- エンコーディング (移植元: EncodingFuncs.cs) --- */
 
 /* utf8Enc(str) → byte array */
 val_t *bi_utf8Enc(val_t **a, int n, void *ctx) {
@@ -185,9 +183,7 @@ val_t *bi_base64DecBytes(val_t **a, int n, void *ctx) {
     return arr;
 }
 
-/* ======================================================
- * E系列 (移植元: ESeriesFuncs.cs, ESeries.cs, PreferredNumbers.cs)
- * ====================================================== */
+/* --- E系列 (移植元: ESeriesFuncs.cs, ESeries.cs, PreferredNumbers.cs) --- */
 
 /* E系列の double 値を mpdecimal に変換する (%.3g で丸めて精度誤差を除去) */
 static val_t *val_from_es(double d, val_fmt_t fmt) {
@@ -347,9 +343,7 @@ val_t *bi_esRatio(val_t **a, int n, void *ctx) {
     return arr;
 }
 
-/* ======================================================
- * Cast functions (移植元: CastFuncs.cs)
- * ====================================================== */
+/* --- Cast functions (移植元: CastFuncs.cs) --- */
 
 /* rat(x) / rat(x, max_deno): 実数 → 分数 */
 val_t *bi_rat1(val_t **a, int n, void *ctx) {

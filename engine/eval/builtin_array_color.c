@@ -3,9 +3,7 @@
 
 #include "builtin_array_internal.h"
 
-/* ======================================================
- * 色変換 (移植元: ColorFuncs.cs, ColorSpace.cs)
- * ====================================================== */
+/* --- 色変換 (移植元: ColorFuncs.cs, ColorSpace.cs) --- */
 
 static int cs_clamp255(double v) {
     if (v < 0) return 0;
@@ -209,9 +207,7 @@ val_t *bi_unpack565(val_t **a, int n, void *ctx) {
     return arr;
 }
 
-/* ======================================================
- * パリティ / ECC (移植元: Parity_EccFuncs.cs, LMath.cs)
- * ====================================================== */
+/* --- パリティ / ECC (移植元: Parity_EccFuncs.cs, LMath.cs) --- */
 
 static int lm_xor_reduce(int64_t val) {
     val ^= val >> 32; val ^= val >> 16; val ^= val >> 8;

@@ -9,9 +9,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* ======================================================
- * フォーマット種別 (FormatHint / NumberFormatter に相当)
- * ====================================================== */
+/* --- フォーマット種別 (FormatHint / NumberFormatter に相当) --- */
 
 typedef enum {
     FMT_REAL         = 0,  /* 通常の実数表示 (Weak) */
@@ -30,13 +28,9 @@ typedef enum {
 /* FormatHint.Select(b): 2項演算の結果フォーマットを決定 */
 val_fmt_t val_fmt_select(val_fmt_t a, val_fmt_t b);
 
-/* ======================================================
- * 値型
- * ====================================================== */
+/* --- 値型 --- */
 
-/* ======================================================
- * 関数値 (FuncVal / FuncDef 相当)
- * ====================================================== */
+/* --- 関数値 (FuncVal / FuncDef 相当) --- */
 
 /* val.h は parser.h を include しないので body は void* で保持する */
 typedef struct func_def_s {

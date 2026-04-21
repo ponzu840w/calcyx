@@ -10,18 +10,14 @@
 
 #include "builtin_array_internal.h"
 
-/* ======================================================
- * 文字列コピーヘルパー (strncpy + 確実な NUL 終端)
- * ====================================================== */
+/* --- 文字列コピーヘルパー (strncpy + 確実な NUL 終端) --- */
 
 void bia_str_copy(char *dst, const char *src, size_t size) {
     strncpy(dst, src, size - 1);
     dst[size - 1] = '\0';
 }
 
-/* ======================================================
- * ヘルパー: 関数値を引数付きで呼び出す
- * ====================================================== */
+/* --- ヘルパー: 関数値を引数付きで呼び出す --- */
 
 /* パラメータを子コンテキストに直接作成するヘルパー (親変数を上書きしない) */
 void bia_bind_param(eval_ctx_t *child, const char *pname, val_t *val) {
@@ -79,11 +75,10 @@ func_def_t *bia_get_fd(val_t *v) {
     return NULL;
 }
 
-/* ======================================================
- * 追加の builtin_find / builtin_register_all 対応テーブル
+/* --- 追加の builtin_find / builtin_register_all 対応テーブル ---
  * builtin.c の BUILTIN_TABLE を拡張するため別のテーブルを用意し、
  * builtin_find_extra / builtin_register_extra として公開する
- * ====================================================== */
+ */
 
 typedef struct {
     const char   *name;

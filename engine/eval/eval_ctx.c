@@ -7,9 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* ======================================================
- * 定数登録ヘルパー
- * ====================================================== */
+/* --- 定数登録ヘルパー --- */
 
 static void add_const_real_str(eval_ctx_t *ctx, const char *name,
                                 const char *str, val_fmt_t fmt) {
@@ -37,9 +35,7 @@ static void add_const_i64(eval_ctx_t *ctx, const char *name,
     }
 }
 
-/* ======================================================
- * eval_ctx_init
- * ====================================================== */
+/* --- eval_ctx_init --- */
 
 void eval_ctx_init(eval_ctx_t *ctx) {
     real_ctx_init();  /* mpdecimal コンテキストを初期化 */
@@ -92,9 +88,7 @@ void eval_ctx_init_child(eval_ctx_t *child, eval_ctx_t *parent) {
     child->depth    = parent->depth + 1;
 }
 
-/* ======================================================
- * 変数操作
- * ====================================================== */
+/* --- 変数操作 --- */
 
 eval_var_t *eval_ctx_ref_var(eval_ctx_t *ctx, const char *name,
                               bool allow_create) {

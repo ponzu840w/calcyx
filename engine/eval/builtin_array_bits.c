@@ -3,9 +3,7 @@
 
 #include "builtin_array_internal.h"
 
-/* ======================================================
- * BitByteOps (移植元: BitByteOpsFuncs.cs)
- * ====================================================== */
+/* --- BitByteOps (移植元: BitByteOpsFuncs.cs) --- */
 
 val_t *bi_count1(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;

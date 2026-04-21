@@ -12,9 +12,7 @@
 #include <stdint.h>
 #include <time.h>
 
-/* ======================================================
- * ユーティリティ
- * ====================================================== */
+/* --- ユーティリティ --- */
 
 /* real_t ↔ double 変換ヘルパー */
 static double v_to_d(val_t *v) { return val_as_double(v); }
@@ -36,9 +34,7 @@ static val_t *cname(val_t **a, int n, void *ctx) { \
     return d_to_v(mathfn(v_to_d(a[0]), v_to_d(a[1])), a[0]); \
 }
 
-/* ======================================================
- * 数学関数 (移植元: ExponentialFuncs.cs, TrigonometricFuncs.cs)
- * ====================================================== */
+/* --- 数学関数 (移植元: ExponentialFuncs.cs, TrigonometricFuncs.cs) --- */
 
 UNARY_DOUBLE_FN(bi_sqrt,  sqrt)
 UNARY_DOUBLE_FN(bi_log2,  log2)
@@ -101,9 +97,7 @@ static val_t *bi_clog10(val_t **a, int n, void *ctx) {
     return d_to_v(ceil(log10(v)), a[0]);
 }
 
-/* ======================================================
- * 丸め関数 (移植元: RoundingFuncs.cs)
- * ====================================================== */
+/* --- 丸め関数 (移植元: RoundingFuncs.cs) --- */
 
 UNARY_DOUBLE_FN(bi_floor, floor)
 UNARY_DOUBLE_FN(bi_ceil,  ceil)
@@ -114,9 +108,7 @@ static val_t *bi_round(val_t **a, int n, void *ctx) {
     return d_to_v(round(v_to_d(a[0])), a[0]);
 }
 
-/* ======================================================
- * 絶対値・符号 (移植元: Absolute_SignFuncs.cs)
- * ====================================================== */
+/* --- 絶対値・符号 (移植元: Absolute_SignFuncs.cs) --- */
 
 static val_t *bi_abs(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
@@ -130,9 +122,7 @@ static val_t *bi_sign(val_t **a, int n, void *ctx) {
     return val_new_i64(v > 0 ? 1 : (v < 0 ? -1 : 0), FMT_INT);
 }
 
-/* ======================================================
- * 最大・最小 (移植元: Min_MaxFuncs.cs)
- * ====================================================== */
+/* --- 最大・最小 (移植元: Min_MaxFuncs.cs) --- */
 
 static val_t *bi_max(val_t **a, int n, void *ctx) {
     (void)ctx;
@@ -183,9 +173,7 @@ static val_t *bi_min(val_t **a, int n, void *ctx) {
     return val_dup(a[bi]);
 }
 
-/* ======================================================
- * GCD / LCM (移植元: Gcd_LcmFuncs.cs)
- * ====================================================== */
+/* --- GCD / LCM (移植元: Gcd_LcmFuncs.cs) --- */
 
 static val_t *bi_gcd(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
@@ -207,9 +195,7 @@ static val_t *bi_lcm(val_t **a, int n, void *ctx) {
     return val_new_real(&rout, FMT_INT);
 }
 
-/* ======================================================
- * アサーション (移植元: AssertionFuncs.cs)
- * ====================================================== */
+/* --- アサーション (移植元: AssertionFuncs.cs) --- */
 
 static val_t *bi_assert(val_t **a, int n, void *ctx) {
     (void)n;
@@ -244,15 +230,11 @@ static val_t *bi_any(val_t **a, int n, void *ctx) {
     return val_new_bool(false);
 }
 
-/* ======================================================
- * フォーマット変換関数 (移植元: RepresentationFuncs.cs)
- * ====================================================== */
+/* --- フォーマット変換関数 (移植元: RepresentationFuncs.cs) --- */
 
 static val_t *bi_datetime(val_t **a, int n, void *ctx){ (void)ctx;(void)n; return val_reformat(a[0], FMT_DATETIME); }
 
-/* ======================================================
- * 日時変換 (移植元: DateTimeFuncs.cs)
- * ====================================================== */
+/* --- 日時変換 (移植元: DateTimeFuncs.cs) --- */
 
 static val_t *bi_now(val_t **a, int n, void *ctx) {
     (void)a; (void)ctx; (void)n;
@@ -318,9 +300,7 @@ static val_t *bi_char(val_t **a, int n, void *ctx) { (void)ctx;(void)n; return v
 static val_t *bi_kibi(val_t **a, int n, void *ctx) { (void)ctx;(void)n; return val_reformat(a[0], FMT_BIN_PREFIX); }
 static val_t *bi_si_fn(val_t **a, int n, void *ctx){ (void)ctx;(void)n; return val_reformat(a[0], FMT_SI_PREFIX); }
 
-/* ======================================================
- * 乱数 (移植元: RandomFuncs.cs)
- * ====================================================== */
+/* --- 乱数 (移植元: RandomFuncs.cs) --- */
 
 static val_t *bi_rand0(val_t **a, int n, void *ctx) {
     (void)a; (void)n; (void)ctx;
@@ -341,18 +321,14 @@ static val_t *bi_rand64(val_t **a, int n, void *ctx) {
     return val_new_i64(v, FMT_INT);
 }
 
-/* ======================================================
- * グラフ (移植元: PlottingFuncs.cs) — GUI未実装のためスタブ
- * ====================================================== */
+/* --- グラフ (移植元: PlottingFuncs.cs) — GUI未実装のためスタブ --- */
 
 static val_t *bi_plot(val_t **a, int n, void *ctx) {
     (void)a; (void)n; (void)ctx;
     return val_new_null();
 }
 
-/* ======================================================
- * 組み込み関数テーブル
- * ====================================================== */
+/* --- 組み込み関数テーブル --- */
 
 typedef struct {
     const char   *name;
@@ -428,9 +404,7 @@ static const builtin_entry_t BUILTIN_TABLE[] = {
     { NULL, 0, NULL, -1 }
 };
 
-/* ======================================================
- * 公開 API
- * ====================================================== */
+/* --- 公開 API --- */
 
 static func_def_t *make_builtin(const builtin_entry_t *e) {
     func_def_t *fd = (func_def_t *)calloc(1, sizeof(func_def_t));

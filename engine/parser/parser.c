@@ -10,9 +10,7 @@
 #define EXPR_STACK_MAX   128  /* p_expr: 値スタック・演算子スタックの最大深さ */
 #define OPERAND_ARGS_MAX  64  /* p_operand: 関数呼び出し引数の最大個数 */
 
-/* ======================================================
- * 演算子テーブル (移植元: OpDef.cs)
- * ====================================================== */
+/* --- 演算子テーブル (移植元: OpDef.cs) --- */
 
 const op_def_t OP_TABLE[OP_COUNT] = {
     /* 単項 */
@@ -59,9 +57,7 @@ const op_def_t *op_find(op_type_t type, const char *symbol) {
     return NULL;
 }
 
-/* ======================================================
- * arg_def_list_t の解放
- * ====================================================== */
+/* --- arg_def_list_t の解放 --- */
 
 void arg_def_list_free(arg_def_list_t *a) {
     if (!a) return;
@@ -71,9 +67,7 @@ void arg_def_list_free(arg_def_list_t *a) {
     a->n = 0;
 }
 
-/* ======================================================
- * expr_t の生成と解放
- * ====================================================== */
+/* --- expr_t の生成と解放 --- */
 
 static expr_t *expr_new(expr_type_t type, const token_t *tok) {
     expr_t *e = (expr_t *)calloc(1, sizeof(expr_t));
@@ -108,9 +102,7 @@ void expr_free(expr_t *e) {
     free(e);
 }
 
-/* ======================================================
- * expr_t のディープコピー
- * ====================================================== */
+/* --- expr_t のディープコピー --- */
 
 expr_t *expr_dup(const expr_t *src) {
     if (!src) return NULL;
@@ -152,10 +144,9 @@ expr_t *expr_dup(const expr_t *src) {
     return e;
 }
 
-/* ======================================================
- * expr_causes_value_change
+/* --- expr_causes_value_change ---
  * 移植元: Calctus/Model/Expressions/ - CausesValueChange()
- * ====================================================== */
+ */
 
 bool expr_causes_value_change(const expr_t *e) {
     if (!e) return false;
@@ -175,9 +166,7 @@ bool expr_causes_value_change(const expr_t *e) {
     }
 }
 
-/* ======================================================
- * パーサー初期化
- * ====================================================== */
+/* --- パーサー初期化 --- */
 
 void parser_init(parser_t *p, tok_queue_t *q) {
     memset(p, 0, sizeof(*p));
@@ -186,9 +175,7 @@ void parser_init(parser_t *p, tok_queue_t *q) {
     p->last_tok.type = TOK_EMPTY;
 }
 
-/* ======================================================
- * 内部ヘルパー
- * ====================================================== */
+/* --- 内部ヘルパー --- */
 
 #define PERROR(p, tok, msg) \
     do { if (!(p)->has_error) { \
@@ -273,9 +260,7 @@ static bool p_expect_type(parser_t *p, tok_type_t typ, token_t *out) {
     return true;
 }
 
-/* ======================================================
- * 前方宣言
- * ====================================================== */
+/* --- 前方宣言 --- */
 
 static expr_t *p_pop       (parser_t *p, bool root);
 static expr_t *p_expr      (parser_t *p, bool root);
@@ -288,10 +273,9 @@ static expr_t *p_lambda    (parser_t *p, expr_t **arg_exprs, int n,
 static expr_t *p_def       (parser_t *p, const token_t *first);
 static bool    p_argdef_list(parser_t *p, arg_def_list_t *out);
 
-/* ======================================================
- * 演算子優先度比較
+/* --- 演算子優先度比較 ---
  * left が right より先に結合すべきなら true (reduce)
- * ====================================================== */
+ */
 
 static bool op_reduce_before(const op_def_t *left, const op_def_t *right) {
     if (left->priority > right->priority) return true;
@@ -299,9 +283,7 @@ static bool op_reduce_before(const op_def_t *left, const op_def_t *right) {
     return left->assoc == ASSOC_LEFT;
 }
 
-/* ======================================================
- * p_pop: 1 式 (def または expr) を解析
- * ====================================================== */
+/* --- p_pop: 1 式 (def または expr) を解析 --- */
 
 static expr_t *p_pop(parser_t *p, bool root) {
     token_t tok;
@@ -311,9 +293,7 @@ static expr_t *p_pop(parser_t *p, bool root) {
     return p_expr(p, root);
 }
 
-/* ======================================================
- * p_expr: シャンティング法による演算子優先度解析
- * ====================================================== */
+/* --- p_expr: シャンティング法による演算子優先度解析 --- */
 
 static expr_t *p_expr(parser_t *p, bool root) {
     expr_t  *val_stk[EXPR_STACK_MAX];
@@ -422,9 +402,7 @@ cleanup:
     return NULL;
 }
 
-/* ======================================================
- * p_unary_expr
- * ====================================================== */
+/* --- p_unary_expr --- */
 
 static expr_t *p_unary_expr(parser_t *p) {
     token_t tok;
@@ -457,9 +435,7 @@ static expr_t *p_unary_expr(parser_t *p) {
     return p_elem_ref(p);
 }
 
-/* ======================================================
- * p_elem_ref: operand[i] か operand[i:j]
- * ====================================================== */
+/* --- p_elem_ref: operand[i] か operand[i:j] --- */
 
 static expr_t *p_elem_ref(parser_t *p) {
     expr_t *target = p_operand(p);
@@ -490,9 +466,7 @@ static expr_t *p_elem_ref(parser_t *p) {
     return e;
 }
 
-/* ======================================================
- * p_operand: 基本オペランド
- * ====================================================== */
+/* --- p_operand: 基本オペランド --- */
 
 static expr_t *p_operand(parser_t *p) {
     token_t tok;
@@ -621,9 +595,7 @@ call_err:
     return NULL;
 }
 
-/* ======================================================
- * p_paren: 括弧式 "(" ... ")"
- * ====================================================== */
+/* --- p_paren: 括弧式 "(" ... ")" --- */
 
 static expr_t *p_paren(parser_t *p, const token_t *first) {
     expr_t *exprs[OPERAND_ARGS_MAX];
@@ -671,10 +643,9 @@ err:
     return NULL;
 }
 
-/* ======================================================
- * p_lambda: ラムダ式 arg_exprs => body
+/* --- p_lambda: ラムダ式 arg_exprs => body ---
  * arg_exprs の所有権はここで移転 (成否問わず解放される)
- * ====================================================== */
+ */
 
 static expr_t *p_lambda(parser_t *p, expr_t **arg_exprs, int n,
                          const token_t *arrow) {
@@ -726,9 +697,7 @@ err:
     return NULL;
 }
 
-/* ======================================================
- * p_def: def 宣言
- * ====================================================== */
+/* --- p_def: def 宣言 --- */
 
 static expr_t *p_def(parser_t *p, const token_t *first) {
     token_t name_tok;
@@ -757,9 +726,7 @@ static expr_t *p_def(parser_t *p, const token_t *first) {
     return e;
 }
 
-/* ======================================================
- * p_argdef_list: 引数定義リストの解析 (移植元: Parser.ArgDefList)
- * ====================================================== */
+/* --- p_argdef_list: 引数定義リストの解析 (移植元: Parser.ArgDefList) --- */
 
 static bool p_argdef_list(parser_t *p, arg_def_list_t *out) {
     out->vec_arg_idx = -1;
@@ -816,9 +783,7 @@ err:
     return false;
 }
 
-/* ======================================================
- * 公開 API
- * ====================================================== */
+/* --- 公開 API --- */
 
 expr_t *parser_pop(parser_t *p, bool root) {
     return p_pop(p, root);

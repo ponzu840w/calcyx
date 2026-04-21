@@ -3,9 +3,7 @@
 
 #include "builtin_array_internal.h"
 
-/* ======================================================
- * mag(x...) — Euclidean norm (移植元: Absolute_SignFuncs.cs)
- * ====================================================== */
+/* --- mag(x...) — Euclidean norm (移植元: Absolute_SignFuncs.cs) --- */
 
 val_t *bi_mag(val_t **a, int n, void *ctx) {
     (void)ctx;
@@ -17,9 +15,7 @@ val_t *bi_mag(val_t **a, int n, void *ctx) {
     return val_new_double(sqrt(sum), a[0]->fmt);
 }
 
-/* ======================================================
- * len(array_or_str) (移植元: ArrayFuncs.cs)
- * ====================================================== */
+/* --- len(array_or_str) (移植元: ArrayFuncs.cs) --- */
 
 val_t *bi_len(val_t **a, int n, void *ctx) {
     (void)ctx; (void)n;
@@ -30,9 +26,7 @@ val_t *bi_len(val_t **a, int n, void *ctx) {
     return val_new_i64(1, FMT_INT);
 }
 
-/* ======================================================
- * range / rangeInclusive (移植元: ArrayFuncs.cs, RMath.Range)
- * ====================================================== */
+/* --- range / rangeInclusive (移植元: ArrayFuncs.cs, RMath.Range) --- */
 
 /* mpdecimal 演算で精度を保ちながら range を生成 */
 static val_t *make_range_real(val_t *va, val_t *vb, val_t *vc, bool inclusive) {
@@ -112,9 +106,7 @@ val_t *bi_rangeIncl3(val_t **a, int n, void *ctx) {
     return make_range_real(a[0], a[1], a[2], true);
 }
 
-/* ======================================================
- * 配列操作 (移植元: ArrayFuncs.cs)
- * ====================================================== */
+/* --- 配列操作 (移植元: ArrayFuncs.cs) --- */
 
 val_t *bi_concat(val_t **a, int n, void *ctx) {
     (void)n;

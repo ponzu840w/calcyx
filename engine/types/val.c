@@ -17,9 +17,7 @@ fmt_settings_t g_fmt_settings = {
     .e_alignment     = true,
 };
 
-/* ======================================================
- * フォーマット選択 (FormatHint.Select)
- * ====================================================== */
+/* --- フォーマット選択 (FormatHint.Select) --- */
 
 typedef enum { PRI_WEAK = 0, PRI_STRONG = 1, PRI_ALWAYS_LEFT = 2 } fmt_pri_t;
 
@@ -39,9 +37,7 @@ val_fmt_t val_fmt_select(val_fmt_t a, val_fmt_t b) {
     return a;
 }
 
-/* ======================================================
- * 内部ヘルパー
- * ====================================================== */
+/* --- 内部ヘルパー --- */
 
 static val_t *alloc_val(val_type_t type, val_fmt_t fmt) {
     val_t *v = (val_t *)calloc(1, sizeof(val_t));
@@ -51,9 +47,7 @@ static val_t *alloc_val(val_type_t type, val_fmt_t fmt) {
     return v;
 }
 
-/* ======================================================
- * 生成
- * ====================================================== */
+/* --- 生成 --- */
 
 val_t *val_new_real(const real_t *r, val_fmt_t fmt) {
     val_t *v = alloc_val(VAL_REAL, fmt);
@@ -117,9 +111,7 @@ val_t *val_new_array(val_t **items, int len, val_fmt_t fmt) {
     return v;
 }
 
-/* ======================================================
- * func_def_t (関数定義)
- * ====================================================== */
+/* --- func_def_t (関数定義) --- */
 
 val_t *val_new_func(func_def_t *fd) {
     val_t *v = alloc_val(VAL_FUNC, FMT_REAL);
@@ -179,9 +171,7 @@ func_def_t *func_def_dup(const func_def_t *src) {
     return d;
 }
 
-/* ======================================================
- * コピー / 解放
- * ====================================================== */
+/* --- コピー / 解放 --- */
 
 val_t *val_dup(const val_t *src) {
     if (!src) return NULL;
@@ -235,9 +225,7 @@ void val_free(val_t *v) {
     free(v);
 }
 
-/* ======================================================
- * フォーマット変換
- * ====================================================== */
+/* --- フォーマット変換 --- */
 
 val_t *val_reformat(const val_t *v, val_fmt_t fmt) {
     val_t *r = val_dup(v);
@@ -245,9 +233,7 @@ val_t *val_reformat(const val_t *v, val_fmt_t fmt) {
     return r;
 }
 
-/* ======================================================
- * 型変換
- * ====================================================== */
+/* --- 型変換 --- */
 
 void val_as_real(real_t *out, const val_t *v) {
     if (v->type == VAL_REAL) {
@@ -318,9 +304,7 @@ val_t *val_upconvert(const val_t *a, const val_t *b) {
     return val_dup(a);
 }
 
-/* ======================================================
- * 単項演算
- * ====================================================== */
+/* --- 単項演算 --- */
 
 val_t *val_neg(const val_t *a) {
     if (a->type == VAL_REAL) {
@@ -340,13 +324,11 @@ val_t *val_bit_not(const val_t *a) {
     return val_new_i64(n, a->fmt);
 }
 
-/* ======================================================
- * 2項演算の共通パターン
- * ======================================================
+/* --- 2項演算の共通パターン ---
  * 1. UpConvert a を b に合わせる
  * 2. 演算実行
  * 3. フォーマット選択
- * ====================================================== */
+ */
 
 /* REAL 同士の算術演算ヘルパー */
 #define REAL_BINOP(name, op_fn)                                 \
@@ -530,9 +512,7 @@ val_t *val_pow(const val_t *a, const val_t *b) {
     return val_new_real(&rc, fmt);
 }
 
-/* ======================================================
- * ビット演算
- * ====================================================== */
+/* --- ビット演算 --- */
 
 val_t *val_bit_and(const val_t *a, const val_t *b) {
     return val_new_i64(val_as_long(a) & val_as_long(b), val_fmt_select(a->fmt, b->fmt));
@@ -546,9 +526,7 @@ val_t *val_bit_or(const val_t *a, const val_t *b) {
     return val_new_i64(val_as_long(a) | val_as_long(b), val_fmt_select(a->fmt, b->fmt));
 }
 
-/* ======================================================
- * シフト演算
- * ====================================================== */
+/* --- シフト演算 --- */
 
 val_t *val_lsl(const val_t *a, const val_t *b) {
     int sh = val_as_int(b);
@@ -582,9 +560,7 @@ val_t *val_asr(const val_t *a, const val_t *b) {
     return val_new_i64(av >> sh, a->fmt);
 }
 
-/* ======================================================
- * 比較演算
- * ====================================================== */
+/* --- 比較演算 --- */
 
 val_t *val_eq(const val_t *a, const val_t *b) {
     val_t *ua = val_upconvert(a, b);
@@ -644,9 +620,7 @@ val_t *val_ge(const val_t *a, const val_t *b) {
 
 val_t *val_le(const val_t *a, const val_t *b) { return val_ge(b, a); }
 
-/* ======================================================
- * 論理演算
- * ====================================================== */
+/* --- 論理演算 --- */
 
 val_t *val_logic_and(const val_t *a, const val_t *b) {
     return val_new_bool(val_as_bool(a) && val_as_bool(b));
@@ -660,9 +634,7 @@ val_t *val_logic_not(const val_t *a) {
     return val_new_bool(!val_as_bool(a));
 }
 
-/* ======================================================
- * 文字列変換
- * ====================================================== */
+/* --- 文字列変換 --- */
 
 /* 実数値を fmt に従ってフォーマット */
 static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t buflen) {
@@ -892,10 +864,9 @@ void val_to_display_str(const val_t *v, char *buf, size_t buflen) {
     val_format(v, buf, buflen, true);
 }
 
-/* ======================================================
- * NumberFormatter
+/* --- NumberFormatter ---
  * 移植元: Calctus/Model/Formats/NumberFormatter.cs - RealToString()
- * ====================================================== */
+ */
 
 /* C# decimal.ToString("0.###...#") 相当。
  * decimal_len 桁で HALF_UP 丸め (C# MidpointRounding.AwayFromZero) した後、

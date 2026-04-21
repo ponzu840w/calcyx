@@ -3,10 +3,9 @@
 
 #include "builtin_array_internal.h"
 
-/* ======================================================
- * 統計関数 (移植元: Sum_AverageFuncs.cs)
+/* --- 統計関数 (移植元: Sum_AverageFuncs.cs) ---
  * 引数はスカラー可変長 OR 単一配列
- * ====================================================== */
+ */
 
 /* flatten: 引数 a[0..n-1] を double 配列に展開 */
 static int flatten_args(val_t **a, int n, double *buf, int bufmax) {
@@ -64,9 +63,7 @@ val_t *bi_invSum(val_t **a, int n, void *ctx) {
     return val_new_double(1.0 / s, a[0]->fmt);
 }
 
-/* ======================================================
- * 素数 (移植元: PrimeNumberFuncs.cs, RMath.cs)
- * ====================================================== */
+/* --- 素数 (移植元: PrimeNumberFuncs.cs, RMath.cs) --- */
 
 static bool is_prime_i64(int64_t n) {
     if (n < 2) return false;
@@ -117,9 +114,7 @@ val_t *bi_primeFact(val_t **a, int n, void *ctx) {
     return out;
 }
 
-/* ======================================================
- * solve — Newton法 (移植元: NewtonsMethod.cs)
- * ====================================================== */
+/* --- solve — Newton法 (移植元: NewtonsMethod.cs) --- */
 
 static double eval_func_at(func_def_t *fd, double x, eval_ctx_t *ctx) {
     val_t *xv = val_new_double(x, FMT_REAL);
