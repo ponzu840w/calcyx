@@ -43,7 +43,7 @@ cmake --preset web       # WebAssembly
 cmake --build --preset web
 ```
 
-開発機は macOS または Linux を前提とします。FLTK・mpdecimal は初回ビルド時に自動取得。
+開発機は macOS または Linux を前提とします。FLTK・mpdecimal は全ターゲット（unix / win / web）で初回ビルド時に自動取得。
 
 **前提パッケージ（ターゲット別）**
 
@@ -56,8 +56,8 @@ cmake --build --preset web
 ### パッケージ生成
 
 ```sh
-cpack --preset unix   # macOS → calcyx-mac.zip / Linux → calcyx_*.deb
-cpack --preset win    # Windows → calcyx-win.zip (WSL 上で実行)
+cpack --preset unix   # macOS → calcyx-mac-<version>.zip / Linux → calcyx-linux-<version>.deb
+cpack --preset win    # Windows → calcyx-win-<version>.zip (WSL 上で実行)
 cpack --preset web    # Web → calcyx-web-<version>.zip (静的ホスティング用一式)
 ```
 
@@ -84,7 +84,7 @@ cmake --preset win
 cmake --build --preset win
 ```
 
-初回ビルド時は FLTK と mpdecimal を自動ダウンロード・クロスビルドして `deps/mingw64/` に配置する（`cmake/deps-win.cmake` の `ExternalProject_Add` による）。  
+初回ビルド時は FLTK と mpdecimal を自動ダウンロード・クロスビルドして `deps/mingw64/` に配置する（`cmake/deps.cmake` の `WIN32 AND CMAKE_CROSSCOMPILING` 分岐が `ExternalProject_Add` を実行する）。
 `deps/` は `.gitignore` 対象だが、手動操作は不要。2回目以降は `deps/mingw64/` が存在する限りスキップされる。
 
 
