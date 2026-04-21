@@ -88,20 +88,41 @@ run_once() {
     # 1 回分の計測を行い、"<elapsed_s> <peak_rss_kb>" を echo する。
     # タイムアウトや未対応リビジョンの場合は elapsed_s を "-" にする。
     if [ "$PLATFORM" = "linux" ]; then
-        local tmp output status
-        tmp=$(mktemp)
-        # /usr/bin/time は SIGTERM された場合でも RSS を出力してくれる
-        if CALCYX_BENCH_EXIT_MS="$EXIT_MS" timeout --kill-after=1 "$((TIMEOUT_MS / 1000 + 1))" \
-            /usr/bin/time -f '%e %M' "$EXE_PATH" 2>"$tmp" >/dev/null; then
-            # 正常終了
-            read -r e r < <(tail -1 "$tmp")
-            echo "$e $r"
+        # /proc/PID/status の VmHWM をポーリングしてピーク RSS を取得する。
+        # これなら hook 未対応のリビジョン (SIGTERM で殺す場合) でも RSS を
+        # 測定できる。hook があれば通常終了し elapsed_s も取れる。
+        local pid peak=0 sampled=0 start_ms now_ms elapsed_ms status rss
+        CALCYX_BENCH_EXIT_MS="$EXIT_MS" "$EXE_PATH" >/dev/null 2>&1 &
+        pid=$!
+        start_ms=$(($(date +%s%N)/1000000))
+        while kill -0 "$pid" 2>/dev/null; do
+            rss=$(awk '/^VmHWM:/ { print $2 }' /proc/"$pid"/status 2>/dev/null || true)
+            if [ -n "$rss" ] && [ "$rss" -gt "$peak" ] 2>/dev/null; then
+                peak=$rss; sampled=1
+            fi
+            now_ms=$(($(date +%s%N)/1000000))
+            elapsed_ms=$((now_ms - start_ms))
+            if [ "$elapsed_ms" -ge "$TIMEOUT_MS" ]; then
+                kill -TERM "$pid" 2>/dev/null || true
+                sleep 0.2
+                kill -KILL "$pid" 2>/dev/null || true
+                wait "$pid" 2>/dev/null || true
+                [ "$sampled" -eq 0 ] && peak="-"
+                echo "- $peak"
+                return
+            fi
+            sleep 0.02
+        done
+        wait "$pid" 2>/dev/null || true
+        status=$?
+        now_ms=$(($(date +%s%N)/1000000))
+        elapsed_ms=$((now_ms - start_ms))
+        [ "$sampled" -eq 0 ] && peak="-"
+        if [ "$status" -eq 0 ]; then
+            printf '%.3f %s\n' "$(awk -v m="$elapsed_ms" 'BEGIN { print m/1000.0 }')" "$peak"
         else
-            # timeout or crash — 最終行から RSS のみ拾う
-            read -r e r < <(tail -1 "$tmp" 2>/dev/null || echo "- -")
-            echo "- ${r:-'-'}"
+            echo "- $peak"
         fi
-        rm -f "$tmp"
     else
         # Windows ネイティブ実行
         if ! command -v powershell.exe >/dev/null 2>&1; then

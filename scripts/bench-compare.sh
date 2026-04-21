@@ -53,6 +53,10 @@ build_and_measure() {
     [ -d "$wt" ] && git -C "$REPO_ROOT" worktree remove --force "$wt" 2>/dev/null || true
     git -C "$REPO_ROOT" worktree add --detach "$wt" "$sha" >&2
 
+    # deps/ は FLTK/mpdecimal のビルド成果物なので、worktree ごとに
+    # 再取得すると数分かかる。既存の REPO_ROOT/deps/ を symlink で共有する。
+    [ -d "$REPO_ROOT/deps" ] && ln -sfn "$REPO_ROOT/deps" "$wt/deps"
+
     if [ "$PLATFORM" = "linux" ] || [ "$PLATFORM" = "both" ]; then
         (cd "$wt" && cmake --preset unix >/dev/null 2>&1 && cmake --build --preset unix -j) >&2
         "$SCRIPT_DIR/bench.sh" --build-dir "$wt/build" --platform linux --label "$label" --reps "$REPS"
