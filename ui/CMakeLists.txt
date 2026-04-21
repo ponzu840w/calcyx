@@ -57,6 +57,7 @@ add_library(calcyx_ui_common STATIC
     colors.cpp
     SheetView.cpp
     CompletionPopup.cpp
+    completion_match.cpp
     PasteOptionForm.cpp
     PrefsDialog.cpp
     prefs/prefs_common.cpp
@@ -196,6 +197,18 @@ target_link_libraries(test_undo PRIVATE
     ${PLATFORM_LIBS}
 )
 
+# ---- test_completion ----
+# CompletionPopup のマッチ関数 (completion_match.cpp) の pure function テスト。
+# FLTK に依存しないため、ライブラリは最小構成でリンクする。
+add_executable(test_completion
+    test_completion.cpp
+    completion_match.cpp
+)
+target_include_directories(test_completion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 # ===== ctest 登録 =====
 add_test(NAME gui/sheet COMMAND test_undo)
 set_tests_properties(gui/sheet PROPERTIES LABELS "gui")
+
+add_test(NAME ui/completion COMMAND test_completion)
+set_tests_properties(ui/completion PROPERTIES LABELS "gui")

@@ -1,27 +1,12 @@
 // 移植元: Calctus/UI/Sheets/InputCandidateForm.cs (簡略版)
 
 #include "CompletionPopup.h"
+#include "completion_match.h"
 #include "colors.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <algorithm>
-#include <cctype>
 
-// ---- 大小無視の文字列マッチ ----
-static bool ieq_char(char a, char b) {
-    return std::tolower((unsigned char)a) == std::tolower((unsigned char)b);
-}
-
-static bool icontains(const std::string &hay, const std::string &needle) {
-    if (needle.empty()) return true;
-    return std::search(hay.begin(), hay.end(),
-                       needle.begin(), needle.end(), ieq_char) != hay.end();
-}
-
-static bool istartswith(const std::string &s, const std::string &p) {
-    if (p.size() > s.size()) return false;
-    return std::equal(p.begin(), p.end(), s.begin(), ieq_char);
-}
 CompletionPopup::CompletionPopup()
     : Fl_Group(0, 0, POP_W, 0)
 {
@@ -163,8 +148,8 @@ const Candidate *CompletionPopup::selected() const {
 void CompletionPopup::rebuild(const std::string &key) {
     std::vector<Candidate> b1, b2;
     for (auto &c : all_) {
-        if (key.empty() || istartswith(c.id, key)) b1.push_back(c);
-        else if (icontains(c.id, key))             b2.push_back(c);
+        if (key.empty() || completion_istartswith(c.id, key)) b1.push_back(c);
+        else if (completion_icontains(c.id, key))             b2.push_back(c);
     }
     filtered_.clear();
     for (auto &c : b1) filtered_.push_back(c);
