@@ -173,10 +173,7 @@ static void refresh_dlg_colors_recurse(Fl_Group *grp, DlgState *st) {
                 btn->labelcolor(DLG_TEXT);
             }
         } else if (auto *box = dynamic_cast<Fl_Box *>(w)) {
-            if (box->labelfont() == FL_BOLD)
-                box->labelcolor(DLG_LABEL);
-            else
-                box->labelcolor(DLG_LABEL);
+            box->labelcolor(DLG_LABEL);
         }
 
         if (auto *g = dynamic_cast<Fl_Group *>(w)) {
