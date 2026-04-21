@@ -106,6 +106,10 @@ const char *settings_path() {
     return s_conf_path.c_str();
 }
 
+void settings_set_path_for_test(const char *path) {
+    s_conf_path = path ? path : "";
+}
+
 // --- 設定スキーマ ---
 //
 // SETTINGS_TABLE は save 順に並んだエントリリスト。section_header が

@@ -206,9 +206,25 @@ add_executable(test_completion
 )
 target_include_directories(test_completion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# ---- test_settings ----
+# settings スキーマテーブル往復テスト。K_FONT エントリが FLTK を要求する
+# ため test_undo と同じく calcyx_ui_common + platform_tray_stub でリンクする。
+add_executable(test_settings
+    test_settings.cpp
+    platform_tray_stub.cpp
+)
+target_link_libraries(test_settings PRIVATE
+    calcyx_ui_common
+    ${FLTK_LIB}
+    ${PLATFORM_LIBS}
+)
+
 # ===== ctest 登録 =====
 add_test(NAME gui/sheet COMMAND test_undo)
 set_tests_properties(gui/sheet PROPERTIES LABELS "gui")
 
 add_test(NAME ui/completion COMMAND test_completion)
 set_tests_properties(ui/completion PROPERTIES LABELS "gui")
+
+add_test(NAME ui/settings COMMAND test_settings)
+set_tests_properties(ui/settings PROPERTIES LABELS "gui")

@@ -82,3 +82,7 @@ void settings_save();
 
 // calcyx.conf のフルパスを返す
 const char *settings_path();
+
+// テスト専用: conf ファイルのパスを差し替える (本番コードからは呼ばない)。
+// path に NULL を渡すとデフォルトに戻す (次回 ensure_path で決定される)。
+void settings_set_path_for_test(const char *path);
