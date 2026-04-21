@@ -6,7 +6,25 @@ https://github.com/shapoco/calctus (C# / .NET)
 
 ## テストの方針
 
-ctest には 33 本のテストが 3 系統で登録されています (`ctest --preset unix` で全実行)。
+ctest には 36 本のテストが 3 系統 (engine 27 / gui 3 / cli 6) で登録されています
+(`ctest --preset unix` で全実行)。
+
+クロスターゲット別の登録件数は以下のとおり:
+
+| プリセット | engine | gui | cli | 計 | 備考 |
+|---|---|---|---|---|---|
+| `unix` | 27 | 3 | 6 | 36 | ネイティブ Linux / macOS |
+| `win-headless` | 27 | (除外) | 6 | 33 | gui ラベルを filter 除外 |
+| `web` | 2 | (なし) | (なし) | 2 | `engine/types` と `engine/parser` のみ |
+
+`win-headless` は WSL であれば `.exe` をネイティブ実行、非 WSL では `wine` を
+検出してラップする (`cmake/test_runners.cmake`)。どちらも無ければ登録をまるごと
+スキップする (プリセット単位で無効化)。
+
+`web` プリセットは `engine/Test_*` (test_eval が sample ファイルを 1 本ずつ評価)
+をスキップする — mpdecimal の計算が WASM 下で極端に遅く、1 ファイル 数分以上
+かかるため。型システムと lexer/parser の回帰は `engine/types` と `engine/parser`
+でカバーする。
 
 **テスト追加時の原則:**
 
@@ -16,7 +34,7 @@ ctest には 33 本のテストが 3 系統で登録されています (`ctest -
   CLI 引数、UI 操作、プラットフォーム依存の挙動など) をカバーするために
   必要と判断した時点で、どんなテストをどう追加するかを提案する。
 
-### エンジン (`engine`, 26 本)
+### エンジン (`engine`, 27 本)
 
 **エンジンのテストコードは移植元リポジトリのものを使用する。**
 
@@ -31,16 +49,24 @@ ctest には 33 本のテストが 3 系統で登録されています (`ctest -
 
 - `engine/types` — `engine/test_types.c` で型システム (val / real / i64 など) の
   単体テストを実行。
+- `engine/parser` — `engine/test_parser.c` でレキサー/パーサーの境界ケースを検証
+  (calcyx 独自、移植元になし)。2026-04-21 の lexer.c 空白スキップバグのような
+  リグレッションを検知する目的。
 - `engine/Test_*` — `samples/Test_*.txt` を `engine/CMakeLists.txt` が glob で
   拾い、`engine/test_eval.c` がファイル単位で `assert(...)` 行を評価。移植元の
   Calctus テストを移植した assert 式が並んでいる。
 
-### UI (`gui`, 1 本)
+### UI (`gui`, 3 本)
 
 **UI のテストは独自実装。** 移植元に相当するテストがないため例外とする。
 
 - `gui/sheet` — `ui/test_undo.cpp` が FLTK ウィンドウを生成して SheetView の
   Undo/Redo 動作を直接呼び出す。
+- `ui/completion` — `ui/test_completion.cpp` で CompletionPopup の icontains /
+  istartswith のランキング関数を pure function テスト。
+- `ui/settings` — `ui/test_settings.cpp` で settings スキーマテーブルの往復
+  (defaults → save → load → 一致) を検証。テスト専用 API
+  `settings_set_path_for_test()` で conf ファイルを一時ディレクトリに差し替える。
 - SheetView には以下のテスト用インターフェースがある（本番コードからは使わないこと）:
   - `row_count()` / `row_expr(int)` / `focused_row()` — 状態の読み取り
   - `test_type_and_commit(const char *)` — エディタに入力してコミット
@@ -48,9 +74,11 @@ ctest には 33 本のテストが 3 系統で登録されています (`ctest -
 
 ### CLI (`cli`, 6 本)
 
-`cli/CMakeLists.txt` に `add_test` で直接登録。`calcyx_cli` の `-e` / `-o` /
-ファイルモード / 複数 `-e` の文脈共有 / エラー終了コードを `PASS_REGULAR_EXPRESSION`
-と `WILL_FAIL` で検証する。
+`cli/CMakeLists.txt` の `calcyx_cli_golden_test()` ヘルパで登録。
+`cli/testdata/expected/*.out` と `*.err` のゴールデンファイルに対して
+stdout / stderr / 終了コードを改行 LF 正規化のうえ完全一致で検証する。
+引数は `cli/testdata/args/*.args` (1 行 1 引数) に分離して CMake リストの
+`;` エスケープを回避している。
 
 ## アーキテクチャ
 

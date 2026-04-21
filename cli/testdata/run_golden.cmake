@@ -5,6 +5,7 @@
 #
 # 入力変数:
 #   CLI         — 実行する calcyx_cli のパス ($<TARGET_FILE:calcyx_cli>)
+#   LAUNCHER    — CLI 前に挟むランチャー (任意; wine など。`;` 区切りのリスト)
 #   ARGS_FILE   — 1 行 1 引数の引数ファイル。空行は無視
 #   STDOUT      — stdout の期待値ファイル (任意)
 #   STDERR      — stderr の期待値ファイル (任意)
@@ -34,8 +35,16 @@ foreach(a IN LISTS ARGS_LIST)
     endif()
 endforeach()
 
+# LAUNCHER は呼び出し側で `|` 区切りに変換されている (CMake リストが
+# `;` を特別扱いするため)。ここで ; に戻してリスト化する。
+if(LAUNCHER)
+    string(REPLACE "|" ";" LAUNCHER "${LAUNCHER}")
+else()
+    set(LAUNCHER "")
+endif()
+
 set(EXECUTE_OPTS
-    COMMAND "${CLI}" ${FILTERED_ARGS}
+    COMMAND ${LAUNCHER} "${CLI}" ${FILTERED_ARGS}
     OUTPUT_VARIABLE ACTUAL_STDOUT
     ERROR_VARIABLE  ACTUAL_STDERR
     RESULT_VARIABLE ACTUAL_EXIT)

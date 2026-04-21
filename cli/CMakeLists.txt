@@ -41,6 +41,11 @@ install(TARGETS calcyx_cli RUNTIME DESTINATION bin COMPONENT cli)
 set(CLI_TESTDATA "${CMAKE_CURRENT_SOURCE_DIR}/testdata")
 set(CLI_GOLDEN_RUNNER "${CLI_TESTDATA}/run_golden.cmake")
 
+# クロスターゲットで Windows .exe を wine 経由で叩くなど、ランチャーを
+# ランナー内の execute_process に差し込む必要がある。LAUNCHER は `;`
+# 区切りリスト文字列として渡すため、空の場合も安全に動く。
+string(REPLACE ";" "|" _cli_launcher "${CALCYX_TEST_LAUNCHER}")
+
 function(calcyx_cli_golden_test name)
     set(options)
     set(oneValueArgs STDOUT STDERR EXIT WORKDIR)
@@ -51,6 +56,10 @@ function(calcyx_cli_golden_test name)
         "${CMAKE_COMMAND}"
         "-DCLI=$<TARGET_FILE:calcyx_cli>"
         "-DARGS_FILE=${CLI_TESTDATA}/args/${name}.args")
+    if(_cli_launcher)
+        # | 区切りをランナー側で ; に戻してリスト化する
+        list(APPEND cmd "-DLAUNCHER=${_cli_launcher}")
+    endif()
     if(P_STDOUT)
         list(APPEND cmd "-DSTDOUT=${CLI_TESTDATA}/expected/${P_STDOUT}")
     endif()
@@ -69,22 +78,24 @@ function(calcyx_cli_golden_test name)
     set_tests_properties(cli/${name} PROPERTIES LABELS "cli")
 endfunction()
 
-# -e モード: 基本評価
-calcyx_cli_golden_test(eval_basic STDOUT eval_basic.out)
+if(CALCYX_TESTS_ENABLED)
+    # -e モード: 基本評価
+    calcyx_cli_golden_test(eval_basic STDOUT eval_basic.out)
 
-# -o both モード
-calcyx_cli_golden_test(eval_both  STDOUT eval_both.out)
+    # -o both モード
+    calcyx_cli_golden_test(eval_both  STDOUT eval_both.out)
 
-# セミコロンコメント除去
-calcyx_cli_golden_test(comment    STDOUT comment.out)
+    # セミコロンコメント除去
+    calcyx_cli_golden_test(comment    STDOUT comment.out)
 
-# 複数 -e: 文脈共有
-calcyx_cli_golden_test(multi_e    STDOUT multi_e.out)
+    # 複数 -e: 文脈共有
+    calcyx_cli_golden_test(multi_e    STDOUT multi_e.out)
 
-# ファイルモード (basic.txt を testdata 直下で開く)
-calcyx_cli_golden_test(file_mode
-    STDOUT file_mode.out
-    WORKDIR "${CLI_TESTDATA}")
+    # ファイルモード (basic.txt を testdata 直下で開く)
+    calcyx_cli_golden_test(file_mode
+        STDOUT file_mode.out
+        WORKDIR "${CLI_TESTDATA}")
 
-# エラー時の終了コード 1
-calcyx_cli_golden_test(error_exit STDERR error_exit.err EXIT 1)
+    # エラー時の終了コード 1
+    calcyx_cli_golden_test(error_exit STDERR error_exit.err EXIT 1)
+endif()

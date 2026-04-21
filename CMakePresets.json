@@ -90,6 +90,11 @@
       "configurePreset": "win",
       "output": { "outputOnFailure": true },
       "filter": { "exclude": { "label": "gui" } }
+    },
+    {
+      "name": "web",
+      "configurePreset": "web",
+      "output": { "outputOnFailure": true }
     }
   ],
   "packagePresets": [

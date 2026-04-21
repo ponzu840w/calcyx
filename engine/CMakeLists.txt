@@ -39,17 +39,43 @@ add_executable(test_parser test_parser.c)
 target_link_libraries(test_parser PRIVATE calcyx_engine)
 
 # ===== ctest 登録 =====
+# CALCYX_TESTS_ENABLED が FALSE のとき (Windows cross + wine なし + 非 WSL、
+# または WASM + node なし) はプリセット単位でまるごとスキップする。
+# ランチャー経由の場合 $<TARGET_FILE:test_types> が .exe / .js に展開される。
 
-add_test(NAME engine/types COMMAND test_types)
-set_tests_properties(engine/types PROPERTIES LABELS "engine")
+# WASM 固有のリンクオプション:
+# - NODERAWFS=1: test_eval の fopen が Node の実 FS にアクセスできるよう
+#   にする (test_types / test_parser は FS 不要だが付与して害はない)。
+# - STACK_SIZE=1mb: tok_queue_t (~140KB) のスタック確保で emscripten の
+#   デフォルト 64KB を超え、test_parser がスタックオーバーフローする
+#   のを防ぐ。
+if(EMSCRIPTEN)
+    target_link_options(test_types  PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_parser PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_eval   PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+endif()
 
-add_test(NAME engine/parser COMMAND test_parser)
-set_tests_properties(engine/parser PROPERTIES LABELS "engine")
+if(CALCYX_TESTS_ENABLED)
+    add_test(NAME engine/types
+        COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_types>)
+    set_tests_properties(engine/types PROPERTIES LABELS "engine")
 
-set(SAMPLES_DIR "${CMAKE_SOURCE_DIR}/samples")
-file(GLOB SAMPLE_TEST_FILES "${SAMPLES_DIR}/Test_*.txt")
-foreach(TXT ${SAMPLE_TEST_FILES})
-    get_filename_component(TNAME ${TXT} NAME_WE)
-    add_test(NAME engine/${TNAME} COMMAND test_eval ${TXT})
-    set_tests_properties(engine/${TNAME} PROPERTIES LABELS "engine")
-endforeach()
+    add_test(NAME engine/parser
+        COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_parser>)
+    set_tests_properties(engine/parser PROPERTIES LABELS "engine")
+
+    # engine/Test_* (test_eval による sample ファイル駆動テスト) は
+    # WASM 下では mpdecimal の計算が極端に遅く 1 ファイル数分以上かかる
+    # ため登録しない。型システムと lexer/parser の回帰は type/parser
+    # テストでカバーできる。ネイティブ / Windows クロスビルドでは通常通り登録。
+    if(NOT EMSCRIPTEN)
+        set(SAMPLES_DIR "${CMAKE_SOURCE_DIR}/samples")
+        file(GLOB SAMPLE_TEST_FILES "${SAMPLES_DIR}/Test_*.txt")
+        foreach(TXT ${SAMPLE_TEST_FILES})
+            get_filename_component(TNAME ${TXT} NAME_WE)
+            add_test(NAME engine/${TNAME}
+                COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_eval> ${TXT})
+            set_tests_properties(engine/${TNAME} PROPERTIES LABELS "engine")
+        endforeach()
+    endif()
+endif()
