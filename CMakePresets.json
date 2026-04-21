@@ -86,6 +86,11 @@
       "filter": { "exclude": { "label": "gui" } }
     },
     {
+      "name": "win",
+      "configurePreset": "win",
+      "output": { "outputOnFailure": true }
+    },
+    {
       "name": "win-headless",
       "configurePreset": "win",
       "output": { "outputOnFailure": true },

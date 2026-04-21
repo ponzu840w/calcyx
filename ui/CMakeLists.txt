@@ -220,11 +220,16 @@ target_link_libraries(test_settings PRIVATE
 )
 
 # ===== ctest 登録 =====
-add_test(NAME gui/sheet COMMAND test_undo)
-set_tests_properties(gui/sheet PROPERTIES LABELS "gui")
+if(CALCYX_TESTS_ENABLED)
+    add_test(NAME gui/sheet
+        COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_undo>)
+    set_tests_properties(gui/sheet PROPERTIES LABELS "gui")
 
-add_test(NAME ui/completion COMMAND test_completion)
-set_tests_properties(ui/completion PROPERTIES LABELS "gui")
+    add_test(NAME ui/completion
+        COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_completion>)
+    set_tests_properties(ui/completion PROPERTIES LABELS "gui")
 
-add_test(NAME ui/settings COMMAND test_settings)
-set_tests_properties(ui/settings PROPERTIES LABELS "gui")
+    add_test(NAME ui/settings
+        COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_settings>)
+    set_tests_properties(ui/settings PROPERTIES LABELS "gui")
+endif()

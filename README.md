@@ -109,12 +109,20 @@ cd build-web/web && python3 -m http.server 8080
 
 ## テスト
 
+ビルドに使った preset と同名で実行する。
+
 ```sh
-ctest --preset unix           # 全テスト (macOS / Linux)
-ctest --preset unix-debug     # AddressSanitizer ビルドで全テスト
-ctest --preset unix-headless  # GUI テストを除く (DISPLAY のない環境向け)
-ctest --preset win-headless   # Windows クロスビルド (WSL native / wine)、GUI 除外
-ctest --preset web            # WebAssembly を node 経由で実行 (engine/types + engine/parser のみ)
+ctest --preset unix          # 全テスト (macOS / Linux)
+ctest --preset unix-debug    # AddressSanitizer ビルドで全テスト
+ctest --preset win           # Windows クロスビルド全テスト (WSL native / wine)
+ctest --preset web           # WebAssembly を node 経由で実行
+```
+
+`*-headless` は GUI テスト除外フィルタ（DISPLAY や wine のない環境向け）:
+
+```sh
+ctest --preset unix-headless # unix ビルドに対して実行
+ctest --preset win-headless  # win ビルドに対して実行
 ```
 
 ## アーキテクチャ
