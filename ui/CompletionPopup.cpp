@@ -8,21 +8,19 @@
 #include <cctype>
 
 // ---- 大小無視の文字列マッチ ----
+static bool ieq_char(char a, char b) {
+    return std::tolower((unsigned char)a) == std::tolower((unsigned char)b);
+}
+
 static bool icontains(const std::string &hay, const std::string &needle) {
     if (needle.empty()) return true;
-    auto it = std::search(hay.begin(), hay.end(),
-                          needle.begin(), needle.end(),
-                          [](char a, char b){ return std::tolower((unsigned char)a)
-                                                  == std::tolower((unsigned char)b); });
-    return it != hay.end();
+    return std::search(hay.begin(), hay.end(),
+                       needle.begin(), needle.end(), ieq_char) != hay.end();
 }
 
 static bool istartswith(const std::string &s, const std::string &p) {
     if (p.size() > s.size()) return false;
-    for (size_t i = 0; i < p.size(); i++)
-        if (std::tolower((unsigned char)s[i]) != std::tolower((unsigned char)p[i]))
-            return false;
-    return true;
+    return std::equal(p.begin(), p.end(), s.begin(), ieq_char);
 }
 CompletionPopup::CompletionPopup()
     : Fl_Group(0, 0, POP_W, 0)
