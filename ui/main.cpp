@@ -16,6 +16,7 @@
 #include <string>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 
 #if defined(_WIN32)
 #  include <windows.h>
@@ -135,6 +136,14 @@ int main(int argc, char **argv) {
 #endif
 
     win.show(argc, argv);
+
+    // ベンチマーク用: 環境変数 CALCYX_BENCH_EXIT_MS が設定されていれば、
+    // イベントループ到達後に指定ms後で自動終了する。scripts/bench.sh 用。
+    if (const char *ms = std::getenv("CALCYX_BENCH_EXIT_MS")) {
+        double sec = atof(ms) / 1000.0;
+        if (sec > 0.0)
+            Fl::add_timeout(sec, [](void *){ std::exit(0); });
+    }
 
     // Fl::run() はウィンドウが全て非表示になると終了するが、
     // トレイ常駐中はウィンドウ非表示でもイベントループを継続する必要がある。
