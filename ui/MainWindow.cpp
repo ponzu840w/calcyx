@@ -31,6 +31,7 @@ extern "C" void mac_set_window_level(Fl_Window *win, int topmost);
 #include <FL/platform.H>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
+#include <unistd.h>
 #endif
 
 // フォーマット定義 (移植元: RepresentaionFuncs.cs)
@@ -450,24 +451,49 @@ static std::string find_icon_svg() {
     return "";
 }
 
-// samples/ ディレクトリへの絶対/相対パスを返す。見つからなければ空文字列。
-static std::string find_samples_dir() {
-    struct stat st;
+// exe の絶対ディレクトリを返す。取得できなければ空文字列。
+static std::string find_exe_dir() {
+    char buf[1024];
 #ifdef __APPLE__
-    {
-        char buf[1024];
-        uint32_t size = sizeof(buf);
-        if (_NSGetExecutablePath(buf, &size) == 0) {
-            char *dir = dirname(buf);
-            char candidate[1024];
-            snprintf(candidate, sizeof(candidate), "%s/../Resources/samples", dir);
-            if (stat(candidate, &st) == 0 && S_ISDIR(st.st_mode)) return candidate;
-        }
-    }
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) != 0) return "";
+    return dirname(buf);
+#elif defined(_WIN32)
+    wchar_t wbuf[1024];
+    DWORD n = GetModuleFileNameW(nullptr, wbuf, 1024);
+    if (n == 0 || n >= 1024) return "";
+    int len = WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, buf, sizeof(buf), nullptr, nullptr);
+    if (len <= 0) return "";
+    char *sep = strrchr(buf, '\\');
+    if (!sep) sep = strrchr(buf, '/');
+    if (sep) *sep = '\0';
+    return buf;
+#else
+    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (n <= 0) return "";
+    buf[n] = '\0';
+    char *sep = strrchr(buf, '/');
+    if (sep) *sep = '\0';
+    return buf;
 #endif
-    static const char *bases[] = { "samples", "../samples", "../../samples" };
-    for (auto *base : bases) {
-        if (stat(base, &st) == 0 && S_ISDIR(st.st_mode)) return base;
+}
+
+// samples/ ディレクトリへの絶対パスを返す。見つからなければ空文字列。
+static std::string find_samples_dir() {
+    std::string dir = find_exe_dir();
+    if (dir.empty()) return "";
+    struct stat st;
+    const char *suffixes[] = {
+#ifdef __APPLE__
+        "/../Resources/samples",        // .app バンドル埋め込み
+#endif
+        "/samples",                     // ビルドツリー / exe と同階層
+        "/../samples",                  // Windows zip: bin/*.exe + samples/
+        "/../share/calcyx/samples",     // Unix インストール (/usr/bin → /usr/share/calcyx/samples)
+    };
+    for (const char *suf : suffixes) {
+        std::string candidate = dir + suf;
+        if (stat(candidate.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) return candidate;
     }
     return "";
 }
