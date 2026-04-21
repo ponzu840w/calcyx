@@ -35,10 +35,16 @@ add_executable(test_eval test_eval.c)
 target_link_libraries(test_eval PRIVATE calcyx_engine)
 target_include_directories(test_eval PRIVATE . ${MPDECIMAL_INCLUDE})
 
+add_executable(test_parser test_parser.c)
+target_link_libraries(test_parser PRIVATE calcyx_engine)
+
 # ===== ctest 登録 =====
 
 add_test(NAME engine/types COMMAND test_types)
 set_tests_properties(engine/types PROPERTIES LABELS "engine")
+
+add_test(NAME engine/parser COMMAND test_parser)
+set_tests_properties(engine/parser PROPERTIES LABELS "engine")
 
 set(SAMPLES_DIR "${CMAKE_SOURCE_DIR}/samples")
 file(GLOB SAMPLE_TEST_FILES "${SAMPLES_DIR}/Test_*.txt")
