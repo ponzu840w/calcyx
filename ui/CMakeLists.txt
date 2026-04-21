@@ -17,13 +17,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # platform_tray_common.cpp はキー名テーブルと変換関数を提供し、
 # プラットフォーム固有実装の各ファイルと一緒にリンクされる。
 if(APPLE)
-    set(PLATFORM_TRAY_SRC platform_tray_mac.mm platform_tray_common.cpp)
+    set(PLATFORM_TRAY_SRC platform_tray_mac.mm)
 elseif(WIN32)
-    set(PLATFORM_TRAY_SRC platform_tray_win.cpp platform_tray_common.cpp)
+    set(PLATFORM_TRAY_SRC platform_tray_win.cpp)
 elseif(EMSCRIPTEN)
-    set(PLATFORM_TRAY_SRC platform_tray_stub.cpp platform_tray_common.cpp)
+    set(PLATFORM_TRAY_SRC platform_tray_stub.cpp)
 else()
-    set(PLATFORM_TRAY_SRC platform_tray_x11.cpp platform_tray_common.cpp)
+    set(PLATFORM_TRAY_SRC platform_tray_x11.cpp)
 endif()
 
 set(PLATFORM_LIBS "")
@@ -49,6 +49,46 @@ else()
     )
 endif()
 
+# ---- calcyx_ui_common (calcyx_ui と test_undo が共有する静的ライブラリ) ----
+# test_undo は MainWindow / main / platform_tray_<os> は使わないため含めない。
+# platform_tray_common.cpp はキー名テーブルのみを提供し、stub/x11/win/mac の
+# どれとでも共存できるので common に置く。
+add_library(calcyx_ui_common STATIC
+    colors.cpp
+    SheetView.cpp
+    CompletionPopup.cpp
+    PasteOptionForm.cpp
+    PrefsDialog.cpp
+    settings_globals.cpp
+    builtin_docs.cpp
+    app_prefs.cpp
+    crash_handler.cpp
+    platform_tray_common.cpp
+)
+
+target_include_directories(calcyx_ui_common PUBLIC
+    ${FLTK_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/engine
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+# crash_handler.cpp が CALCYX_VERSION_FULL を参照する
+target_compile_definitions(calcyx_ui_common PRIVATE
+    CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
+)
+
+# 依存ライブラリは PUBLIC で公開し、リンク側で再指定不要にする
+target_link_libraries(calcyx_ui_common PUBLIC
+    calcyx_engine
+)
+
+if(TARGET dep_mpdecimal)
+    add_dependencies(calcyx_ui_common dep_mpdecimal)
+endif()
+if(TARGET dep_fltk)
+    add_dependencies(calcyx_ui_common dep_fltk)
+endif()
+
 # ---- calcyx (App Bundle on macOS, 通常バイナリ on Windows/Linux) ----
 if(APPLE)
     set(ICON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/icon.icns")
@@ -61,16 +101,7 @@ if(APPLE)
 
     add_executable(calcyx_ui MACOSX_BUNDLE
         main.cpp
-        colors.cpp
         MainWindow.cpp
-        SheetView.cpp
-        CompletionPopup.cpp
-        PasteOptionForm.cpp
-        PrefsDialog.cpp
-        settings_globals.cpp
-        builtin_docs.cpp
-        app_prefs.cpp
-        crash_handler.cpp
         platform_mac.mm
         ${PLATFORM_TRAY_SRC}
         ${ICON_FILE}
@@ -88,16 +119,7 @@ if(APPLE)
 elseif(WIN32)
     add_executable(calcyx_ui WIN32
         main.cpp
-        colors.cpp
         MainWindow.cpp
-        SheetView.cpp
-        CompletionPopup.cpp
-        PasteOptionForm.cpp
-        PrefsDialog.cpp
-        settings_globals.cpp
-        builtin_docs.cpp
-        app_prefs.cpp
-        crash_handler.cpp
         ${PLATFORM_TRAY_SRC}
         calcyx.rc
     )
@@ -111,16 +133,7 @@ elseif(WIN32)
 else()
     add_executable(calcyx_ui
         main.cpp
-        colors.cpp
         MainWindow.cpp
-        SheetView.cpp
-        CompletionPopup.cpp
-        PasteOptionForm.cpp
-        PrefsDialog.cpp
-        settings_globals.cpp
-        builtin_docs.cpp
-        app_prefs.cpp
-        crash_handler.cpp
         ${PLATFORM_TRAY_SRC}
     )
     set_target_properties(calcyx_ui PROPERTIES OUTPUT_NAME "calcyx-gui")
@@ -131,11 +144,6 @@ else()
             "$<TARGET_FILE_DIR:calcyx_ui>/samples"
     )
 endif()
-
-target_include_directories(calcyx_ui PRIVATE
-    ${FLTK_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/engine
-)
 
 target_compile_definitions(calcyx_ui PRIVATE
     CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
@@ -148,21 +156,13 @@ if(NOT APPLE AND NOT WIN32)
 endif()
 
 target_link_libraries(calcyx_ui PRIVATE
-    calcyx_engine
+    calcyx_ui_common
     ${FLTK_IMAGES_LIB}
     ${FLTK_PNG_LIB}
     ${FLTK_Z_LIB}
     ${FLTK_LIB}
     ${PLATFORM_LIBS}
 )
-
-# ExternalProject のビルド完了を待ってからリンクする
-if(TARGET dep_mpdecimal)
-    add_dependencies(calcyx_ui dep_mpdecimal)
-endif()
-if(TARGET dep_fltk)
-    add_dependencies(calcyx_ui dep_fltk)
-endif()
 
 if(APPLE)
     install(TARGETS calcyx_ui BUNDLE DESTINATION . COMPONENT gui)
@@ -178,38 +178,17 @@ elseif(UNIX)
 endif()
 
 # ---- test_undo ----
+# calcyx_ui_common を再利用し、プラットフォーム依存部は stub で置き換える。
 add_executable(test_undo
     test_undo.cpp
-    colors.cpp
-    SheetView.cpp
-    CompletionPopup.cpp
-    PasteOptionForm.cpp
-    PrefsDialog.cpp
-    settings_globals.cpp
-    builtin_docs.cpp
-    app_prefs.cpp
-    crash_handler.cpp
     platform_tray_stub.cpp
-    platform_tray_common.cpp
-)
-
-target_include_directories(test_undo PRIVATE
-    ${FLTK_INCLUDE_DIR}
-    ${CMAKE_SOURCE_DIR}/engine
 )
 
 target_link_libraries(test_undo PRIVATE
-    calcyx_engine
+    calcyx_ui_common
     ${FLTK_LIB}
     ${PLATFORM_LIBS}
 )
-
-if(TARGET dep_mpdecimal)
-    add_dependencies(test_undo dep_mpdecimal)
-endif()
-if(TARGET dep_fltk)
-    add_dependencies(test_undo dep_fltk)
-endif()
 
 # ===== ctest 登録 =====
 add_test(NAME gui/sheet COMMAND test_undo)
