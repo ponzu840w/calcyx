@@ -6,6 +6,10 @@ https://github.com/shapoco/calctus (C# / .NET)
 
 ## テストの方針
 
+ctest には 33 本のテストが 3 系統で登録されています (`ctest --preset unix` で全実行)。
+
+### エンジン (`engine`, 26 本)
+
 **エンジンのテストコードは移植元リポジトリのものを使用する。**
 
 - 各テスト関数の冒頭に、参照元ファイルとメソッド名をコメントで明記すること
@@ -15,13 +19,30 @@ https://github.com/shapoco/calctus (C# / .NET)
   ```
 - 移植元のテストコードを最大限に尊重し、独自に作成したテストは極力追加しない。
 
+登録内訳:
+
+- `engine/types` — `engine/test_types.c` で型システム (val / real / i64 など) の
+  単体テストを実行。
+- `engine/Test_*` — `samples/Test_*.txt` を `engine/CMakeLists.txt` が glob で
+  拾い、`engine/test_eval.c` がファイル単位で `assert(...)` 行を評価。移植元の
+  Calctus テストを移植した assert 式が並んでいる。
+
+### UI (`gui`, 1 本)
+
 **UI のテストは独自実装。** 移植元に相当するテストがないため例外とする。
 
-- `ui/test_undo.cpp`: SheetView の Undo/Redo 動作確認（FLTK ウィンドウを生成して直接呼び出す）
+- `gui/sheet` — `ui/test_undo.cpp` が FLTK ウィンドウを生成して SheetView の
+  Undo/Redo 動作を直接呼び出す。
 - SheetView には以下のテスト用インターフェースがある（本番コードからは使わないこと）:
   - `row_count()` / `row_expr(int)` / `focused_row()` — 状態の読み取り
   - `test_type_and_commit(const char *)` — エディタに入力してコミット
   - `test_insert_row(int)` / `test_delete_row(int)` — 行操作
+
+### CLI (`cli`, 6 本)
+
+`cli/CMakeLists.txt` に `add_test` で直接登録。`calcyx_cli` の `-e` / `-o` /
+ファイルモード / 複数 `-e` の文脈共有 / エラー終了コードを `PASS_REGULAR_EXPRESSION`
+と `WILL_FAIL` で検証する。
 
 ## アーキテクチャ
 
