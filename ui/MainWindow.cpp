@@ -249,12 +249,13 @@ void MainWindow::update_toolbar() {
     btn_undo_->redraw();
     btn_redo_->redraw();
 
-    // Edit メニュー項目のグレーアウト (色も変更して視認性を確保)
+    // Edit メニュー項目: deactivate() すると FLTK が fl_inactive() で更に
+    // 背景色にブレンドしてしまい C_DIM が潰れるので、labelcolor のみ変更。
+    // sheet_->undo()/redo() 側で can_undo()/can_redo() を見た no-op ガードがあるため安全。
     Fl_Menu_Item *items = (Fl_Menu_Item *)menu_->menu();
     auto set_menu = [&](int idx, bool active) {
         if (idx < 0) return;
-        if (active) { items[idx].activate();   items[idx].labelcolor(C_MENU_FG); }
-        else        { items[idx].deactivate(); items[idx].labelcolor(C_DIM); }
+        items[idx].labelcolor(active ? C_MENU_FG : C_DIM);
     };
     set_menu(mi_undo_, u);
     set_menu(mi_redo_, r);

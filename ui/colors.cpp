@@ -37,7 +37,6 @@ static void init_otaku_black(CalcyxColors *c) {
     c->ui_menu    = fl_rgb_color( 40,  40,  45);
     c->ui_text    = fl_rgb_color(215, 215, 225);
     c->ui_label   = fl_rgb_color(180, 180, 190);
-    c->ui_dim     = fl_rgb_color(110, 110, 115);
     c->pop_bg     = fl_rgb_color( 28,  28,  35);
     c->pop_sel    = fl_rgb_color( 40,  80, 140);
     c->pop_text   = fl_rgb_color(220, 220, 220);
@@ -69,7 +68,6 @@ static void init_gyakubari_white(CalcyxColors *c) {
     c->ui_menu    = fl_rgb_color(228, 228, 235);
     c->ui_text    = fl_rgb_color( 30,  30,  35);
     c->ui_label   = fl_rgb_color( 80,  80,  90);
-    c->ui_dim     = fl_rgb_color(190, 190, 195);
     c->pop_bg     = fl_rgb_color(255, 255, 255);
     c->pop_sel    = fl_rgb_color(180, 210, 255);
     c->pop_text   = fl_rgb_color( 20,  20,  25);
@@ -101,7 +99,6 @@ static void init_saboten_grey(CalcyxColors *c) {
     c->ui_menu    = fl_rgb_color( 50,  50,  55);
     c->ui_text    = fl_rgb_color(240, 240, 240);
     c->ui_label   = fl_rgb_color(180, 180, 180);
-    c->ui_dim     = fl_rgb_color(110, 110, 110);
     c->pop_bg     = fl_rgb_color( 38,  38,  42);
     c->pop_sel    = fl_rgb_color( 50,  85, 140);
     c->pop_text   = fl_rgb_color(230, 230, 230);
@@ -133,17 +130,12 @@ static void init_saboten_white(CalcyxColors *c) {
     c->ui_menu    = fl_rgb_color(220, 220, 225);
     c->ui_text    = fl_rgb_color( 20,  20,  25);
     c->ui_label   = fl_rgb_color( 90,  90, 100);
-    c->ui_dim     = fl_rgb_color(180, 180, 185);
     c->pop_bg     = fl_rgb_color(245, 245, 248);
     c->pop_sel    = fl_rgb_color(190, 215, 250);
     c->pop_text   = fl_rgb_color( 15,  15,  20);
     c->pop_desc   = fl_rgb_color(100, 100, 110);
     c->pop_desc_bg= fl_rgb_color(232, 232, 238);
     c->pop_border = fl_rgb_color(170, 170, 185);
-}
-
-void colors_init_defaults(CalcyxColors *c) {
-    init_otaku_black(c);
 }
 
 void colors_init_preset(CalcyxColors *c, int preset) {
@@ -154,6 +146,12 @@ void colors_init_preset(CalcyxColors *c, int preset) {
     case COLOR_PRESET_SABOTEN_WHITE:   init_saboten_white(c);   break;
     default:                           init_otaku_black(c);     break;
     }
+    // 無効化時文字 (Undo/Redo のグレーアウト等): text と menu 背景の中間色
+    c->ui_dim = fl_color_average(c->ui_text, c->ui_menu, 0.5f);
+}
+
+void colors_init_defaults(CalcyxColors *c) {
+    colors_init_preset(c, COLOR_PRESET_OTAKU_BLACK);
 }
 
 void colors_apply_fl_scheme() {
