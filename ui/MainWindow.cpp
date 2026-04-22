@@ -77,7 +77,32 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&Edit/Move Row &Up",      FL_COMMAND | FL_SHIFT | FL_Up,   menu_cb, (void*)"move_up");
     menu_->add("&Edit/Move Row Do&wn",    FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Recalculate", FL_F + 5, menu_cb, (void*)"recalc");
-    menu_->add("&View/Always on &Top", FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
+    menu_->add("&View/Always on &Top", FL_COMMAND + 't', menu_cb, (void*)"topmost",
+               FL_MENU_TOGGLE | FL_MENU_DIVIDER);
+    // Color Scheme サブメニュー (FL_MENU_RADIO)
+    // USER_DEFINED は Prefs で編集する扱い。メニューには名前付きプリセットのみ出す。
+    scheme_cmds_.reserve(COLOR_PRESET_COUNT);
+    for (int i = 0; i < COLOR_PRESET_COUNT; i++) {
+        char buf[24]; snprintf(buf, sizeof(buf), "scheme_%d", i);
+        scheme_cmds_.push_back(buf);
+        if (i == COLOR_PRESET_USER_DEFINED) continue;
+        char path[128];
+        snprintf(path, sizeof(path), "&View/Color &Scheme/%s", COLOR_PRESET_INFO[i].label);
+        menu_->add(path, 0, menu_cb, (void*)scheme_cmds_[i].c_str(), FL_MENU_RADIO);
+    }
+    menu_->add("&View/Show &Row Lines",           0, menu_cb, (void*)"toggle_rowlines",  FL_MENU_TOGGLE);
+    menu_->add("&View/Scientific Notation (&E)",  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
+    menu_->add("&View/Show Thousands &Separator", 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
+    menu_->add("&View/Show &Hex Separator",       0, menu_cb, (void*)"toggle_hexsep",
+               FL_MENU_TOGGLE | FL_MENU_DIVIDER);
+    menu_->add("&View/&Auto Completion",          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
+    menu_->add("&View/Sys&tem Tray",              0, menu_cb, (void*)"toggle_tray",
+               FL_MENU_TOGGLE | FL_MENU_DIVIDER);
+    menu_->add("&View/Zoom &In",       FL_COMMAND + '=', menu_cb, (void*)"zoom_in");
+    menu_->add("&View/Zoom &Out",      FL_COMMAND + '-', menu_cb, (void*)"zoom_out");
+    menu_->add("&View/Reset &Zoom",    FL_COMMAND + '0', menu_cb, (void*)"zoom_reset", FL_MENU_DIVIDER);
+    menu_->add("&View/Decimals &+",    FL_COMMAND | FL_SHIFT + '.', menu_cb, (void*)"dec_inc");
+    menu_->add("&View/Decimals &\xe2\x88\x92", FL_COMMAND | FL_SHIFT + ',', menu_cb, (void*)"dec_dec");
     populate_samples_menu();
     menu_->add("&File/&Preferences...", FL_COMMAND + ',', menu_cb, (void*)"prefs", FL_MENU_DIVIDER);
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
@@ -93,6 +118,16 @@ MainWindow::MainWindow(int w, int h, const char *title)
             if (d && strcmp(d, "undo") == 0) mi_undo_ = i;
             if (d && strcmp(d, "redo") == 0) mi_redo_ = i;
             if (d && strcmp(d, "topmost") == 0) mi_topmost_ = i;
+            if (d && strcmp(d, "toggle_rowlines") == 0)  mi_rowlines_  = i;
+            if (d && strcmp(d, "toggle_thousands") == 0) mi_thousands_ = i;
+            if (d && strcmp(d, "toggle_hexsep") == 0)    mi_hexsep_    = i;
+            if (d && strcmp(d, "toggle_e_notation") == 0) mi_e_notation_ = i;
+            if (d && strcmp(d, "toggle_auto_complete") == 0) mi_auto_complete_ = i;
+            if (d && strcmp(d, "toggle_tray") == 0)      mi_tray_      = i;
+            if (d && strncmp(d, "scheme_", 7) == 0) {
+                int idx = atoi(d + 7);
+                if (idx >= 0 && idx < COLOR_PRESET_COUNT) mi_scheme_[idx] = i;
+            }
         }
     }
 
@@ -160,6 +195,8 @@ MainWindow::MainWindow(int w, int h, const char *title)
 
     // 初期状態のグレーアウトを反映
     update_toolbar();
+    // View メニューの toggle 項目を現在の設定値で同期
+    sync_view_menu_toggles();
 
     // WM close を横取りしてトレイ最小化に対応
     callback(close_cb, this);
@@ -415,9 +452,63 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
             auto *mw = static_cast<MainWindow *>(d);
             mw->apply_ui_colors();
             mw->apply_tray_settings();
+            mw->sync_view_menu_toggles();
         }, win);
     } else if (strcmp(cmd, "topmost") == 0) {
         win->toggle_always_on_top();
+    } else if (strcmp(cmd, "toggle_rowlines") == 0) {
+        g_show_rowlines = !g_show_rowlines;
+        win->sheet_->redraw();
+        win->sync_view_menu_toggles();
+    } else if (strcmp(cmd, "toggle_thousands") == 0) {
+        g_sep_thousands = !g_sep_thousands;
+        win->sheet_->live_eval();
+        win->sheet_->redraw();
+        win->sync_view_menu_toggles();
+    } else if (strcmp(cmd, "toggle_hexsep") == 0) {
+        g_sep_hex = !g_sep_hex;
+        win->sheet_->live_eval();
+        win->sheet_->redraw();
+        win->sync_view_menu_toggles();
+    } else if (strcmp(cmd, "toggle_e_notation") == 0) {
+        g_fmt_settings.e_notation = !g_fmt_settings.e_notation;
+        win->sheet_->live_eval();
+        win->sheet_->redraw();
+        win->sync_view_menu_toggles();
+    } else if (strcmp(cmd, "toggle_auto_complete") == 0) {
+        g_input_auto_completion = !g_input_auto_completion;
+        win->sync_view_menu_toggles();
+    } else if (strcmp(cmd, "dec_inc") == 0) {
+        if (g_fmt_settings.decimal_len < 34) {
+            g_fmt_settings.decimal_len++;
+            win->sheet_->live_eval();
+            win->sheet_->redraw();
+        }
+    } else if (strcmp(cmd, "dec_dec") == 0) {
+        if (g_fmt_settings.decimal_len > 1) {
+            g_fmt_settings.decimal_len--;
+            win->sheet_->live_eval();
+            win->sheet_->redraw();
+        }
+    } else if (strncmp(cmd, "scheme_", 7) == 0) {
+        int idx = atoi(cmd + 7);
+        if (idx >= 0 && idx < COLOR_PRESET_COUNT) {
+            g_color_preset = idx;
+            colors_init_preset(&g_colors, idx);
+            win->apply_ui_colors();
+            win->sync_view_menu_toggles();
+        }
+    } else if (strcmp(cmd, "toggle_tray") == 0) {
+        g_tray_icon = !g_tray_icon;
+        win->apply_tray_settings();
+        win->sync_view_menu_toggles();
+    } else if (strcmp(cmd, "zoom_in") == 0) {
+        if (g_font_size < 36) { g_font_size++; win->apply_font_and_refresh(); }
+    } else if (strcmp(cmd, "zoom_out") == 0) {
+        if (g_font_size > 8) { g_font_size--; win->apply_font_and_refresh(); }
+    } else if (strcmp(cmd, "zoom_reset") == 0) {
+        g_font_size = DEFAULT_FONT_SIZE;
+        win->apply_font_and_refresh();
     } else if (strcmp(cmd, "about") == 0) {
         show_about(win);
     } else {
@@ -565,6 +656,36 @@ void MainWindow::toggle_always_on_top() {
     // ボタンの見た目を更新 (ON: 通常色, OFF: 薄色)
     btn_topmost_->labelcolor(topmost_ ? C_MENU_FG : fl_inactive(C_MENU_FG));
     btn_topmost_->redraw();
+    // メニュー側のチェックも同期 (ピンボタンから呼ばれた場合)
+    sync_view_menu_toggles();
+}
+
+// View メニューのトグル項目 (FL_MENU_TOGGLE) のチェック状態を
+// 現在の g_ 変数に合わせる。起動時・Prefs 適用後・プログラム的な
+// トグル時に呼ぶ。メニュー経由のクリックでは FLTK が自動で切替える
+// ので呼ばなくてよいが、呼んでも冪等。
+void MainWindow::sync_view_menu_toggles() {
+    Fl_Menu_Item *items = (Fl_Menu_Item *)menu_->menu();
+    auto set_check = [&](int idx, bool on) {
+        if (idx < 0) return;
+        if (on) items[idx].set(); else items[idx].clear();
+    };
+    set_check(mi_rowlines_,      g_show_rowlines);
+    set_check(mi_thousands_,     g_sep_thousands);
+    set_check(mi_hexsep_,        g_sep_hex);
+    set_check(mi_e_notation_,    g_fmt_settings.e_notation);
+    set_check(mi_auto_complete_, g_input_auto_completion);
+    set_check(mi_tray_,          g_tray_icon);
+    set_check(mi_topmost_,       topmost_);
+    for (int i = 0; i < COLOR_PRESET_COUNT; i++)
+        set_check(mi_scheme_[i], i == g_color_preset);
+    menu_->redraw();
+}
+
+// Zoom 用: フォント再適用 + レイアウト更新
+void MainWindow::apply_font_and_refresh() {
+    sheet_->apply_font();
+    sheet_->redraw();
 }
 
 void MainWindow::save_prefs() {

@@ -41,6 +41,14 @@ private:
     CompletionPopup *popup_;
     int              mi_undo_;    // Edit/Undo メニュー項目インデックス
     int              mi_redo_;    // Edit/Redo メニュー項目インデックス
+    // View メニューのトグル項目 (g_ 変数と同期)
+    int              mi_rowlines_  = -1;
+    int              mi_thousands_ = -1;
+    int              mi_hexsep_    = -1;
+    int              mi_e_notation_ = -1;
+    int              mi_auto_complete_ = -1;
+    int              mi_tray_      = -1;
+    int              mi_scheme_[5] = {-1,-1,-1,-1,-1};  // FL_MENU_RADIO, COLOR_PRESET_COUNT に対応
 
     static const int MENU_H   = 24;
     static const int CHOICE_W = 110;
@@ -59,6 +67,8 @@ private:
     static void row_change_cb(void *data);  // SheetView からのコールバック
     void populate_samples_menu();
     static bool open_sample_file(MainWindow *win, const char *filename);
+    void sync_view_menu_toggles();  // View メニューのチェック状態を g_ 変数に合わせる
+    void apply_font_and_refresh();  // Zoom 系で apply_font + live_eval + redraw を一括
     void setup_tray();
     void teardown_tray();
     void toggle_visibility();
@@ -71,4 +81,5 @@ private:
     bool tray_active_ = false;
     int  mi_topmost_ = -1;  // View/Always on Top メニュー項目インデックス
     std::vector<std::string> sample_files_;  // メニュー文字列の安定した記憶域
+    std::vector<std::string> scheme_cmds_;   // "scheme_N" コマンドの安定した記憶域
 };
