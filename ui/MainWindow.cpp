@@ -341,12 +341,27 @@ static void show_about(MainWindow *win) {
     // アイコン (static で1回だけロード)
     static Fl_SVG_Image *about_icon = nullptr;
     if (!about_icon) {
+#ifdef _WIN32
+        // Windows は icon.svg を .exe の RCDATA から読む (calcyx.rc で埋め込み済み)
+        HRSRC hRes = FindResourceA(nullptr, "ICON_SVG", RT_RCDATA);
+        if (hRes) {
+            DWORD sz = SizeofResource(nullptr, hRes);
+            HGLOBAL hData = LoadResource(nullptr, hRes);
+            const unsigned char *data = hData ? (const unsigned char *)LockResource(hData) : nullptr;
+            if (data && sz > 0) {
+                about_icon = new Fl_SVG_Image(nullptr, data, sz);
+                if (about_icon->fail()) { delete about_icon; about_icon = nullptr; }
+                else about_icon->resize(64, 64);
+            }
+        }
+#else
         std::string svg_path = find_icon_svg();
         if (!svg_path.empty()) {
             about_icon = new Fl_SVG_Image(svg_path.c_str());
             if (about_icon->fail()) { delete about_icon; about_icon = nullptr; }
             else about_icon->resize(64, 64);
         }
+#endif
     }
 
     const int DW = 420, DH = 380;
