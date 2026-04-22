@@ -68,6 +68,7 @@ if(NOT EXISTS "${_fltk_stamp}")
         PATCH_COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/cmake/patch-fltk.py <SOURCE_DIR>
         CMAKE_ARGS
             ${_fltk_toolchain}
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${DEPS_DIR}
             -DFLTK_BUILD_TEST=OFF
             -DFLTK_BUILD_FLUID=OFF
