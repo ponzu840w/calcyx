@@ -86,6 +86,13 @@ int main(int argc, char **argv) {
     Fl::scheme("gtk+");
     Fl::visual(FL_DOUBLE | FL_INDEX);
 
+    // Linux では Courier がビットマップ時代の Adobe Type 1 に解決されるので
+    // fontconfig 経由の monospace に差し替える (CJK はフォールバックで補完)。
+#if !defined(_WIN32) && !defined(__APPLE__)
+    Fl::set_font(FL_COURIER,      " monospace");
+    Fl::set_font(FL_COURIER_BOLD, "Bmonospace");
+#endif
+
     // 前回クラッシュしていたらレポートダイアログを表示 (次回起動時のフォールバック)
     std::string crash_log = crash_handler_check();
     if (!crash_log.empty()) {
