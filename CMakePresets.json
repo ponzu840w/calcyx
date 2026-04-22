@@ -50,6 +50,15 @@
       }
     },
     {
+      "name": "win-profile",
+      "displayName": "Windows Profile (RelWithDebInfo, for Very Sleepy / WPR)",
+      "inherits": "base-win",
+      "binaryDir": "${sourceDir}/build-win-profile",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
       "name": "web",
       "displayName": "Web (Emscripten / WebAssembly)",
       "binaryDir": "${sourceDir}/build-web",
@@ -64,6 +73,7 @@
     { "name": "unix-debug", "configurePreset": "unix-debug" },
     { "name": "win",        "configurePreset": "win" },
     { "name": "win-debug",  "configurePreset": "win-debug" },
+    { "name": "win-profile","configurePreset": "win-profile" },
     { "name": "web",        "configurePreset": "web" }
   ],
   "testPresets": [
