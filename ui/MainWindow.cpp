@@ -77,7 +77,8 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&Edit/Move Row &Up",      FL_COMMAND | FL_SHIFT | FL_Up,   menu_cb, (void*)"move_up");
     menu_->add("&Edit/Move Row Do&wn",    FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Recalculate", FL_F + 5, menu_cb, (void*)"recalc");
-    menu_->add("&View/Always on &Top", FL_COMMAND + 't', menu_cb, (void*)"topmost",
+    menu_->add("&View/Always on &Top", FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
+    menu_->add("&View/Sys&tem Tray",              0, menu_cb, (void*)"toggle_tray",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
     // Color Scheme サブメニュー (FL_MENU_RADIO)
     // USER_DEFINED は Prefs で編集する扱い。メニューには名前付きプリセットのみ出す。
@@ -90,19 +91,17 @@ MainWindow::MainWindow(int w, int h, const char *title)
         snprintf(path, sizeof(path), "&View/Color &Scheme/%s", COLOR_PRESET_INFO[i].label);
         menu_->add(path, 0, menu_cb, (void*)scheme_cmds_[i].c_str(), FL_MENU_RADIO);
     }
-    menu_->add("&View/Show &Row Lines",           0, menu_cb, (void*)"toggle_rowlines",  FL_MENU_TOGGLE);
-    menu_->add("&View/Scientific Notation (&E)",  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
-    menu_->add("&View/Show Thousands &Separator", 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
-    menu_->add("&View/Show &Hex Separator",       0, menu_cb, (void*)"toggle_hexsep",
-               FL_MENU_TOGGLE | FL_MENU_DIVIDER);
-    menu_->add("&View/&Auto Completion",          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
-    menu_->add("&View/Sys&tem Tray",              0, menu_cb, (void*)"toggle_tray",
+    menu_->add("&View/Show &Row Lines",           0, menu_cb, (void*)"toggle_rowlines",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
     menu_->add("&View/Zoom &In",       FL_COMMAND + '=', menu_cb, (void*)"zoom_in");
     menu_->add("&View/Zoom &Out",      FL_COMMAND + '-', menu_cb, (void*)"zoom_out");
     menu_->add("&View/Reset &Zoom",    FL_COMMAND + '0', menu_cb, (void*)"zoom_reset", FL_MENU_DIVIDER);
+    menu_->add("&View/Scientific Notation (&E)",  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
+    menu_->add("&View/Show Thousands &Separator", 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
+    menu_->add("&View/Show &Hex Separator",       0, menu_cb, (void*)"toggle_hexsep", FL_MENU_TOGGLE);
     menu_->add("&View/Decimals &+",    FL_COMMAND | FL_SHIFT + '.', menu_cb, (void*)"dec_inc");
-    menu_->add("&View/Decimals &\xe2\x88\x92", FL_COMMAND | FL_SHIFT + ',', menu_cb, (void*)"dec_dec");
+    menu_->add("&View/Decimals &\xe2\x88\x92", FL_COMMAND | FL_SHIFT + ',', menu_cb, (void*)"dec_dec", FL_MENU_DIVIDER);
+    menu_->add("&View/&Auto Completion",          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
     populate_samples_menu();
     menu_->add("&File/&Preferences...", FL_COMMAND + ',', menu_cb, (void*)"prefs", FL_MENU_DIVIDER);
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
