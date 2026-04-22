@@ -137,6 +137,14 @@ int main(int argc, char **argv) {
 
     win.show(argc, argv);
 
+    // 起動時のデフォルト Always on Top を適用
+    // (ユーザーはメニューまたはピンボタンで常時切替可能)
+    if (g_start_topmost) {
+        // fl_xid が有効になってから適用するため最初の wait を挟む
+        Fl::check();
+        win.toggle_always_on_top();
+    }
+
     // ベンチマーク用: 環境変数 CALCYX_BENCH_EXIT_MS が設定されていれば、
     // イベントループ到達後に指定ms後で自動終了する。scripts/bench.sh 用。
     if (const char *ms = std::getenv("CALCYX_BENCH_EXIT_MS")) {

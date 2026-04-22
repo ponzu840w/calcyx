@@ -63,9 +63,9 @@ add_library(calcyx_ui_common STATIC
     prefs/prefs_common.cpp
     prefs/tab_general.cpp
     prefs/tab_appearance.cpp
-    prefs/tab_number_format.cpp
     prefs/tab_input.cpp
-    prefs/tab_system.cpp
+    prefs/tab_number_format.cpp
+    prefs/tab_calculation.cpp
     settings_globals.cpp
     builtin_docs.cpp
     app_prefs.cpp

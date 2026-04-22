@@ -1,7 +1,8 @@
-// tab_general.cpp — General タブ (Window / Calculation Limits / Configuration)
+// tab_general.cpp — General タブ (Window / System Tray / Global Hotkey / Configuration)
 
 #include "prefs_common.h"
 #include "app_prefs.h"
+#include "platform_tray.h"
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>
 #include <cstdlib>
@@ -32,82 +33,166 @@ void build_general_tab(DlgState &st, int tab_h) {
     g->labelcolor(DLG_TEXT);
     g->labelsize(12);
 
-    int lx = 20, ly = 55;
+    const int lx = 16;
+    const int sw = DW - 40;
+    int ly = 50;
 
-    // --- Window ---
-    Fl_Box *sec_win = new Fl_Box(lx, ly, 200, 20, "Window");
-    sec_win->labelcolor(DLG_LABEL);
-    sec_win->labelsize(12);
-    sec_win->labelfont(FL_BOLD);
-    sec_win->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    ly += 25;
+    // ===== Window =====
+    {
+        int body_h = 90;
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Window");
+        int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
+        st.remember_pos_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+            "Remember window position on exit");
+        style_check(st.remember_pos_chk);
+        st.remember_pos_chk->value(g_remember_position ? 1 : 0);
+        inner_y += 26;
 
-    st.remember_pos_chk = new Fl_Check_Button(lx + 10, ly, 300, 25, "Remember window position on exit");
-    style_check(st.remember_pos_chk);
-    st.remember_pos_chk->value(g_remember_position ? 1 : 0);
-    ly += 40;
+        st.start_topmost_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+            "Start with Always on Top");
+        style_check(st.start_topmost_chk);
+        st.start_topmost_chk->value(g_start_topmost ? 1 : 0);
+        inner_y += 22;
 
-    // --- Calculation Limits ---
-    Fl_Box *sec_lim = new Fl_Box(lx, ly, 200, 20, "Calculation Limits");
-    sec_lim->labelcolor(DLG_LABEL);
-    sec_lim->labelsize(12);
-    sec_lim->labelfont(FL_BOLD);
-    sec_lim->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    ly += 25;
+        Fl_Box *note = new Fl_Box(lx + 30, inner_y, sw - 40, 16,
+            "Sets the initial state at launch. Toggle anytime from View menu or pin button.");
+        note->box(FL_NO_BOX);
+        note->labelcolor(DLG_LABEL);
+        note->labelsize(11);
+        note->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-    int slx = lx + 10, slw = 190, ssw = 100;
+        sec->end();
+        ly += SECTION_TITLE_H + body_h + SECTION_GAP;
+    }
 
-    Fl_Box *lb_arr = new Fl_Box(slx, ly, slw, 25, "Max array length:");
-    style_label(lb_arr);
-    lb_arr->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    st.limit_array_spin = new Fl_Spinner(slx + slw, ly, ssw, 25);
-    style_spinner(st.limit_array_spin);
-    st.limit_array_spin->range(1, 1000000);
-    st.limit_array_spin->step(1);
-    st.limit_array_spin->value(g_limit_max_array_length);
-    ly += 30;
+    // ===== System Tray =====
+    {
+        int body_h = 56;
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "System Tray");
+        int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
+        st.tray_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+            "Enable system tray icon");
+        style_check(st.tray_chk);
+        st.tray_chk->value(g_tray_icon ? 1 : 0);
 
-    Fl_Box *lb_str = new Fl_Box(slx, ly, slw, 25, "Max string length:");
-    style_label(lb_str);
-    lb_str->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    st.limit_string_spin = new Fl_Spinner(slx + slw, ly, ssw, 25);
-    style_spinner(st.limit_string_spin);
-    st.limit_string_spin->range(1, 1000000);
-    st.limit_string_spin->step(1);
-    st.limit_string_spin->value(g_limit_max_string_length);
-    ly += 30;
+        Fl_Box *note = new Fl_Box(lx + 30, inner_y + 24, sw - 40, 18,
+            "When enabled, closing the window minimizes to tray.");
+        note->box(FL_NO_BOX);
+        note->labelcolor(DLG_LABEL);
+        note->labelsize(11);
+        note->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        sec->end();
+        ly += SECTION_TITLE_H + body_h + SECTION_GAP;
+    }
 
-    Fl_Box *lb_dep = new Fl_Box(slx, ly, slw, 25, "Max call recursion depth:");
-    style_label(lb_dep);
-    lb_dep->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    st.limit_depth_spin = new Fl_Spinner(slx + slw, ly, ssw, 25);
-    style_spinner(st.limit_depth_spin);
-    st.limit_depth_spin->range(1, 1000);
-    st.limit_depth_spin->step(1);
-    st.limit_depth_spin->value(g_limit_max_call_depth);
-    ly += 40;
+    // ===== Global Hotkey =====
+    {
+        int body_h = 94;
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Global Hotkey");
+        int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
-    // --- Configuration ---
-    Fl_Box *sec_cfg = new Fl_Box(lx, ly, 200, 20, "Configuration");
-    sec_cfg->labelcolor(DLG_LABEL);
-    sec_cfg->labelsize(12);
-    sec_cfg->labelfont(FL_BOLD);
-    sec_cfg->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    ly += 25;
+        st.hotkey_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+            "Enable global hotkey");
+        style_check(st.hotkey_chk);
+        st.hotkey_chk->value(g_hotkey_enabled ? 1 : 0);
+        inner_y += 26;
 
-    std::string cfg_dir = AppPrefs::config_dir();
-    Fl_Box *path_box = new Fl_Box(slx, ly, DW - 60, 20);
-    path_box->copy_label(cfg_dir.c_str());
-    path_box->labelcolor(DLG_TEXT);
-    path_box->labelsize(11);
-    path_box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    ly += 25;
+        Fl_Box *mod_label = new Fl_Box(lx + 30, inner_y, 75, 22, "Modifiers:");
+        style_label(mod_label);
+        mod_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        int mx = lx + 110;
 
-    Fl_Button *open_dir_btn = new Fl_Button(slx, ly, 120, 28, "Open folder");
-    open_dir_btn->color(DLG_BTN);
-    open_dir_btn->labelcolor(DLG_TEXT);
-    open_dir_btn->labelsize(12);
-    open_dir_btn->callback(open_config_dir_cb, nullptr);
+#ifdef __APPLE__
+        st.hotkey_win_chk = new Fl_Check_Button(mx, inner_y, 60, 22, "Cmd");
+        style_check(st.hotkey_win_chk);
+        st.hotkey_win_chk->value(g_hotkey_win ? 1 : 0);
+        mx += 60;
+        st.hotkey_alt_chk = new Fl_Check_Button(mx, inner_y, 65, 22, "Option");
+        style_check(st.hotkey_alt_chk);
+        st.hotkey_alt_chk->value(g_hotkey_alt ? 1 : 0);
+        mx += 65;
+        st.hotkey_ctrl_chk = new Fl_Check_Button(mx, inner_y, 60, 22, "Ctrl");
+        style_check(st.hotkey_ctrl_chk);
+        st.hotkey_ctrl_chk->value(g_hotkey_ctrl ? 1 : 0);
+        mx += 60;
+        st.hotkey_shift_chk = new Fl_Check_Button(mx, inner_y, 60, 22, "Shift");
+#else
+        st.hotkey_win_chk = new Fl_Check_Button(mx, inner_y, 55, 22, "Win");
+        style_check(st.hotkey_win_chk);
+        st.hotkey_win_chk->value(g_hotkey_win ? 1 : 0);
+        mx += 55;
+        st.hotkey_alt_chk = new Fl_Check_Button(mx, inner_y, 50, 22, "Alt");
+        style_check(st.hotkey_alt_chk);
+        st.hotkey_alt_chk->value(g_hotkey_alt ? 1 : 0);
+        mx += 50;
+        st.hotkey_ctrl_chk = new Fl_Check_Button(mx, inner_y, 55, 22, "Ctrl");
+        style_check(st.hotkey_ctrl_chk);
+        st.hotkey_ctrl_chk->value(g_hotkey_ctrl ? 1 : 0);
+        mx += 55;
+        st.hotkey_shift_chk = new Fl_Check_Button(mx, inner_y, 60, 22, "Shift");
+#endif
+        style_check(st.hotkey_shift_chk);
+        st.hotkey_shift_chk->value(g_hotkey_shift ? 1 : 0);
+        inner_y += 26;
+
+        Fl_Box *key_label = new Fl_Box(lx + 30, inner_y, 75, 22, "Key:");
+        style_label(key_label);
+        key_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+        st.hotkey_key_choice = new Fl_Choice(lx + 110, inner_y, 100, 22);
+        st.hotkey_key_choice->color(DLG_INPUT);
+        st.hotkey_key_choice->textcolor(DLG_TEXT);
+        st.hotkey_key_choice->labelcolor(DLG_LABEL);
+        st.hotkey_key_choice->textsize(12);
+        int key_count = plat_key_names_count();
+        const char *const *key_names = plat_key_names();
+        int sel_idx = 0;
+        for (int i = 0; i < key_count; i++) {
+            st.hotkey_key_choice->add(key_names[i]);
+            if (plat_keyname_to_flkey(key_names[i]) == g_hotkey_keycode)
+                sel_idx = i;
+        }
+        st.hotkey_key_choice->value(sel_idx);
+        sec->end();
+
+        // enable チェックで依存ウィジェットをグレーアウト
+        auto hotkey_sync = [](Fl_Widget *, void *data) {
+            DlgState *s = static_cast<DlgState *>(data);
+            bool on = s->hotkey_chk->value() != 0;
+            auto set = [on](Fl_Widget *w) { if (on) w->activate(); else w->deactivate(); };
+            set(s->hotkey_win_chk);
+            set(s->hotkey_alt_chk);
+            set(s->hotkey_ctrl_chk);
+            set(s->hotkey_shift_chk);
+            set(s->hotkey_key_choice);
+        };
+        st.hotkey_chk->callback(hotkey_sync, &st);
+        hotkey_sync(nullptr, &st);
+
+        ly += SECTION_TITLE_H + body_h + SECTION_GAP;
+    }
+
+    // ===== Configuration =====
+    {
+        int body_h = 70;
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Configuration");
+        int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
+
+        std::string cfg_dir = AppPrefs::config_dir();
+        Fl_Box *path_box = new Fl_Box(lx + 10, inner_y, sw - 20, 18);
+        path_box->copy_label(cfg_dir.c_str());
+        path_box->labelcolor(DLG_TEXT);
+        path_box->labelsize(11);
+        path_box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+        Fl_Button *open_btn = new Fl_Button(lx + 10, inner_y + 22, 120, 26, "Open folder");
+        open_btn->color(DLG_BTN);
+        open_btn->labelcolor(DLG_TEXT);
+        open_btn->labelsize(12);
+        open_btn->callback(open_config_dir_cb, nullptr);
+        sec->end();
+        ly += SECTION_TITLE_H + body_h + SECTION_GAP;
+    }
 
     g->end();
 }

@@ -36,6 +36,7 @@ int  g_limit_max_string_length = DEFAULT_MAX_STRING_LENGTH;
 int  g_limit_max_call_depth    = DEFAULT_MAX_CALL_DEPTH;
 bool g_show_rowlines = DEFAULT_SHOW_ROWLINES;
 bool g_remember_position = DEFAULT_REMEMBER_POSITION;
+bool g_start_topmost     = DEFAULT_START_TOPMOST;
 bool g_tray_icon       = DEFAULT_TRAY_ICON;
 bool g_hotkey_enabled  = DEFAULT_HOTKEY_ENABLED;
 bool g_hotkey_win      = DEFAULT_HOTKEY_WIN;
@@ -159,6 +160,7 @@ const Desc SETTINGS_TABLE[] = {
 
     SEC("# ---- General ----\n"),
     BOOLE("remember_position", g_remember_position, DEFAULT_REMEMBER_POSITION),
+    BOOLE("start_topmost",     g_start_topmost,     DEFAULT_START_TOPMOST),
     BOOLE("show_rowlines", g_show_rowlines, DEFAULT_SHOW_ROWLINES),
     INTC("max_array_length",  g_limit_max_array_length,  DEFAULT_MAX_ARRAY_LENGTH,  1, 1000000),
     INTC("max_string_length", g_limit_max_string_length, DEFAULT_MAX_STRING_LENGTH, 1, 1000000),

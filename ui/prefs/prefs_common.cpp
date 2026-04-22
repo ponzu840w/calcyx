@@ -21,14 +21,10 @@ extern "C" {
 
 // ---- プレビュー用の式 ----
 static const std::vector<std::string> COLOR_PREVIEW_EXPRS = {
-    "123 + 456 * 2",
-    "sqrt(PI) / 3",
     "sin(cos(abs(max(1, 2))))",
-    "0xFF + 0b1010",
-    "1.5e3 + 2.0e-4",
-    "si(1000)",
+    "si(1.5e3 + 2.0e-4)",
     "\"hello\" + \" world\"",
-    "undefined_var",
+    "sqrt(PI) / 0",
 };
 
 static const std::vector<std::string> PREVIEW_EXPRS = {
@@ -70,6 +66,23 @@ void style_spinner(Fl_Spinner *sp) {
     sp->selection_color(g_colors.cursor);
 }
 
+// セクション枠を作る: 太字タイトル + 枠付き Fl_Group。呼び出し側で end() すること。
+Fl_Group *begin_section(int x, int y, int w, int body_h, const char *title) {
+    Fl_Box *label = new Fl_Box(x + 4, y, 300, SECTION_TITLE_H, title);
+    label->box(FL_NO_BOX);
+    label->labelcolor(DLG_LABEL);
+    label->labelsize(12);
+    label->labelfont(FL_BOLD);
+    label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+    Fl_Group *g = new Fl_Group(x, y + SECTION_TITLE_H, w, body_h);
+    g->box(FL_ENGRAVED_FRAME);
+    g->color(DLG_BG);
+    g->labelcolor(DLG_LABEL);
+    g->begin();
+    return g;
+}
+
 // ---- DlgState → グローバル反映 ----
 void write_dlg_to_globals(DlgState *st) {
     g_font_id   = st->font.selected_id;
@@ -86,6 +99,7 @@ void write_dlg_to_globals(DlgState *st) {
     g_limit_max_call_depth    = (int)st->limit_depth_spin->value();
     g_show_rowlines           = st->show_rowlines_chk->value() != 0;
     g_remember_position       = st->remember_pos_chk->value() != 0;
+    g_start_topmost           = st->start_topmost_chk->value() != 0;
     g_color_preset = st->preset_choice->value();
 }
 
@@ -236,6 +250,7 @@ void apply_settings(DlgState *st) {
     st->saved_limit_depth   = g_limit_max_call_depth;
     st->saved_show_rowlines   = g_show_rowlines;
     st->saved_remember_pos    = g_remember_position;
+    st->saved_start_topmost   = g_start_topmost;
     st->saved_preset          = g_color_preset;
     st->saved_colors          = g_colors;
     st->saved_user_colors     = st->user_colors;
@@ -293,6 +308,7 @@ void reset_to_defaults(DlgState *st) {
     // General
     st->show_rowlines_chk->value(DEFAULT_SHOW_ROWLINES ? 1 : 0);
     st->remember_pos_chk->value(DEFAULT_REMEMBER_POSITION ? 1 : 0);
+    st->start_topmost_chk->value(DEFAULT_START_TOPMOST ? 1 : 0);
     st->limit_array_spin->value(DEFAULT_MAX_ARRAY_LENGTH);
     st->limit_string_spin->value(DEFAULT_MAX_STRING_LENGTH);
     st->limit_depth_spin->value(DEFAULT_MAX_CALL_DEPTH);
@@ -314,6 +330,11 @@ void reset_to_defaults(DlgState *st) {
         }
         st->hotkey_key_choice->value(idx);
     }
+
+    // enable 系チェックに登録された sync コールバックを発火させ、
+    // 依存ウィジェットのグレーアウト状態を新しい値に合わせる。
+    st->hotkey_chk->do_callback();
+    st->fmt_exp_chk->do_callback();
 
     refresh_previews(st);
 }

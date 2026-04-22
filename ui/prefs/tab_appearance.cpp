@@ -386,7 +386,10 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     ly += 26;
 
     // --- Preview ---
-    int preview_h = tab_h - 25 - (ly - 30);
+    // 上: 直前のウィジェットとの間に小さな余白 / 下: タブ枠との間に同じ余白
+    const int PREVIEW_MARGIN = 6;
+    ly += PREVIEW_MARGIN;
+    int preview_h = tab_h - 25 - (ly - 30) - PREVIEW_MARGIN;
     st.font_preview_sv = nullptr;
     st.color_preview_sv = new SheetView(lx, ly, DW - 50, preview_h, true);
     st.font.preview = nullptr;

@@ -26,6 +26,7 @@ constexpr int  DEFAULT_MAX_STRING_LENGTH    = 256;
 constexpr int  DEFAULT_MAX_CALL_DEPTH       = 64;
 constexpr bool DEFAULT_SHOW_ROWLINES        = true;
 constexpr bool DEFAULT_REMEMBER_POSITION    = true;
+constexpr bool DEFAULT_START_TOPMOST        = false;
 constexpr int  DEFAULT_FMT_DECIMAL_LEN      = 9;
 constexpr bool DEFAULT_FMT_E_NOTATION       = true;
 constexpr int  DEFAULT_FMT_E_POSITIVE_MIN   = 15;
@@ -57,6 +58,7 @@ extern bool g_show_rowlines;
 
 // ウィンドウ
 extern bool g_remember_position;
+extern bool g_start_topmost;
 
 // ---- システムトレイ・ホットキー ----
 constexpr bool DEFAULT_TRAY_ICON       = false;

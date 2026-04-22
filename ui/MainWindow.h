@@ -23,6 +23,7 @@ public:
     void apply_ui_colors();
     void apply_tray_settings();  // PrefsDialog 変更後にトレイ再構築
     bool should_keep_running();  // トレイ常駐中は true、トレイ消失時は復帰
+    void toggle_always_on_top(); // 起動時適用 + メニュー/ボタンから呼ばれる
 
     int  handle(int event) override;
     void resize(int x, int y, int w, int h) override;
@@ -58,7 +59,6 @@ private:
     static void row_change_cb(void *data);  // SheetView からのコールバック
     void populate_samples_menu();
     static bool open_sample_file(MainWindow *win, const char *filename);
-    void toggle_always_on_top();
     void setup_tray();
     void teardown_tray();
     void toggle_visibility();

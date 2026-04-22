@@ -23,8 +23,8 @@
 class SheetView;
 
 // ---- ダイアログ全体のサイズ / スタイル定数 ----
-inline constexpr int DW = 540;
-inline constexpr int DH = 600;
+inline constexpr int DW = 580;
+inline constexpr int DH = 630;
 
 #define DLG_BG     g_colors.ui_bg
 #define DLG_INPUT  g_colors.ui_input
@@ -85,6 +85,7 @@ struct DlgState {
     // General tab
     Fl_Check_Button *show_rowlines_chk;
     Fl_Check_Button *remember_pos_chk;
+    Fl_Check_Button *start_topmost_chk;
     // System tab
     Fl_Check_Button *tray_chk;
     Fl_Check_Button *hotkey_chk;
@@ -122,6 +123,7 @@ struct DlgState {
     int         saved_limit_depth;
     bool        saved_show_rowlines;
     bool        saved_remember_pos;
+    bool        saved_start_topmost;
     void (*ui_cb)(void *);
     void       *ui_data;
     Fl_Window  *dlg_win;
@@ -132,6 +134,13 @@ struct DlgState {
 void style_label(Fl_Widget *w);
 void style_check(Fl_Check_Button *chk);
 void style_spinner(Fl_Spinner *sp);
+
+// 太字タイトルと枠付き Fl_Group を作る。呼び出し側で end() すること。
+// x, y は全体の左上。title が y..y+SECTION_TITLE_H、frame が y+SECTION_TITLE_H..y+SECTION_TITLE_H+body_h。
+Fl_Group *begin_section(int x, int y, int w, int body_h, const char *title);
+inline constexpr int SECTION_TITLE_H  = 18;
+inline constexpr int SECTION_GAP      = 10;
+inline constexpr int SECTION_PAD_TOP  = 8;  // 枠上端から子要素までの余白
 
 // ---- 状態同期 / プレビュー ----
 void write_dlg_to_globals(DlgState *st);
@@ -147,9 +156,9 @@ void reset_to_defaults(DlgState *st);
 // ---- 各タブの構築 (親 Fl_Tabs の子として Fl_Group を追加) ----
 void build_general_tab(DlgState &st, int tab_h);
 void build_appearance_tab(DlgState &st, int tab_h);
-void build_number_format_tab(DlgState &st, int tab_h);
 void build_input_tab(DlgState &st, int tab_h);
-void build_system_tab(DlgState &st, int tab_h);
+void build_number_format_tab(DlgState &st, int tab_h);
+void build_calculation_tab(DlgState &st, int tab_h);
 
 // ---- Appearance tab 内部で使う (フォントボタンが main dialog 経由で呼ぶ) ----
 std::string font_id_to_display_name(Fl_Font id);

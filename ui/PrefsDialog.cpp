@@ -1,5 +1,5 @@
 // PrefsDialog — 設定ダイアログの枠組み (5 タブ: General / Appearance /
-// Number Format / Input / System)。タブ本体は prefs/tab_*.cpp、
+// Input / Number Format / Calculation)。タブ本体は prefs/tab_*.cpp、
 // 共有ロジックは prefs/prefs_common.{h,cpp} に分割してある。
 
 #include "PrefsDialog.h"
@@ -26,7 +26,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     dlg.color(DLG_BG);
     st.dlg_win = &dlg;
 
-    const int TAB_H = DH - 60;
+    const int TAB_H = DH - 48;
     Fl_Tabs tabs(5, 5, DW - 10, TAB_H);
     tabs.color(DLG_BG);
     tabs.labelcolor(DLG_LABEL);
@@ -35,9 +35,9 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
 
     build_general_tab(st, TAB_H);
     build_appearance_tab(st, TAB_H);
-    build_number_format_tab(st, TAB_H);
     build_input_tab(st, TAB_H);
-    build_system_tab(st, TAB_H);
+    build_number_format_tab(st, TAB_H);
+    build_calculation_tab(st, TAB_H);
 
     tabs.end();
 
@@ -110,6 +110,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
         g_limit_max_call_depth    = st->saved_limit_depth;
         g_show_rowlines           = st->saved_show_rowlines;
         g_remember_position       = st->saved_remember_pos;
+        g_start_topmost           = st->saved_start_topmost;
         g_tray_icon               = st->saved_tray_icon;
         g_hotkey_enabled          = st->saved_hotkey_enabled;
         g_hotkey_win              = st->saved_hotkey_win;
