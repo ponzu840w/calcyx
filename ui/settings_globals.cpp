@@ -66,23 +66,8 @@ static std::string font_id_to_name(Fl_Font id) {
 
 static Fl_Font font_name_to_id(const std::string &name) {
     ensure_sys_fonts();
-    // ビルトイン 16 slot を先に探す。Linux では Fl::set_fonts() 列挙後に
-    // システムの "Courier" (Type 1 ビットマップ) が slot 16+ に現れて
-    // 優先ヒットしてしまうため、先に 0..FL_FREE_FONT-1 を走査する。
-    for (Fl_Font i = 0; i < FL_FREE_FONT; i++) {
-        int attr = 0;
-        const char *fn = Fl::get_font_name(i, &attr);
-        if (fn && name == fn) return i;
-    }
-    // 旧 conf との互換: "Courier" "Helvetica" "Times" "Screen" は
-    // ビルトイン slot に固定マップする。Linux で FL_COURIER を monospace
-    // に差し替えた後もマイグレーションで拾えるようにするため。
-    if (name == "Courier"   || name == "mono")   return FL_COURIER;
-    if (name == "Helvetica" || name == "sans")   return FL_HELVETICA;
-    if (name == "Times"     || name == "serif")  return FL_TIMES;
-    if (name == "Screen")                        return FL_SCREEN;
     Fl_Font n = Fl::set_fonts(nullptr);
-    for (Fl_Font i = FL_FREE_FONT; i < n; i++) {
+    for (Fl_Font i = 0; i < n; i++) {
         int attr = 0;
         const char *fn = Fl::get_font_name(i, &attr);
         if (fn && name == fn) return i;
