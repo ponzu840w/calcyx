@@ -1,0 +1,66 @@
+=========================================================
+calcyx font diagnostic dump (exp/font-debug)
+=========================================================
+
+[1] Built-in FLTK font slots (0..15) BEFORE our set_font override:
+  slot  0 FL_HELVETICA             raw='-*-helvetica-medium-r-normal--*'  pretty='helvetica' attr=0
+  slot  1 FL_HELVETICA_BOLD        raw='-*-helvetica-bold-r-normal--*'  pretty='helvetica bold' attr=1
+  slot  2 FL_HELVETICA_ITALIC      raw='-*-helvetica-medium-o-normal--*'  pretty='helvetica italic' attr=2
+  slot  3 FL_HELVETICA_BOLD_ITALIC raw='-*-helvetica-bold-o-normal--*'  pretty='helvetica bold italic' attr=3
+  slot  4 FL_COURIER               raw='-*-courier-medium-r-normal--*'  pretty='courier' attr=0
+  slot  5 FL_COURIER_BOLD          raw='-*-courier-bold-r-normal--*'  pretty='courier bold' attr=1
+  slot  6 FL_COURIER_ITALIC        raw='-*-courier-medium-o-normal--*'  pretty='courier italic' attr=2
+  slot  7 FL_COURIER_BOLD_ITALIC   raw='-*-courier-bold-o-normal--*'  pretty='courier bold italic' attr=3
+  slot  8 FL_TIMES                 raw='-*-times-medium-r-normal--*'  pretty='times' attr=0
+  slot  9 FL_TIMES_BOLD            raw='-*-times-bold-r-normal--*'  pretty='times bold' attr=1
+  slot 10 FL_TIMES_ITALIC          raw='-*-times-medium-i-normal--*'  pretty='times italic' attr=2
+  slot 11 FL_TIMES_BOLD_ITALIC     raw='-*-times-bold-i-normal--*'  pretty='times bold italic' attr=3
+  slot 12 FL_SYMBOL                raw='-*-symbol-*'  pretty='symbol' attr=0
+  slot 13 FL_SCREEN                raw='-*-lucidatypewriter-medium-r-normal-sans-*'  pretty='lucidatypewriter sans' attr=0
+  slot 14 FL_SCREEN_BOLD           raw='-*-lucidatypewriter-bold-r-normal-sans-*'  pretty='lucidatypewriter sans bold' attr=1
+  slot 15 FL_ZAPF_DINGBATS         raw='-*-*zapf dingbats-*'  pretty='zapf dingbats' attr=0
+
+[2] Applying Fl::set_font(FL_COURIER, ' monospace') ...
+  FL_COURIER raw=' monospace' pretty=' monospace'
+
+[3] Calling settings_init_defaults + settings_load ...
+  g_font_id = 29
+  fl_fonts[g_font_id] raw='-*-courier-medium-r-normal--*' pretty='courier'
+
+[4] Enumerating system fonts via Fl::set_fonts(nullptr) ...
+  total slots: 66
+  slots matching 'courier' (case-insensitive):
+    slot   4 pretty=' monospace' raw=' monospace' attr=0
+    slot   5 pretty='Bmonospace' raw='Bmonospace' attr=0
+    slot   6 pretty='courier italic' raw='-*-courier-medium-o-normal--*' attr=2
+    slot   7 pretty='courier bold italic' raw='-*-courier-bold-o-normal--*' attr=3
+    slot  25 pretty='courier 10 pitch' raw='-*-courier 10 pitch-medium-r-normal--*' attr=0
+    slot  26 pretty='courier 10 pitch bold' raw='-*-courier 10 pitch-bold-r-normal--*' attr=1
+    slot  27 pretty='courier 10 pitch italic' raw='-*-courier 10 pitch-medium-i-normal--*' attr=2
+    slot  28 pretty='courier 10 pitch bold italic' raw='-*-courier 10 pitch-bold-i-normal--*' attr=3
+    slot  29 pretty='courier' raw='-*-courier-medium-r-normal--*' attr=0
+    slot  30 pretty='courier bold' raw='-*-courier-bold-r-normal--*' attr=1
+    slot  31 pretty='courier italic' raw='-*-courier-medium-o-normal--*' attr=2
+    slot  32 pretty='courier bold italic' raw='-*-courier-bold-o-normal--*' attr=3
+
+[5] Loaded font files from /proc/self/maps BEFORE rendering:
+
+[6] Forcing a draw of FL_COURIER / g_font_id (FcPatternAddString trace on stderr) ...
+
+[7] Loaded font files AFTER rendering:
+
+[8] Environment:
+  LANG = ja_JP.UTF-8
+  LC_ALL = (unset)
+  DISPLAY = :0.0
+  XDG_SESSION_TYPE = x11
+  XDG_CURRENT_DESKTOP = icewm
+  GDK_BACKEND = (unset)
+  FC_DEBUG = (unset)
+
+[9] fc-match 'monospace' / 'Courier' / ' monospace' (via popen):
+  'monospace' -> fonts-japanese-gothic.ttf: "VL ゴシック" "regular"
+  'Courier' -> NimbusMonoPS-Regular.otf: "Nimbus Mono PS" "Regular"
+  ' monospace' -> fonts-japanese-gothic.ttf: "VL ゴシック" "regular"
+
+=== END OF DUMP ===
