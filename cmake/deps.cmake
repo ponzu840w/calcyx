@@ -41,6 +41,12 @@ if(NOT EXISTS "${_mpdec_stamp}")
 endif()
 
 # ---- FLTK (1.4.x 必須: insert_position() が 1.3.x にはない) ----
+# Linux で Xft/fontconfig が欠けていると FLTK が silently XLFD にフォールバックするため早期失敗させる。
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
+    find_package(Fontconfig REQUIRED)
+    find_package(X11 REQUIRED COMPONENTS Xft)
+endif()
+
 set(_fltk_stamp "${DEPS_DIR}/lib/libfltk-${FLTK_VERSION}.a.stamp")
 if(NOT EXISTS "${_fltk_stamp}")
     if(WIN32 AND CMAKE_CROSSCOMPILING)
