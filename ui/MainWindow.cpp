@@ -207,7 +207,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&File/&Save As...",  FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Undo",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
     menu_->add("&Edit/&Redo",       FL_COMMAND + 'y', menu_cb, (void*)"redo", FL_MENU_DIVIDER);
-    menu_->add("&Edit/Copy &All",   FL_COMMAND | FL_SHIFT + 'c', menu_cb, (void*)"copy_all", FL_MENU_DIVIDER);
+    menu_->add("&Edit/Copy &All",   (FL_COMMAND | FL_SHIFT) + 'c', menu_cb, (void*)"copy_all", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Insert Row Below", FL_Enter,            menu_cb, (void*)"insert_below");
     menu_->add("&Edit/Insert Row A&bove", FL_SHIFT | FL_Enter, menu_cb, (void*)"insert_above");
     menu_->add("&Edit/&Delete Row",       FL_COMMAND | FL_Delete,          menu_cb, (void*)"delete_row");
@@ -240,8 +240,8 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&View/Scientific Notation (&E)",  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
     menu_->add("&View/Show Thousands &Separator", 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
     menu_->add("&View/Show &Hex Separator",       0, menu_cb, (void*)"toggle_hexsep", FL_MENU_TOGGLE);
-    menu_->add("&View/Decimals &+",    FL_COMMAND | FL_SHIFT + '.', menu_cb, (void*)"dec_inc");
-    menu_->add("&View/Decimals &\xe2\x88\x92", FL_COMMAND | FL_SHIFT + ',', menu_cb, (void*)"dec_dec", FL_MENU_DIVIDER);
+    menu_->add("&View/Decimals &+",    (FL_COMMAND | FL_SHIFT) + '.', menu_cb, (void*)"dec_inc");
+    menu_->add("&View/Decimals &\xe2\x88\x92", (FL_COMMAND | FL_SHIFT) + ',', menu_cb, (void*)"dec_dec", FL_MENU_DIVIDER);
     menu_->add("&View/&Auto Completion",          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
     populate_samples_menu();
     menu_->add("&File/&Preferences...", FL_COMMAND + ',', menu_cb, (void*)"prefs");
@@ -467,6 +467,26 @@ void MainWindow::update_toolbar() {
 }
 
 int MainWindow::handle(int event) {
+#ifdef __APPLE__
+    // macOS: Cmd+Shift+, / Cmd+Shift+. を FLTK メニューより先に捕捉する。
+    // FLTK は Cmd+Shift+, を Cmd+, (Preferences) とマッチしてしまうため、
+    // handle() で先にキーを判定して直接ディスパッチする。
+    if (event == FL_SHORTCUT || event == FL_KEYBOARD) {
+        int key = Fl::event_key();
+        int state = Fl::event_state();
+        if ((state & (FL_COMMAND | FL_SHIFT)) == (FL_COMMAND | FL_SHIFT)) {
+            if (key == ',' || key == '<') {
+                menu_cb(this, (void *)"dec_dec");
+                return 1;
+            }
+            if (key == '.' || key == '>') {
+                menu_cb(this, (void *)"dec_inc");
+                return 1;
+            }
+        }
+    }
+#endif
+
     // ウィンドウ表示後に初回のみトレイ/ホットキーを初期化
     if (event == FL_SHOW && !tray_initialized_) {
         tray_initialized_ = true;
