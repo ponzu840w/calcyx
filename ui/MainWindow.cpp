@@ -101,7 +101,7 @@ private:
 };
 
 // コンパクトモードの右下コーナーに置くリサイズハンドル。
-// "」" 形 (下辺 + 右辺) を描画し、ドラッグでウィンドウサイズを変える。
+// 右下向き斜め矢印 (↘) を描画し、ドラッグでウィンドウサイズを変える。
 class ResizeGrip : public Fl_Box {
 public:
     ResizeGrip(int x, int y, int w, int h) : Fl_Box(x, y, w, h) {
@@ -115,8 +115,12 @@ public:
         int y0 = y() + pad;
         int x1 = x() + w() - 1 - pad;
         int y1 = y() + h() - 1 - pad;
-        fl_line(x0, y1, x1, y1);  // 下辺
-        fl_line(x1, y0, x1, y1);  // 右辺
+        fl_line_style(FL_SOLID, 2);
+        fl_line(x0, y0, x1, y1);   // 斜めの軸
+        int hlen = 6;
+        fl_line(x1, y1, x1 - hlen, y1);  // 矢じり: 左へ
+        fl_line(x1, y1, x1, y1 - hlen);  // 矢じり: 上へ
+        fl_line_style(0);
     }
     int handle(int e) override {
         switch (e) {
