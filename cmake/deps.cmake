@@ -47,7 +47,16 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT CMAKE_CROSSCOMPILING)
     find_package(X11 REQUIRED COMPONENTS Xft)
 endif()
 
-set(_fltk_stamp "${DEPS_DIR}/lib/libfltk-${FLTK_VERSION}.a.stamp")
+# patch-fltk.py が変わったら stamp / PREFIX も変わってキャッシュが自動的に
+# 無効化されるよう、パッチスクリプトの内容ハッシュを両者に埋め込む。
+# CMAKE_CONFIGURE_DEPENDS に登録して、スクリプト更新時に cmake 再構成が
+# 自動で走るようにする。
+set(_fltk_patch "${CMAKE_SOURCE_DIR}/cmake/patch-fltk.py")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_fltk_patch}")
+file(SHA256 "${_fltk_patch}" _fltk_patch_hash)
+string(SUBSTRING "${_fltk_patch_hash}" 0 12 _fltk_patch_tag)
+
+set(_fltk_stamp "${DEPS_DIR}/lib/libfltk-${FLTK_VERSION}-${_fltk_patch_tag}.a.stamp")
 if(NOT EXISTS "${_fltk_stamp}")
     if(WIN32 AND CMAKE_CROSSCOMPILING)
         set(_fltk_toolchain -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
@@ -61,11 +70,15 @@ if(NOT EXISTS "${_fltk_stamp}")
         set(_nproc 4)
     endif()
 
+    # PREFIX にハッシュを含めることで、新しいパッチでは src/build/stamp が
+    # 別ディレクトリになり、ExternalProject 内部の stamp 経由でスキップされず
+    # 確実にパッチ適用から再実行される。
     ExternalProject_Add(dep_fltk
+        PREFIX "dep_fltk-${_fltk_patch_tag}"
         URL      https://github.com/fltk/fltk/releases/download/release-${FLTK_VERSION}/fltk-${FLTK_VERSION}-source.tar.gz
         URL_HASH SHA256=94b464cce634182c8407adac1be5fc49678986ca93285699b444352af89b4efe
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        PATCH_COMMAND ${CMAKE_COMMAND} -E env python3 ${CMAKE_SOURCE_DIR}/cmake/patch-fltk.py <SOURCE_DIR>
+        PATCH_COMMAND ${CMAKE_COMMAND} -E env python3 ${_fltk_patch} <SOURCE_DIR>
         CMAKE_ARGS
             ${_fltk_toolchain}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
