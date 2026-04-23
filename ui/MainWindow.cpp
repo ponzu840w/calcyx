@@ -12,6 +12,8 @@
 #include <FL/Fl_SVG_Image.H>
 #include <FL/Fl_Help_View.H>
 #include <FL/fl_utf8.h>
+#include <FL/Fl_Box.H>
+#include <FL/fl_draw.H>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -54,6 +56,51 @@ static std::string find_icon_svg();
 #define C_MENU_BG  g_colors.ui_menu
 #define C_MENU_FG  g_colors.ui_text
 
+// コンパクトモードのドラッグハンドル。4 ドット柄を描画し、
+// FL_PUSH / FL_DRAG でウィンドウを追従移動させる。
+class DragGrip : public Fl_Box {
+public:
+    DragGrip(int x, int y, int w, int h) : Fl_Box(x, y, w, h) {
+        box(FL_FLAT_BOX);
+    }
+    void draw() override {
+        Fl_Box::draw();
+        // 4 ドット (2x2) を中央に描く
+        fl_color(labelcolor());
+        int cx = x() + w() / 2, cy = y() + h() / 2;
+        int d = 2;   // ドット径
+        int g = 4;   // ドット間隔
+        for (int dy = -1; dy <= 0; dy++) {
+            for (int dx = -1; dx <= 0; dx++) {
+                int px = cx + dx * g + g / 2 - d / 2;
+                int py = cy + dy * g + g / 2 - d / 2;
+                fl_rectf(px, py, d, d);
+            }
+        }
+    }
+    int handle(int e) override {
+        switch (e) {
+            case FL_ENTER:
+                fl_cursor(FL_CURSOR_MOVE);
+                return 1;
+            case FL_LEAVE:
+                fl_cursor(FL_CURSOR_DEFAULT);
+                return 1;
+            case FL_PUSH:
+                drag_dx_ = Fl::event_x_root() - window()->x_root();
+                drag_dy_ = Fl::event_y_root() - window()->y_root();
+                return 1;
+            case FL_DRAG:
+                window()->position(Fl::event_x_root() - drag_dx_,
+                                   Fl::event_y_root() - drag_dy_);
+                return 1;
+        }
+        return Fl_Box::handle(e);
+    }
+private:
+    int drag_dx_ = 0, drag_dy_ = 0;
+};
+
 MainWindow::MainWindow(int w, int h, const char *title)
     : Fl_Double_Window(w, h, title)
 {
@@ -78,6 +125,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&Edit/Move Row Do&wn",    FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Recalculate", FL_F + 5, menu_cb, (void*)"recalc");
     menu_->add("&View/Always on &Top", FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
+    menu_->add("&View/&Compact Mode", FL_COMMAND | FL_SHIFT + 'm', menu_cb, (void*)"toggle_compact", FL_MENU_TOGGLE);
     menu_->add("&View/Sys&tem Tray",              0, menu_cb, (void*)"toggle_tray",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
     // Color Scheme サブメニュー (FL_MENU_RADIO)
@@ -117,6 +165,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
             if (d && strcmp(d, "undo") == 0) mi_undo_ = i;
             if (d && strcmp(d, "redo") == 0) mi_redo_ = i;
             if (d && strcmp(d, "topmost") == 0) mi_topmost_ = i;
+            if (d && strcmp(d, "toggle_compact") == 0) mi_compact_ = i;
             if (d && strcmp(d, "toggle_rowlines") == 0)  mi_rowlines_  = i;
             if (d && strcmp(d, "toggle_thousands") == 0) mi_thousands_ = i;
             if (d && strcmp(d, "toggle_hexsep") == 0)    mi_hexsep_    = i;
@@ -182,6 +231,23 @@ MainWindow::MainWindow(int w, int h, const char *title)
     // フォーカス行変更時に Fl_Choice を更新
     sheet_->set_row_change_cb(row_change_cb, this);
 
+    // コンパクトモード用のオーバーレイ (通常は hide)。右上にドラッグ
+    // グリップ、その下に解除ボタンを配置する。sheet_ より後に追加する
+    // ことで sheet 上に描画される (popup_ より前なので popup が最前面)。
+    drag_grip_ = new DragGrip(w - GRIP_SZ, 0, GRIP_SZ, GRIP_SZ);
+    drag_grip_->color(C_MENU_BG);
+    drag_grip_->labelcolor(C_MENU_FG);
+    drag_grip_->hide();
+
+    compact_exit_ = new Fl_Button(w - GRIP_SZ, GRIP_SZ, GRIP_SZ, GRIP_SZ, "\xc3\x97");  // ×
+    compact_exit_->box(FL_FLAT_BOX);
+    compact_exit_->color(C_MENU_BG);
+    compact_exit_->labelcolor(C_MENU_FG);
+    compact_exit_->labelsize(14);
+    compact_exit_->visible_focus(0);
+    compact_exit_->callback(menu_cb, (void*)"toggle_compact");
+    compact_exit_->hide();
+
     // 補完ポップアップ: 最後の子として追加することで全ての上に描画される
     // Fl_Group ベースなので OS ウィンドウを作らず、フォーカス問題がない
     popup_ = new CompletionPopup();
@@ -206,6 +272,13 @@ MainWindow::MainWindow(int w, int h, const char *title)
 
 void MainWindow::resize(int nx, int ny, int nw, int nh) {
     Fl_Double_Window::resize(nx, ny, nw, nh);
+    if (compact_mode_) {
+        // コンパクトモード: sheet が全面、右上にドラッグ/解除を重ねる
+        sheet_->resize(0, 0, nw, nh);
+        drag_grip_->resize(nw - GRIP_SZ, 0, GRIP_SZ, GRIP_SZ);
+        compact_exit_->resize(nw - GRIP_SZ, GRIP_SZ, GRIP_SZ, GRIP_SZ);
+        return;
+    }
     int mw = calc_menu_w(nw);
     menu_->resize(0, 0, mw, MENU_H);
     int rx = nw - CHOICE_W;
@@ -233,6 +306,8 @@ void MainWindow::apply_ui_colors() {
     btn_about_->labelcolor(C_MENU_FG);
     fmt_choice_->color(C_MENU_BG);
     fmt_choice_->textcolor(C_MENU_FG);
+    if (drag_grip_)    { drag_grip_->color(C_MENU_BG);    drag_grip_->labelcolor(C_MENU_FG); }
+    if (compact_exit_) { compact_exit_->color(C_MENU_BG); compact_exit_->labelcolor(C_MENU_FG); }
     update_toolbar();
     redraw();
 }
@@ -471,6 +546,8 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         }, win);
     } else if (strcmp(cmd, "topmost") == 0) {
         win->toggle_always_on_top();
+    } else if (strcmp(cmd, "toggle_compact") == 0) {
+        win->toggle_compact_mode();
     } else if (strcmp(cmd, "toggle_rowlines") == 0) {
         g_show_rowlines = !g_show_rowlines;
         win->sheet_->redraw();
@@ -675,6 +752,61 @@ void MainWindow::toggle_always_on_top() {
     sync_view_menu_toggles();
 }
 
+// コンパクトモードの切替。UI クロームを隠してシート領域を全面化する。
+// ボーダー (OS タイトルバー) の切替には hide()/show() サイクルが必要な
+// プラットフォームがあるため、全環境で共通処理する。always-on-top は
+// show() で失われるので再適用する。
+void MainWindow::toggle_compact_mode() {
+    compact_mode_ = !compact_mode_;
+
+    if (compact_mode_) {
+        // 復帰用に現在のジオメトリを記憶
+        saved_x_ = x(); saved_y_ = y();
+        saved_w_ = w(); saved_h_ = h();
+
+        menu_->hide();
+        btn_undo_->hide();
+        btn_redo_->hide();
+        btn_topmost_->hide();
+        btn_about_->hide();
+        fmt_choice_->hide();
+        drag_grip_->show();
+        compact_exit_->show();
+    } else {
+        menu_->show();
+        btn_undo_->show();
+        btn_redo_->show();
+        btn_topmost_->show();
+        btn_about_->show();
+        fmt_choice_->show();
+        drag_grip_->hide();
+        compact_exit_->hide();
+    }
+
+    // ボーダー切替 (show 後の border() は効かない環境があるため hide/show)。
+    // hide() は save_prefs を呼ぶので直接 Fl_Double_Window::hide() を叩く。
+    Fl_Double_Window::hide();
+    border(compact_mode_ ? 0 : 1);
+
+    if (compact_mode_) {
+        // 現ジオメトリをそのまま維持 (ユーザーが後でドラッグ/リサイズ)
+        resize(saved_x_, saved_y_, saved_w_, saved_h_);
+    } else {
+        resize(saved_x_, saved_y_, saved_w_, saved_h_);
+    }
+
+    show();
+
+    // hide/show で外れる topmost を再適用
+    if (topmost_) {
+        topmost_ = false;
+        toggle_always_on_top();  // 再度 true に戻しつつプラットフォーム側を反映
+    }
+
+    sync_view_menu_toggles();
+    redraw();
+}
+
 // View メニューのトグル項目 (FL_MENU_TOGGLE) のチェック状態を
 // 現在の g_ 変数に合わせる。起動時・Prefs 適用後・プログラム的な
 // トグル時に呼ぶ。メニュー経由のクリックでは FLTK が自動で切替える
@@ -692,6 +824,7 @@ void MainWindow::sync_view_menu_toggles() {
     set_check(mi_auto_complete_, g_input_auto_completion);
     set_check(mi_tray_,          g_tray_icon);
     set_check(mi_topmost_,       topmost_);
+    set_check(mi_compact_,       compact_mode_);
     for (int i = 0; i < COLOR_PRESET_COUNT; i++)
         set_check(mi_scheme_[i], i == g_color_preset);
     menu_->redraw();

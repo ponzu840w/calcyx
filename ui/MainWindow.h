@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+class DragGrip;  // コンパクトモード用 (MainWindow.cpp で定義)
+
 class MainWindow : public Fl_Double_Window {
 public:
     MainWindow(int w, int h, const char *title);
@@ -24,6 +26,7 @@ public:
     void apply_tray_settings();  // PrefsDialog 変更後にトレイ再構築
     bool should_keep_running();  // トレイ常駐中は true、トレイ消失時は復帰
     void toggle_always_on_top(); // 起動時適用 + メニュー/ボタンから呼ばれる
+    void toggle_compact_mode();  // コンパクトモードの切替
 
     int  handle(int event) override;
     void resize(int x, int y, int w, int h) override;
@@ -39,6 +42,8 @@ private:
     Fl_Choice       *fmt_choice_;
     SheetView       *sheet_;
     CompletionPopup *popup_;
+    DragGrip        *drag_grip_    = nullptr;  // コンパクトモード: ドラッグハンドル
+    Fl_Button       *compact_exit_ = nullptr;  // コンパクトモード: 解除ボタン
     int              mi_undo_;    // Edit/Undo メニュー項目インデックス
     int              mi_redo_;    // Edit/Redo メニュー項目インデックス
     // View メニューのトグル項目 (g_ 変数と同期)
@@ -56,6 +61,7 @@ private:
     static const int ABOUT_W  = 22;   // ? ボタン幅
     static const int PIN_W    = 22;   // 📌 ピンボタン幅
     static const int PAD      = 4;
+    static const int GRIP_SZ  = 18;   // コンパクトモード: ドラッグ/解除ハンドル一辺
 
     // メニューバー幅 = ウィンドウ幅 − 右側ウィジェット群
     static int calc_menu_w(int win_w) {
@@ -80,6 +86,11 @@ private:
     bool topmost_ = false;
     bool tray_active_ = false;
     int  mi_topmost_ = -1;  // View/Always on Top メニュー項目インデックス
+    int  mi_compact_ = -1;  // View/Compact Mode メニュー項目インデックス
     std::vector<std::string> sample_files_;  // メニュー文字列の安定した記憶域
     std::vector<std::string> scheme_cmds_;   // "scheme_N" コマンドの安定した記憶域
+
+    // コンパクトモード状態
+    bool compact_mode_ = false;
+    int  saved_x_ = 0, saved_y_ = 0, saved_w_ = 0, saved_h_ = 0;
 };
