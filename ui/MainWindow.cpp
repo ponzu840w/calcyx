@@ -56,6 +56,15 @@ static std::string find_icon_svg();
 #define C_MENU_BG  g_colors.ui_menu
 #define C_MENU_FG  g_colors.ui_text
 
+// コンパクトモードのアイコン色: labelcolor と直下のシート背景色の
+// 50:50 ブレンド。FLTK 1.x は widget 単位の α 合成を持たないので、
+// 真の半透明ではなく「薄めた色」で擬似的にシート数字が透けて見える
+// ように見せる。アイコンのフィルは極力使わず枠線だけに留めるので、
+// 数字のストロークは主にアイコンの隙間から視認できる。
+static Fl_Color compact_overlay_color(Fl_Color fg) {
+    return fl_color_average(fg, g_colors.bg, 0.5f);
+}
+
 // コンパクトモードのドラッグハンドル。3x3 ドット柄を描画し、
 // FL_PUSH / FL_DRAG でウィンドウを追従移動させる。
 class DragGrip : public Fl_Box {
@@ -65,7 +74,7 @@ public:
     }
     void draw() override {
         Fl_Box::draw();
-        fl_color(labelcolor());
+        fl_color(compact_overlay_color(labelcolor()));
         int cx = x() + w() / 2, cy = y() + h() / 2;
         int d = 2;   // ドット径
         int g = 4;   // ドット間隔
@@ -109,7 +118,7 @@ public:
     }
     void draw() override {
         Fl_Box::draw();
-        fl_color(labelcolor());
+        fl_color(compact_overlay_color(labelcolor()));
         int pad = 4;
         int x0 = x() + pad;
         int y0 = y() + pad;
@@ -163,13 +172,22 @@ public:
     }
     void draw() override {
         Fl_Button::draw();
-        fl_color(labelcolor());
+        // 通常モードのツールバーに置かれる btn_compact_ はメニュー背景の
+        // 上に乗るので、半透明風の薄色ブレンドは適用しない。オーバーレイ
+        // (compact_exit_) だけがシートの上に出るので、シート色とのブレンド
+        // が意味を持つ。
+        bool overlay = box() == FL_NO_BOX;
+        fl_color(overlay ? compact_overlay_color(labelcolor()) : labelcolor());
         int cx = x() + w() / 2, cy = y() + h() / 2;
         int ow = 12, oh = 10;              // 外枠
         int ox = cx - ow / 2, oy = cy - oh / 2;
         fl_rect(ox, oy, ow, oh);
-        int iw = 5, ih = 4;                // 右下の内側矩形
-        fl_rectf(ox + ow - iw - 1, oy + oh - ih - 1, iw, ih);
+        // 右下の内側矩形: オーバーレイは枠線のみ、通常ボタンは塗り。
+        int iw = 5, ih = 4;
+        int ix = ox + ow - iw - 1;
+        int iy = oy + oh - ih - 1;
+        if (overlay) fl_rect (ix, iy, iw, ih);
+        else         fl_rectf(ix, iy, iw, ih);
     }
 };
 
