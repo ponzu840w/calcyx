@@ -215,7 +215,10 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&Edit/Move Row Do&wn",    FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
     menu_->add("&Edit/&Recalculate", FL_F + 5, menu_cb, (void*)"recalc");
     menu_->add("&View/Always on &Top", FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
-    menu_->add("&View/&Compact Mode", FL_COMMAND | FL_SHIFT + 'm', menu_cb, (void*)"toggle_compact", FL_MENU_TOGGLE);
+    // Ctrl+: (JIS では Zoom Out の Ctrl+- と同じキー列。
+    // OEM キー → FLTK keysym 化の配列ずれは
+    // cmake/patch-fltk.py の Fl_win32.cxx パッチで根本対応済み)。
+    menu_->add("&View/&Compact Mode", FL_COMMAND | ':', menu_cb, (void*)"toggle_compact", FL_MENU_TOGGLE);
     menu_->add("&View/Sys&tem Tray",              0, menu_cb, (void*)"toggle_tray",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
     // Color Scheme サブメニュー (FL_MENU_RADIO)
@@ -231,8 +234,8 @@ MainWindow::MainWindow(int w, int h, const char *title)
     }
     menu_->add("&View/Show &Row Lines",           0, menu_cb, (void*)"toggle_rowlines",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
-    menu_->add("&View/Zoom &In",       FL_COMMAND + '=', menu_cb, (void*)"zoom_in");
-    menu_->add("&View/Zoom &Out",      FL_COMMAND + '-', menu_cb, (void*)"zoom_out");
+    menu_->add("&View/Zoom &In",       FL_COMMAND | FL_SHIFT | '-', menu_cb, (void*)"zoom_in");
+    menu_->add("&View/Zoom &Out",      FL_COMMAND | '-',             menu_cb, (void*)"zoom_out");
     menu_->add("&View/Reset &Zoom",    FL_COMMAND + '0', menu_cb, (void*)"zoom_reset", FL_MENU_DIVIDER);
     menu_->add("&View/Scientific Notation (&E)",  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
     menu_->add("&View/Show Thousands &Separator", 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
@@ -496,7 +499,17 @@ int MainWindow::handle(int event) {
         }
     }
 #endif
-    return Fl_Double_Window::handle(event);
+    int ret = Fl_Double_Window::handle(event);
+    if (!ret && event == FL_SHORTCUT) {
+        // コンパクトモード中はメニューバーが hide されていて
+        // Fl_Menu_Bar::handle(FL_SHORTCUT) が発火しない。復帰できるよう
+        // ここで同じショートカットを拾う。
+        if (Fl::test_shortcut(FL_COMMAND | ':')) {
+            toggle_compact_mode();
+            return 1;
+        }
+    }
+    return ret;
 }
 
 void MainWindow::open_file(const char *path) {
