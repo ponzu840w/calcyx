@@ -41,7 +41,6 @@ private:
     Fl_Button       *btn_redo_;   // → ツールバー Redo
     Fl_Button       *btn_compact_; // ▣ コンパクトモード開始トグル
     Fl_Button       *btn_topmost_; // 📌 Always on Top トグル
-    Fl_Button       *btn_about_;  // ? About ボタン (右寄せ)
     Fl_Choice       *fmt_choice_;
     SheetView       *sheet_;
     CompletionPopupBase *popup_;
@@ -65,7 +64,6 @@ private:
     static const int MENU_H    = 24;
     static const int CHOICE_W  = 110;
     static const int BTN_W     = 22;   // ← → ボタン幅
-    static const int ABOUT_W   = 22;   // ? ボタン幅
     static const int PIN_W     = 22;   // 📌 ピンボタン幅
     static const int COMPACT_W = 22;   // ▣ コンパクトモード開始ボタン幅
     static const int PAD       = 4;
@@ -73,7 +71,7 @@ private:
 
     // メニューバー幅 = ウィンドウ幅 − 右側ウィジェット群
     static int calc_menu_w(int win_w) {
-        return win_w - BTN_W * 2 - COMPACT_W - PIN_W - PAD - ABOUT_W - PAD - CHOICE_W;
+        return win_w - BTN_W * 2 - COMPACT_W - PIN_W - PAD - CHOICE_W;
     }
 
     static void menu_cb  (Fl_Widget *w, void *data);

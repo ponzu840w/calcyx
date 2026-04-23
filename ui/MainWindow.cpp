@@ -244,7 +244,8 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add("&View/Decimals &\xe2\x88\x92", FL_COMMAND | FL_SHIFT + ',', menu_cb, (void*)"dec_dec", FL_MENU_DIVIDER);
     menu_->add("&View/&Auto Completion",          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
     populate_samples_menu();
-    menu_->add("&File/&Preferences...", FL_COMMAND + ',', menu_cb, (void*)"prefs", FL_MENU_DIVIDER);
+    menu_->add("&File/&Preferences...", FL_COMMAND + ',', menu_cb, (void*)"prefs");
+    menu_->add("&File/&About calcyx",   FL_F + 1,         menu_cb, (void*)"about", FL_MENU_DIVIDER);
     menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
 
     // 全メニュー追加後にインデックスを取得
@@ -283,12 +284,9 @@ MainWindow::MainWindow(int w, int h, const char *title)
         b->visible_focus(0);
         return b;
     };
-    // 右端から: [Format▼] PAD [?] PAD [📌] [▣] [→] [←]
+    // 右端から: [Format▼] PAD [📌] [▣] [→] [←]
     int rx = w - CHOICE_W;                              // Format▼
-    rx -= PAD + ABOUT_W;                                // ?
-    btn_about_ = make_btn(rx, ABOUT_W, "?", "about");
-    btn_about_->labelsize(13);
-    rx -= PIN_W;                                        // 📌
+    rx -= PAD + PIN_W;                                  // 📌
     btn_topmost_ = make_btn(rx, PIN_W, "@menu", "topmost");
     btn_topmost_->labelsize(10);
     rx -= COMPACT_W;                                    // ▣ (コンパクトモード開始)
@@ -396,9 +394,7 @@ void MainWindow::resize(int nx, int ny, int nw, int nh) {
     menu_->resize(0, 0, mw, MENU_H);
     int rx = nw - CHOICE_W;
     fmt_choice_->resize(rx, 0, CHOICE_W, MENU_H);
-    rx -= PAD + ABOUT_W;
-    btn_about_->resize(rx, 0, ABOUT_W, MENU_H);
-    rx -= PIN_W;
+    rx -= PAD + PIN_W;
     btn_topmost_->resize(rx, 0, PIN_W, MENU_H);
     rx -= COMPACT_W;
     btn_compact_->resize(rx, 0, COMPACT_W, MENU_H);
@@ -419,8 +415,6 @@ void MainWindow::apply_ui_colors() {
     btn_compact_->labelcolor(C_MENU_FG);
     btn_topmost_->color(C_MENU_BG);
     btn_topmost_->labelcolor(topmost_ ? C_MENU_FG : fl_inactive(C_MENU_FG));
-    btn_about_->color(C_MENU_BG);
-    btn_about_->labelcolor(C_MENU_FG);
     fmt_choice_->color(C_MENU_BG);
     fmt_choice_->textcolor(C_MENU_FG);
     if (drag_grip_)    { drag_grip_->color(C_MENU_BG);    drag_grip_->labelcolor(C_MENU_FG); }
@@ -953,7 +947,6 @@ void MainWindow::toggle_compact_mode() {
         btn_redo_->hide();
         btn_compact_->hide();
         btn_topmost_->hide();
-        btn_about_->hide();
         fmt_choice_->hide();
         drag_grip_->show();
         compact_exit_->show();
@@ -973,7 +966,6 @@ void MainWindow::toggle_compact_mode() {
         btn_redo_->show();
         btn_compact_->show();
         btn_topmost_->show();
-        btn_about_->show();
         fmt_choice_->show();
         drag_grip_->hide();
         compact_exit_->hide();
