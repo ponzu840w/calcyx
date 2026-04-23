@@ -56,7 +56,7 @@ static std::string find_icon_svg();
 #define C_MENU_BG  g_colors.ui_menu
 #define C_MENU_FG  g_colors.ui_text
 
-// コンパクトモードのドラッグハンドル。4 ドット柄を描画し、
+// コンパクトモードのドラッグハンドル。3x3 ドット柄を描画し、
 // FL_PUSH / FL_DRAG でウィンドウを追従移動させる。
 class DragGrip : public Fl_Box {
 public:
@@ -65,15 +65,14 @@ public:
     }
     void draw() override {
         Fl_Box::draw();
-        // 4 ドット (2x2) を中央に描く
         fl_color(labelcolor());
         int cx = x() + w() / 2, cy = y() + h() / 2;
         int d = 2;   // ドット径
         int g = 4;   // ドット間隔
-        for (int dy = -1; dy <= 0; dy++) {
-            for (int dx = -1; dx <= 0; dx++) {
-                int px = cx + dx * g + g / 2 - d / 2;
-                int py = cy + dy * g + g / 2 - d / 2;
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int px = cx + dx * g - d / 2;
+                int py = cy + dy * g - d / 2;
                 fl_rectf(px, py, d, d);
             }
         }
@@ -99,6 +98,74 @@ public:
     }
 private:
     int drag_dx_ = 0, drag_dy_ = 0;
+};
+
+// コンパクトモードの右下コーナーに置くリサイズハンドル。
+// "」" 形 (下辺 + 右辺) を描画し、ドラッグでウィンドウサイズを変える。
+class ResizeGrip : public Fl_Box {
+public:
+    ResizeGrip(int x, int y, int w, int h) : Fl_Box(x, y, w, h) {
+        box(FL_FLAT_BOX);
+    }
+    void draw() override {
+        Fl_Box::draw();
+        fl_color(labelcolor());
+        int pad = 4;
+        int x0 = x() + pad;
+        int y0 = y() + pad;
+        int x1 = x() + w() - 1 - pad;
+        int y1 = y() + h() - 1 - pad;
+        fl_line(x0, y1, x1, y1);  // 下辺
+        fl_line(x1, y0, x1, y1);  // 右辺
+    }
+    int handle(int e) override {
+        switch (e) {
+            case FL_ENTER:
+                fl_cursor(FL_CURSOR_NWSE);
+                return 1;
+            case FL_LEAVE:
+                fl_cursor(FL_CURSOR_DEFAULT);
+                return 1;
+            case FL_PUSH:
+                start_w_  = window()->w();
+                start_h_  = window()->h();
+                start_mx_ = Fl::event_x_root();
+                start_my_ = Fl::event_y_root();
+                return 1;
+            case FL_DRAG: {
+                int nw = start_w_ + (Fl::event_x_root() - start_mx_);
+                int nh = start_h_ + (Fl::event_y_root() - start_my_);
+                const int MIN_W = 120, MIN_H = 60;
+                if (nw < MIN_W) nw = MIN_W;
+                if (nh < MIN_H) nh = MIN_H;
+                window()->size(nw, nh);
+                return 1;
+            }
+        }
+        return Fl_Box::handle(e);
+    }
+private:
+    int start_w_ = 0, start_h_ = 0, start_mx_ = 0, start_my_ = 0;
+};
+
+// コンパクトモード開始/解除ボタン用のアイコン描画 (PiP 風)。
+// Fl_Button を継承して、ラベル代わりに外枠 + 右下インナー矩形を描く。
+class CompactIconButton : public Fl_Button {
+public:
+    CompactIconButton(int x, int y, int w, int h) : Fl_Button(x, y, w, h) {
+        box(FL_FLAT_BOX);
+        visible_focus(0);
+    }
+    void draw() override {
+        Fl_Button::draw();
+        fl_color(labelcolor());
+        int cx = x() + w() / 2, cy = y() + h() / 2;
+        int ow = 12, oh = 10;              // 外枠
+        int ox = cx - ow / 2, oy = cy - oh / 2;
+        fl_rect(ox, oy, ow, oh);
+        int iw = 5, ih = 4;                // 右下の内側矩形
+        fl_rectf(ox + ow - iw - 1, oy + oh - ih - 1, iw, ih);
+    }
 };
 
 MainWindow::MainWindow(int w, int h, const char *title)
@@ -190,7 +257,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
         b->visible_focus(0);
         return b;
     };
-    // 右端から: [Format▼] PAD [?] PAD [📌] [← →]
+    // 右端から: [Format▼] PAD [?] PAD [📌] [▣] [→] [←]
     int rx = w - CHOICE_W;                              // Format▼
     rx -= PAD + ABOUT_W;                                // ?
     btn_about_ = make_btn(rx, ABOUT_W, "?", "about");
@@ -198,6 +265,11 @@ MainWindow::MainWindow(int w, int h, const char *title)
     rx -= PIN_W;                                        // 📌
     btn_topmost_ = make_btn(rx, PIN_W, "@menu", "topmost");
     btn_topmost_->labelsize(10);
+    rx -= COMPACT_W;                                    // ▣ (コンパクトモード開始)
+    btn_compact_ = new CompactIconButton(rx, 0, COMPACT_W, MENU_H);
+    btn_compact_->color(C_MENU_BG);
+    btn_compact_->labelcolor(C_MENU_FG);
+    btn_compact_->callback(menu_cb, (void*)"toggle_compact");
     rx -= BTN_W;                                        // →
     btn_redo_ = make_btn(rx, BTN_W, "@->", "redo");
     rx -= BTN_W;                                        // ←
@@ -232,21 +304,24 @@ MainWindow::MainWindow(int w, int h, const char *title)
     sheet_->set_row_change_cb(row_change_cb, this);
 
     // コンパクトモード用のオーバーレイ (通常は hide)。右上にドラッグ
-    // グリップ、その下に解除ボタンを配置する。sheet_ より後に追加する
-    // ことで sheet 上に描画される (popup_ より前なので popup が最前面)。
+    // グリップ、その下に解除ボタン、右下にリサイズグリップを配置する。
+    // sheet_ より後に追加することで sheet 上に描画される (popup_ より前
+    // なので popup が最前面)。
     drag_grip_ = new DragGrip(w - GRIP_SZ, 0, GRIP_SZ, GRIP_SZ);
     drag_grip_->color(C_MENU_BG);
     drag_grip_->labelcolor(C_MENU_FG);
     drag_grip_->hide();
 
-    compact_exit_ = new Fl_Button(w - GRIP_SZ, GRIP_SZ, GRIP_SZ, GRIP_SZ, "\xc3\x97");  // ×
-    compact_exit_->box(FL_FLAT_BOX);
+    compact_exit_ = new CompactIconButton(w - GRIP_SZ, GRIP_SZ, GRIP_SZ, GRIP_SZ);
     compact_exit_->color(C_MENU_BG);
     compact_exit_->labelcolor(C_MENU_FG);
-    compact_exit_->labelsize(14);
-    compact_exit_->visible_focus(0);
     compact_exit_->callback(menu_cb, (void*)"toggle_compact");
     compact_exit_->hide();
+
+    resize_grip_ = new ResizeGrip(w - GRIP_SZ, h - GRIP_SZ, GRIP_SZ, GRIP_SZ);
+    resize_grip_->color(C_MENU_BG);
+    resize_grip_->labelcolor(C_MENU_FG);
+    resize_grip_->hide();
 
     // 補完ポップアップ: 最後の子として追加することで全ての上に描画される
     // Fl_Group ベースなので OS ウィンドウを作らず、フォーカス問題がない
@@ -274,11 +349,13 @@ void MainWindow::resize(int nx, int ny, int nw, int nh) {
     Fl_Double_Window::resize(nx, ny, nw, nh);
     if (compact_mode_) {
         // コンパクトモード: sheet が全面。overlay は sheet のスクロールバー
-        // 左隣に置く (スクロールバーと重ならないように)。
+        // 左隣に置く (スクロールバーと重ならないように)。リサイズグリップ
+        // は右下コーナー、同じく SB 左側。
         sheet_->resize(0, 0, nw, nh);
         int ox = nw - SheetView::SB_W - GRIP_SZ;
         drag_grip_->resize(ox, 0, GRIP_SZ, GRIP_SZ);
         compact_exit_->resize(ox, GRIP_SZ, GRIP_SZ, GRIP_SZ);
+        resize_grip_->resize(ox, nh - GRIP_SZ, GRIP_SZ, GRIP_SZ);
         return;
     }
     // 通常モード: sheet 位置をコンパクト遷移前の normal 配置に戻す
@@ -292,6 +369,8 @@ void MainWindow::resize(int nx, int ny, int nw, int nh) {
     btn_about_->resize(rx, 0, ABOUT_W, MENU_H);
     rx -= PIN_W;
     btn_topmost_->resize(rx, 0, PIN_W, MENU_H);
+    rx -= COMPACT_W;
+    btn_compact_->resize(rx, 0, COMPACT_W, MENU_H);
     rx -= BTN_W;
     btn_redo_->resize(rx, 0, BTN_W, MENU_H);
     rx -= BTN_W;
@@ -305,6 +384,8 @@ void MainWindow::apply_ui_colors() {
     menu_->textcolor(C_MENU_FG);
     btn_undo_->color(C_MENU_BG);
     btn_redo_->color(C_MENU_BG);
+    btn_compact_->color(C_MENU_BG);
+    btn_compact_->labelcolor(C_MENU_FG);
     btn_topmost_->color(C_MENU_BG);
     btn_topmost_->labelcolor(topmost_ ? C_MENU_FG : fl_inactive(C_MENU_FG));
     btn_about_->color(C_MENU_BG);
@@ -313,6 +394,7 @@ void MainWindow::apply_ui_colors() {
     fmt_choice_->textcolor(C_MENU_FG);
     if (drag_grip_)    { drag_grip_->color(C_MENU_BG);    drag_grip_->labelcolor(C_MENU_FG); }
     if (compact_exit_) { compact_exit_->color(C_MENU_BG); compact_exit_->labelcolor(C_MENU_FG); }
+    if (resize_grip_)  { resize_grip_->color(C_MENU_BG);  resize_grip_->labelcolor(C_MENU_FG); }
     update_toolbar();
     redraw();
 }
@@ -766,6 +848,7 @@ void MainWindow::flush() {
     if (compact_mode_ && sheet_ && sheet_->damage()) {
         if (drag_grip_)    drag_grip_->damage(FL_DAMAGE_ALL);
         if (compact_exit_) compact_exit_->damage(FL_DAMAGE_ALL);
+        if (resize_grip_)  resize_grip_->damage(FL_DAMAGE_ALL);
     }
     Fl_Double_Window::flush();
 }
@@ -786,20 +869,24 @@ void MainWindow::toggle_compact_mode() {
         menu_->hide();
         btn_undo_->hide();
         btn_redo_->hide();
+        btn_compact_->hide();
         btn_topmost_->hide();
         btn_about_->hide();
         fmt_choice_->hide();
         drag_grip_->show();
         compact_exit_->show();
+        resize_grip_->show();
     } else {
         menu_->show();
         btn_undo_->show();
         btn_redo_->show();
+        btn_compact_->show();
         btn_topmost_->show();
         btn_about_->show();
         fmt_choice_->show();
         drag_grip_->hide();
         compact_exit_->hide();
+        resize_grip_->hide();
     }
 
     // ボーダー切替 (show 後の border() は効かない環境があるため hide/show)。
