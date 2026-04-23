@@ -61,7 +61,7 @@ static std::string find_icon_svg();
 class DragGrip : public Fl_Box {
 public:
     DragGrip(int x, int y, int w, int h) : Fl_Box(x, y, w, h) {
-        box(FL_FLAT_BOX);
+        box(FL_NO_BOX);  // 背景を塗らず、アイコンのみ描く (半透明風)
     }
     void draw() override {
         Fl_Box::draw();
@@ -105,7 +105,7 @@ private:
 class ResizeGrip : public Fl_Box {
 public:
     ResizeGrip(int x, int y, int w, int h) : Fl_Box(x, y, w, h) {
-        box(FL_FLAT_BOX);
+        box(FL_NO_BOX);  // 背景を塗らず、矢印のみ描く (半透明風)
     }
     void draw() override {
         Fl_Box::draw();
@@ -157,7 +157,8 @@ private:
 class CompactIconButton : public Fl_Button {
 public:
     CompactIconButton(int x, int y, int w, int h) : Fl_Button(x, y, w, h) {
-        box(FL_FLAT_BOX);
+        box(FL_NO_BOX);       // 背景を塗らず、アイコンのみ描く (半透明風)
+        down_box(FL_NO_BOX);  // 押下時も箱を描かない
         visible_focus(0);
     }
     void draw() override {
@@ -271,6 +272,9 @@ MainWindow::MainWindow(int w, int h, const char *title)
     btn_topmost_->labelsize(10);
     rx -= COMPACT_W;                                    // ▣ (コンパクトモード開始)
     btn_compact_ = new CompactIconButton(rx, 0, COMPACT_W, MENU_H);
+    // ツールバー内のボタンは半透明ではなく不透明にする (周囲のメニューと色を合わせる)
+    btn_compact_->box(FL_FLAT_BOX);
+    btn_compact_->down_box(FL_FLAT_BOX);
     btn_compact_->color(C_MENU_BG);
     btn_compact_->labelcolor(C_MENU_FG);
     btn_compact_->callback(menu_cb, (void*)"toggle_compact");
