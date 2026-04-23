@@ -62,7 +62,7 @@ private:
     int              mi_scheme_[5] = {-1,-1,-1,-1,-1};  // FL_MENU_RADIO, COLOR_PRESET_COUNT に対応
 
     static const int MENU_H    = 24;
-    static const int CHOICE_W  = 110;
+    static const int CHOICE_W  = 76;
     static const int BTN_W     = 22;   // ← → ボタン幅
     static const int PIN_W     = 22;   // 📌 ピンボタン幅
     static const int COMPACT_W = 22;   // ▣ コンパクトモード開始ボタン幅
