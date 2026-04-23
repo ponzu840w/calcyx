@@ -194,8 +194,14 @@ CompletionPopupWindow::CompletionPopupWindow(MainWindow *main)
     : Fl_Menu_Window(POP_W, DESC_H)
     , main_(main)
 {
-    border(0);
-    set_non_modal();   // フォーカスを奪わない
+    // set_override() は NOBORDER + OVERRIDE フラグを立てる。X11 では
+    // override_redirect ウィンドウとして生成され WM が管理しないので、
+    // show() しても親ウィンドウから入力フォーカスが奪われない。
+    // Windows / macOS でも borderless + 非アクティブ化挙動になるため
+    // クロスプラットフォームで安全。Fl_Menu_Window は既定では override
+    // を立てないので明示的に呼ぶ必要がある (tooltip/menu の _NET_WM_TYPE
+    // だけでは WM に焦点移動を止めさせられない)。
+    set_override();
     init_widgets(POP_W);
     end();
     hide();
