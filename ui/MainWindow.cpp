@@ -357,6 +357,10 @@ MainWindow::MainWindow(int w, int h, const char *title)
     end();
     resizable(sheet_);
 
+    // コンパクトモード用のジオメトリを state.ini から読み込む (通常モードの
+    // ジオメトリは main.cpp で読み込み済み)。
+    load_compact_geometry();
+
     // 初期状態のグレーアウトを反映
     update_toolbar();
     // View メニューの toggle 項目を現在の設定値で同期
@@ -920,11 +924,22 @@ void MainWindow::toggle_compact_mode() {
     // モード別の設定に合わせて補完ポップアップの実装 (埋め込み/独立) を切替
     recreate_popup_if_needed();
 
+    int target_x, target_y, target_w, target_h;
+
     if (compact_mode_) {
-        // 復帰用に現在のジオメトリと topmost 状態を記憶
+        // 復帰用に現在 (通常モード) のジオメトリと topmost 状態を記憶
         saved_x_ = x(); saved_y_ = y();
         saved_w_ = w(); saved_h_ = h();
         saved_topmost_ = topmost_;
+
+        // compact ジオメトリ: 永続化済みならそれに、なければ現状維持
+        if (compact_geometry_valid_) {
+            target_x = compact_x_; target_y = compact_y_;
+            target_w = compact_w_; target_h = compact_h_;
+        } else {
+            target_x = x(); target_y = y();
+            target_w = w(); target_h = h();
+        }
 
         menu_->hide();
         btn_undo_->hide();
@@ -938,6 +953,14 @@ void MainWindow::toggle_compact_mode() {
         resize_grip_->show();
         sheet_->set_sb_w(8);  // 細いスクロールバー
     } else {
+        // compact 終了: 現在の compact 状態を次回用に保存
+        compact_x_ = x(); compact_y_ = y();
+        compact_w_ = w(); compact_h_ = h();
+        compact_geometry_valid_ = true;
+
+        target_x = saved_x_; target_y = saved_y_;
+        target_w = saved_w_; target_h = saved_h_;
+
         menu_->show();
         btn_undo_->show();
         btn_redo_->show();
@@ -955,7 +978,7 @@ void MainWindow::toggle_compact_mode() {
     // hide() は save_prefs を呼ぶので直接 Fl_Double_Window::hide() を叩く。
     Fl_Double_Window::hide();
     border(compact_mode_ ? 0 : 1);
-    resize(saved_x_, saved_y_, saved_w_, saved_h_);
+    resize(target_x, target_y, target_w, target_h);
     show();
 
 #ifdef _WIN32
@@ -1016,10 +1039,44 @@ void MainWindow::save_prefs() {
     if (!g_remember_position) return;
     AppPrefs prefs;
     prefs.set_int("geometry_valid", 1);
-    prefs.set_int("x", x());
-    prefs.set_int("y", y());
-    prefs.set_int("w", w());
-    prefs.set_int("h", h());
+    if (compact_mode_) {
+        // compact 中に終了: 通常モードの x/y/w/h は入れ替え前の saved_*、
+        // compact_* は現在の値を書く (通常モードの方を現在値で潰さない)。
+        prefs.set_int("x", saved_x_);
+        prefs.set_int("y", saved_y_);
+        prefs.set_int("w", saved_w_);
+        prefs.set_int("h", saved_h_);
+        prefs.set_int("compact_geometry_valid", 1);
+        prefs.set_int("compact_x", x());
+        prefs.set_int("compact_y", y());
+        prefs.set_int("compact_w", w());
+        prefs.set_int("compact_h", h());
+    } else {
+        prefs.set_int("x", x());
+        prefs.set_int("y", y());
+        prefs.set_int("w", w());
+        prefs.set_int("h", h());
+        if (compact_geometry_valid_) {
+            prefs.set_int("compact_geometry_valid", 1);
+            prefs.set_int("compact_x", compact_x_);
+            prefs.set_int("compact_y", compact_y_);
+            prefs.set_int("compact_w", compact_w_);
+            prefs.set_int("compact_h", compact_h_);
+        }
+    }
+}
+
+void MainWindow::load_compact_geometry() {
+    AppPrefs prefs;
+    if (!prefs.get_int("compact_geometry_valid", 0)) return;
+    int cw = prefs.get_int("compact_w", 0);
+    int ch = prefs.get_int("compact_h", 0);
+    if (cw < 120 || ch < 60) return;  // 破損値ガード
+    compact_geometry_valid_ = true;
+    compact_x_ = prefs.get_int("compact_x", 0);
+    compact_y_ = prefs.get_int("compact_y", 0);
+    compact_w_ = cw;
+    compact_h_ = ch;
 }
 
 void MainWindow::hide() {

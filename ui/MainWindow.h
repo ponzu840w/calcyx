@@ -102,4 +102,11 @@ private:
     bool compact_mode_   = false;
     bool saved_topmost_  = false;  // compact 突入前の topmost_ を保持
     int  saved_x_ = 0, saved_y_ = 0, saved_w_ = 0, saved_h_ = 0;
+
+    // コンパクトモードのジオメトリは通常モードと別枠で永続化する。
+    // 初回は未設定 (compact_geometry_valid_ = false) で、一度 compact に
+    // 切替えると以降はその位置・サイズを覚える。
+    bool compact_geometry_valid_ = false;
+    int  compact_x_ = 0, compact_y_ = 0, compact_w_ = 0, compact_h_ = 0;
+    void load_compact_geometry();
 };
