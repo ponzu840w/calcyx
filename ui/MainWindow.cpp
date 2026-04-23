@@ -273,12 +273,17 @@ MainWindow::MainWindow(int w, int h, const char *title)
 void MainWindow::resize(int nx, int ny, int nw, int nh) {
     Fl_Double_Window::resize(nx, ny, nw, nh);
     if (compact_mode_) {
-        // コンパクトモード: sheet が全面、右上にドラッグ/解除を重ねる
+        // コンパクトモード: sheet が全面。overlay は sheet のスクロールバー
+        // 左隣に置く (スクロールバーと重ならないように)。
         sheet_->resize(0, 0, nw, nh);
-        drag_grip_->resize(nw - GRIP_SZ, 0, GRIP_SZ, GRIP_SZ);
-        compact_exit_->resize(nw - GRIP_SZ, GRIP_SZ, GRIP_SZ, GRIP_SZ);
+        int ox = nw - SheetView::SB_W - GRIP_SZ;
+        drag_grip_->resize(ox, 0, GRIP_SZ, GRIP_SZ);
+        compact_exit_->resize(ox, GRIP_SZ, GRIP_SZ, GRIP_SZ);
         return;
     }
+    // 通常モード: sheet 位置をコンパクト遷移前の normal 配置に戻す
+    // (compact 中に sheet を (0,0,nw,nh) に広げているので明示的に再計算)
+    sheet_->resize(PAD, MENU_H + PAD, nw - PAD * 2, nh - MENU_H - PAD * 2);
     int mw = calc_menu_w(nw);
     menu_->resize(0, 0, mw, MENU_H);
     int rx = nw - CHOICE_W;
@@ -752,17 +757,30 @@ void MainWindow::toggle_always_on_top() {
     sync_view_menu_toggles();
 }
 
+// コンパクトモード中の再描画伝播: sheet に damage があれば overlay
+// も damage させて、描画順 (sheet → overlay) で overlay が上に乗る
+// ようにする。Fl::add_check は Fl::wait() 前に毎回呼ばれる。
+void MainWindow::compact_redraw_check(void *data) {
+    auto *win = static_cast<MainWindow *>(data);
+    if (!win->compact_mode_) return;
+    if (win->sheet_->damage()) {
+        win->drag_grip_->redraw();
+        win->compact_exit_->redraw();
+    }
+}
+
 // コンパクトモードの切替。UI クロームを隠してシート領域を全面化する。
 // ボーダー (OS タイトルバー) の切替には hide()/show() サイクルが必要な
-// プラットフォームがあるため、全環境で共通処理する。always-on-top は
-// show() で失われるので再適用する。
+// プラットフォームがあるため、全環境で共通処理する。
+// コンパクト中は PiP 的に必ず always-on-top。解除時は元のトグル状態に戻す。
 void MainWindow::toggle_compact_mode() {
     compact_mode_ = !compact_mode_;
 
     if (compact_mode_) {
-        // 復帰用に現在のジオメトリを記憶
+        // 復帰用に現在のジオメトリと topmost 状態を記憶
         saved_x_ = x(); saved_y_ = y();
         saved_w_ = w(); saved_h_ = h();
+        saved_topmost_ = topmost_;
 
         menu_->hide();
         btn_undo_->hide();
@@ -772,6 +790,8 @@ void MainWindow::toggle_compact_mode() {
         fmt_choice_->hide();
         drag_grip_->show();
         compact_exit_->show();
+
+        Fl::add_check(compact_redraw_check, this);
     } else {
         menu_->show();
         btn_undo_->show();
@@ -781,27 +801,22 @@ void MainWindow::toggle_compact_mode() {
         fmt_choice_->show();
         drag_grip_->hide();
         compact_exit_->hide();
+
+        Fl::remove_check(compact_redraw_check, this);
     }
 
     // ボーダー切替 (show 後の border() は効かない環境があるため hide/show)。
     // hide() は save_prefs を呼ぶので直接 Fl_Double_Window::hide() を叩く。
     Fl_Double_Window::hide();
     border(compact_mode_ ? 0 : 1);
-
-    if (compact_mode_) {
-        // 現ジオメトリをそのまま維持 (ユーザーが後でドラッグ/リサイズ)
-        resize(saved_x_, saved_y_, saved_w_, saved_h_);
-    } else {
-        resize(saved_x_, saved_y_, saved_w_, saved_h_);
-    }
-
+    resize(saved_x_, saved_y_, saved_w_, saved_h_);
     show();
 
-    // hide/show で外れる topmost を再適用
-    if (topmost_) {
-        topmost_ = false;
-        toggle_always_on_top();  // 再度 true に戻しつつプラットフォーム側を反映
-    }
+    // hide/show でプラットフォーム側の topmost が外れる + compact 中は
+    // 強制的に PiP 的 topmost にしたいので、目標状態になるよう toggle する。
+    bool want_topmost = compact_mode_ ? true : saved_topmost_;
+    topmost_ = !want_topmost;         // toggle 呼出で反転して目標値になる
+    toggle_always_on_top();
 
     sync_view_menu_toggles();
     redraw();

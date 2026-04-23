@@ -91,6 +91,10 @@ private:
     std::vector<std::string> scheme_cmds_;   // "scheme_N" コマンドの安定した記憶域
 
     // コンパクトモード状態
-    bool compact_mode_ = false;
+    bool compact_mode_   = false;
+    bool saved_topmost_  = false;  // compact 突入前の topmost_ を保持
     int  saved_x_ = 0, saved_y_ = 0, saved_w_ = 0, saved_h_ = 0;
+    // sheet の damage を overlay に伝播するための check。
+    // compact 中のみ Fl::add_check 登録される。
+    static void compact_redraw_check(void *data);
 };

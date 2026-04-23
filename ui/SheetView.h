@@ -20,6 +20,8 @@ extern "C" {
 
 class SheetView : public Fl_Group {
 public:
+    static const int SB_W  = 14;  // 縦スクロールバー幅
+
     SheetView(int x, int y, int w, int h, bool preview = false);
     ~SheetView();
 
@@ -137,7 +139,6 @@ private:
     bool preview_mode_ = false;
 
     static const int ROW_H = 24;
-    static const int SB_W  = 14;
     static const int PAD   = 3;
 
     // "=" カラム位置・幅 (update_layout() が動的に設定)
