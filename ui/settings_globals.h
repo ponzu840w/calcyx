@@ -19,6 +19,11 @@ constexpr int  DEFAULT_FONT_ID              = FL_COURIER;
 constexpr int  DEFAULT_FONT_SIZE            = 15;
 constexpr bool DEFAULT_AUTO_COMPLETION      = true;
 constexpr bool DEFAULT_AUTO_CLOSE_BRACKETS  = false;
+// 補完ポップアップを独立ウィンドウ (Fl_Menu_Window) で出すかどうか。
+// true: メインウィンドウの境界を超えてはみ出せる (独立)
+// false: メインウィンドウ内にクリップされる (埋め込み)
+constexpr bool DEFAULT_POPUP_INDEPENDENT_NORMAL  = false;  // 通常モードの既定
+constexpr bool DEFAULT_POPUP_INDEPENDENT_COMPACT = true;   // コンパクト時の既定
 constexpr bool DEFAULT_SEP_THOUSANDS        = true;
 constexpr bool DEFAULT_SEP_HEX             = true;
 constexpr int  DEFAULT_MAX_ARRAY_LENGTH     = 256;
@@ -43,6 +48,8 @@ extern int g_font_size;
 // 入力
 extern bool g_input_auto_completion;
 extern bool g_input_auto_close_brackets;
+extern bool g_popup_independent_normal;   // 通常モード時の補完ポップアップ独立化
+extern bool g_popup_independent_compact;  // コンパクトモード時の補完ポップアップ独立化
 
 // 桁区切り
 extern bool g_sep_thousands;
