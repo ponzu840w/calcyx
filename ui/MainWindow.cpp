@@ -757,16 +757,17 @@ void MainWindow::toggle_always_on_top() {
     sync_view_menu_toggles();
 }
 
-// コンパクトモード中の再描画伝播: sheet に damage があれば overlay
-// も damage させて、描画順 (sheet → overlay) で overlay が上に乗る
-// ようにする。Fl::add_check は Fl::wait() 前に毎回呼ばれる。
-void MainWindow::compact_redraw_check(void *data) {
-    auto *win = static_cast<MainWindow *>(data);
-    if (!win->compact_mode_) return;
-    if (win->sheet_->damage()) {
-        win->drag_grip_->redraw();
-        win->compact_exit_->redraw();
+// コンパクトモード中の再描画伝播: sheet に damage があれば overlay に
+// も damage を立ててから通常の flush に委譲する。これにより sheet の
+// 上に overlay が確実に再描画される。
+// Windows の FLTK ドライバは WM_PAINT を WndProc から同期処理するため
+// Fl::add_check では間に合わない経路があり、flush() override が必須。
+void MainWindow::flush() {
+    if (compact_mode_ && sheet_ && sheet_->damage()) {
+        if (drag_grip_)    drag_grip_->damage(FL_DAMAGE_ALL);
+        if (compact_exit_) compact_exit_->damage(FL_DAMAGE_ALL);
     }
+    Fl_Double_Window::flush();
 }
 
 // コンパクトモードの切替。UI クロームを隠してシート領域を全面化する。
@@ -790,8 +791,6 @@ void MainWindow::toggle_compact_mode() {
         fmt_choice_->hide();
         drag_grip_->show();
         compact_exit_->show();
-
-        Fl::add_check(compact_redraw_check, this);
     } else {
         menu_->show();
         btn_undo_->show();
@@ -801,8 +800,6 @@ void MainWindow::toggle_compact_mode() {
         fmt_choice_->show();
         drag_grip_->hide();
         compact_exit_->hide();
-
-        Fl::remove_check(compact_redraw_check, this);
     }
 
     // ボーダー切替 (show 後の border() は効かない環境があるため hide/show)。
