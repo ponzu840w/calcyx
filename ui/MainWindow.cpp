@@ -284,11 +284,25 @@ MainWindow::MainWindow(int w, int h, const char *title)
         b->visible_focus(0);
         return b;
     };
+    // ツールチップ: macOS では Cmd (⌘)、それ以外は Ctrl で表記。
+#ifdef __APPLE__
+    const char *TT_UNDO    = "Undo (\xe2\x8c\x98Z)";
+    const char *TT_REDO    = "Redo (\xe2\x8c\x98Y)";
+    const char *TT_COMPACT = "Compact Mode (\xe2\x8c\x98:)";
+    const char *TT_TOPMOST = "Always on Top (\xe2\x8c\x98T)";
+#else
+    const char *TT_UNDO    = "Undo (Ctrl+Z)";
+    const char *TT_REDO    = "Redo (Ctrl+Y)";
+    const char *TT_COMPACT = "Compact Mode (Ctrl+:)";
+    const char *TT_TOPMOST = "Always on Top (Ctrl+T)";
+#endif
+
     // 右端から: [Format▼] PAD [📌] [▣] [→] [←]
     int rx = w - CHOICE_W;                              // Format▼
     rx -= PAD + PIN_W;                                  // 📌
     btn_topmost_ = make_btn(rx, PIN_W, "@menu", "topmost");
     btn_topmost_->labelsize(10);
+    btn_topmost_->tooltip(TT_TOPMOST);
     rx -= COMPACT_W;                                    // ▣ (コンパクトモード開始)
     btn_compact_ = new CompactIconButton(rx, 0, COMPACT_W, MENU_H);
     // ツールバー内のボタンは半透明ではなく不透明にする (周囲のメニューと色を合わせる)
@@ -297,10 +311,13 @@ MainWindow::MainWindow(int w, int h, const char *title)
     btn_compact_->color(C_MENU_BG);
     btn_compact_->labelcolor(C_MENU_FG);
     btn_compact_->callback(menu_cb, (void*)"toggle_compact");
+    btn_compact_->tooltip(TT_COMPACT);
     rx -= BTN_W;                                        // →
     btn_redo_ = make_btn(rx, BTN_W, "@->", "redo");
+    btn_redo_->tooltip(TT_REDO);
     rx -= BTN_W;                                        // ←
     btn_undo_ = make_btn(rx, BTN_W, "@<-", "undo");
+    btn_undo_->tooltip(TT_UNDO);
 
     // ---- フォーマット選択ドロップダウン (右端) ----
     fmt_choice_ = new Fl_Choice(w - CHOICE_W, 0, CHOICE_W, MENU_H);
