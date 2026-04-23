@@ -8,6 +8,10 @@
 #include <FL/fl_draw.H>
 #include <algorithm>
 
+#ifdef __APPLE__
+extern "C" void mac_configure_popup(Fl_Window *popup, Fl_Window *main_win);
+#endif
+
 // ==================================================================
 // CompletionPopupBase — widget に依存しない共通ロジック
 // ==================================================================
@@ -276,6 +280,10 @@ void CompletionPopupWindow::show_at(int wx, int wy_below, int editor_top,
 
     resize(sx, sy, POP_W, h);
     show();
+#ifdef __APPLE__
+    // macOS: ポップアップをメインウィンドウより手前に置き、フォーカスを戻す
+    mac_configure_popup(this, main_);
+#endif
 }
 
 void CompletionPopupWindow::update_key(const std::string &key) {
