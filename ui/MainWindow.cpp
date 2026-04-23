@@ -499,17 +499,7 @@ int MainWindow::handle(int event) {
         }
     }
 #endif
-    int ret = Fl_Double_Window::handle(event);
-    if (!ret && event == FL_SHORTCUT) {
-        // コンパクトモード中はメニューバーが hide されていて
-        // Fl_Menu_Bar::handle(FL_SHORTCUT) が発火しない。復帰できるよう
-        // ここで同じショートカットを拾う。
-        if (Fl::test_shortcut(FL_COMMAND | ':')) {
-            toggle_compact_mode();
-            return 1;
-        }
-    }
-    return ret;
+    return Fl_Double_Window::handle(event);
 }
 
 void MainWindow::open_file(const char *path) {
