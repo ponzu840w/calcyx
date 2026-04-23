@@ -991,12 +991,20 @@ void MainWindow::toggle_compact_mode() {
         sheet_->set_sb_w(SheetView::SB_W_DEFAULT);
     }
 
-    // ボーダー切替 (show 後の border() は効かない環境があるため hide/show)。
+    // ボーダー切替: Windows は hide→border→show サイクルが必須 (show 後の
+    // border() が反映されない)。X11/WSLg では同じシーケンスでウィンドウが
+    // 消失したり再 map で位置がずれる現象があるため、hide/show を回避し
+    // border() を runtime で書き換えるだけにする。
     // hide() は save_prefs を呼ぶので直接 Fl_Double_Window::hide() を叩く。
+#if defined(_WIN32)
     Fl_Double_Window::hide();
     border(compact_mode_ ? 0 : 1);
     resize(target_x, target_y, target_w, target_h);
     show();
+#else
+    border(compact_mode_ ? 0 : 1);
+    resize(target_x, target_y, target_w, target_h);
+#endif
 
 #ifdef _WIN32
     // Windows のボーダーレスウィンドウは既定で Alt+Tab 一覧から外れる。
@@ -1010,6 +1018,10 @@ void MainWindow::toggle_compact_mode() {
         SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
                      SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
                      SWP_NOACTIVATE | SWP_FRAMECHANGED);
+        // hide→show で失われたフォーカスを戻す (自プロセス内なので
+        // フォアグラウンドロックの制約は受けない)。
+        SetForegroundWindow(hwnd);
+        SetFocus(hwnd);
     }
 #endif
 
