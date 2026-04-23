@@ -571,10 +571,10 @@ SheetView::SheetView(int x, int y, int w, int h, bool preview)
     // eq_pos_ / eq_w_ の初期値 (update_layout() で上書きされる)
     fl_font(g_font_id, g_font_size);
     eq_w_   = (int)fl_width("==") + 4;
-    eq_pos_ = (w - SB_W) * 3 / 5;
+    eq_pos_ = (w - sb_w_) * 3 / 5;
 
     if (preview_mode_) {
-        vscroll_ = new Fl_Scrollbar(x + w - SB_W, y, SB_W, h);
+        vscroll_ = new Fl_Scrollbar(x + w - sb_w_, y, sb_w_, h);
         vscroll_->type(FL_VERTICAL);
         vscroll_->linesize(1);
         vscroll_->visible_focus(0);
@@ -596,7 +596,7 @@ SheetView::SheetView(int x, int y, int w, int h, bool preview)
     }
 
     // 縦スクロールバー
-    vscroll_ = new Fl_Scrollbar(x + w - SB_W, y, SB_W, h);
+    vscroll_ = new Fl_Scrollbar(x + w - sb_w_, y, sb_w_, h);
     vscroll_->type(FL_VERTICAL);
     vscroll_->linesize(1);
     vscroll_->visible_focus(0);  // Tab キー順から除外
@@ -646,10 +646,21 @@ SheetView::~SheetView() {
 }
 void SheetView::resize(int x, int y, int w, int h) {
     Fl_Group::resize(x, y, w, h);
-    vscroll_->resize(x + w - SB_W, y, SB_W, h);
+    vscroll_->resize(x + w - sb_w_, y, sb_w_, h);
     update_layout();   // ウィンドウ幅変化に合わせて = 位置を再計算
     sync_scroll();
     place_editor();
+}
+
+void SheetView::set_sb_w(int w) {
+    if (w < 4) w = 4;
+    if (w == sb_w_) return;
+    sb_w_ = w;
+    vscroll_->resize(x() + this->w() - sb_w_, y(), sb_w_, h());
+    update_layout();
+    sync_scroll();
+    place_editor();
+    redraw();
 }
 
 int SheetView::row_at_y(int fy) const {

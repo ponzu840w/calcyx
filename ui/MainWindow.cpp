@@ -360,7 +360,7 @@ void MainWindow::resize(int nx, int ny, int nw, int nh) {
         // 左隣に置く (スクロールバーと重ならないように)。リサイズグリップ
         // は右下コーナー、同じく SB 左側。
         sheet_->resize(0, 0, nw, nh);
-        int ox = nw - SheetView::SB_W - GRIP_SZ;
+        int ox = nw - sheet_->sb_w() - GRIP_SZ;
         drag_grip_->resize(ox, 0, GRIP_SZ, GRIP_SZ);
         compact_exit_->resize(ox, GRIP_SZ, GRIP_SZ, GRIP_SZ);
         resize_grip_->resize(ox, nh - GRIP_SZ, GRIP_SZ, GRIP_SZ);
@@ -884,6 +884,7 @@ void MainWindow::toggle_compact_mode() {
         drag_grip_->show();
         compact_exit_->show();
         resize_grip_->show();
+        sheet_->set_sb_w(8);  // 細いスクロールバー
     } else {
         menu_->show();
         btn_undo_->show();
@@ -895,6 +896,7 @@ void MainWindow::toggle_compact_mode() {
         drag_grip_->hide();
         compact_exit_->hide();
         resize_grip_->hide();
+        sheet_->set_sb_w(SheetView::SB_W_DEFAULT);
     }
 
     // ボーダー切替 (show 後の border() は効かない環境があるため hide/show)。

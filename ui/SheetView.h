@@ -20,10 +20,14 @@ extern "C" {
 
 class SheetView : public Fl_Group {
 public:
-    static const int SB_W  = 14;  // 縦スクロールバー幅
+    static const int SB_W_DEFAULT = 14;  // 縦スクロールバー既定幅
 
     SheetView(int x, int y, int w, int h, bool preview = false);
     ~SheetView();
+
+    // スクロールバー幅を取得 / 変更 (コンパクトモードで細くするため)
+    int  sb_w() const { return sb_w_; }
+    void set_sb_w(int w);
 
     // フォーカス行のフォーマットを変更 (移植元: SheetViewItem.ReplaceFormatterFunction)
     // func_name: "hex"/"bin"/"oct"/"dec"/"si"/"kibi"/"char"、nullptr で Auto (ラッパー除去)
@@ -131,6 +135,7 @@ private:
     Fl_Input        *editor_;
     Fl_Input        *result_display_;  // フォーカス行の結果表示 (read-only)
     Fl_Scrollbar    *vscroll_;
+    int              sb_w_ = SB_W_DEFAULT;  // 現在のスクロールバー幅
     eval_ctx_t       ctx_;
 
     void (*row_change_cb_)(void *) = nullptr;
@@ -145,7 +150,7 @@ private:
     int eq_pos_ = 0;   // sheet 左端からの "=" カラム開始 x オフセット
     int eq_w_   = 22;  // "=" カラム幅 (フォントから算出)
 
-    int sheet_w()    const { return w() - (vscroll_->visible() ? SB_W : 0); }
+    int sheet_w()    const { return w() - (vscroll_->visible() ? sb_w_ : 0); }
     int expr_w()     const { return eq_pos_; }
     int eq_col_x()   const { return x() + eq_pos_; }
     int result_x()   const { return x() + eq_pos_ + eq_w_; }
