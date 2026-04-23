@@ -906,6 +906,21 @@ void MainWindow::toggle_compact_mode() {
     resize(saved_x_, saved_y_, saved_w_, saved_h_);
     show();
 
+#ifdef _WIN32
+    // Windows のボーダーレスウィンドウは既定で Alt+Tab 一覧から外れる。
+    // WS_EX_APPWINDOW を付けるとタスクバー/Alt+Tab に強制的に出る。
+    // 通常モードでは不要なので外す (元の挙動に戻す)。
+    if (HWND hwnd = fl_xid(this)) {
+        LONG_PTR ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+        if (compact_mode_) ex |= WS_EX_APPWINDOW;
+        else               ex &= ~WS_EX_APPWINDOW;
+        SetWindowLongPtr(hwnd, GWL_EXSTYLE, ex);
+        SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER |
+                     SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+#endif
+
     // hide/show でプラットフォーム側の topmost が外れる + compact 中は
     // 強制的に PiP 的 topmost にしたいので、目標状態になるよう toggle する。
     bool want_topmost = compact_mode_ ? true : saved_topmost_;
