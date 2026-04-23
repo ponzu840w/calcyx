@@ -954,7 +954,11 @@ void MainWindow::toggle_compact_mode() {
             target_w = w(); target_h = h();
         }
 
-        menu_->hide();
+        // メニューバーは hide ではなくオフスクリーン (上に押し出し) する。
+        // hide すると Fl_Menu_Bar が FL_SHORTCUT を受信しなくなり、コンパクト
+        // モード中に Ctrl+Z 等のメニューショートカットがすべて無効化される。
+        // visible のまま画面外に置けば描画は走らないが shortcut マッチは生きる。
+        menu_->resize(0, -MENU_H, w(), MENU_H);
         btn_undo_->hide();
         btn_redo_->hide();
         btn_compact_->hide();

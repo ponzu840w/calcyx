@@ -85,6 +85,11 @@ int main(int argc, char **argv) {
 
     Fl::scheme("gtk+");
     Fl::visual(FL_DOUBLE | FL_INDEX);
+    // FLTK 1.4 組み込みの HiDPI スケーリング (Ctrl+= / Ctrl+- / Ctrl+0) を無効化。
+    // calcyx 側のメニューショートカット (Zoom In/Out など) と衝突して、特に
+    // コンパクトモードでメニューバーが hide されているときに組み込み側が
+    // 拾ってウィンドウ全体が縮小・拡大される現象が起きる。
+    Fl::keyboard_screen_scaling(0);
 
     // 前回クラッシュしていたらレポートダイアログを表示 (次回起動時のフォールバック)
     std::string crash_log = crash_handler_check();
