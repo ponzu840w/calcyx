@@ -357,6 +357,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
 
     end();
     resizable(sheet_);
+    apply_size_range();
 
     // コンパクトモード用のジオメトリを state.ini から読み込む (通常モードの
     // ジオメトリは main.cpp で読み込み済み)。
@@ -978,6 +979,11 @@ void MainWindow::toggle_compact_mode() {
     // 消失したり再 map で位置がずれる現象があるため、hide/show を回避し
     // border() を runtime で書き換えるだけにする。
     // hide() は save_prefs を呼ぶので直接 Fl_Double_Window::hide() を叩く。
+    // 新モードの最小サイズ制約を resize 前に適用しておかないと、compact→normal
+    // で小さめの target に対して size_range の旧制約 (compact 用の小さい値) のまま
+    // resize された後に normal 用の大きな制約が適用される順序になり、初回表示が
+    // ガクッと拡大する。逆も同様。
+    apply_size_range();
 #if defined(_WIN32)
     Fl_Double_Window::hide();
     border(compact_mode_ ? 0 : 1);
@@ -1044,6 +1050,28 @@ void MainWindow::sync_view_menu_toggles() {
 void MainWindow::apply_font_and_refresh() {
     sheet_->apply_font();
     sheet_->redraw();
+}
+
+// 通常モード: メニューバーのトップレベルラベル実測幅 + 右側ウィジェット群。
+// コンパクトモード: オーバーレイグリップが収まる最小値。
+void MainWindow::apply_size_range() {
+    int min_w;
+    if (compact_mode_) {
+        min_w = GRIP_SZ * 2 + 40;
+    } else {
+        fl_font(menu_->textfont(), menu_->textsize());
+        int menu_min_w = 0;
+        int depth = 0;
+        for (int i = 0; i < menu_->size(); i++) {
+            const Fl_Menu_Item &it = menu_->menu()[i];
+            if (!it.label()) { if (depth > 0) depth--; continue; }
+            if (depth == 0) menu_min_w += (int)fl_width(it.label()) + 16;
+            if (it.flags & FL_SUBMENU) depth++;
+        }
+        min_w = menu_min_w + BTN_W * 2 + COMPACT_W + PIN_W + PAD + CHOICE_W;
+    }
+    int min_h = MENU_H + PAD * 2 + 40;
+    size_range(min_w, min_h);
 }
 
 void MainWindow::save_prefs() {

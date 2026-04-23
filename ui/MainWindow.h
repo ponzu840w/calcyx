@@ -81,6 +81,7 @@ private:
     static bool open_sample_file(MainWindow *win, const char *filename);
     void sync_view_menu_toggles();  // View メニューのチェック状態を g_ 変数に合わせる
     void apply_font_and_refresh();  // Zoom 系で apply_font + live_eval + redraw を一括
+    void apply_size_range();        // compact_mode_ に応じて size_range を設定
     void setup_tray();
     void teardown_tray();
     void toggle_visibility();
