@@ -11,6 +11,12 @@
     を destroy/create していた挙動を修正。rebind() メソッドで既存の
     Fl_Window を流用し、CreateWindowExW/DestroyWindow の往復 (~50ms/回)
     を削減する。
+  - さらに menuwindow オフスクリーン退避プールを導入し、深さが減ってから
+    増える遷移 (例: Samples を閉じて Color Scheme を開く) でも HWND を
+    使い回す。プールは pulldown() 1 セッション内でのみ有効 (pulldown
+    終了時に drain)。pulldown 外で pool に残った menuwindow が Windows
+    メッセージを受けると pp (pulldown の file-static 状態) が無効なため
+    クラッシュするので、敢えて drain する。
   - 上流 FLTK (branch-1.4 / master) には未修正。
 
 デバッグログ (Debug ビルドのみ):
@@ -22,7 +28,7 @@ path = os.path.join(sys.argv[1], "src", "Fl_Menu.cxx")
 with open(path, "r") as f:
     src = f.read()
 
-if "calcyx_reuse_pool" in src:
+if "s_calcyx_mw_pool" in src:
     print("Already patched, skipping")
     sys.exit(0)
 
@@ -110,10 +116,15 @@ src = src.replace(
     + MENUTITLE_REBIND,
     1)
 
-# 3c) menuwindow::rebind 実装 (~menuwindow の直前に追加)。
-#     ctor 本体 (361-501 付近) のレイアウト計算を手動で複製している。
-#     FLTK を更新する際は ctor と同期する必要がある。
-MENUWINDOW_REBIND = r'''
+# 3c) menuwindow::rebind 実装 + オフスクリーン退避プール
+#     (~menuwindow の直前に追加)。ctor 本体 (361-501 付近) のレイアウト
+#     計算を手動で複製している。FLTK を更新する際は ctor と同期する必要が
+#     ある。
+#
+#     プールは pulldown() 1 セッション内でのみ有効 (pulldown 終了時に
+#     drain)。持続させるとメニュー閉じ後に pool 内 menuwindow が
+#     Windows メッセージを受信して handle() が無効な pp を参照しクラッシュ。
+MENUWINDOW_REBIND_AND_POOL = r'''
 // ---- calcyx: HWND-preserving submenu rebind (Windows perf) ----
 // NOTE: menuwindow::menuwindow (本ファイルの上方) のレイアウト処理を複製して
 // いる。FLTK 本体を更新する際は両者を同期する必要がある。
@@ -254,18 +265,76 @@ void menuwindow::rebind(const Fl_Menu_Item* m, int X, int Y, int Wp, int Hp,
   redraw();
 }
 
+// ---- calcyx: offscreen menuwindow pool (Windows perf) ----
+// 閉じた submenu を即 delete する代わりに offscreen へ park してプールに
+// 退避する。別深さで新たに submenu を開くときにプールから取り出し rebind
+// することで HWND 使い回しを実現する。menubar (itemheight==0) は除外。
+// プールは pulldown() 1 セッション内でのみ有効で、pulldown() 終了時に
+// drain する。持続させると menuwindow::handle() が無効な pp を参照して
+// クラッシュするため。
+#if defined(_WIN32)
+#define CALCYX_MW_POOL_CAP 4
+static menuwindow *s_calcyx_mw_pool[CALCYX_MW_POOL_CAP];
+static int s_calcyx_mw_pool_n = 0;
+
+static bool calcyx_mw_pool_push(menuwindow *w) {
+  if (!w || w->itemheight == 0) return false;
+  if (s_calcyx_mw_pool_n >= CALCYX_MW_POOL_CAP) return false;
+  if (w->title) w->title->resize(-30000, -30000, 1, 1);
+  w->resize(-30000, -30000, 1, 1);
+  s_calcyx_mw_pool[s_calcyx_mw_pool_n++] = w;
+  MDBG("[pool#push] n=%d w=%p\n", s_calcyx_mw_pool_n, (void*)w);
+  return true;
+}
+
+static menuwindow *calcyx_mw_pool_pop() {
+  if (s_calcyx_mw_pool_n == 0) return NULL;
+  menuwindow *w = s_calcyx_mw_pool[--s_calcyx_mw_pool_n];
+  MDBG("[pool#pop ] n=%d w=%p\n", s_calcyx_mw_pool_n, (void*)w);
+  return w;
+}
+
+static void calcyx_mw_pool_drain() {
+  if (s_calcyx_mw_pool_n) MDBG("[pool#drain] n=%d\n", s_calcyx_mw_pool_n);
+  while (s_calcyx_mw_pool_n > 0) delete s_calcyx_mw_pool[--s_calcyx_mw_pool_n];
+}
+#endif
+
 '''
 src = src.replace(
     'menuwindow::~menuwindow() {',
-    MENUWINDOW_REBIND + 'menuwindow::~menuwindow() {',
+    MENUWINDOW_REBIND_AND_POOL + 'menuwindow::~menuwindow() {',
     1)
 
-# 3d) pulldown 側の fast-path:
-#     「delete all the old menus and create new one」分岐で、末端 1 枚の
-#     submenu を rebind して再利用する。条件は「メニュー階層が 1 段だけ
-#     差し替わる + 既存 slot が実サブメニュー (itemheight>0)」のみで、
-#     title の有無は rebind が内部で吸収する。
-#     非 Windows では従来挙動 (delete+new) にフォールバック。
+# 3d) pulldown 側の delete サイトをプール対応に差し替え。
+#
+#     A) line ~1290「the menu is already up」— 余分な深さを trim
+#     B) line ~1292「delete all old + create new」— 主たる再利用サイト
+#     C) line ~1320「!m->submenu()」— 非サブメニュー項目ホバー
+#     E) pulldown 終了時 — 残りを drain
+
+# del#A: trim
+src = src.replace(
+    '      } else if (pp.nummenus > pp.menu_number+1 &&\n'
+    '                 pp.p[pp.menu_number+1]->menu == menutable) {\n'
+    '        // the menu is already up:\n'
+    '        while (pp.nummenus > pp.menu_number+2) delete pp.p[--pp.nummenus];\n'
+    '        pp.p[pp.nummenus-1]->set_selected(-1);',
+
+    '      } else if (pp.nummenus > pp.menu_number+1 &&\n'
+    '                 pp.p[pp.menu_number+1]->menu == menutable) {\n'
+    '        // the menu is already up:\n'
+    '        while (pp.nummenus > pp.menu_number+2) {\n'
+    '          menuwindow *_old = pp.p[--pp.nummenus];\n'
+    '#if defined(_WIN32)\n'
+    '          if (calcyx_mw_pool_push(_old)) continue;\n'
+    '#endif\n'
+    '          delete _old;\n'
+    '        }\n'
+    '        pp.p[pp.nummenus-1]->set_selected(-1);',
+    1)
+
+# del#B: main reuse site
 src = src.replace(
     '      } else {\n'
     '        // delete all the old menus and create new one:\n'
@@ -275,28 +344,59 @@ src = src.replace(
     '                                            (title ? 0 : cw.x()) );',
 
     '      } else {\n'
-    '        // delete all the old menus and create new one:\n'
-    '        // calcyx: reuse the top submenu where possible (Windows perf).\n'
-    '        menuwindow *calcyx_reuse_pool = NULL;\n'
+    '        // calcyx: delete/park old menus, then reuse a pooled menuwindow\n'
+    '        // if available (Windows perf).\n'
+    '        while (pp.nummenus > pp.menu_number+1) {\n'
+    '          menuwindow *_old = pp.p[--pp.nummenus];\n'
     '#if defined(_WIN32)\n'
-    '        if (pp.nummenus == pp.menu_number + 2 &&\n'
-    '            pp.p[pp.nummenus-1]->itemheight > 0) {\n'
-    '          calcyx_reuse_pool = pp.p[--pp.nummenus];\n'
-    '        }\n'
+    '          if (calcyx_mw_pool_push(_old)) continue;\n'
     '#endif\n'
-    '        while (pp.nummenus > pp.menu_number+1) delete pp.p[--pp.nummenus];\n'
-    '        if (calcyx_reuse_pool) {\n'
+    '          delete _old;\n'
+    '        }\n'
+    '        menuwindow *_reuse = NULL;\n'
+    '#if defined(_WIN32)\n'
+    '        _reuse = calcyx_mw_pool_pop();\n'
+    '#endif\n'
+    '        if (_reuse) {\n'
     '          MDBG("[reuse] rebind submenu (avoid HWND churn)\\n");\n'
-    '          calcyx_reuse_pool->rebind(menutable, nX, nY,\n'
-    '                                    title?1:0, 0, 0, title, 0, menubar,\n'
-    '                                    (title ? 0 : cw.x()));\n'
-    '          pp.p[pp.nummenus++] = calcyx_reuse_pool;\n'
+    '          _reuse->rebind(menutable, nX, nY,\n'
+    '                         title?1:0, 0, 0, title, 0, menubar,\n'
+    '                         (title ? 0 : cw.x()));\n'
+    '          pp.p[pp.nummenus++] = _reuse;\n'
     '        } else {\n'
     '          MDBG("[new#submenu] create new menuwindow\\n");\n'
     '          pp.p[pp.nummenus++]= new menuwindow(menutable, nX, nY,\n'
     '                                            title?1:0, 0, 0, title, 0, menubar,\n'
     '                                              (title ? 0 : cw.x()) );\n'
     '        }',
+    1)
+
+# del#C: !m->submenu() branch
+src = src.replace(
+    '    } else { // !m->submenu():\n'
+    '      while (pp.nummenus > pp.menu_number+1) delete pp.p[--pp.nummenus];',
+
+    '    } else { // !m->submenu():\n'
+    '      while (pp.nummenus > pp.menu_number+1) {\n'
+    '        menuwindow *_old = pp.p[--pp.nummenus];\n'
+    '#if defined(_WIN32)\n'
+    '        if (calcyx_mw_pool_push(_old)) continue;\n'
+    '#endif\n'
+    '        delete _old;\n'
+    '      }',
+    1)
+
+# del#E: pulldown 終了時にプールを drain。持続させると menuwindow::handle()
+# が file-static pp の無効状態を参照してクラッシュするため必須。
+src = src.replace(
+    '  while (pp.nummenus>1) delete pp.p[--pp.nummenus];\n'
+    '  mw.hide();',
+
+    '  while (pp.nummenus>1) delete pp.p[--pp.nummenus];\n'
+    '#if defined(_WIN32)\n'
+    '  calcyx_mw_pool_drain();\n'
+    '#endif\n'
+    '  mw.hide();',
     1)
 
 with open(path, "w") as f:
