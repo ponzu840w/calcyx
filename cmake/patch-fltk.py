@@ -5,6 +5,12 @@
   - menuwindow::autoscroll() がメニューバーウィンドウ (itemheight==0) を
     誤ってリポジションするバグを修正。マルチモニタ環境でメニューがずれる
     原因だった。
+  - Windows の OEM キー (VK_OEM_1 / VK_OEM_PLUS など) の FLTK keysym 変換
+    が US 配列固定のテーブル (vktab) を使っており、JIS キーボードだと物理
+    キーと FLTK keysym がずれる (例: JIS `;` キーが FLTK keysym `=` で
+    届く → メニュー "Ctrl+=" のショートカットが物理的には Ctrl+; で発火)。
+    MapVirtualKeyW(vk, MAPVK_VK_TO_CHAR) で現在のキーボード配列の文字を
+    取得し override する。
 
 パフォーマンス修正 (Windows):
   - メニューバー項目間を移動する度に menuwindow (HWND) と menutitle (HWND)
@@ -24,13 +30,18 @@
 """
 import sys, os
 
+# ===========================================================================
+# 1) Fl_Menu.cxx — メニュー関連バグ/パフォーマンス修正
+# ===========================================================================
 path = os.path.join(sys.argv[1], "src", "Fl_Menu.cxx")
 with open(path, "r") as f:
     src = f.read()
 
 if "s_calcyx_mw_pool" in src:
-    print("Already patched, skipping")
-    sys.exit(0)
+    print("Already patched Fl_Menu.cxx, skipping")
+    menu_already_patched = True
+else:
+    menu_already_patched = False
 
 # ---------------------------------------------------------------------------
 # 1) Debug logging infrastructure (Release では完全に no-op)
@@ -403,3 +414,51 @@ with open(path, "w") as f:
     f.write(src)
 
 print("Patched successfully:", path)
+
+# ===========================================================================
+# 2) Fl_win32.cxx — OEM キーの配列対応 (JIS キーボード対策)
+# ===========================================================================
+# FLTK の ms2fltk() は US 配列固定の vktab で VK→keysym を変換するため、
+# JIS キーボードだと物理キーと keysym がずれる (例: 物理 `;` キーは
+# VK_OEM_PLUS=0xbb で届くが vktab は '=' に変換 → メニュー "Ctrl+=" の
+# ショートカットが物理 Ctrl+; で発火する)。
+# ms2fltk() の戻り値を MapVirtualKeyW(vk, MAPVK_VK_TO_CHAR) で現在の
+# キーボード配列の文字に上書きする。OEM 領域だけを対象にし、英数字や
+# Function キーには触らない。
+path = os.path.join(sys.argv[1], "src", "Fl_win32.cxx")
+with open(path, "r") as f:
+    src = f.read()
+
+if "calcyx: layout-aware OEM" in src:
+    print("Already patched Fl_win32.cxx, skipping")
+else:
+    OEM_OVERRIDE = (
+        "        // save the keysym until we figure out the characters:\n"
+        "        Fl::e_keysym = Fl::e_original_keysym = ms2fltk(wParam, lParam & (1 << 24));\n"
+        "        // ---- calcyx: layout-aware OEM key remap (JIS keyboard support) ----\n"
+        "        // FLTK の vktab は US 配列固定で OEM_xxx を keysym 化するため、JIS など\n"
+        "        // 異配列だと物理キーとメニュー表示がずれる。MapVirtualKeyW で現在の配列の\n"
+        "        // 文字に変換して上書き。Shift/AltGr 修飾を含めない base 文字で取得する\n"
+        "        // (FLTK shortcut は base キャラクタ + 修飾 state でマッチするため)。\n"
+        "        if ((wParam >= 0xba && wParam <= 0xc0) || (wParam >= 0xdb && wParam <= 0xdf) || wParam == 0xe2) {\n"
+        "          UINT _ch = MapVirtualKeyW((UINT)wParam, MAPVK_VK_TO_CHAR);\n"
+        "          if (_ch && _ch < 0x80 && _ch >= 0x20) {\n"
+        "            int _c = (int)_ch;\n"
+        "            if (_c >= 'A' && _c <= 'Z') _c += 32; // FLTK keysym は小文字\n"
+        "            Fl::e_keysym = Fl::e_original_keysym = _c;\n"
+        "          }\n"
+        "        }\n"
+    )
+    needle = (
+        "        // save the keysym until we figure out the characters:\n"
+        "        Fl::e_keysym = Fl::e_original_keysym = ms2fltk(wParam, lParam & (1 << 24));\n"
+    )
+    if needle not in src:
+        sys.stderr.write("patch-fltk.py: Fl_win32.cxx target line not found\n")
+        sys.exit(1)
+    src = src.replace(needle, OEM_OVERRIDE, 1)
+
+    with open(path, "w") as f:
+        f.write(src)
+
+    print("Patched successfully:", path)
