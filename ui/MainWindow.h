@@ -44,7 +44,10 @@ private:
     Fl_Button       *btn_about_;  // ? About ボタン (右寄せ)
     Fl_Choice       *fmt_choice_;
     SheetView       *sheet_;
-    CompletionPopup *popup_;
+    CompletionPopupBase *popup_;
+    // popup_ を現在の設定・モードに合わせて再生成
+    // (型が変わるときだけ生成・破棄; 変わらなければ何もしない)
+    void recreate_popup_if_needed();
     DragGrip        *drag_grip_    = nullptr;  // コンパクトモード: ドラッグハンドル
     Fl_Button       *compact_exit_ = nullptr;  // コンパクトモード: 解除ボタン (PiP アイコン)
     ResizeGrip      *resize_grip_  = nullptr;  // コンパクトモード: リサイズハンドル

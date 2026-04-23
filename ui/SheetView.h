@@ -69,7 +69,7 @@ public:
     // クリップボード
     void copy_all_to_clipboard() const;  // 全行を "式 = 結果" 形式でコピー
     void multiline_paste(const std::string &text);  // 複数行ペーストダイアログ
-    CompletionPopup *popup_ = nullptr;
+    CompletionPopupBase *popup_ = nullptr;
 
     // Undo / Redo
     void undo();

@@ -331,15 +331,13 @@ MainWindow::MainWindow(int w, int h, const char *title)
     resize_grip_->labelcolor(C_MENU_FG);
     resize_grip_->hide();
 
-    // 補完ポップアップ: 最後の子として追加することで全ての上に描画される
-    // Fl_Group ベースなので OS ウィンドウを作らず、フォーカス問題がない
-    popup_ = new CompletionPopup();
+    // 補完ポップアップ: 設定に応じて埋め込み (Fl_Group の子) または独立
+    // (Fl_Menu_Window) で生成する。sheet_->popup_ も同時に設定される。
+    popup_ = nullptr;
+    recreate_popup_if_needed();
 
     end();
     resizable(sheet_);
-
-    // SheetView にポインタを渡す (end() 後なので自動追加されない)
-    sheet_->popup_ = popup_;
 
     // 初期状態のグレーアウトを反映
     update_toolbar();
@@ -441,13 +439,13 @@ int MainWindow::handle(int event) {
         }, this);
     }
 
-    // ポップアップ表示中にポップアップ外をクリックしたら閉じる
+    // ポップアップ表示中にポップアップ外をクリックしたら閉じる。
+    // 独立ウィンドウ実装では contains_window_point() は常に false を返す
+    // (別 OS ウィンドウなのでメインウィンドウへのクリックは必ず外側)。
     if (event == FL_PUSH && popup_->is_shown()) {
         int ex = Fl::event_x(), ey = Fl::event_y();
-        if (ex < popup_->x() || ex >= popup_->x() + popup_->w() ||
-            ey < popup_->y() || ey >= popup_->y() + popup_->h()) {
+        if (!popup_->contains_window_point(ex, ey))
             sheet_->completion_hide();
-        }
     }
 #if defined(_WIN32) && !defined(NDEBUG)
     if (event == FL_PUSH && shown()) {
@@ -638,6 +636,8 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
             mw->apply_ui_colors();
             mw->apply_tray_settings();
             mw->sync_view_menu_toggles();
+            // 補完ポップアップ独立化設定が変わっていたら実装を差し替える
+            mw->recreate_popup_if_needed();
         }, win);
     } else if (strcmp(cmd, "topmost") == 0) {
         win->toggle_always_on_top();
@@ -865,8 +865,42 @@ void MainWindow::flush() {
 // ボーダー (OS タイトルバー) の切替には hide()/show() サイクルが必要な
 // プラットフォームがあるため、全環境で共通処理する。
 // コンパクト中は PiP 的に必ず always-on-top。解除時は元のトグル状態に戻す。
+// 補完ポップアップを現在のモード × 設定に合わせた実装で (再) 生成する。
+// 望む型が現行 popup_ と一致していれば何もしない。
+// 初回は popup_ が nullptr なので必ず生成する。
+void MainWindow::recreate_popup_if_needed() {
+    bool want_independent = compact_mode_
+        ? g_popup_independent_compact
+        : g_popup_independent_normal;
+    bool is_independent = dynamic_cast<CompletionPopupWindow *>(popup_) != nullptr;
+    if (popup_ && is_independent == want_independent) return;
+
+    CompletionPopupBase *old = popup_;
+    if (old && old->is_shown()) old->hide_popup();
+    popup_ = nullptr;
+
+    // 独立ウィンドウは current group に属してはいけない。埋め込みは
+    // this を current group にして生成する。どちらも生成後に元に戻す。
+    Fl_Group *prev = Fl_Group::current();
+    if (want_independent) {
+        Fl_Group::current(nullptr);
+        popup_ = new CompletionPopupWindow(this);
+    } else {
+        Fl_Group::current(this);
+        popup_ = new CompletionPopup();
+    }
+    Fl_Group::current(prev);
+
+    if (sheet_) sheet_->popup_ = popup_;
+
+    delete old;
+}
+
 void MainWindow::toggle_compact_mode() {
     compact_mode_ = !compact_mode_;
+
+    // モード別の設定に合わせて補完ポップアップの実装 (埋め込み/独立) を切替
+    recreate_popup_if_needed();
 
     if (compact_mode_) {
         // 復帰用に現在のジオメトリと topmost 状態を記憶

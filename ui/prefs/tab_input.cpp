@@ -1,4 +1,4 @@
-// tab_input.cpp — Input タブ (自動補完 / 括弧の自動閉じ)
+// tab_input.cpp — Input タブ (補完 / 括弧の自動閉じ)
 
 #include "prefs_common.h"
 
@@ -9,16 +9,70 @@ void build_input_tab(DlgState &st, int tab_h) {
     g->labelcolor(DLG_TEXT);
     g->labelsize(12);
 
-    int lx = 20, ly = 60;
+    const int lx = 16;
+    const int sw = DW - 40;
+    int ly = 50;
 
-    st.auto_complete_chk = new Fl_Check_Button(lx, ly, 300, 25, "Auto-completion (Ctrl+Space always works)");
-    style_check(st.auto_complete_chk);
-    st.auto_complete_chk->value(g_input_auto_completion ? 1 : 0);
-    ly += 35;
+    // ===== Completion =====
+    {
+        int body_h = 134;
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Completion");
+        int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
-    st.auto_brackets_chk = new Fl_Check_Button(lx, ly, 300, 25, "Auto-close brackets ( ) [ ] { }");
-    style_check(st.auto_brackets_chk);
-    st.auto_brackets_chk->value(g_input_auto_close_brackets ? 1 : 0);
+        st.auto_complete_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+            "Auto-completion on typing");
+        style_check(st.auto_complete_chk);
+        st.auto_complete_chk->value(g_input_auto_completion ? 1 : 0);
+        inner_y += 22;
+
+        Fl_Box *note = new Fl_Box(lx + 30, inner_y, sw - 40, 18,
+            "Ctrl+Space opens the popup regardless of this setting.");
+        note->box(FL_NO_BOX);
+        note->labelcolor(DLG_LABEL);
+        note->labelsize(11);
+        note->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        inner_y += 24;
+
+        // 補完ポップアップを独立 OS ウィンドウで出すかどうか。
+        // 独立ウィンドウはメインウィンドウ外にはみ出せるが、ウィンドウ
+        // 生成/破棄のコストとフォーカス管理の面倒が乗る。
+        Fl_Box *pop_label = new Fl_Box(lx + 10, inner_y, sw - 20, 20,
+            "Show popup as a separate window:");
+        pop_label->box(FL_NO_BOX);
+        pop_label->labelcolor(DLG_TEXT);
+        pop_label->labelsize(12);
+        pop_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        inner_y += 22;
+
+        st.popup_indep_normal_chk = new Fl_Check_Button(lx + 30, inner_y, sw - 40, 22,
+            "In normal mode");
+        style_check(st.popup_indep_normal_chk);
+        st.popup_indep_normal_chk->value(g_popup_independent_normal ? 1 : 0);
+        inner_y += 22;
+
+        st.popup_indep_compact_chk = new Fl_Check_Button(lx + 30, inner_y, sw - 40, 22,
+            "In compact mode");
+        style_check(st.popup_indep_compact_chk);
+        st.popup_indep_compact_chk->value(g_popup_independent_compact ? 1 : 0);
+
+        sec->end();
+        ly += SECTION_TITLE_H + body_h + SECTION_GAP;
+    }
+
+    // ===== Brackets =====
+    {
+        int body_h = 36;
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Brackets");
+        int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
+
+        st.auto_brackets_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+            "Auto-close brackets ( ) [ ] { }");
+        style_check(st.auto_brackets_chk);
+        st.auto_brackets_chk->value(g_input_auto_close_brackets ? 1 : 0);
+
+        sec->end();
+        ly += SECTION_TITLE_H + body_h + SECTION_GAP;
+    }
 
     g->end();
 }
