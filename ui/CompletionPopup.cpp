@@ -220,31 +220,43 @@ void CompletionPopupWindow::show_at(int wx, int wy_below, int editor_top,
     int sy_below = main_->y_root() + wy_below;
     int sy_top   = main_->y_root() + editor_top;
 
-    int sw = Fl::w();
-    int sh = Fl::h();
+    // 主ウィンドウがあるスクリーンの作業領域を取得。
+    // Fl::w()/Fl::h() はプライマリモニタ固定なので、主ウィンドウが
+    // サブモニタにある場合にポップアップがプライマリに吸い寄せられる
+    // (画面半分より右に出られないように見える) 挙動になる。
+    int scr_x, scr_y, scr_w, scr_h;
+    Fl::screen_work_area(scr_x, scr_y, scr_w, scr_h, main_->screen_num());
 
-    // X: 画面右端に収まるよう調整
-    if (sx + POP_W > sw) sx = sw - POP_W;
-    if (sx < 0) sx = 0;
+    // X: 作業領域内に収める
+    if (sx + POP_W > scr_x + scr_w) sx = scr_x + scr_w - POP_W;
+    if (sx < scr_x) sx = scr_x;
 
-    // Y: 下に収まらなければエディタの上に表示
-    int sy = sy_below;
-    int h  = cur_h_;
-    if (sy + h > sh) {
-        int space_above = sy_top;
-        int space_below = sh - sy_below;
-        if (space_above >= h) {
-            sy = sy_top - h;
-        } else if (space_above >= space_below) {
-            h  = space_above;
-            sy = 0;
+    // Y: 原則として下に表示。独立ウィンドウはメインウィンドウ外にも
+    // 出せるので、下の空間は画面下端まで使える = ほとんどの場合は
+    // 下に表示できる。下の余白が最小サイズに満たないときだけ上に
+    // 回す。
+    int sy          = sy_below;
+    int h           = cur_h_;
+    int scr_bottom  = scr_y + scr_h;
+    int space_below = scr_bottom - sy_below;
+    int min_h       = DESC_H + (list_->textsize() + 4);
+
+    if (h > space_below) {
+        if (space_below >= min_h) {
+            // 下に縮小表示
+            h = space_below;
         } else {
-            h  = space_below;
-            sy = sy_below;
-        }
-        if (h < DESC_H + (list_->textsize() + 4)) {
-            hide_popup();
-            return;
+            // 下が狭すぎるので上へ退避
+            int space_above = sy_top - scr_y;
+            if (space_above >= h) {
+                sy = sy_top - h;
+            } else if (space_above >= min_h) {
+                sy = scr_y;
+                h  = space_above;
+            } else {
+                hide_popup();  // どちらにも入らない
+                return;
+            }
         }
     }
 
