@@ -102,6 +102,12 @@ private:
 
     /* --- 描画 --- */
     ftxui::Element render_row(int idx, bool is_focused, int result_col) const;
+    /* シンタックスハイライト: GUI の draw_expr_highlighted と同じカテゴリ分け。
+     * cursor_byte_pos が範囲内なら反転表示、末尾 (= size) なら末尾に反転スペース。
+     * SIZE_MAX ならカーソルなし。dim_style=true でスパン全体に dim 属性を重ねる。 */
+    ftxui::Element render_highlighted(const std::string &expr,
+                                       size_t cursor_byte_pos,
+                                       bool   dim_style) const;
 
     sheet_model_t *model_;
     int            focused_row_ = 0;

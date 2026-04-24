@@ -12,12 +12,16 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "types/val.h"
-#include "eval/eval_ctx.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* engine ヘッダ群は素の C なので extern "C" ブロック内で取り込む。
+ * 外側に出すと、eval_ctx.h → parser/expr.h → parser/token.h 経由で
+ * tok_free 等が C++ リンケージで先取りされてしまい、C++ フロントエンド
+ * から呼び出したときに undefined reference になる。 */
+#include "types/val.h"
+#include "eval/eval_ctx.h"
 
 typedef struct sheet_model sheet_model_t;
 

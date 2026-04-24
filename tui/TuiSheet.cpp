@@ -13,8 +13,11 @@
 
 extern "C" {
 #include "parser/lexer.h"
+#include "parser/token.h"
 #include "types/val.h"
 }
+
+#include <cctype>
 
 using namespace ftxui;
 
@@ -40,6 +43,98 @@ size_t word_right(const std::string &s, size_t pos) {
     while (p < s.size() && !is_word_char((unsigned char)s[p])) ++p;
     while (p < s.size() &&  is_word_char((unsigned char)s[p])) ++p;
     return p;
+}
+
+/* 1 文字ごとのハイライト色を組み立てる。範囲外 (TOK_EMPTY 等) は
+ * Color::Default を残す → 端末デフォルト前景でそのまま描画される。
+ * 移植元: ui/SheetView.cpp:220 draw_expr_highlighted。 */
+std::vector<ftxui::Color> build_char_colors(const std::string &expr) {
+    using ftxui::Color;
+    std::vector<Color> out(expr.size(), Color::Default);
+    if (expr.empty()) return out;
+
+    tok_queue_t q;
+    tok_queue_init(&q);
+    lexer_tokenize(expr.c_str(), &q);
+
+    /* 括弧ネスト色は GUI の g_colors.paren 4 色を FTXUI 色に置換。
+     * ネストごとに色を変えて対応関係を目で追いやすくする。 */
+    static const Color paren_colors[4] = {
+        Color::YellowLight, Color::MagentaLight,
+        Color::CyanLight,   Color::GreenLight,
+    };
+    int paren_depth = 0;
+
+    auto paint = [&](int p, int end, Color c) {
+        int n = (int)expr.size();
+        if (p < 0) p = 0;
+        if (end > n) end = n;
+        for (int i = p; i < end; ++i) out[i] = c;
+    };
+
+    for (;;) {
+        const token_t *peek = tok_queue_peek(&q);
+        if (!peek || peek->type == TOK_EOS || peek->type == TOK_EMPTY) break;
+        token_t tok = tok_queue_pop(&q);
+
+        int p  = tok.pos;
+        int tl = (int)std::strlen(tok.text);
+        int end = p + tl;
+        if (p < 0 || p >= (int)expr.size()) { tok_free(&tok); continue; }
+        if (end > (int)expr.size()) end = (int)expr.size();
+
+        switch (tok.type) {
+            case TOK_WORD:
+                paint(p, end, Color::CyanLight);
+                break;
+            case TOK_BOOL_LIT:
+                paint(p, end, Color::MagentaLight);
+                break;
+            case TOK_NUM_LIT:
+                if (tok.val) {
+                    val_fmt_t vfmt = tok.val->fmt;
+                    if (vfmt == FMT_SI_PREFIX) {
+                        if (end - 1 >= p) paint(end - 1, end, Color::YellowLight);
+                    } else if (vfmt == FMT_BIN_PREFIX) {
+                        if (end - 2 >= p) paint(end - 2, end, Color::YellowLight);
+                    } else if (vfmt == FMT_CHAR || vfmt == FMT_STRING ||
+                               vfmt == FMT_DATETIME || vfmt == FMT_WEB_COLOR) {
+                        paint(p, end, Color::MagentaLight);
+                    } else {
+                        /* 数値リテラル本体は既定色のまま。指数 (e/E 以降) だけ
+                         * SI プレフィクスと同じ黄色で強調する。 */
+                        for (int i = p + 1; i < end; ++i) {
+                            if ((expr[i] == 'e' || expr[i] == 'E') &&
+                                std::isdigit((unsigned char)expr[i-1])) {
+                                paint(i, end, Color::YellowLight);
+                                break;
+                            }
+                        }
+                    }
+                }
+                break;
+            case TOK_OP:
+            case TOK_KEYWORD:
+                paint(p, end, Color::RedLight);
+                break;
+            case TOK_SYMBOL:
+                if (tl == 1 && (tok.text[0] == '(' || tok.text[0] == ')')) {
+                    int d = paren_depth;
+                    if (tok.text[0] == ')' && d > 0) d--;
+                    paint(p, end, paren_colors[d % 4]);
+                    if (tok.text[0] == '(') paren_depth++;
+                    else if (paren_depth > 0) paren_depth--;
+                } else {
+                    paint(p, end, Color::RedLight);
+                }
+                break;
+            default:
+                break;
+        }
+        tok_free(&tok);
+    }
+    tok_queue_free(&q);
+    return out;
 }
 
 const char *fmt_label(val_fmt_t fmt) {
@@ -542,6 +637,54 @@ void TuiSheet::action_format(val_fmt_t /*fmt*/, const char *fmt_func) {
 /* ----------------------------------------------------------------------
  * 描画
  * -------------------------------------------------------------------- */
+Element TuiSheet::render_highlighted(const std::string &expr,
+                                      size_t cursor_byte_pos,
+                                      bool   dim_style) const {
+    auto colors = build_char_colors(expr);
+    int  n      = (int)expr.size();
+
+    Elements els;
+    els.reserve(n + 2);
+
+    std::string buf;
+    Color buf_color = Color::Default;
+    auto flush = [&] {
+        if (buf.empty()) return;
+        Element e = text(buf);
+        if (!(buf_color == Color::Default)) e = e | color(buf_color);
+        if (dim_style) e = e | dim;
+        els.push_back(e);
+        buf.clear();
+    };
+
+    for (int i = 0; i < n; ++i) {
+        if ((size_t)i == cursor_byte_pos) {
+            flush();
+            Element e = text(std::string(1, expr[i]));
+            if (!(colors[i] == Color::Default)) e = e | color(colors[i]);
+            e = e | inverted;
+            els.push_back(e);
+            continue;
+        }
+        if (buf.empty()) {
+            buf_color = colors[i];
+            buf.push_back(expr[i]);
+        } else if (colors[i] == buf_color) {
+            buf.push_back(expr[i]);
+        } else {
+            flush();
+            buf_color = colors[i];
+            buf.push_back(expr[i]);
+        }
+    }
+    flush();
+    /* カーソルが末尾 (= size) の場合はトレイルスペースを反転して見せる */
+    if (cursor_byte_pos == (size_t)n) {
+        els.push_back(text(" ") | inverted);
+    }
+    return hbox(std::move(els));
+}
+
 Element TuiSheet::render_row(int idx, bool is_focused, int result_col) const {
     const char *expr_c  = sheet_model_row_expr(model_, idx);
     const char *result_c = sheet_model_row_result(model_, idx);
@@ -550,25 +693,14 @@ Element TuiSheet::render_row(int idx, bool is_focused, int result_col) const {
 
     Element left;
     if (is_focused) {
-        /* カーソル表示: 編集バッファを使い、cursor_pos_ を反転させる */
-        const std::string &buf = editor_buf_;
-        size_t p = std::min(cursor_pos_, buf.size());
-        std::string a = buf.substr(0, p);
-        std::string b;
-        std::string c = (p < buf.size()) ? buf.substr(p + 1) : "";
-        if (p < buf.size()) b = std::string(1, buf[p]);
-        else                b = " ";  /* 末尾カーソル用のスペース */
-
         left = hbox({
             text("> "),
-            text(a),
-            text(b) | inverted,
-            text(c),
+            render_highlighted(editor_buf_, cursor_pos_, /*dim_style=*/false),
         });
     } else {
         left = hbox({
             text("  "),
-            text(expr) | dim,
+            render_highlighted(expr, SIZE_MAX, /*dim_style=*/true),
         });
     }
 
@@ -632,8 +764,8 @@ Element TuiSheet::Render() {
                    " candidates)";
     }
 
-    std::string help = " ^Q quit  ^Z undo  ^Y redo  ^D del  ^S save  ^O open "
-                       " Tab complete  F8-F12 fmt ";
+    std::string help = " ^Q quit  ^Z undo  ^Y redo  ^Del del-row  ^S save  ^O open "
+                       " Tab complete  F5 recalc  F8-F12 fmt ";
 
     return vbox({
         vbox(std::move(rows)) | yframe | flex,
