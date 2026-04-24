@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 
+#include "TuiCompletion.h"
 #include "sheet_model.h"
 
 namespace calcyx::tui {
@@ -48,6 +49,13 @@ private:
     void load_editor_from_row();
     void commit_if_changed();
     void live_evaluate();
+
+    /* --- 補完 --- */
+    bool completion_visible() const { return completion_.visible(); }
+    std::string current_word_at_cursor(size_t *out_start) const;
+    void completion_trigger();
+    void completion_update_key();
+    void completion_confirm();
 
     /* --- キーアクション実装 --- */
     void action_cursor_left();
@@ -90,6 +98,8 @@ private:
     std::function<void()> quit_cb_;
     std::function<void()> file_open_cb_;
     std::function<void()> file_save_cb_;
+
+    TuiCompletion completion_;
 };
 
 std::shared_ptr<TuiSheet> MakeTuiSheet(sheet_model_t *model);

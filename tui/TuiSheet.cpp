@@ -8,6 +8,10 @@
 #include <algorithm>
 #include <cstring>
 
+extern "C" {
+#include "parser/lexer.h"
+}
+
 using namespace ftxui;
 
 namespace calcyx::tui {
@@ -81,6 +85,60 @@ void TuiSheet::reload_focused_row() {
     focused_row_ = std::min(focused_row_,
                              std::max(0, sheet_model_row_count(model_) - 1));
     load_editor_from_row();
+}
+
+/* ----------------------------------------------------------------------
+ * 補完
+ * -------------------------------------------------------------------- */
+std::string TuiSheet::current_word_at_cursor(size_t *out_start) const {
+    /* cursor の 1 文字左を起点に、id_follow の範囲を後ろへ拡大。
+     * 先頭が id_start でなければ補完対象外 (空文字列を返す)。 */
+    if (cursor_pos_ == 0) {
+        if (out_start) *out_start = 0;
+        return "";
+    }
+    size_t start = cursor_pos_;
+    while (start > 0 && lexer_is_id_follow(editor_buf_[start - 1])) --start;
+    if (start >= cursor_pos_) {
+        if (out_start) *out_start = cursor_pos_;
+        return "";
+    }
+    if (!lexer_is_id_start(editor_buf_[start])) {
+        if (out_start) *out_start = cursor_pos_;
+        return "";
+    }
+    if (out_start) *out_start = start;
+    return editor_buf_.substr(start, cursor_pos_ - start);
+}
+
+void TuiSheet::completion_trigger() {
+    size_t start = 0;
+    std::string key = current_word_at_cursor(&start);
+    completion_.reload(model_);
+    completion_.open(key);
+}
+
+void TuiSheet::completion_update_key() {
+    if (!completion_visible()) return;
+    size_t start = 0;
+    std::string key = current_word_at_cursor(&start);
+    completion_.update_key(key);
+}
+
+void TuiSheet::completion_confirm() {
+    const TuiCompletion::Item *c = completion_.selected();
+    if (!c) { completion_.hide(); return; }
+
+    size_t start = 0;
+    (void)current_word_at_cursor(&start);
+
+    std::string rep = c->id;
+    if (c->is_function) rep += "(";
+
+    editor_buf_.replace(start, cursor_pos_ - start, rep);
+    cursor_pos_ = start + rep.size();
+    completion_.hide();
+    live_evaluate();
 }
 
 bool TuiSheet::editor_dirty() const {
@@ -372,14 +430,22 @@ Element TuiSheet::render_row(int idx, bool is_focused, int result_col) const {
 Element TuiSheet::Render() {
     int n = sheet_model_row_count(model_);
     Elements rows;
-    rows.reserve(n);
+    rows.reserve(n + 2);
 
     /* 2 列レイアウト: 左 = expr、右 = result。
-     * カーソル行が画面外に出ないよう yframe + focus でスクロール */
+     * カーソル行が画面外に出ないよう yframe + focus でスクロール。
+     * 補完ポップアップは焦点行の直下に挟み込む。 */
     for (int i = 0; i < n; ++i) {
         Element row = render_row(i, i == focused_row_, 0);
         if (i == focused_row_) row = row | focus;
         rows.push_back(row);
+        if (i == focused_row_ && completion_visible()) {
+            Element popup = hbox({
+                text("  "),
+                completion_.render(8) | size(WIDTH, LESS_THAN, 40),
+            });
+            rows.push_back(popup);
+        }
     }
 
     val_fmt_t cur_fmt = sheet_model_row_fmt(model_, focused_row_);
@@ -388,6 +454,10 @@ Element TuiSheet::Render() {
         "fmt: " + fmt_label(cur_fmt);
     if (!file_path_.empty()) status += "  file: " + file_path_;
     if (editor_dirty())      status += "  *";
+    if (completion_visible()) {
+        status += "  (" + std::to_string(completion_.filtered_count()) +
+                   " candidates)";
+    }
 
     std::string help = " ^Q quit  ^Z undo  ^Y redo  ^D del  ^S save  ^O open "
                        " Tab complete  F8-F12 fmt ";
@@ -406,7 +476,25 @@ Element TuiSheet::Render() {
  * OnEvent
  * -------------------------------------------------------------------- */
 bool TuiSheet::OnEvent(Event ev) {
+    /* 補完ポップアップが開いている間は、矢印・Enter・Esc を横取りする。
+     * 文字入力・Backspace などはそのまま通して、更新後に key を追従させる。 */
+    if (completion_visible()) {
+        if (ev == Event::Escape)    { completion_.hide();          return true; }
+        if (ev == Event::ArrowUp)   { completion_.move_selection(-1); return true; }
+        if (ev == Event::ArrowDown) { completion_.move_selection(+1); return true; }
+        if (ev == Event::Return)    { completion_confirm();         return true; }
+        if (ev == Event::Tab)       { completion_confirm();         return true; }
+    }
+
     Action a = map(ev);
+
+    /* トリガ (Tab or Ctrl+Space) の場合、先にチェック */
+    if (a == Action::CompletionTrigger) {
+        completion_trigger();
+        return true;
+    }
+
+    bool needs_key_update = false;
 
     switch (a) {
         case Action::None:    return false;
@@ -414,56 +502,80 @@ bool TuiSheet::OnEvent(Event ev) {
             if (quit_cb_) quit_cb_();
             return true;
 
-        case Action::CursorLeft:       action_cursor_left();        return true;
-        case Action::CursorRight:      action_cursor_right();       return true;
-        case Action::CursorHome:       action_cursor_home();        return true;
-        case Action::CursorEnd:        action_cursor_end();         return true;
-        case Action::CursorWordLeft:   action_cursor_word_left();   return true;
-        case Action::CursorWordRight:  action_cursor_word_right();  return true;
+        case Action::CursorLeft:       action_cursor_left();
+                                       needs_key_update = true;     break;
+        case Action::CursorRight:      action_cursor_right();
+                                       needs_key_update = true;     break;
+        case Action::CursorHome:       action_cursor_home();
+                                       completion_.hide();          break;
+        case Action::CursorEnd:        action_cursor_end();
+                                       completion_.hide();          break;
+        case Action::CursorWordLeft:   action_cursor_word_left();
+                                       needs_key_update = true;     break;
+        case Action::CursorWordRight:  action_cursor_word_right();
+                                       needs_key_update = true;     break;
 
-        case Action::RowUp:            action_row_up();             return true;
-        case Action::RowDown:          action_row_down();           return true;
-        case Action::RowPageUp:        action_page(-1);             return true;
-        case Action::RowPageDown:      action_page(+1);             return true;
+        case Action::RowUp:            action_row_up();
+                                       completion_.hide();          break;
+        case Action::RowDown:          action_row_down();
+                                       completion_.hide();          break;
+        case Action::RowPageUp:        action_page(-1);
+                                       completion_.hide();          break;
+        case Action::RowPageDown:      action_page(+1);
+                                       completion_.hide();          break;
 
         case Action::InsertChar:
             action_insert_char(ev.character());
-            return true;
-        case Action::Backspace:        action_backspace();          return true;
-        case Action::DeleteChar:       action_delete_char();        return true;
-        case Action::DeleteWord:       action_delete_word();        return true;
-        case Action::KillLineRight:    action_kill_line_right();    return true;
+            needs_key_update = true;
+            break;
+        case Action::Backspace:        action_backspace();
+                                       needs_key_update = true;     break;
+        case Action::DeleteChar:       action_delete_char();
+                                       needs_key_update = true;     break;
+        case Action::DeleteWord:       action_delete_word();
+                                       needs_key_update = true;     break;
+        case Action::KillLineRight:    action_kill_line_right();
+                                       needs_key_update = true;     break;
 
-        case Action::CommitAndInsertBelow: action_commit_and_insert_below(); return true;
-        case Action::InsertAbove:      action_insert_above();       return true;
-        case Action::DeleteRow:        action_delete_row();         return true;
-        case Action::MoveRowUp:        action_move_row(-1);         return true;
-        case Action::MoveRowDown:      action_move_row(+1);         return true;
+        case Action::CommitAndInsertBelow:
+            action_commit_and_insert_below();
+            completion_.hide();
+            break;
+        case Action::InsertAbove:      action_insert_above();
+                                       completion_.hide();          break;
+        case Action::DeleteRow:        action_delete_row();
+                                       completion_.hide();          break;
+        case Action::MoveRowUp:        action_move_row(-1);
+                                       completion_.hide();          break;
+        case Action::MoveRowDown:      action_move_row(+1);
+                                       completion_.hide();          break;
 
-        case Action::Undo:             action_undo();               return true;
-        case Action::Redo:             action_redo();               return true;
+        case Action::Undo:             action_undo();
+                                       completion_.hide();          break;
+        case Action::Redo:             action_redo();
+                                       completion_.hide();          break;
 
-        case Action::FormatAuto:       action_format(FMT_REAL,      "");    return true;
-        case Action::FormatDec:        action_format(FMT_REAL,      "dec"); return true;
-        case Action::FormatHex:        action_format(FMT_HEX,       "hex"); return true;
-        case Action::FormatBin:        action_format(FMT_BIN,       "bin"); return true;
-        case Action::FormatSI:         action_format(FMT_SI_PREFIX, "si");  return true;
+        case Action::FormatAuto:       action_format(FMT_REAL,      "");    break;
+        case Action::FormatDec:        action_format(FMT_REAL,      "dec"); break;
+        case Action::FormatHex:        action_format(FMT_HEX,       "hex"); break;
+        case Action::FormatBin:        action_format(FMT_BIN,       "bin"); break;
+        case Action::FormatSI:         action_format(FMT_SI_PREFIX, "si");  break;
 
         case Action::FileOpen:
             if (file_open_cb_) file_open_cb_();
-            return true;
+            break;
         case Action::FileSave:
-            if (file_save_cb_) file_save_cb_();
-            return true;
         case Action::FileSaveAs:
             if (file_save_cb_) file_save_cb_();
-            return true;
+            break;
 
         case Action::CompletionTrigger:
-            /* v1: 補完は次コミットで実装 */
-            return true;
+            /* already handled above */
+            break;
     }
-    return false;
+
+    if (needs_key_update) completion_update_key();
+    return true;
 }
 
 } // namespace calcyx::tui

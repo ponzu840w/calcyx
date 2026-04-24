@@ -1,0 +1,63 @@
+#ifndef CALCYX_TUI_COMPLETION_H
+#define CALCYX_TUI_COMPLETION_H
+
+#include <ftxui/dom/elements.hpp>
+
+#include <string>
+#include <vector>
+
+#include "sheet_model.h"
+
+namespace calcyx::tui {
+
+/* 補完ドロップダウン。sheet_model_build_candidates で取得した全候補を
+ * 内部に保持し、キー (現在のカーソル位置の識別子) でフィルタ・ランキングする。
+ *
+ * ランキング順:
+ *   1. prefix (istartswith) でマッチする候補 (アルファベット順)
+ *   2. substring (icontains) でマッチする候補 (アルファベット順)
+ *
+ * GUI (ui/CompletionPopup.cpp) と同じルール。 */
+class TuiCompletion {
+public:
+    struct Item {
+        std::string id;
+        std::string label;
+        std::string description;
+        bool        is_function;
+    };
+
+    /* sheet_model から候補を再構築。open() 前に毎回呼ぶ想定。 */
+    void reload(sheet_model_t *model);
+
+    void open (const std::string &key);
+    void hide ();
+    bool visible() const { return visible_; }
+
+    void update_key  (const std::string &key);
+    void move_selection(int dir);  /* -1 / +1; filter 内を循環 */
+
+    /* 現在選択中の item。なければ nullptr。 */
+    const Item *selected() const;
+
+    /* key prefix 長。補完確定時、[pos - key_len, pos] を replace する目印。 */
+    const std::string &key() const { return key_; }
+
+    /* 最大 max_rows 行でドロップダウンをレンダー。 */
+    ftxui::Element render(int max_rows = 8) const;
+
+    int filtered_count() const { return (int)filtered_.size(); }
+
+private:
+    void rebuild();
+
+    std::vector<Item> all_;
+    std::vector<Item> filtered_;
+    std::string       key_;
+    int               selected_ = 0;
+    bool              visible_  = false;
+};
+
+} // namespace calcyx::tui
+
+#endif

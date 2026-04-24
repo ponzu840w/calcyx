@@ -17,6 +17,7 @@ set(TUI_SRC
     main.cpp
     TuiApp.cpp
     TuiSheet.cpp
+    TuiCompletion.cpp
     keymap.cpp
 )
 
