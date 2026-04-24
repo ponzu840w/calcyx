@@ -769,8 +769,8 @@ Element TuiSheet::Render() {
                    " candidates)";
     }
 
-    std::string help = " ^Q quit  ^Z undo  ^Y redo  ^Del del-row  ^S save  ^O open "
-                       " Tab complete  F5 recalc  F6 compact  F8-F12 fmt ";
+    std::string help = " F1 help  Alt+F menu  ^Q quit  ^Z/^Y undo/redo  "
+                       "Tab compl.  F5 recalc  F6 compact  F8-F12 fmt ";
 
     return vbox({
         vbox(std::move(rows)) | yframe | flex,

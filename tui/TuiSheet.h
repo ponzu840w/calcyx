@@ -52,6 +52,10 @@ public:
     bool  compact_mode() const { return compact_mode_; }
     void  set_compact_mode(bool v) { compact_mode_ = v; }
 
+    /* GUI の g_input_auto_completion 相当。View メニューから toggle。 */
+    bool  auto_complete() const { return auto_complete_; }
+    void  set_auto_complete(bool v) { auto_complete_ = v; }
+
     /* --- テスト用アクセサ (本番コードからは使わない) --- */
     const std::string& test_editor_buf() const { return editor_buf_; }
     size_t             test_cursor_pos() const { return cursor_pos_; }

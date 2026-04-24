@@ -6,12 +6,47 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "sheet_model.h"
 
 namespace calcyx::tui {
 
 class TuiSheet;
+
+/* メニュー識別子。None はメニュー未展開。 */
+enum class MenuId {
+    None, File, Edit, View, Format, Help,
+};
+
+/* 各メニュー項目が表すコマンド。invoke_menu_cmd() で switch する。 */
+enum class MenuCmd {
+    None,
+    /* File */
+    Open, Save, SamplesSubmenu, ClearAll, Preferences, About, Exit,
+    /* Edit */
+    Undo, Redo, CopyAll, InsertBelow, InsertAbove,
+    DeleteRow, MoveRowUp, MoveRowDown, Recalculate,
+    /* View */
+    ToggleCompact, DecimalsInc, DecimalsDec, ToggleAutoComplete,
+    /* Format */
+    FormatAuto, FormatDec, FormatHex, FormatBin, FormatSI,
+    /* Help */
+    HelpAbout,
+    /* Samples: Enter で開いているサンプルファイル (sample_item_ で選択) */
+    OpenSample,
+};
+
+/* メニュー項目定義。label の '&' の直後 1 文字がホット文字。
+ * separator=true ならほかのフィールドは無視して区切り線。 */
+struct MenuItem {
+    const char *label;     /* "&Open..." など。"-" なら separator */
+    const char *shortcut;  /* 右寄せ表示、空文字なら表示しない */
+    MenuCmd     cmd;
+    bool        separator;
+    bool        disabled;
+    bool        submenu;   /* 右に ▶、Enter / → で submenu へ */
+};
 
 /* ルートアプリケーション。sheet_model を所有し、
  *   - TuiSheet (メインビュー)
@@ -36,6 +71,9 @@ public:
     TuiSheet      *test_sheet() const { return sheet_.get(); }
     bool test_about_visible() const { return about_visible_; }
     int  test_about_scroll()  const { return about_scroll_; }
+    MenuId test_menu_active() const { return menu_active_; }
+    int    test_menu_item()   const { return menu_item_; }
+    bool   test_submenu_active() const { return submenu_active_; }
 
 private:
     enum class PromptMode {
@@ -58,6 +96,19 @@ private:
     bool           about_handle_event(ftxui::Event ev);  /* true で吸収 */
     ftxui::Element about_overlay() const;
 
+    /* メニューバー (Alt+F/E/V/R/H で展開)。
+     * 展開中: ↑↓ で項目移動、←→ で隣メニューへ、Enter で実行、Esc で閉じる。 */
+    bool           menu_handle_event(ftxui::Event ev);   /* true で吸収 */
+    ftxui::Element menu_bar_render() const;              /* 最上段 */
+    ftxui::Element menu_overlay() const;                 /* 展開中のドロップダウン */
+    void           menu_open(MenuId id);
+    void           menu_close();
+    void           menu_move_item(int dir);              /* +1 / -1、区切り・無効をスキップ */
+    void           menu_activate_current();              /* 現項目を実行 */
+    void           menu_invoke_cmd(MenuCmd cmd);
+    void           samples_populate();                   /* lazy init */
+    std::string    samples_dir() const;
+
     sheet_model_t            *model_ = nullptr;
     std::shared_ptr<TuiSheet> sheet_;
     std::string               status_message_;
@@ -72,6 +123,16 @@ private:
     /* About 状態 */
     bool about_visible_ = false;
     int  about_scroll_  = 0;
+
+    /* メニュー状態 */
+    MenuId menu_active_     = MenuId::None;
+    int    menu_item_       = 0;
+    bool   submenu_active_  = false;  /* File/Samples が開いているとき true */
+    int    submenu_item_    = 0;
+
+    /* Samples の一覧 (lazy populate)。空なら未スキャン。 */
+    mutable std::vector<std::string> samples_files_;
+    mutable bool                     samples_scanned_ = false;
 };
 
 } // namespace calcyx::tui

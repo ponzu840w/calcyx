@@ -194,10 +194,88 @@ static void test_about_dialog() {
     dump_render("6c. about dialog closed", app);
 }
 
+/* ----------------------------------------------------------------------
+ * シナリオ 6d: メニューバー基本動作
+ *   - Alt+F で File 展開、→ で次へ、Esc で閉じる
+ *   - Alt+E → 'u' (Undo のホット文字) で sheet に undo が届くこと
+ *   - Alt+R → Enter (先頭の Auto) で FormatAuto が呼ばれること
+ * -------------------------------------------------------------------- */
+static void test_menu_bar() {
+    TuiApp app;
+
+    /* 初期は未展開 */
+    EXPECT("menu: inactive at start",
+           app.test_menu_active() == MenuId::None);
+
+    /* Alt+F で File が開く */
+    app.test_dispatch(Event::Special("\x1b" "f"));
+    EXPECT("menu: File opened by Alt+F",
+           app.test_menu_active() == MenuId::File);
+
+    /* → で隣メニュー (Edit) へ */
+    app.test_dispatch(Event::ArrowRight);
+    EXPECT("menu: ArrowRight moves to Edit",
+           app.test_menu_active() == MenuId::Edit);
+
+    /* ← で File に戻る */
+    app.test_dispatch(Event::ArrowLeft);
+    EXPECT("menu: ArrowLeft moves back to File",
+           app.test_menu_active() == MenuId::File);
+
+    /* ↓ で項目移動 */
+    int before_item = app.test_menu_item();
+    app.test_dispatch(Event::ArrowDown);
+    EXPECT("menu: ArrowDown moves item",
+           app.test_menu_item() != before_item);
+
+    /* Esc で閉じる */
+    app.test_dispatch(Event::Escape);
+    EXPECT("menu: closed by Esc",
+           app.test_menu_active() == MenuId::None);
+
+    /* --- Edit/Undo 呼び出し経路 --- */
+    /* "1+2" Enter で行を作る */
+    type_str(app, "1+2");
+    app.test_dispatch(Event::Return);
+    int rows_after_insert = sheet_model_row_count(app.test_model());
+    EXPECT("menu: baseline 2 rows",
+           rows_after_insert == 2);
+
+    /* Alt+E → 'u' で Undo (Undo のホット文字は "&Undo" の 'u') */
+    app.test_dispatch(Event::Special("\x1b" "e"));
+    EXPECT("menu: Edit opened", app.test_menu_active() == MenuId::Edit);
+    app.test_dispatch(Event::Character("u"));
+    /* ホット文字で activate → menu 閉じる */
+    EXPECT("menu: closed after hot-letter activate",
+           app.test_menu_active() == MenuId::None);
+    /* Undo で行数が戻っているはず */
+    EXPECT("menu: undo decreased row count",
+           sheet_model_row_count(app.test_model()) < rows_after_insert);
+
+    /* --- Format/Auto 呼び出し (Alt+R → Enter) --- */
+    app.test_dispatch(Event::Special("\x1b" "r"));
+    EXPECT("menu: Format opened by Alt+R",
+           app.test_menu_active() == MenuId::Format);
+    app.test_dispatch(Event::Return);
+    EXPECT("menu: closed after Enter",
+           app.test_menu_active() == MenuId::None);
+
+    /* --- Help → About 経路 --- */
+    EXPECT("menu: about hidden", !app.test_about_visible());
+    app.test_dispatch(Event::Special("\x1b" "h"));
+    EXPECT("menu: Help opened", app.test_menu_active() == MenuId::Help);
+    app.test_dispatch(Event::Return);
+    EXPECT("menu: About opened via Help/About", app.test_about_visible());
+    app.test_dispatch(Event::Escape);  /* About を閉じる */
+
+    dump_render("6d. menu bar", app);
+}
+
 int main() {
     test_prompt_open_cancel();
     test_prompt_save_and_load();
     test_about_dialog();
+    test_menu_bar();
 
     if (g_failures > 0) {
         fprintf(stderr, "\n%d failure(s)\n", g_failures);
