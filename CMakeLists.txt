@@ -112,6 +112,7 @@ if(EMSCRIPTEN)
 else()
     add_subdirectory(ui)
     add_subdirectory(cli)
+    add_subdirectory(tui)
 
     # ---- samples / LICENSE / THIRD_PARTY_LICENSES のインストール ----
     if(APPLE)

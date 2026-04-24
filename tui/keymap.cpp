@@ -1,0 +1,78 @@
+#include "keymap.h"
+
+namespace calcyx::tui {
+
+/* FTXUI v5.0.0 の Event は Ctrl+X を Special({X}) で表現する
+ *   (0x01 = Ctrl+A, 0x04 = Ctrl+D, ..., 0x1a = Ctrl+Z)。
+ * 矢印キーや修飾付き矢印は Xterm エスケープシーケンスが使われる:
+ *   Shift+Arrow  = ESC [1;2<dir>
+ *   Alt+Arrow    = ESC [1;3<dir>
+ *   Ctrl+Arrow   = ESC [1;5<dir>
+ *   Ctrl+Shift+Arrow = ESC [1;6<dir>
+ */
+Action map(const ftxui::Event &ev) {
+    using E = ftxui::Event;
+
+    /* 終了: Ctrl+Q のみ。Ctrl+C は FTXUI が握っている。 */
+    if (ev == E::Special("\x11")) return Action::Quit;
+
+    /* Enter / Shift+Enter */
+    if (ev == E::Return) return Action::CommitAndInsertBelow;
+    if (ev == E::Special("\x1b[13;2u")    /* Kitty CSI-u Shift+Enter */
+     || ev == E::Special("\x1b\r")        /* Alt+Enter */
+     || ev == E::Special("\x1b\x0a"))
+        return Action::InsertAbove;
+
+    /* 履歴 */
+    if (ev == E::Special("\x1a")) return Action::Undo;  /* Ctrl+Z */
+    if (ev == E::Special("\x19")) return Action::Redo;  /* Ctrl+Y */
+
+    /* 行移動 (Ctrl+Shift+Up/Down; Alt+Up/Down もフォールバック) */
+    if (ev == E::Special("\x1b[1;6A")) return Action::MoveRowUp;
+    if (ev == E::Special("\x1b[1;6B")) return Action::MoveRowDown;
+    if (ev == E::Special("\x1b[1;3A")) return Action::MoveRowUp;     /* Alt+Up */
+    if (ev == E::Special("\x1b[1;3B")) return Action::MoveRowDown;   /* Alt+Down */
+
+    /* 矢印・ホーム・エンド */
+    if (ev == E::ArrowUp)    return Action::RowUp;
+    if (ev == E::ArrowDown)  return Action::RowDown;
+    if (ev == E::ArrowLeft)  return Action::CursorLeft;
+    if (ev == E::ArrowRight) return Action::CursorRight;
+    if (ev == E::Home || ev == E::Special("\x01")) return Action::CursorHome; /* Ctrl+A */
+    if (ev == E::End  || ev == E::Special("\x05")) return Action::CursorEnd;  /* Ctrl+E */
+    if (ev == E::PageUp)   return Action::RowPageUp;
+    if (ev == E::PageDown) return Action::RowPageDown;
+
+    /* 単語移動 (Ctrl+Arrow) */
+    if (ev == E::ArrowLeftCtrl)  return Action::CursorWordLeft;
+    if (ev == E::ArrowRightCtrl) return Action::CursorWordRight;
+
+    /* 編集 */
+    if (ev == E::Backspace) return Action::Backspace;
+    if (ev == E::Delete)    return Action::DeleteChar;
+    if (ev == E::Special("\x17")) return Action::DeleteWord;    /* Ctrl+W */
+    if (ev == E::Special("\x0b")) return Action::KillLineRight; /* Ctrl+K */
+    if (ev == E::Special("\x04")) return Action::DeleteRow;     /* Ctrl+D */
+
+    /* format (F8-F12) */
+    if (ev == E::F8)  return Action::FormatAuto;
+    if (ev == E::F9)  return Action::FormatDec;
+    if (ev == E::F10) return Action::FormatHex;
+    if (ev == E::F11) return Action::FormatBin;
+    if (ev == E::F12) return Action::FormatSI;
+
+    /* file */
+    if (ev == E::Special("\x0f")) return Action::FileOpen; /* Ctrl+O */
+    if (ev == E::Special("\x13")) return Action::FileSave; /* Ctrl+S */
+
+    /* 補完 */
+    if (ev == E::Tab)             return Action::CompletionTrigger;
+    if (ev == E::Special("\x00")) return Action::CompletionTrigger; /* Ctrl+Space */
+
+    /* 文字入力 */
+    if (ev.is_character()) return Action::InsertChar;
+
+    return Action::None;
+}
+
+} // namespace calcyx::tui
