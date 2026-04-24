@@ -44,6 +44,12 @@ public:
     const std::string& file_path()    const { return file_path_; }
     void  set_file_path(std::string p) { file_path_ = std::move(p); }
 
+    /* --- テスト用アクセサ (本番コードからは使わない) --- */
+    const std::string& test_editor_buf() const { return editor_buf_; }
+    size_t             test_cursor_pos() const { return cursor_pos_; }
+    bool               test_completion_visible() const { return completion_.visible(); }
+    int                test_completion_count() const { return completion_.filtered_count(); }
+
 private:
     /* --- 編集バッファ操作 --- */
     void load_editor_from_row();

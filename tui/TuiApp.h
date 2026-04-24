@@ -24,6 +24,17 @@ public:
 
     int run(const std::string &initial_file);
 
+    /* --- テスト用フック (本番コードからは使わない) ---
+     * run() は ScreenInteractive::Loop() をブロッキング実行するため、
+     * CatchEvent 相当のディスパッチをテストから呼べる形で公開する。 */
+    void test_dispatch(ftxui::Event ev);
+    bool test_prompt_active() const { return prompt_mode_ != PromptMode::None; }
+    const std::string& test_prompt_buf()   const { return prompt_buf_; }
+    const std::string& test_prompt_label() const { return prompt_label_; }
+    const std::string& test_status_msg()   const { return status_message_; }
+    sheet_model_t *test_model() const { return model_; }
+    TuiSheet      *test_sheet() const { return sheet_.get(); }
+
 private:
     enum class PromptMode {
         None,

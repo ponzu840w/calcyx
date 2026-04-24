@@ -2,6 +2,8 @@
 
 #include "TuiSheet.h"
 
+#include <utility>
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -156,6 +158,14 @@ void TuiApp::do_file_save() {
 
 void TuiApp::do_file_open() {
     prompt_begin(PromptMode::Open, sheet_->file_path());
+}
+
+/* ----------------------------------------------------------------------
+ * テスト用: CatchEvent → sheet OnEvent の経路をテストから再現する
+ * -------------------------------------------------------------------- */
+void TuiApp::test_dispatch(Event ev) {
+    if (prompt_handle_event(ev)) return;
+    sheet_->OnEvent(ev);
 }
 
 /* ----------------------------------------------------------------------
