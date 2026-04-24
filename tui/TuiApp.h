@@ -15,7 +15,7 @@ class TuiSheet;
 
 /* ルートアプリケーション。sheet_model を所有し、
  *   - TuiSheet (メインビュー)
- *   - ファイルパスミニプロンプト (後続で実装)
+ *   - ファイルパスミニプロンプト (Ctrl+O / Ctrl+S で起動)
  * を束ねる。ScreenInteractive の Loop() を提供する。 */
 class TuiApp {
 public:
@@ -25,6 +25,17 @@ public:
     int run(const std::string &initial_file);
 
 private:
+    enum class PromptMode {
+        None,
+        Open,
+        Save,
+    };
+
+    void prompt_begin(PromptMode mode, const std::string &initial);
+    bool prompt_handle_event(ftxui::Event ev);  /* true で吸収 */
+    void prompt_submit();
+    void prompt_cancel();
+
     void do_file_save();
     void do_file_open();
     void flash_message(std::string msg);
@@ -33,6 +44,12 @@ private:
     std::shared_ptr<TuiSheet> sheet_;
     std::string               status_message_;
     ftxui::ScreenInteractive  screen_;
+
+    /* プロンプト状態 */
+    PromptMode   prompt_mode_   = PromptMode::None;
+    std::string  prompt_label_;
+    std::string  prompt_buf_;
+    size_t       prompt_cursor_ = 0;
 };
 
 } // namespace calcyx::tui
