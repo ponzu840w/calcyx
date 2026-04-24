@@ -129,6 +129,33 @@ void TuiSheet::completion_update_key() {
     completion_.update_key(key);
 }
 
+/* GUI の SheetView::completion_update (ui/SheetView.cpp:1396) と同じ挙動。
+ * auto_complete_ が on の場合、毎キー入力後に呼んで
+ *   - カーソル左が識別子の続き (id_follow) でなければ閉じる
+ *   - 識別子の先頭が id_start でなければ閉じる
+ *   - 未表示なら候補をリロードして開く
+ *   - 表示中ならキーを更新
+ * という形で自動的に追従させる。 */
+void TuiSheet::completion_auto_update() {
+    if (cursor_pos_ == 0 || !lexer_is_id_follow(editor_buf_[cursor_pos_ - 1])) {
+        completion_.hide();
+        return;
+    }
+    size_t start = cursor_pos_;
+    while (start > 0 && lexer_is_id_follow(editor_buf_[start - 1])) --start;
+    if (!lexer_is_id_start(editor_buf_[start])) {
+        completion_.hide();
+        return;
+    }
+    std::string key = editor_buf_.substr(start, cursor_pos_ - start);
+    if (!completion_.visible()) {
+        completion_.reload(model_);
+        completion_.open(key);
+    } else {
+        completion_.update_key(key);
+    }
+}
+
 void TuiSheet::completion_confirm() {
     const TuiCompletion::Item *c = completion_.selected();
     if (!c) { completion_.hide(); return; }
@@ -739,7 +766,12 @@ bool TuiSheet::OnEvent(Event ev) {
             break;
     }
 
-    if (needs_key_update) completion_update_key();
+    if (needs_key_update) {
+        /* GUI 互換: auto_complete が有効なら毎キー入力で自動オープン/更新。
+         * 無効なら popup が既に開いているときだけキーを追従。 */
+        if (auto_complete_) completion_auto_update();
+        else                completion_update_key();
+    }
     return true;
 }
 

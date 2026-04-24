@@ -64,6 +64,7 @@ private:
     std::string current_word_at_cursor(size_t *out_start) const;
     void completion_trigger();
     void completion_update_key();
+    void completion_auto_update();  /* GUI互換: 自動オープン or 更新 or 閉じる */
     void completion_confirm();
 
     /* --- キーアクション実装 --- */
@@ -116,6 +117,7 @@ private:
     std::function<void(std::string)>    status_cb_;
 
     TuiCompletion completion_;
+    bool          auto_complete_ = true;  /* GUI の g_input_auto_completion 相当 */
 };
 
 std::shared_ptr<TuiSheet> MakeTuiSheet(sheet_model_t *model);

@@ -108,29 +108,38 @@ static void test_input_and_enter() {
 }
 
 /* ----------------------------------------------------------------------
- * シナリオ 2: Tab 補完
+ * シナリオ 2: 自動補完 (GUI 互換)
+ *
+ * auto_complete_ が既定 on なので、"si" と入力しただけでポップアップが開く。
+ * Tab でも Enter でも確定できる。非識別子文字を打つと閉じる。
  * -------------------------------------------------------------------- */
 static void test_completion() {
     sheet_model_t *model = nullptr;
     auto sheet = make_sheet(&model);
 
-    /* "si" と入力して Tab → sin/si/sign 等の候補が並ぶはず */
+    /* GUI 互換: 識別子文字を打っただけで補完が自動オープン */
     type_str(*sheet, "si");
-    EXPECT("compl: not visible yet", !sheet->test_completion_visible());
+    EXPECT("compl: auto-opened on keystroke",   sheet->test_completion_visible());
+    EXPECT("compl: has candidates",             sheet->test_completion_count() > 0);
 
-    sheet->OnEvent(Event::Tab);
-    EXPECT("compl: visible after Tab", sheet->test_completion_visible());
-    EXPECT("compl: has candidates",    sheet->test_completion_count() > 0);
+    /* 非識別子 (スペース) を入力 → 自動で閉じる */
+    sheet->OnEvent(Event::Character(" "));
+    EXPECT("compl: closed on non-id char",     !sheet->test_completion_visible());
 
-    /* 最初の候補を確定 (Enter) → editor_buf_ が補完済みに */
+    /* スペースを消して再度識別子文字を打つ → 再オープン */
+    sheet->OnEvent(Event::Backspace);
+    EXPECT("compl: reopened on bs to id-char",  sheet->test_completion_visible());
+
+    /* Enter で確定 → editor_buf_ が補完済みに (新行は作らない: 補完優先) */
     sheet->OnEvent(Event::Return);
-    EXPECT("compl: hidden after confirm", !sheet->test_completion_visible());
-    /* 補完後は "(" 付きの関数呼び出しになっていることを期待 (先頭候補は関数のはず) */
+    EXPECT("compl: hidden after confirm",      !sheet->test_completion_visible());
+    /* 補完後は "(" 付きの関数呼び出しになっていることを期待 */
     const std::string &buf = sheet->test_editor_buf();
     EXPECT("compl: buf contains '('", buf.find('(') != std::string::npos);
-    EXPECT("compl: buf begins with 's'", !buf.empty() && (buf[0] == 's' || buf[0] == 'S'));
+    EXPECT("compl: buf begins with 's'",
+           !buf.empty() && (buf[0] == 's' || buf[0] == 'S'));
 
-    dump_render("2. completion si+Tab+Enter", *sheet);
+    dump_render("2. auto completion si + Enter", *sheet);
     sheet.reset();
     sheet_model_free(model);
 }
