@@ -24,6 +24,7 @@ TuiApp::TuiApp()
     sheet_->set_quit_callback([this]() { screen_.Exit(); });
     sheet_->set_file_save_callback([this]() { do_file_save(); });
     sheet_->set_file_open_callback([this]() { do_file_open(); });
+    sheet_->set_status_callback([this](std::string m) { flash_message(std::move(m)); });
 }
 
 TuiApp::~TuiApp() {

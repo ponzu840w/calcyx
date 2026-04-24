@@ -34,6 +34,9 @@ public:
     void set_file_open_callback (std::function<void()> cb) { file_open_cb_ = std::move(cb); }
     void set_file_save_callback (std::function<void()> cb) { file_save_cb_ = std::move(cb); }
 
+    /* コピー完了・再計算・クリア等の短いフィードバックを TuiApp の flash_message に流す */
+    void set_status_callback(std::function<void(std::string)> cb) { status_cb_ = std::move(cb); }
+
     /* TuiApp から sheet_model 経由での I/O 完了後に呼ぶ */
     void reload_focused_row();
 
@@ -85,6 +88,11 @@ private:
     void action_move_row(int dir);
     void action_undo();
     void action_redo();
+    void action_recalculate();
+    void action_clear_all();
+    void action_copy_all();
+    void action_decimals_inc();
+    void action_decimals_dec();
     void action_format(val_fmt_t fmt, const char *fmt_func);
 
     /* --- undo helpers --- */
@@ -102,9 +110,10 @@ private:
     std::string    live_preview_;  /* 編集中の仮評価結果 */
     std::string    file_path_;     /* 保存先 (未保存なら空) */
 
-    std::function<void()> quit_cb_;
-    std::function<void()> file_open_cb_;
-    std::function<void()> file_save_cb_;
+    std::function<void()>               quit_cb_;
+    std::function<void()>               file_open_cb_;
+    std::function<void()>               file_save_cb_;
+    std::function<void(std::string)>    status_cb_;
 
     TuiCompletion completion_;
 };

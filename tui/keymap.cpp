@@ -62,6 +62,19 @@ Action map(const ftxui::Event &ev) {
     /* delete_row_up: Shift+Del = CSI 3;2~。Shift+BS は端末では BS と区別不能 */
     if (ev == E::Special("\x1b[3;2~")) return Action::DeleteRowUp;
 
+    /* 全体操作 */
+    if (ev == E::Special("\x1b[3;6~")) return Action::ClearAll;   /* Ctrl+Shift+Del */
+    if (ev == E::Special("\x1b" "c"))  return Action::CopyAll;    /* Alt+C */
+    if (ev == E::F5)                   return Action::Recalculate;
+
+    /* 小数桁. GUI の Ctrl+Shift+. / , は端末では拾えないため Alt+./, を使う。
+     * 新しめの端末 (kitty/foot) で CSI-u が有効な場合の \x1b[46;6u / \x1b[44;6u
+     * もサポートしておく。 */
+    if (ev == E::Special("\x1b."))       return Action::DecimalsInc;
+    if (ev == E::Special("\x1b,"))       return Action::DecimalsDec;
+    if (ev == E::Special("\x1b[46;6u"))  return Action::DecimalsInc;
+    if (ev == E::Special("\x1b[44;6u"))  return Action::DecimalsDec;
+
     /* format (F8-F12) */
     if (ev == E::F8)  return Action::FormatAuto;
     if (ev == E::F9)  return Action::FormatDec;

@@ -6,10 +6,14 @@
 #include <ftxui/screen/color.hpp>
 
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
+#include <string>
+#include <vector>
 
 extern "C" {
 #include "parser/lexer.h"
+#include "types/val.h"
 }
 
 using namespace ftxui;
@@ -374,6 +378,115 @@ void TuiSheet::action_redo() {
 }
 
 /* ----------------------------------------------------------------------
+ * 全体操作 (全消去 / 全コピー / 再計算 / 小数桁±)
+ * -------------------------------------------------------------------- */
+void TuiSheet::action_recalculate() {
+    commit_if_changed();
+    sheet_model_eval_all(model_);
+    load_editor_from_row();
+    if (status_cb_) status_cb_("Recalculated");
+}
+
+/* 移植元: ui/SheetView.cpp:1523 clear_all()
+ * 全行を 1 つの空行に戻す。undo は「最終行を残して他を削除 → 残行を空文字に置換」
+ * の複合 op として積む。 */
+void TuiSheet::action_clear_all() {
+    int n = sheet_model_row_count(model_);
+    const char *first = sheet_model_row_expr(model_, 0);
+    if (n == 1 && (!first || !first[0])) return;  /* 既に空 */
+
+    std::vector<std::string> exprs;
+    exprs.reserve(n);
+    for (int i = 0; i < n; ++i) {
+        const char *e = sheet_model_row_expr(model_, i);
+        exprs.emplace_back(e ? e : "");
+    }
+
+    std::vector<sheet_op_t> undo_ops;
+    undo_ops.push_back({ SHEET_OP_CHANGE_EXPR, 0, exprs[0].c_str() });
+    for (int i = 1; i < n; ++i)
+        undo_ops.push_back({ SHEET_OP_INSERT, i, exprs[i].c_str() });
+
+    std::vector<sheet_op_t> redo_ops;
+    redo_ops.push_back({ SHEET_OP_CHANGE_EXPR, 0, "" });
+    for (int i = n - 1; i >= 1; --i)
+        redo_ops.push_back({ SHEET_OP_DELETE, i, "" });
+
+    sheet_view_state_t vs = capture_view_state();
+    sheet_model_commit(model_,
+                        undo_ops.data(), (int)undo_ops.size(),
+                        redo_ops.data(), (int)redo_ops.size(),
+                        vs);
+    focused_row_ = 0;
+    load_editor_from_row();
+    if (status_cb_) status_cb_("Cleared");
+}
+
+/* 全コピー: OSC 52 経由でターミナルのクリップボードへ送る。
+ * Windows Terminal / Kitty / WezTerm / Alacritty / iTerm2 / tmux(enable setting on)
+ * が対応。非対応端末では無視される (フィードバックは "Copied (OSC 52)" のまま)。
+ * 書式: "<expr> = <result>\n" を全行結合。移植元 ui/SheetView.cpp:1591。 */
+namespace {
+std::string osc52_base64(const std::string &in) {
+    static const char *chars =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string out;
+    out.reserve(((in.size() + 2) / 3) * 4);
+    int val = 0, valb = -6;
+    for (unsigned char c : in) {
+        val = (val << 8) | c;
+        valb += 8;
+        while (valb >= 0) {
+            out.push_back(chars[(val >> valb) & 0x3F]);
+            valb -= 6;
+        }
+    }
+    if (valb > -6) out.push_back(chars[((val << 8) >> (valb + 8)) & 0x3F]);
+    while (out.size() % 4) out.push_back('=');
+    return out;
+}
+} // namespace
+
+void TuiSheet::action_copy_all() {
+    std::string text;
+    int n = sheet_model_row_count(model_);
+    for (int i = 0; i < n; ++i) {
+        const char *expr   = sheet_model_row_expr(model_, i);
+        const char *result = sheet_model_row_result(model_, i);
+        text += expr ? expr : "";
+        if (result && result[0] && sheet_model_row_visible(model_, i)) {
+            text += " = ";
+            text += result;
+        }
+        text += "\n";
+    }
+    std::string b64 = osc52_base64(text);
+    /* OSC 52 は stdout/stderr どちらでもターミナルに届く。stderr を使って
+     * FTXUI の描画バッファ (stdout) と干渉させない。 */
+    std::fprintf(stderr, "\x1b]52;c;%s\x07", b64.c_str());
+    std::fflush(stderr);
+    if (status_cb_)
+        status_cb_("Copied " + std::to_string(n) + " row(s) to clipboard");
+}
+
+/* 小数桁の増減は engine 側のグローバル g_fmt_settings を直接触る (GUI と同じ)。
+ * 範囲は GUI に合わせて 1..34。再評価してステータス表示。 */
+void TuiSheet::action_decimals_inc() {
+    if (g_fmt_settings.decimal_len >= 34) return;
+    g_fmt_settings.decimal_len++;
+    sheet_model_eval_all(model_);
+    if (status_cb_)
+        status_cb_("Decimals: " + std::to_string(g_fmt_settings.decimal_len));
+}
+void TuiSheet::action_decimals_dec() {
+    if (g_fmt_settings.decimal_len <= 1) return;
+    g_fmt_settings.decimal_len--;
+    sheet_model_eval_all(model_);
+    if (status_cb_)
+        status_cb_("Decimals: " + std::to_string(g_fmt_settings.decimal_len));
+}
+
+/* ----------------------------------------------------------------------
  * format 切替
  * -------------------------------------------------------------------- */
 void TuiSheet::action_format(val_fmt_t /*fmt*/, const char *fmt_func) {
@@ -598,6 +711,14 @@ bool TuiSheet::OnEvent(Event ev) {
                                        completion_.hide();          break;
         case Action::Redo:             action_redo();
                                        completion_.hide();          break;
+        case Action::Recalculate:      action_recalculate();
+                                       completion_.hide();          break;
+        case Action::ClearAll:         action_clear_all();
+                                       completion_.hide();          break;
+        case Action::CopyAll:          action_copy_all();
+                                       completion_.hide();          break;
+        case Action::DecimalsInc:      action_decimals_inc();       break;
+        case Action::DecimalsDec:      action_decimals_dec();       break;
 
         case Action::FormatAuto:       action_format(FMT_REAL,      "");    break;
         case Action::FormatDec:        action_format(FMT_REAL,      "dec"); break;

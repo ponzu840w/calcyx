@@ -44,6 +44,15 @@ enum class Action {
     /* history */
     Undo,
     Redo,
+    Recalculate,            /* F5 */
+
+    /* 全体操作 */
+    ClearAll,               /* Ctrl+Shift+Del */
+    CopyAll,                /* Alt+C (Ctrl+Shift+C は端末で Ctrl+C と区別不能なため) */
+
+    /* 表示オプション */
+    DecimalsInc,            /* Alt+. (GUI は Ctrl+Shift+.) */
+    DecimalsDec,            /* Alt+, (GUI は Ctrl+Shift+,) */
 
     /* format 切替 (F8-F12) */
     FormatAuto,

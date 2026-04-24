@@ -14,12 +14,14 @@
  *   4. Ctrl+Shift+Down で行移動
  *   5. F10 で Hex フォーマット切替
  *   6. 行削除: Ctrl+Del, Shift+Del, 空行での BS
+ *   7. 全消去 (Ctrl+Shift+Del) と再計算 (F5) と小数桁± (Alt+./Alt+,)
  */
 
 #include "TuiSheet.h"
 
 extern "C" {
 #include "sheet_model.h"
+#include "types/val.h"
 }
 
 #include <ftxui/component/event.hpp>
@@ -299,6 +301,64 @@ static void test_delete_row_variants() {
 }
 
 /* ----------------------------------------------------------------------
+ * シナリオ 7: 全消去・再計算・小数桁±
+ * -------------------------------------------------------------------- */
+static void test_clear_recalc_decimals() {
+    /* 1. ClearAll: 3 行入れて Ctrl+Shift+Del で 1 行空に戻す */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+        type_str(*sheet, "1");  sheet->OnEvent(Event::Return);
+        type_str(*sheet, "2");  sheet->OnEvent(Event::Return);
+        type_str(*sheet, "3");  sheet->OnEvent(Event::Return);
+        EXPECT("clearall: baseline row count",
+               sheet_model_row_count(model) == 4);
+
+        sheet->OnEvent(Event::Special("\x1b[3;6~"));  /* Ctrl+Shift+Del */
+        EXPECT("clearall: row count back to 1",
+               sheet_model_row_count(model) == 1);
+        const char *e0 = sheet_model_row_expr(model, 0);
+        EXPECT("clearall: row 0 empty", e0 && e0[0] == '\0');
+
+        /* undo で元通り */
+        sheet->OnEvent(Event::Special("\x1a"));
+        EXPECT("clearall: undo restores rows",
+               sheet_model_row_count(model) == 4);
+        dump_render("7a. clear all + undo", *sheet);
+        sheet.reset();
+        sheet_model_free(model);
+    }
+
+    /* 2. 再計算 F5: 値が変わらないのを確認するだけの軽いスモーク */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+        type_str(*sheet, "10*20"); sheet->OnEvent(Event::Return);
+        sheet->OnEvent(Event::ArrowUp);
+        sheet->OnEvent(Event::F5);
+        const char *r = sheet_model_row_result(model, 0);
+        EXPECT("recalc: result stable", r && strcmp(r, "200") == 0);
+        sheet.reset();
+        sheet_model_free(model);
+    }
+
+    /* 3. Decimals ± : Alt+./Alt+, で g_fmt_settings.decimal_len が増減 */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+        int before = g_fmt_settings.decimal_len;
+        sheet->OnEvent(Event::Special("\x1b."));  /* Alt+. = Dec+ */
+        EXPECT("dec+: decimal_len increased",
+               g_fmt_settings.decimal_len == before + 1);
+        sheet->OnEvent(Event::Special("\x1b,"));  /* Alt+, = Dec- */
+        EXPECT("dec-: decimal_len restored",
+               g_fmt_settings.decimal_len == before);
+        sheet.reset();
+        sheet_model_free(model);
+    }
+}
+
+/* ----------------------------------------------------------------------
  * main
  * -------------------------------------------------------------------- */
 int main() {
@@ -308,6 +368,7 @@ int main() {
     test_move_row();
     test_format_hex();
     test_delete_row_variants();
+    test_clear_recalc_decimals();
 
     if (g_failures > 0) {
         fprintf(stderr, "\n%d failure(s)\n", g_failures);
