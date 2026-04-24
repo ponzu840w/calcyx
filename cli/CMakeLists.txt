@@ -1,29 +1,52 @@
+# cli/ — 統合エントリポイント。
+#
+# Phase 2 リファクタ (2026-04-24) で CLI と TUI を単一バイナリ calcyx に統合。
+# main.cpp が argv / stdin の判定を行い、対話モードでは tui/ の TuiApp を
+# 呼び出す。非対話 (pipe) や -e / -o / -b / -r が指定されたときは従来の
+# CLI ロジックを実行する。calcyx_tui_lib 経由で FTXUI をリンクする。
+#
+# ターゲット名は互換性維持のため calcyx_cli のまま (ctest の $<TARGET_FILE>
+# 参照や既存テストハーネスで使われる)。出力ファイル名は "calcyx"。
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(WIN32)
     set(_cli_rc calcyx.rc)
 else()
     set(_cli_rc "")
 endif()
 
-add_executable(calcyx_cli main.c ${_cli_rc})
+add_executable(calcyx_cli main.cpp ${_cli_rc})
 
 target_include_directories(calcyx_cli PRIVATE
     ${CMAKE_SOURCE_DIR}/engine
+    ${CMAKE_SOURCE_DIR}/shared
     ${MPDECIMAL_INCLUDE}
 )
 
 target_link_libraries(calcyx_cli PRIVATE
-    calcyx_engine
+    calcyx_tui_lib
 )
 
 target_compile_definitions(calcyx_cli PRIVATE
     CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
-    CALCYX_EDITION="${CALCYX_PLATFORM} CLI Edition"
+    CALCYX_EDITION="${CALCYX_PLATFORM} Edition"
 )
 
 set_target_properties(calcyx_cli PROPERTIES OUTPUT_NAME "calcyx")
 
+if(WIN32)
+    target_link_libraries(calcyx_cli PRIVATE
+        -static -static-libgcc -static-libstdc++
+    )
+endif()
+
 if(TARGET dep_mpdecimal)
     add_dependencies(calcyx_cli dep_mpdecimal)
+endif()
+if(TARGET dep_ftxui)
+    add_dependencies(calcyx_cli dep_ftxui)
 endif()
 
 install(TARGETS calcyx_cli RUNTIME DESTINATION bin COMPONENT cli)

@@ -91,6 +91,14 @@ endif()
 set(MPDECIMAL_LIB     "${DEPS_DIR}/lib/libmpdec.a")
 set(MPDECIMAL_INCLUDE "${DEPS_DIR}/include")
 
+# FTXUI (tui サブディレクトリ + cli の統合バイナリが参照するため、ここで定義)
+if(NOT EMSCRIPTEN)
+    set(FTXUI_INCLUDE_DIR   "${DEPS_DIR}/include")
+    set(FTXUI_COMPONENT_LIB "${DEPS_DIR}/lib/libftxui-component.a")
+    set(FTXUI_DOM_LIB       "${DEPS_DIR}/lib/libftxui-dom.a")
+    set(FTXUI_SCREEN_LIB    "${DEPS_DIR}/lib/libftxui-screen.a")
+endif()
+
 enable_testing()
 include(cmake/test_runners.cmake)
 
