@@ -17,10 +17,12 @@ add_library(calcyx_engine STATIC
     eval/builtin_array_color.c
     eval/builtin_array_encode.c
     ${CMAKE_SOURCE_DIR}/shared/completion_match.c
+    ${CMAKE_SOURCE_DIR}/shared/builtin_docs.c
+    ${CMAKE_SOURCE_DIR}/shared/sheet_model.c
 )
 
-# shared/ は UI 非依存の共有モデル層 (現在は completion_match のみ; 将来
-# sheet_model 等を追加予定)。engine と同じ静的ライブラリに取り込むことで
+# shared/ は UI 非依存の共有モデル層 (completion_match / builtin_docs /
+# sheet_model)。engine と同じ静的ライブラリに取り込むことで
 # GUI / TUI / CLI / WASM すべてから自動的に利用できる。
 target_include_directories(calcyx_engine PUBLIC . ${CMAKE_SOURCE_DIR}/shared ${MPDECIMAL_INCLUDE})
 target_link_libraries(calcyx_engine PUBLIC
@@ -42,6 +44,9 @@ target_include_directories(test_eval PRIVATE . ${MPDECIMAL_INCLUDE})
 add_executable(test_parser test_parser.c)
 target_link_libraries(test_parser PRIVATE calcyx_engine)
 
+add_executable(test_sheet_model ${CMAKE_SOURCE_DIR}/shared/test_sheet_model.c)
+target_link_libraries(test_sheet_model PRIVATE calcyx_engine)
+
 # ===== ctest 登録 =====
 # CALCYX_TESTS_ENABLED が FALSE のとき (Windows cross + wine なし + 非 WSL、
 # または WASM + node なし) はプリセット単位でまるごとスキップする。
@@ -54,9 +59,10 @@ target_link_libraries(test_parser PRIVATE calcyx_engine)
 #   デフォルト 64KB を超え、test_parser がスタックオーバーフローする
 #   のを防ぐ。
 if(EMSCRIPTEN)
-    target_link_options(test_types  PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
-    target_link_options(test_parser PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
-    target_link_options(test_eval   PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_types        PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_parser       PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_eval         PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_sheet_model  PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
 endif()
 
 if(CALCYX_TESTS_ENABLED)
@@ -67,6 +73,10 @@ if(CALCYX_TESTS_ENABLED)
     add_test(NAME engine/parser
         COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_parser>)
     set_tests_properties(engine/parser PROPERTIES LABELS "engine")
+
+    add_test(NAME engine/sheet_model
+        COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_sheet_model>)
+    set_tests_properties(engine/sheet_model PROPERTIES LABELS "engine")
 
     # engine/Test_* (test_eval による sample ファイル駆動テスト) は
     # WASM 下では mpdecimal の計算が極端に遅く 1 ファイル数分以上かかる

@@ -1,5 +1,8 @@
 // SheetView: 複数行の式/結果表示ウィジェット
 // 移植元: Calctus/UI/SheetView.cs (簡略版)
+//
+// モデル層 (shared/sheet_model.h) に行データ / eval / undo / 補完 を委譲し、
+// 本クラスは FLTK 固有の描画・フォーカス・レイアウトのみを担う。
 
 #pragma once
 
@@ -12,8 +15,8 @@
 #include "CompletionPopup.h"
 
 extern "C" {
+#include "sheet_model.h"
 #include "eval/eval.h"
-#include "eval/builtin.h"
 #include "types/val.h"
 #include "parser/lexer.h"
 }
@@ -74,69 +77,44 @@ public:
     // Undo / Redo
     void undo();
     void redo();
-    bool can_undo() const { return undo_idx_ > 0; }
-    bool can_redo() const { return undo_idx_ < (int)undo_buf_.size(); }
+    bool can_undo() const { return sheet_model_can_undo(model_); }
+    bool can_redo() const { return sheet_model_can_redo(model_); }
     bool has_uncommitted_edit() const;
 
     // プレビュー用: 式をセットして評価 (preview_mode_ 専用)
     void preview_set_exprs(const std::vector<std::string> &exprs);
 
     // テスト用ヘルパー
-    int         row_count() const { return (int)rows_.size(); }
-    std::string row_expr(int i) const { return (i >= 0 && i < (int)rows_.size()) ? rows_[i].expr : ""; }
-    int         focused_row() const { return focused_row_; }
-    void        test_type_and_commit(const char *expr);  // editor に入力してコミット
-    void        test_insert_row(int after) { insert_row(after); }
-    void        test_delete_row(int idx)   { delete_row(idx); }
+    int         row_count() const { return sheet_model_row_count(model_); }
+    std::string row_expr(int i) const {
+        return std::string(sheet_model_row_expr(model_, i));
+    }
+    int  focused_row() const { return focused_row_; }
+    void test_type_and_commit(const char *expr);  // editor に入力してコミット
+    void test_insert_row(int after) { insert_row(after); }
+    void test_delete_row(int idx)   { delete_row(idx); }
 
     void draw()   override;
     int  handle(int event) override;
     void resize(int x, int y, int w, int h) override;
 
 private:
-    struct Row {
-        std::string expr;
-        std::string result;
-        bool        error         = false;
-        bool        wrapped       = false;    // 式幅が eq_pos_ を超える場合に2行レイアウト
-        bool        show_result   = true;     // = と右辺を表示するか (代入/def → false)
-        val_fmt_t   result_fmt    = FMT_REAL; // 結果値の実際のフォーマット (ハイライト用)
+    // 行ごとの view-only 状態 (モデル行と同数・同順で保持)
+    struct RowView {
+        bool wrapped = false;  // 式幅が eq_pos_ を超える場合に2行レイアウト
     };
 
-    // ---- Undo / Redo ----
-    enum class UndoOpType { Insert, Delete, ChangeExpr };
-    struct UndoOp {
-        UndoOpType  type;
-        int         index;
-        std::string expr;
-    };
-    struct UndoViewState {
-        int focused_row;
-        int cursor_pos;
-    };
-    struct UndoEntry {
-        UndoViewState       view_state;
-        std::vector<UndoOp> undo_ops;
-        std::vector<UndoOp> redo_ops;
-    };
-    static const int UNDO_DEPTH = 1000;
-    std::vector<UndoEntry> undo_buf_;
-    int                    undo_idx_ = 0;
-    std::string            original_expr_;  // focus_row() 時点の式 (Undo 比較用)
+    sheet_model_t        *model_ = nullptr;
+    std::vector<RowView>  row_views_;
 
-    UndoViewState capture_view_state() const;
-    void          apply_ops(const std::vector<UndoOp> &ops);
-    void          commit_undo_entry(UndoEntry entry);
-
-    std::vector<Row> rows_;
     int focused_row_ = 0;
     int scroll_top_  = 0;
+    std::string original_expr_;  // focus_row() 時点の式 (Undo 比較用)
 
     Fl_Input        *editor_;
     Fl_Input        *result_display_;  // フォーカス行の結果表示 (read-only)
     Fl_Scrollbar    *vscroll_;
     int              sb_w_ = SB_W_DEFAULT;  // 現在のスクロールバー幅
-    eval_ctx_t       ctx_;
 
     void (*row_change_cb_)(void *) = nullptr;
     void  *row_change_data_        = nullptr;
@@ -157,9 +135,13 @@ private:
     int result_w()   const { return sheet_w() - eq_pos_ - eq_w_; }
 
     // 行 i の高さ: 折り返しなら ROW_H*2、そうでなければ ROW_H
-    int row_h(int i) const { return (i >= 0 && i < (int)rows_.size() && rows_[i].wrapped) ? ROW_H * 2 : ROW_H; }
+    int row_h(int i) const {
+        return (i >= 0 && i < (int)row_views_.size() && row_views_[i].wrapped) ? ROW_H * 2 : ROW_H;
+    }
 
-    void eval_all();
+    void apply_limits();                   // settings_globals → model
+    void refresh_row_views();              // row_views_ を model 行数に同期
+    void eval_all();                       // model->eval_all() + update_layout()
     void update_layout();                  // 全行を走査して eq_pos_ / eq_w_ を算出
     void commit();
     void focus_row(int idx);
@@ -169,7 +151,7 @@ private:
     void place_editor();
     void update_result_display();
     int  row_at_y(int fy) const;
-
-    // ---- 入力補完 ----
-    std::vector<Candidate> build_candidates() const;
+    void flush_editor_to_model();  // editor_->value() を model に反映
+    sheet_view_state_t capture_view_state() const;
+    void restore_view_state(sheet_view_state_t vs);
 };

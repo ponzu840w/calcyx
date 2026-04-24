@@ -66,7 +66,6 @@ add_library(calcyx_ui_common STATIC
     prefs/tab_number_format.cpp
     prefs/tab_calculation.cpp
     settings_globals.cpp
-    builtin_docs.cpp
     app_prefs.cpp
     crash_handler.cpp
     platform_tray_common.cpp
@@ -183,19 +182,6 @@ elseif(UNIX)
         RENAME calcyx.svg COMPONENT gui)
 endif()
 
-# ---- test_undo ----
-# calcyx_ui_common を再利用し、プラットフォーム依存部は stub で置き換える。
-add_executable(test_undo
-    test_undo.cpp
-    platform_tray_stub.cpp
-)
-
-target_link_libraries(test_undo PRIVATE
-    calcyx_ui_common
-    ${FLTK_LIB}
-    ${PLATFORM_LIBS}
-)
-
 # ---- test_completion ----
 # shared/completion_match.c の pure function テスト。FLTK に依存しない。
 # completion_match 本体は calcyx_engine に含まれるので engine リンクのみで足りる。
@@ -219,10 +205,6 @@ target_link_libraries(test_settings PRIVATE
 
 # ===== ctest 登録 =====
 if(CALCYX_TESTS_ENABLED)
-    add_test(NAME gui/sheet
-        COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_undo>)
-    set_tests_properties(gui/sheet PROPERTIES LABELS "gui")
-
     add_test(NAME ui/completion
         COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_completion>)
     set_tests_properties(ui/completion PROPERTIES LABELS "gui")
