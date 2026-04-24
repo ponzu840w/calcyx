@@ -16,9 +16,13 @@ add_library(calcyx_engine STATIC
     eval/builtin_array_bits.c
     eval/builtin_array_color.c
     eval/builtin_array_encode.c
+    ${CMAKE_SOURCE_DIR}/shared/completion_match.c
 )
 
-target_include_directories(calcyx_engine PUBLIC . ${MPDECIMAL_INCLUDE})
+# shared/ は UI 非依存の共有モデル層 (現在は completion_match のみ; 将来
+# sheet_model 等を追加予定)。engine と同じ静的ライブラリに取り込むことで
+# GUI / TUI / CLI / WASM すべてから自動的に利用できる。
+target_include_directories(calcyx_engine PUBLIC . ${CMAKE_SOURCE_DIR}/shared ${MPDECIMAL_INCLUDE})
 target_link_libraries(calcyx_engine PUBLIC
     ${MPDECIMAL_LIB}
     $<$<NOT:$<BOOL:${WIN32}>>:m>

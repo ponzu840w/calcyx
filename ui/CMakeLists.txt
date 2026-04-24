@@ -57,7 +57,6 @@ add_library(calcyx_ui_common STATIC
     colors.cpp
     SheetView.cpp
     CompletionPopup.cpp
-    completion_match.cpp
     PasteOptionForm.cpp
     PrefsDialog.cpp
     prefs/prefs_common.cpp
@@ -198,13 +197,12 @@ target_link_libraries(test_undo PRIVATE
 )
 
 # ---- test_completion ----
-# CompletionPopup のマッチ関数 (completion_match.cpp) の pure function テスト。
-# FLTK に依存しないため、ライブラリは最小構成でリンクする。
+# shared/completion_match.c の pure function テスト。FLTK に依存しない。
+# completion_match 本体は calcyx_engine に含まれるので engine リンクのみで足りる。
 add_executable(test_completion
     test_completion.cpp
-    completion_match.cpp
 )
-target_include_directories(test_completion PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(test_completion PRIVATE calcyx_engine)
 
 # ---- test_settings ----
 # settings スキーマテーブル往復テスト。K_FONT エントリが FLTK を要求する
