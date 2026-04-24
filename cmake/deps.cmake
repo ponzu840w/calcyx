@@ -15,6 +15,7 @@ endif()
 
 set(MPDECIMAL_VERSION "4.0.0")
 set(FLTK_VERSION      "1.4.4")
+set(FTXUI_VERSION     "5.0.0")
 
 # ---- mpdecimal ----
 set(_mpdec_stamp "${DEPS_DIR}/lib/libmpdec-${MPDECIMAL_VERSION}.a.stamp")
@@ -92,5 +93,45 @@ if(NOT EXISTS "${_fltk_stamp}")
         BUILD_COMMAND     ${CMAKE_COMMAND} --build <BINARY_DIR> -j ${_nproc}
         INSTALL_COMMAND   ${CMAKE_COMMAND} --build <BINARY_DIR> --target install
                 COMMAND   ${CMAKE_COMMAND} -E touch "${_fltk_stamp}"
+    )
+endif()
+
+# ---- FTXUI (TUI 用; screen / dom / component の静的ライブラリ) ----
+# FLTK と同じパターン: stamp が無ければ ExternalProject_Add でビルド・インストール。
+# install target は ftxui::{screen,dom,component} の CMake config を
+# ${DEPS_DIR}/lib/cmake/ftxui/ に書き出すが、calcyx は -l 直指定でリンクするので
+# find_package は呼ばない (ネイティブ / mingw の両方で同じ扱いにできる)。
+set(_ftxui_stamp "${DEPS_DIR}/lib/libftxui-${FTXUI_VERSION}.a.stamp")
+if(NOT EXISTS "${_ftxui_stamp}")
+    if(WIN32 AND CMAKE_CROSSCOMPILING)
+        set(_ftxui_toolchain -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
+    else()
+        set(_ftxui_toolchain "")
+    endif()
+
+    include(ProcessorCount)
+    ProcessorCount(_nproc_ftxui)
+    if(_nproc_ftxui EQUAL 0)
+        set(_nproc_ftxui 4)
+    endif()
+
+    ExternalProject_Add(dep_ftxui
+        URL      https://github.com/ArthurSonzogni/FTXUI/archive/refs/tags/v${FTXUI_VERSION}.tar.gz
+        URL_HASH SHA256=a2991cb222c944aee14397965d9f6b050245da849d8c5da7c72d112de2786b5b
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        CMAKE_ARGS
+            ${_ftxui_toolchain}
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -DCMAKE_INSTALL_PREFIX=${DEPS_DIR}
+            -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+            -DFTXUI_BUILD_EXAMPLES=OFF
+            -DFTXUI_BUILD_DOCS=OFF
+            -DFTXUI_BUILD_TESTS=OFF
+            -DFTXUI_ENABLE_INSTALL=ON
+            -DFTXUI_QUIET=ON
+            -DBUILD_SHARED_LIBS=OFF
+        BUILD_COMMAND     ${CMAKE_COMMAND} --build <BINARY_DIR> -j ${_nproc_ftxui}
+        INSTALL_COMMAND   ${CMAKE_COMMAND} --build <BINARY_DIR> --target install
+                COMMAND   ${CMAKE_COMMAND} -E touch "${_ftxui_stamp}"
     )
 endif()
