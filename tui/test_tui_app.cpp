@@ -145,9 +145,59 @@ static void test_prompt_save_and_load() {
     std::remove(path.c_str());
 }
 
+/* ----------------------------------------------------------------------
+ * シナリオ 6c: F1 で About を開き、↑↓ でスクロール、Esc / q / Enter で閉じる
+ * -------------------------------------------------------------------- */
+static void test_about_dialog() {
+    TuiApp app;
+
+    EXPECT("about: initially hidden", !app.test_about_visible());
+
+    /* F1 で表示 */
+    app.test_dispatch(Event::F1);
+    EXPECT("about: visible after F1", app.test_about_visible());
+    EXPECT("about: scroll resets to 0", app.test_about_scroll() == 0);
+
+    /* ↓ で 1 行スクロール */
+    app.test_dispatch(Event::ArrowDown);
+    EXPECT("about: scroll advanced",  app.test_about_scroll() == 1);
+
+    /* ↑ で戻る */
+    app.test_dispatch(Event::ArrowUp);
+    EXPECT("about: scroll back to 0", app.test_about_scroll() == 0);
+
+    /* PageDown でさらに進む */
+    app.test_dispatch(Event::PageDown);
+    EXPECT("about: PageDown advances 5 lines", app.test_about_scroll() == 5);
+
+    /* About 表示中はシートに入力が伝播しないことを確認 */
+    int before = sheet_model_row_count(app.test_model());
+    app.test_dispatch(Event::Character("x"));
+    EXPECT("about: sheet did not receive input while visible",
+           sheet_model_row_count(app.test_model()) == before);
+
+    /* Esc で閉じる */
+    app.test_dispatch(Event::Escape);
+    EXPECT("about: hidden after Esc", !app.test_about_visible());
+
+    /* 再度 F1 で開いて Enter で閉じる */
+    app.test_dispatch(Event::F1);
+    EXPECT("about: visible again", app.test_about_visible());
+    app.test_dispatch(Event::Return);
+    EXPECT("about: hidden after Enter", !app.test_about_visible());
+
+    /* 再度 F1 で開いて q で閉じる */
+    app.test_dispatch(Event::F1);
+    app.test_dispatch(Event::Character("q"));
+    EXPECT("about: hidden after q", !app.test_about_visible());
+
+    dump_render("6c. about dialog closed", app);
+}
+
 int main() {
     test_prompt_open_cancel();
     test_prompt_save_and_load();
+    test_about_dialog();
 
     if (g_failures > 0) {
         fprintf(stderr, "\n%d failure(s)\n", g_failures);

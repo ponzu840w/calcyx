@@ -26,6 +26,11 @@ target_include_directories(calcyx_tui_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
+target_compile_definitions(calcyx_tui_lib PRIVATE
+    CALCYX_VERSION_FULL="${CALCYX_VERSION_FULL}"
+    CALCYX_EDITION="${CALCYX_PLATFORM} Edition"
+)
+
 target_link_libraries(calcyx_tui_lib PUBLIC
     calcyx_engine
     ${FTXUI_COMPONENT_LIB}

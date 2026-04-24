@@ -162,9 +162,115 @@ void TuiApp::do_file_open() {
 }
 
 /* ----------------------------------------------------------------------
+ * About ダイアログ
+ * -------------------------------------------------------------------- */
+#ifndef CALCYX_VERSION_FULL
+#define CALCYX_VERSION_FULL "dev"
+#endif
+#ifndef CALCYX_EDITION
+#define CALCYX_EDITION      "TUI Edition"
+#endif
+
+namespace {
+
+/* ショートカット一覧。左列がキー、右列が説明。
+ * GUI のメニュー (ui/MainWindow.cpp の menu_->add) を参考に TUI で実際に
+ * バインドしているキーを列挙する。スクロール対応。 */
+struct Shortcut { const char *key; const char *desc; };
+
+const Shortcut kShortcuts[] = {
+    { "Enter",            "Commit and insert row below" },
+    { "Shift+Enter",      "Insert row above" },
+    { "Ctrl+Del / Ctrl+BS","Delete current row" },
+    { "Shift+Del",        "Delete row, move focus up" },
+    { "BS on empty row",  "Delete row, move focus up" },
+    { "Ctrl+Shift+Up/Down","Move current row" },
+    { "Ctrl+Z / Ctrl+Y",  "Undo / Redo" },
+    { "Tab / Ctrl+Space", "Trigger completion" },
+    { "(while typing)",   "Auto-complete popup" },
+    { "F5",               "Recalculate all" },
+    { "F6 / Ctrl+:",      "Toggle compact mode" },
+    { "F8-F12",           "Format: Auto / Dec / Hex / Bin / SI" },
+    { "Alt+. / Alt+,",    "Decimal places +/-" },
+    { "Alt+C",            "Copy all (OSC 52)" },
+    { "Ctrl+Shift+Del",   "Clear all rows" },
+    { "Ctrl+O / Ctrl+S",  "Open / Save file" },
+    { "Ctrl+Q",           "Quit" },
+    { "F1",               "This About dialog" },
+};
+constexpr int kShortcutCount = (int)(sizeof(kShortcuts) / sizeof(kShortcuts[0]));
+
+} /* namespace */
+
+Element TuiApp::about_overlay() const {
+    using namespace ftxui;
+
+    Elements header;
+    header.push_back(text("calcyx " CALCYX_VERSION_FULL) | bold | center);
+    header.push_back(text(CALCYX_EDITION) | dim | center);
+    header.push_back(text(""));
+    header.push_back(text("A programmable calculator based on Calctus") | center);
+    header.push_back(text("https://github.com/ponzu840w/calcyx") |
+                      color(Color::CyanLight) | center);
+    header.push_back(text(""));
+    header.push_back(text("Keyboard shortcuts") | bold);
+    header.push_back(separator());
+
+    /* ショートカット一覧をスクロール可能にするため、about_scroll_ の位置から
+     * 最大 visible_rows 行だけ表示する。 */
+    const int visible_rows = 10;
+    int max_scroll = std::max(0, kShortcutCount - visible_rows);
+    int scroll = std::clamp(about_scroll_, 0, max_scroll);
+
+    Elements rows;
+    for (int i = scroll; i < kShortcutCount && i < scroll + visible_rows; ++i) {
+        rows.push_back(hbox({
+            text(kShortcuts[i].key) | color(Color::YellowLight) |
+                size(WIDTH, EQUAL, 22),
+            text(" "),
+            text(kShortcuts[i].desc),
+        }));
+    }
+    /* スクロール可能なことを示すヒント */
+    std::string hint = "↑↓: scroll  (";
+    hint += std::to_string(scroll + 1);
+    hint += "-";
+    hint += std::to_string(std::min(scroll + visible_rows, kShortcutCount));
+    hint += "/";
+    hint += std::to_string(kShortcutCount);
+    hint += ")   Esc / Enter / q: close";
+
+    Elements body;
+    for (auto &e : header) body.push_back(std::move(e));
+    for (auto &e : rows)   body.push_back(std::move(e));
+    body.push_back(separator());
+    body.push_back(text(hint) | dim);
+
+    return vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
+           size(HEIGHT, LESS_THAN, 24) | center;
+}
+
+bool TuiApp::about_handle_event(Event ev) {
+    if (!about_visible_) return false;
+    if (ev == Event::Escape || ev == Event::Return || ev == Event::F1 ||
+        ev == Event::Character("q") || ev == Event::Character("Q")) {
+        about_visible_ = false;
+        return true;
+    }
+    if (ev == Event::ArrowUp)   { if (about_scroll_ > 0) --about_scroll_; return true; }
+    if (ev == Event::ArrowDown) { ++about_scroll_;                       return true; }
+    if (ev == Event::PageUp)   { about_scroll_ = std::max(0, about_scroll_ - 5); return true; }
+    if (ev == Event::PageDown) { about_scroll_ += 5;                     return true; }
+    /* その他のキーは吸収のみ (シートに流さない) */
+    return true;
+}
+
+/* ----------------------------------------------------------------------
  * テスト用: CatchEvent → sheet OnEvent の経路をテストから再現する
  * -------------------------------------------------------------------- */
 void TuiApp::test_dispatch(Event ev) {
+    if (about_handle_event(ev)) return;
+    if (ev == Event::F1) { about_visible_ = true; about_scroll_ = 0; return; }
     if (prompt_handle_event(ev)) return;
     sheet_->OnEvent(ev);
 }
@@ -188,6 +294,7 @@ int TuiApp::run(const std::string &initial_file) {
     auto renderer = Renderer(sheet_, [this] {
         Element body = sheet_->Render();
 
+        Element base;
         /* プロンプト入力中は compact でも表示する (操作中は必須)。
          * プロンプトなしの status_message_ は compact 時は省略。 */
         if (prompt_mode_ != PromptMode::None) {
@@ -202,19 +309,30 @@ int TuiApp::run(const std::string &initial_file) {
                 text(m) | inverted,
                 text(c),
             });
-            return vbox({ body | flex, prompt_el });
+            base = vbox({ body | flex, prompt_el });
+        } else if (sheet_->compact_mode()) {
+            base = vbox({ body | flex });
+        } else {
+            Element prompt_el =
+                text(status_message_.empty() ? " " : status_message_) | dim;
+            base = vbox({ body | flex, prompt_el });
         }
 
-        if (sheet_->compact_mode()) {
-            return vbox({ body | flex });
+        if (about_visible_) {
+            return dbox({ base, about_overlay() });
         }
-
-        Element prompt_el =
-            text(status_message_.empty() ? " " : status_message_) | dim;
-        return vbox({ body | flex, prompt_el });
+        return base;
     });
 
     auto root = CatchEvent(renderer, [this](Event ev) {
+        /* About が開いている間は全イベントを吸収する。 */
+        if (about_handle_event(ev)) return true;
+        /* 非表示のときに F1 で開く。 */
+        if (ev == Event::F1) {
+            about_visible_ = true;
+            about_scroll_  = 0;
+            return true;
+        }
         return prompt_handle_event(ev);
     });
 

@@ -34,6 +34,8 @@ public:
     const std::string& test_status_msg()   const { return status_message_; }
     sheet_model_t *test_model() const { return model_; }
     TuiSheet      *test_sheet() const { return sheet_.get(); }
+    bool test_about_visible() const { return about_visible_; }
+    int  test_about_scroll()  const { return about_scroll_; }
 
 private:
     enum class PromptMode {
@@ -51,6 +53,11 @@ private:
     void do_file_open();
     void flash_message(std::string msg);
 
+    /* About ダイアログ (F1 で開閉)。F1 / Esc / q / Enter で閉じる、
+     * ↑↓ でショートカット一覧をスクロール。 */
+    bool           about_handle_event(ftxui::Event ev);  /* true で吸収 */
+    ftxui::Element about_overlay() const;
+
     sheet_model_t            *model_ = nullptr;
     std::shared_ptr<TuiSheet> sheet_;
     std::string               status_message_;
@@ -61,6 +68,10 @@ private:
     std::string  prompt_label_;
     std::string  prompt_buf_;
     size_t       prompt_cursor_ = 0;
+
+    /* About 状態 */
+    bool about_visible_ = false;
+    int  about_scroll_  = 0;
 };
 
 } // namespace calcyx::tui
