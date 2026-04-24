@@ -36,7 +36,8 @@ enum class Action {
     /* 行操作 */
     CommitAndInsertBelow,   /* Enter */
     InsertAbove,            /* Shift+Enter, Alt+Enter */
-    DeleteRow,              /* Ctrl+D */
+    DeleteRow,              /* Ctrl+Del, Ctrl+BS */
+    DeleteRowUp,            /* Shift+Del, Shift+BS, BS on empty row */
     MoveRowUp,              /* Ctrl+Shift+Up */
     MoveRowDown,            /* Ctrl+Shift+Down */
 

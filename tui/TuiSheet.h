@@ -81,6 +81,7 @@ private:
     void action_commit_and_insert_below();
     void action_insert_above();
     void action_delete_row();
+    void action_delete_row_up();
     void action_move_row(int dir);
     void action_undo();
     void action_redo();

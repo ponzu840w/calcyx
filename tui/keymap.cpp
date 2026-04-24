@@ -52,7 +52,15 @@ Action map(const ftxui::Event &ev) {
     if (ev == E::Delete)    return Action::DeleteChar;
     if (ev == E::Special("\x17")) return Action::DeleteWord;    /* Ctrl+W */
     if (ev == E::Special("\x0b")) return Action::KillLineRight; /* Ctrl+K */
-    if (ev == E::Special("\x04")) return Action::DeleteRow;     /* Ctrl+D */
+
+    /* 行削除 (GUI の Ctrl+Del / Ctrl+BS に揃える)。
+     * Ctrl+Del = CSI 3;5~, Ctrl+BS = 0x08 (ASCII BS; xterm/modern 端末の既定)。
+     * 旧 Ctrl+D (0x04) のマッピングは廃止 — GUI に存在せず、端末の Ctrl+D =
+     * EOF 慣習と衝突するため通常文字入力に戻す。 */
+    if (ev == E::Special("\x1b[3;5~")) return Action::DeleteRow;
+    if (ev == E::Special("\x08"))      return Action::DeleteRow;
+    /* delete_row_up: Shift+Del = CSI 3;2~。Shift+BS は端末では BS と区別不能 */
+    if (ev == E::Special("\x1b[3;2~")) return Action::DeleteRowUp;
 
     /* format (F8-F12) */
     if (ev == E::F8)  return Action::FormatAuto;

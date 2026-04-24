@@ -298,6 +298,39 @@ void TuiSheet::action_delete_row() {
     focused_row_ = std::min(focused_row_, std::max(0, new_n - 1));
     load_editor_from_row();
 }
+/* 上方向に消す: 行を削除後、元の行の「上」にフォーカスを移す。
+ * Shift+Del / Shift+BS および「空行で BS」のいずれの入口でも同じ挙動。
+ * 移植元 SheetView::delete_row_up (ui/SheetView.cpp:1460) と対応。 */
+void TuiSheet::action_delete_row_up() {
+    int n = sheet_model_row_count(model_);
+    if (n <= 1) {
+        /* 最後の 1 行は削除せず、内容だけクリア */
+        if (!editor_buf_.empty() || !original_expr_.empty()) {
+            editor_buf_.clear();
+            original_expr_.clear();
+            cursor_pos_ = 0;
+            sheet_op_t undo_op{ SHEET_OP_CHANGE_EXPR, 0,
+                                sheet_model_row_expr(model_, 0) };
+            sheet_op_t redo_op{ SHEET_OP_CHANGE_EXPR, 0, "" };
+            sheet_view_state_t vs = capture_view_state();
+            sheet_model_commit(model_, &undo_op, 1, &redo_op, 1, vs);
+            load_editor_from_row();
+        }
+        return;
+    }
+    const char *cur = sheet_model_row_expr(model_, focused_row_);
+    std::string expr_copy = cur ? cur : "";
+    int target = focused_row_;
+
+    sheet_op_t redo_op{ SHEET_OP_DELETE, target, nullptr };
+    sheet_op_t undo_op{ SHEET_OP_INSERT, target, expr_copy.c_str() };
+    sheet_view_state_t vs = capture_view_state();
+    sheet_model_commit(model_, &undo_op, 1, &redo_op, 1, vs);
+
+    focused_row_ = std::max(0, target - 1);
+    load_editor_from_row();
+    cursor_pos_ = editor_buf_.size();
+}
 void TuiSheet::action_move_row(int dir) {
     if (editor_dirty()) commit_if_changed();
     int n = sheet_model_row_count(model_);
@@ -528,8 +561,17 @@ bool TuiSheet::OnEvent(Event ev) {
             action_insert_char(ev.character());
             needs_key_update = true;
             break;
-        case Action::Backspace:        action_backspace();
-                                       needs_key_update = true;     break;
+        case Action::Backspace:
+            /* GUI 互換: 編集中の行が空で BS → delete_row_up。
+             * 行を跨いだ編集継続ができるので "改行キー" の逆操作になる。 */
+            if (editor_buf_.empty()) {
+                action_delete_row_up();
+                completion_.hide();
+            } else {
+                action_backspace();
+                needs_key_update = true;
+            }
+            break;
         case Action::DeleteChar:       action_delete_char();
                                        needs_key_update = true;     break;
         case Action::DeleteWord:       action_delete_word();
@@ -544,6 +586,8 @@ bool TuiSheet::OnEvent(Event ev) {
         case Action::InsertAbove:      action_insert_above();
                                        completion_.hide();          break;
         case Action::DeleteRow:        action_delete_row();
+                                       completion_.hide();          break;
+        case Action::DeleteRowUp:      action_delete_row_up();
                                        completion_.hide();          break;
         case Action::MoveRowUp:        action_move_row(-1);
                                        completion_.hide();          break;

@@ -13,6 +13,7 @@
  *   3. Undo / Redo (Ctrl+Z / Ctrl+Y)
  *   4. Ctrl+Shift+Down で行移動
  *   5. F10 で Hex フォーマット切替
+ *   6. 行削除: Ctrl+Del, Shift+Del, 空行での BS
  */
 
 #include "TuiSheet.h"
@@ -242,6 +243,62 @@ static void test_format_hex() {
 }
 
 /* ----------------------------------------------------------------------
+ * シナリオ 6: 行削除 (Ctrl+Del, Shift+Del, 空行での BS)
+ *
+ * GUI の ui/SheetView.cpp:1210/1250/1253 で規定されたバインド:
+ *   - Ctrl+Del / Ctrl+BS : delete_row (下に詰める)
+ *   - Shift+Del / Shift+BS : delete_row_up (上に詰める)
+ *   - 空行で BS : delete_row_up
+ * これに TUI も揃える。Ctrl+D は無マップ (廃止)。
+ * -------------------------------------------------------------------- */
+static void test_delete_row_variants() {
+    sheet_model_t *model = nullptr;
+    auto sheet = make_sheet(&model);
+
+    type_str(*sheet, "1");   sheet->OnEvent(Event::Return);
+    type_str(*sheet, "2");   sheet->OnEvent(Event::Return);
+    type_str(*sheet, "3");   sheet->OnEvent(Event::Return);
+    EXPECT("del: setup row count", sheet_model_row_count(model) == 4);
+
+    /* row 1 ("2") にフォーカスして Ctrl+Del → row 1 が消え、row 1 は元の "3" */
+    sheet->OnEvent(Event::ArrowUp);  /* row 3 (空) → row 2 */
+    sheet->OnEvent(Event::ArrowUp);  /* row 2 ("3") → row 1 */
+    EXPECT("del: ctrl-del on row 1", sheet->focused_row() == 1);
+    sheet->OnEvent(Event::Special("\x1b[3;5~"));  /* Ctrl+Del */
+    EXPECT("del: row count 3", sheet_model_row_count(model) == 3);
+    const char *r1 = sheet_model_row_expr(model, 1);
+    EXPECT("del: row 1 now '3'", r1 && strcmp(r1, "3") == 0);
+
+    /* 空行を 1 行追加しフォーカスして、BS で上に統合 */
+    sheet->OnEvent(Event::ArrowDown);  /* row 2 (空) */
+    sheet->OnEvent(Event::ArrowDown);  /* row 3 (さらに空なら作る) -- TuiSheet の action_row_down
+                                          は最下で insert_row するので、ここで row が 4 に伸びる */
+    int before_bs = sheet_model_row_count(model);
+    EXPECT("del: bs-empty baseline",
+           sheet->test_editor_buf().empty() && before_bs >= 3);
+    sheet->OnEvent(Event::Backspace);
+    EXPECT("del: bs-empty reduced row count",
+           sheet_model_row_count(model) == before_bs - 1);
+
+    /* Shift+Del で上に詰めて消す */
+    int cnt = sheet_model_row_count(model);
+    sheet->OnEvent(Event::Special("\x1b[3;2~"));  /* Shift+Del */
+    EXPECT("del: shift-del reduced row count",
+           sheet_model_row_count(model) == cnt - 1);
+
+    /* Ctrl+D (旧バインド) は文字入力として効くので、行は減らず 'D' は文字列化しない
+     * (制御文字は is_character=false なので挿入されない)。行数が変わらないことを確認 */
+    int cnt2 = sheet_model_row_count(model);
+    sheet->OnEvent(Event::Special("\x04"));  /* Ctrl+D: 旧 DeleteRow → 無効 */
+    EXPECT("del: ctrl-d no longer deletes row",
+           sheet_model_row_count(model) == cnt2);
+
+    dump_render("6. delete row variants", *sheet);
+    sheet.reset();
+    sheet_model_free(model);
+}
+
+/* ----------------------------------------------------------------------
  * main
  * -------------------------------------------------------------------- */
 int main() {
@@ -250,6 +307,7 @@ int main() {
     test_undo_redo();
     test_move_row();
     test_format_hex();
+    test_delete_row_variants();
 
     if (g_failures > 0) {
         fprintf(stderr, "\n%d failure(s)\n", g_failures);
