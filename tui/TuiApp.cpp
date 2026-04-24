@@ -188,24 +188,29 @@ int TuiApp::run(const std::string &initial_file) {
     auto renderer = Renderer(sheet_, [this] {
         Element body = sheet_->Render();
 
-        Element prompt_el;
+        /* プロンプト入力中は compact でも表示する (操作中は必須)。
+         * プロンプトなしの status_message_ は compact 時は省略。 */
         if (prompt_mode_ != PromptMode::None) {
-            /* カーソル表示 (反転) */
             const std::string &b = prompt_buf_;
             size_t p = std::min(prompt_cursor_, b.size());
             std::string a = b.substr(0, p);
             std::string m = (p < b.size()) ? std::string(1, b[p]) : std::string(" ");
             std::string c = (p < b.size()) ? b.substr(p + 1) : "";
-            prompt_el = hbox({
+            Element prompt_el = hbox({
                 text(prompt_label_) | color(Color::Yellow),
                 text(a),
                 text(m) | inverted,
                 text(c),
             });
-        } else {
-            prompt_el = text(status_message_.empty() ? " " : status_message_) | dim;
+            return vbox({ body | flex, prompt_el });
         }
 
+        if (sheet_->compact_mode()) {
+            return vbox({ body | flex });
+        }
+
+        Element prompt_el =
+            text(status_message_.empty() ? " " : status_message_) | dim;
         return vbox({ body | flex, prompt_el });
     });
 

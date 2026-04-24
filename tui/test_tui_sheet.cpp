@@ -15,6 +15,7 @@
  *   5. F10 で Hex フォーマット切替
  *   6. 行削除: Ctrl+Del, Shift+Del, 空行での BS
  *   7. 全消去 (Ctrl+Shift+Del) と再計算 (F5) と小数桁± (Alt+./Alt+,)
+ *   8. コンパクトモード (F6)
  */
 
 #include "TuiSheet.h"
@@ -368,6 +369,31 @@ static void test_clear_recalc_decimals() {
 }
 
 /* ----------------------------------------------------------------------
+ * シナリオ 8: コンパクトモード
+ *
+ * F6 で compact_mode が toggle され、Render() 出力からステータス/ヘルプ行が
+ * 消える (代わりにシート行だけになる)。もう一度押せば元に戻る。
+ * -------------------------------------------------------------------- */
+static void test_compact_mode() {
+    sheet_model_t *model = nullptr;
+    auto sheet = make_sheet(&model);
+
+    type_str(*sheet, "1+1");
+
+    EXPECT("compact: default off", !sheet->compact_mode());
+    sheet->OnEvent(Event::F6);
+    EXPECT("compact: toggled on",   sheet->compact_mode());
+    dump_render("8a. compact on", *sheet);
+
+    sheet->OnEvent(Event::F6);
+    EXPECT("compact: toggled off", !sheet->compact_mode());
+    dump_render("8b. compact off", *sheet);
+
+    sheet.reset();
+    sheet_model_free(model);
+}
+
+/* ----------------------------------------------------------------------
  * main
  * -------------------------------------------------------------------- */
 int main() {
@@ -378,6 +404,7 @@ int main() {
     test_format_hex();
     test_delete_row_variants();
     test_clear_recalc_decimals();
+    test_compact_mode();
 
     if (g_failures > 0) {
         fprintf(stderr, "\n%d failure(s)\n", g_failures);

@@ -47,6 +47,11 @@ public:
     const std::string& file_path()    const { return file_path_; }
     void  set_file_path(std::string p) { file_path_ = std::move(p); }
 
+    /* コンパクトモード: シート行だけ表示し、status/help を隠す。
+     * TuiApp は compact_mode() を見て下段のステータスバーも隠す。 */
+    bool  compact_mode() const { return compact_mode_; }
+    void  set_compact_mode(bool v) { compact_mode_ = v; }
+
     /* --- テスト用アクセサ (本番コードからは使わない) --- */
     const std::string& test_editor_buf() const { return editor_buf_; }
     size_t             test_cursor_pos() const { return cursor_pos_; }
@@ -124,6 +129,7 @@ private:
 
     TuiCompletion completion_;
     bool          auto_complete_ = true;  /* GUI の g_input_auto_completion 相当 */
+    bool          compact_mode_  = false;
 };
 
 std::shared_ptr<TuiSheet> MakeTuiSheet(sheet_model_t *model);

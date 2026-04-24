@@ -53,6 +53,7 @@ enum class Action {
     /* 表示オプション */
     DecimalsInc,            /* Alt+. (GUI は Ctrl+Shift+.) */
     DecimalsDec,            /* Alt+, (GUI は Ctrl+Shift+,) */
+    ToggleCompact,          /* Ctrl+: (GUI と同) / F6 / Alt+Z */
 
     /* format 切替 (F8-F12) */
     FormatAuto,

@@ -753,6 +753,11 @@ Element TuiSheet::Render() {
         }
     }
 
+    /* compact_mode_ ではシート行のみ表示。status/help/separator は省略。 */
+    if (compact_mode_) {
+        return vbox({ vbox(std::move(rows)) | yframe | flex });
+    }
+
     val_fmt_t cur_fmt = sheet_model_row_fmt(model_, focused_row_);
     std::string status =
         "[" + std::to_string(focused_row_ + 1) + "/" + std::to_string(n) + "]  "
@@ -765,7 +770,7 @@ Element TuiSheet::Render() {
     }
 
     std::string help = " ^Q quit  ^Z undo  ^Y redo  ^Del del-row  ^S save  ^O open "
-                       " Tab complete  F5 recalc  F8-F12 fmt ";
+                       " Tab complete  F5 recalc  F6 compact  F8-F12 fmt ";
 
     return vbox({
         vbox(std::move(rows)) | yframe | flex,
@@ -878,6 +883,11 @@ bool TuiSheet::OnEvent(Event ev) {
                                        completion_.hide();          break;
         case Action::DecimalsInc:      action_decimals_inc();       break;
         case Action::DecimalsDec:      action_decimals_dec();       break;
+        case Action::ToggleCompact:
+            compact_mode_ = !compact_mode_;
+            if (status_cb_)
+                status_cb_(compact_mode_ ? "Compact mode on" : "Compact mode off");
+            break;
 
         case Action::FormatAuto:       action_format(FMT_REAL,      "");    break;
         case Action::FormatDec:        action_format(FMT_REAL,      "dec"); break;

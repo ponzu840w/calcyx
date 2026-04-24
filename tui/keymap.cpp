@@ -75,6 +75,15 @@ Action map(const ftxui::Event &ev) {
     if (ev == E::Special("\x1b[46;6u"))  return Action::DecimalsInc;
     if (ev == E::Special("\x1b[44;6u"))  return Action::DecimalsDec;
 
+    /* コンパクトモード切替. GUI と同じ Ctrl+: を第一候補に、
+     * CSI-u 非対応端末向けに F6 と Alt+z もフォールバックとして用意。
+     * Ctrl+: は端末によってシーケンス違い:
+     *   kitty/foot CSI-u : \x1b[58;5u (Ctrl+:) / \x1b[59;6u (Ctrl+Shift+;) */
+    if (ev == E::Special("\x1b[58;5u")) return Action::ToggleCompact;
+    if (ev == E::Special("\x1b[59;6u")) return Action::ToggleCompact;
+    if (ev == E::F6)                    return Action::ToggleCompact;
+    if (ev == E::Special("\x1b" "z"))   return Action::ToggleCompact;
+
     /* format (F8-F12) */
     if (ev == E::F8)  return Action::FormatAuto;
     if (ev == E::F9)  return Action::FormatDec;
