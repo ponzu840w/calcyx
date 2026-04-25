@@ -486,13 +486,22 @@ void TuiSheet::action_move_row(int dir) {
  * undo / redo
  * -------------------------------------------------------------------- */
 void TuiSheet::action_undo() {
-    /* undo 前に編集中内容を廃棄 (GUI と同じ挙動) */
+    /* 未コミット編集があれば先に commit してから undo を呼ぶ。
+     * これで「行に typing → Ctrl+Z で取り消し → Ctrl+Y で復元」が成立する:
+     *   1) commit_if_changed() が [original→typed] を undo スタックに積む
+     *   2) sheet_model_undo() がそれを pop して typed を redo スタックに残す
+     *   3) restore_view_state() で editor バッファが original に戻る */
+    commit_if_changed();
     sheet_view_state_t vs{};
     if (sheet_model_undo(model_, &vs)) {
         restore_view_state(vs);
     }
 }
 void TuiSheet::action_redo() {
+    /* 未コミット編集を先に commit (commit 内で redo スタックが truncate されるので、
+     * 直後の sheet_model_redo は no-op になる)。これで「typing 中に Ctrl+Y を
+     * 押したら typing が黙って消える」事故を防ぐ。 */
+    commit_if_changed();
     sheet_view_state_t vs{};
     if (sheet_model_redo(model_, &vs)) {
         restore_view_state(vs);

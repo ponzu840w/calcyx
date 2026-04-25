@@ -1337,18 +1337,11 @@ void SheetView::undo() {
     if (focused_row_ >= 0 && focused_row_ < n) {
         const std::string current(editor_->value());
         if (current != original_expr_) {
-            // 未コミット編集がある → まずそれだけを取り消す (スタックは消費しない)
-            sheet_model_set_row_expr_raw(model_, focused_row_, original_expr_.c_str());
-            editor_->value(original_expr_.c_str());
-            editor_->insert_position((int)original_expr_.size());
-            eval_all();
-            place_editor();
-            update_result_display();
-            redraw();
-            if (row_change_cb_) row_change_cb_(row_change_data_);
-            return;
+            // 未コミット編集を先に commit → undo スタックに積む。
+            // 続く sheet_model_undo() がそれを pop し、typed 内容は redo スタック側に
+            // 残るので Ctrl+Y で復元できる。
+            commit();
         }
-        sheet_model_set_row_expr_raw(model_, focused_row_, editor_->value());
     }
     sheet_view_state_t vs;
     if (!sheet_model_undo(model_, &vs)) return;
@@ -1361,8 +1354,15 @@ void SheetView::undo() {
 
 void SheetView::redo() {
     int n = sheet_model_row_count(model_);
-    if (focused_row_ >= 0 && focused_row_ < n)
-        sheet_model_set_row_expr_raw(model_, focused_row_, editor_->value());
+    if (focused_row_ >= 0 && focused_row_ < n) {
+        const std::string current(editor_->value());
+        if (current != original_expr_) {
+            // 未コミット編集を先に commit (commit 内で redo スタックは truncate される)。
+            // 結果として直後の sheet_model_redo は no-op となり、typing が黙って
+            // 消える事故を防ぐ。
+            commit();
+        }
+    }
     sheet_view_state_t vs;
     if (!sheet_model_redo(model_, &vs)) return;
     refresh_row_views();

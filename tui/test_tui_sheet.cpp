@@ -181,6 +181,94 @@ static void test_undo_redo() {
 }
 
 /* ----------------------------------------------------------------------
+ * シナリオ 3b: 未コミット編集の Undo / Redo (リグレッション防止)
+ *
+ * "行に typing → Ctrl+Z で取り消し → Ctrl+Y で復元" が成立することを保証する。
+ * 修正前は dirty な editor を Ctrl+Z で復元したときに undo スタックを消費せず
+ * editor バッファだけを戻していたため、typing が redo スタックに乗らず
+ * Ctrl+Y で復元できなかった。
+ * -------------------------------------------------------------------- */
+static void test_undo_redo_dirty() {
+    /* 1. 空シートで typing → Ctrl+Z → editor が空に戻る → Ctrl+Y で typing 復元 */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+
+        type_str(*sheet, "1+1");
+        EXPECT("dirty undo: pre-undo editor", sheet->test_editor_buf() == "1+1");
+        EXPECT("dirty undo: pre-undo dirty",  sheet->editor_dirty());
+
+        sheet->OnEvent(Event::Special("\x1a"));  /* Ctrl+Z */
+        EXPECT("dirty undo: editor reverted to empty",
+               sheet->test_editor_buf().empty());
+        EXPECT("dirty undo: row 0 expr empty",
+               sheet_model_row_expr(model, 0)
+                && sheet_model_row_expr(model, 0)[0] == '\0');
+
+        sheet->OnEvent(Event::Special("\x19"));  /* Ctrl+Y */
+        EXPECT("dirty redo: editor restored to '1+1'",
+               sheet->test_editor_buf() == "1+1");
+        EXPECT("dirty redo: row 0 expr '1+1'",
+               sheet_model_row_expr(model, 0)
+                && strcmp(sheet_model_row_expr(model, 0), "1+1") == 0);
+
+        dump_render("3b. dirty undo/redo restore", *sheet);
+        sheet.reset();
+        sheet_model_free(model);
+    }
+
+    /* 2. 既存の値があるセルで typing → Ctrl+Z → 元の値に戻る → Ctrl+Y で復元 */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+
+        type_str(*sheet, "10");
+        sheet->OnEvent(Event::Return);          /* row 0 = "10", focus → row 1 */
+        sheet->OnEvent(Event::ArrowUp);         /* row 0 にフォーカス戻し */
+        EXPECT("dirty/edit: focused row 0", sheet->focused_row() == 0);
+        EXPECT("dirty/edit: editor shows '10'", sheet->test_editor_buf() == "10");
+
+        type_str(*sheet, "0");                  /* "10" → "100" (uncommitted) */
+        EXPECT("dirty/edit: dirty after typing",
+               sheet->test_editor_buf() == "100" && sheet->editor_dirty());
+
+        sheet->OnEvent(Event::Special("\x1a"));  /* Ctrl+Z: '0' typing を取り消す */
+        EXPECT("dirty/edit: editor reverted to '10'",
+               sheet->test_editor_buf() == "10");
+        EXPECT("dirty/edit: row 0 still '10'",
+               sheet_model_row_expr(model, 0)
+                && strcmp(sheet_model_row_expr(model, 0), "10") == 0);
+
+        sheet->OnEvent(Event::Special("\x19"));  /* Ctrl+Y: '0' typing を復元 */
+        EXPECT("dirty/edit: editor restored to '100'",
+               sheet->test_editor_buf() == "100");
+
+        sheet.reset();
+        sheet_model_free(model);
+    }
+
+    /* 3. typing 中に Ctrl+Y を押した場合: typing は commit され、redo は no-op
+     *    (redo スタックは commit によって truncate される) */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+
+        type_str(*sheet, "42");
+        sheet->OnEvent(Event::Special("\x19"));  /* Ctrl+Y: typing が commit される */
+        EXPECT("dirty redo-on-typing: editor still '42'",
+               sheet->test_editor_buf() == "42");
+        EXPECT("dirty redo-on-typing: row 0 committed to '42'",
+               sheet_model_row_expr(model, 0)
+                && strcmp(sheet_model_row_expr(model, 0), "42") == 0);
+        EXPECT("dirty redo-on-typing: not dirty after commit",
+               !sheet->editor_dirty());
+
+        sheet.reset();
+        sheet_model_free(model);
+    }
+}
+
+/* ----------------------------------------------------------------------
  * シナリオ 4: Ctrl+Shift+Down で行移動
  * -------------------------------------------------------------------- */
 static void test_move_row() {
@@ -400,6 +488,7 @@ int main() {
     test_input_and_enter();
     test_completion();
     test_undo_redo();
+    test_undo_redo_dirty();
     test_move_row();
     test_format_hex();
     test_delete_row_variants();
