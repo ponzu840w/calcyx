@@ -101,7 +101,11 @@ endif()
 # install target は ftxui::{screen,dom,component} の CMake config を
 # ${DEPS_DIR}/lib/cmake/ftxui/ に書き出すが、calcyx は -l 直指定でリンクするので
 # find_package は呼ばない (ネイティブ / mingw の両方で同じ扱いにできる)。
-set(_ftxui_stamp "${DEPS_DIR}/lib/libftxui-${FTXUI_VERSION}.a.stamp")
+# stamp サフィックス -p1: tui/ftxui_passthrough_ctrl.patch を適用したリビジョン。
+# 0x18 (CAN) / 0x1A (SUB) を terminal_input_parser で DROP せず SPECIAL として
+# 通すため。パッチを更新したらサフィックスをインクリメントしてリビルドを誘発する。
+set(_ftxui_patch  "${CMAKE_CURRENT_SOURCE_DIR}/tui/ftxui_passthrough_ctrl.patch")
+set(_ftxui_stamp  "${DEPS_DIR}/lib/libftxui-${FTXUI_VERSION}-p1.a.stamp")
 if(NOT EXISTS "${_ftxui_stamp}")
     if(WIN32 AND CMAKE_CROSSCOMPILING)
         set(_ftxui_toolchain -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
@@ -119,6 +123,8 @@ if(NOT EXISTS "${_ftxui_stamp}")
         URL      https://github.com/ArthurSonzogni/FTXUI/archive/refs/tags/v${FTXUI_VERSION}.tar.gz
         URL_HASH SHA256=a2991cb222c944aee14397965d9f6b050245da849d8c5da7c72d112de2786b5b
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        PATCH_COMMAND     patch -p1 -N --silent -i "${_ftxui_patch}" ||
+                          ${CMAKE_COMMAND} -E echo "ftxui patch already applied"
         CMAKE_ARGS
             ${_ftxui_toolchain}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}

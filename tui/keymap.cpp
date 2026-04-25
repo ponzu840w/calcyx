@@ -13,8 +13,10 @@ namespace calcyx::tui {
 Action map(const ftxui::Event &ev) {
     using E = ftxui::Event;
 
-    /* 終了: Ctrl+Q のみ。Ctrl+C は FTXUI が握っている。 */
+    /* 終了: Ctrl+Q / Ctrl+C。
+     * ISIG を切ってあるので Ctrl+C も SIGINT にならず生バイトで届く → Quit に拾う。 */
     if (ev == E::Special("\x11")) return Action::Quit;
+    if (ev == E::Special("\x03")) return Action::Quit;
 
     /* Enter / Shift+Enter */
     if (ev == E::Return) return Action::CommitAndInsertBelow;
@@ -23,7 +25,12 @@ Action map(const ftxui::Event &ev) {
      || ev == E::Special("\x1b\x0a"))
         return Action::InsertAbove;
 
-    /* 履歴 */
+    /* 履歴。GUI と同じ Ctrl+Z / Ctrl+Y を貫徹する。
+     * これを通すために以下の2点を仕込んである:
+     *   1. FTXUI のパーサで C0 0x18/0x1A を DROP しないパッチを当てている
+     *      (cmake/deps.cmake の PATCH_COMMAND)。
+     *   2. TuiApp::run() で termios の ISIG/IEXTEN を落とし、Ctrl+Z が SIGTSTP
+     *      に化けず生バイトで stdin に届くようにしている (ms-edit と同方針)。 */
     if (ev == E::Special("\x1a")) return Action::Undo;  /* Ctrl+Z */
     if (ev == E::Special("\x19")) return Action::Redo;  /* Ctrl+Y */
 

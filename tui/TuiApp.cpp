@@ -11,6 +11,7 @@
 #include <utility>
 
 #if !defined(_WIN32)
+#  include <termios.h>
 #  include <unistd.h>
 #endif
 
@@ -795,7 +796,39 @@ void TuiApp::test_dispatch(Event ev) {
 /* ----------------------------------------------------------------------
  * メインループ
  * -------------------------------------------------------------------- */
+
+#if !defined(_WIN32)
+/* Ctrl+Z (0x1A) と Ctrl+C (0x03) をシグナルではなく生バイトとして
+ * 受け取るため、ISIG / IEXTEN を切る (microsoft/edit と同方針)。
+ * FTXUI の Install/Uninstall が我々の改変済み termios を保存・復元するので、
+ * 最終的に元の (我々が起動前に保存した) termios に戻す必要がある。
+ * RAII で保証する。 */
+class TermiosIsigGuard {
+    int            fd_;
+    bool           ok_ = false;
+    struct termios saved_{};
+public:
+    explicit TermiosIsigGuard(int fd) : fd_(fd) {
+        if (!::isatty(fd_)) return;
+        if (::tcgetattr(fd_, &saved_) != 0) return;
+        ok_ = true;
+        struct termios t = saved_;
+        t.c_lflag &= ~(ISIG | IEXTEN);
+        ::tcsetattr(fd_, TCSANOW, &t);
+    }
+    ~TermiosIsigGuard() {
+        if (ok_) ::tcsetattr(fd_, TCSANOW, &saved_);
+    }
+    TermiosIsigGuard(const TermiosIsigGuard &)            = delete;
+    TermiosIsigGuard &operator=(const TermiosIsigGuard &) = delete;
+};
+#endif
+
 int TuiApp::run(const std::string &initial_file) {
+#if !defined(_WIN32)
+    TermiosIsigGuard _termios_guard(STDIN_FILENO);
+#endif
+
     if (!initial_file.empty()) {
         if (sheet_model_load_file(model_, initial_file.c_str())) {
             sheet_->set_file_path(initial_file);

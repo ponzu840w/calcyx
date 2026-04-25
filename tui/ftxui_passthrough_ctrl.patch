@@ -1,0 +1,26 @@
+From: calcyx
+Subject: [PATCH] Pass through C0 control bytes 0x18 (CAN) and 0x1A (SUB)
+
+FTXUI's TerminalInputParser explicitly DROPs Ctrl+X (0x18) and Ctrl+Z
+(0x1A) at the start of Parse(). This makes those keys unreachable from
+applications that bind them (e.g. Ctrl+Z = Undo).
+
+calcyx binds Ctrl+Z / Ctrl+X to undo / cut-like actions and disables
+ISIG via termios so the kernel does not eat them as SIGTSTP/SIGINT.
+With this patch, those bytes flow through the C0 path and are emitted
+as Event::Special("\x18") / Event::Special("\x1a"), which our keymap
+dispatcher then handles.
+
+--- a/src/ftxui/component/terminal_input_parser.cpp
++++ b/src/ftxui/component/terminal_input_parser.cpp
+@@ -166,10 +166,6 @@ TerminalInputParser::Output TerminalInputParser::Parse() {
+   }
+
+   switch (Current()) {
+-    case 24:  // CAN NOLINT
+-    case 26:  // SUB NOLINT
+-      return DROP;
+-
+     case '\x1B':
+       return ParseESC();
+     default:
