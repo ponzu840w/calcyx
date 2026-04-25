@@ -8,8 +8,11 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <utility>
+
+#if !defined(_WIN32)
+#  include <unistd.h>
+#endif
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
@@ -17,6 +20,10 @@
 
 #if defined(__APPLE__)
 #  include <mach-o/dyld.h>
+#endif
+
+#if defined(_WIN32)
+#  include <windows.h>
 #endif
 
 using namespace ftxui;
@@ -646,6 +653,18 @@ std::string TuiApp::samples_dir() const {
     if (_NSGetExecutablePath(buf, &size) == 0) {
         char *sep = std::strrchr(buf, '/');
         if (sep) { *sep = '\0'; exe_dir = buf; }
+    }
+#elif defined(_WIN32)
+    wchar_t wbuf[1024];
+    DWORD n = GetModuleFileNameW(nullptr, wbuf, 1024);
+    if (n > 0 && n < 1024) {
+        int len = WideCharToMultiByte(CP_UTF8, 0, wbuf, -1, buf,
+                                      sizeof(buf), nullptr, nullptr);
+        if (len > 0) {
+            char *sep = std::strrchr(buf, '\\');
+            if (!sep) sep = std::strrchr(buf, '/');
+            if (sep) { *sep = '\0'; exe_dir = buf; }
+        }
     }
 #else
     ssize_t n = ::readlink("/proc/self/exe", buf, sizeof(buf) - 1);
