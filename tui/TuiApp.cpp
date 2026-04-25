@@ -208,7 +208,7 @@ const Shortcut kShortcuts[] = {
     { "Tab / Ctrl+Space", "Trigger completion" },
     { "(while typing)",   "Auto-complete popup" },
     { "F5",               "Recalculate all" },
-    { "F6 / Ctrl+:",      "Toggle compact mode" },
+    { "Ctrl+: / F6",      "Toggle compact mode" },
     { "F8-F12",           "Format: Auto / Dec / Hex / Bin / SI" },
     { "Alt+. / Alt+,",    "Decimal places +/-" },
     { "Alt+C",            "Copy all (OSC 52)" },
@@ -217,7 +217,10 @@ const Shortcut kShortcuts[] = {
     { "Ctrl+Q",           "Quit" },
     { "F1",               "This About dialog" },
 };
-constexpr int kShortcutCount = (int)(sizeof(kShortcuts) / sizeof(kShortcuts[0]));
+constexpr int kShortcutCount     = (int)(sizeof(kShortcuts) / sizeof(kShortcuts[0]));
+constexpr int kAboutVisibleRows  = 10;
+constexpr int kAboutMaxScroll    =
+    (kShortcutCount > kAboutVisibleRows) ? kShortcutCount - kAboutVisibleRows : 0;
 
 } /* namespace */
 
@@ -236,13 +239,11 @@ Element TuiApp::about_overlay() const {
     header.push_back(separator());
 
     /* ショートカット一覧をスクロール可能にするため、about_scroll_ の位置から
-     * 最大 visible_rows 行だけ表示する。 */
-    const int visible_rows = 10;
-    int max_scroll = std::max(0, kShortcutCount - visible_rows);
-    int scroll = std::clamp(about_scroll_, 0, max_scroll);
+     * 最大 kAboutVisibleRows 行だけ表示する。 */
+    int scroll = std::clamp(about_scroll_, 0, kAboutMaxScroll);
 
     Elements rows;
-    for (int i = scroll; i < kShortcutCount && i < scroll + visible_rows; ++i) {
+    for (int i = scroll; i < kShortcutCount && i < scroll + kAboutVisibleRows; ++i) {
         rows.push_back(hbox({
             text(kShortcuts[i].key) | color(Color::YellowLight) |
                 size(WIDTH, EQUAL, 22),
@@ -254,7 +255,7 @@ Element TuiApp::about_overlay() const {
     std::string hint = "↑↓: scroll  (";
     hint += std::to_string(scroll + 1);
     hint += "-";
-    hint += std::to_string(std::min(scroll + visible_rows, kShortcutCount));
+    hint += std::to_string(std::min(scroll + kAboutVisibleRows, kShortcutCount));
     hint += "/";
     hint += std::to_string(kShortcutCount);
     hint += ")   Esc / Enter / q: close";
@@ -266,7 +267,7 @@ Element TuiApp::about_overlay() const {
     body.push_back(text(hint) | dim);
 
     return vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
-           size(HEIGHT, LESS_THAN, 24) | center;
+           size(HEIGHT, LESS_THAN, 24) | reflect(about_box_) | center;
 }
 
 bool TuiApp::about_handle_event(Event ev) {
@@ -276,10 +277,10 @@ bool TuiApp::about_handle_event(Event ev) {
         about_visible_ = false;
         return true;
     }
-    if (ev == Event::ArrowUp)   { if (about_scroll_ > 0) --about_scroll_; return true; }
-    if (ev == Event::ArrowDown) { ++about_scroll_;                       return true; }
+    if (ev == Event::ArrowUp)   { about_scroll_ = std::max(0, about_scroll_ - 1); return true; }
+    if (ev == Event::ArrowDown) { about_scroll_ = std::min(kAboutMaxScroll, about_scroll_ + 1); return true; }
     if (ev == Event::PageUp)   { about_scroll_ = std::max(0, about_scroll_ - 5); return true; }
-    if (ev == Event::PageDown) { about_scroll_ += 5;                     return true; }
+    if (ev == Event::PageDown) { about_scroll_ = std::min(kAboutMaxScroll, about_scroll_ + 5); return true; }
     /* その他のキーは吸収のみ (シートに流さない) */
     return true;
 }
@@ -357,7 +358,7 @@ const MenuItem kEditMenu[] = {
 };
 
 const MenuItem kViewMenu[] = {
-    { "&Compact Mode",       "F6",    MenuCmd::ToggleCompact,      false, false, false },
+    { "&Compact Mode",       "Ctrl+:",MenuCmd::ToggleCompact,      false, false, false },
     { "-",                   "",      MenuCmd::None,               true,  false, false },
     { "Decimals &+",         "Alt+.", MenuCmd::DecimalsInc,        false, false, false },
     { "Decimals &-",         "Alt+,", MenuCmd::DecimalsDec,        false, false, false },
@@ -373,10 +374,6 @@ const MenuItem kFormatMenu[] = {
     { "&SI Prefix",      "F12", MenuCmd::FormatSI,   false, false, false },
 };
 
-const MenuItem kHelpMenu[] = {
-    { "&About calcyx",   "F1",  MenuCmd::HelpAbout,  false, false, false },
-};
-
 struct MenuDef {
     const char     *title;
     MenuId          id;
@@ -389,7 +386,6 @@ const MenuDef kMenus[] = {
     { "&Edit",   MenuId::Edit,   kEditMenu,   (int)(sizeof(kEditMenu)   / sizeof(MenuItem)) },
     { "&View",   MenuId::View,   kViewMenu,   (int)(sizeof(kViewMenu)   / sizeof(MenuItem)) },
     { "fo&Rmat", MenuId::Format, kFormatMenu, (int)(sizeof(kFormatMenu) / sizeof(MenuItem)) },
-    { "&Help",   MenuId::Help,   kHelpMenu,   (int)(sizeof(kHelpMenu)   / sizeof(MenuItem)) },
 };
 constexpr int kMenuCount = (int)(sizeof(kMenus) / sizeof(MenuDef));
 
@@ -401,6 +397,9 @@ int menu_index(MenuId id) {
 } /* namespace */
 
 Element TuiApp::menu_bar_render() const {
+    /* マウス対応: 各タイトル Box を Render() ごとにリセット。 */
+    menu_title_boxes_.assign(kMenuCount, Box{});
+
     Elements cells;
     cells.push_back(text(" "));
     for (int i = 0; i < kMenuCount; ++i) {
@@ -410,6 +409,7 @@ Element TuiApp::menu_bar_render() const {
             text(" "),
         });
         if (kMenus[i].id == menu_active_) cell = cell | inverted;
+        cell = cell | reflect(menu_title_boxes_[i]);
         cells.push_back(std::move(cell));
         cells.push_back(text(" "));
     }
@@ -441,6 +441,9 @@ Element TuiApp::menu_overlay() const {
     }
     int inner_width = std::max(12, label_max + 4 + sc_max);
 
+    /* マウス対応: メニュー項目 Box をリセット (区切り行は (0,0,0,0) のまま)。 */
+    menu_item_boxes_.assign(def.count, Box{});
+
     Elements rows;
     for (int i = 0; i < def.count; ++i) {
         const MenuItem &it = def.items[i];
@@ -460,6 +463,7 @@ Element TuiApp::menu_overlay() const {
         }) | size(WIDTH, EQUAL, inner_width + 2);
         if (it.disabled) row = row | dim;
         if (i == menu_item_ && !it.disabled) row = row | inverted;
+        row = row | reflect(menu_item_boxes_[i]);
         rows.push_back(std::move(row));
     }
 
@@ -470,6 +474,8 @@ Element TuiApp::menu_overlay() const {
         /* samples の数が多いと縦長になるので表示は最大 12 行でスクロール。 */
         const int visible = 12;
         int count = (int)samples_files_.size();
+        /* マウス対応: 全 sample 数ぶん boxes を確保し、未描画行は空のまま。 */
+        submenu_item_boxes_.assign(count, Box{});
         int start = std::max(0, std::min(submenu_item_ - visible + 1,
                                           std::max(0, count - visible)));
         Elements srows;
@@ -483,11 +489,14 @@ Element TuiApp::menu_overlay() const {
                 Element row = hbox({ text(" "), text(nm), text(" ") }) |
                               size(WIDTH, GREATER_THAN, 18);
                 if (i == submenu_item_) row = row | inverted;
+                row = row | reflect(submenu_item_boxes_[i]);
                 srows.push_back(std::move(row));
             }
         }
         Element sdd = vbox(std::move(srows)) | border;
         dd = hbox({ dd, sdd });
+    } else {
+        submenu_item_boxes_.clear();
     }
 
     /* dropdown を col だけ右・1 行だけ下にオフセット。 */
@@ -591,7 +600,6 @@ void TuiApp::menu_invoke_cmd(MenuCmd cmd) {
         case MenuCmd::ClearAll:    sheet_dispatch_key(sheet_.get(), Event::Special("\x1b[3;6~")); break;
         case MenuCmd::Preferences: flash_message("Preferences: not available in TUI");    break;
         case MenuCmd::About:
-        case MenuCmd::HelpAbout:
             about_visible_ = true; about_scroll_ = 0;                                     break;
         case MenuCmd::Exit:        screen_.Exit();                                         break;
 
@@ -719,7 +727,6 @@ bool TuiApp::menu_handle_event(Event ev) {
         if (ev == Event::Special("\x1b" "e") || ev == Event::Special("\x1b" "E")) { menu_open(MenuId::Edit);   return true; }
         if (ev == Event::Special("\x1b" "v") || ev == Event::Special("\x1b" "V")) { menu_open(MenuId::View);   return true; }
         if (ev == Event::Special("\x1b" "r") || ev == Event::Special("\x1b" "R")) { menu_open(MenuId::Format); return true; }
-        if (ev == Event::Special("\x1b" "h") || ev == Event::Special("\x1b" "H")) { menu_open(MenuId::Help);   return true; }
         return false;
     }
 
@@ -783,9 +790,90 @@ bool TuiApp::menu_handle_event(Event ev) {
 }
 
 /* ----------------------------------------------------------------------
+ * マウスディスパッチ
+ * -------------------------------------------------------------------- */
+bool TuiApp::handle_mouse(const Mouse &m) {
+    /* About: ホイールでスクロール、外側クリックで閉じる。 */
+    if (about_visible_) {
+        if (m.button == Mouse::WheelUp)   { about_scroll_ = std::max(0, about_scroll_ - 1); return true; }
+        if (m.button == Mouse::WheelDown) { about_scroll_ = std::min(kAboutMaxScroll, about_scroll_ + 1); return true; }
+        if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
+            if (!about_box_.Contain(m.x, m.y)) about_visible_ = false;
+            return true;
+        }
+        return true;  /* About 中は他のマウスも吸収 */
+    }
+
+    /* プロンプト: 外側クリックでキャンセル。それ以外は吸収だけ。 */
+    if (prompt_mode_ != PromptMode::None) {
+        if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
+            if (!prompt_box_.Contain(m.x, m.y)) { prompt_cancel(); return true; }
+        }
+        return true;
+    }
+
+    /* メニュー展開中。 */
+    if (menu_active_ != MenuId::None) {
+        if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
+            /* タイトルクリック: 同じなら閉じる、別なら切替。 */
+            for (int i = 0; i < (int)menu_title_boxes_.size(); ++i) {
+                if (!menu_title_boxes_[i].Contain(m.x, m.y)) continue;
+                if (kMenus[i].id == menu_active_) menu_close();
+                else                              menu_open(kMenus[i].id);
+                return true;
+            }
+            /* submenu 項目 (展開中のみ)。 */
+            if (submenu_active_) {
+                for (int i = 0; i < (int)submenu_item_boxes_.size(); ++i) {
+                    if (!submenu_item_boxes_[i].Contain(m.x, m.y)) continue;
+                    submenu_item_ = i;
+                    menu_activate_current();
+                    return true;
+                }
+            }
+            /* メニュー項目。 */
+            int idx = menu_index(menu_active_);
+            if (idx >= 0) {
+                const MenuDef &def = kMenus[idx];
+                for (int i = 0; i < (int)menu_item_boxes_.size(); ++i) {
+                    if (!menu_item_boxes_[i].Contain(m.x, m.y)) continue;
+                    if (i >= def.count) break;
+                    const MenuItem &it = def.items[i];
+                    if (it.separator || it.disabled) return true;
+                    menu_item_ = i;
+                    menu_activate_current();
+                    return true;
+                }
+            }
+            /* 外側 → 閉じる。 */
+            menu_close();
+            return true;
+        }
+        /* メニュー展開中はホイール等も吸収。 */
+        return true;
+    }
+
+    /* メニュー未展開時にメニューバータイトルをクリック → 開く。 */
+    if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
+        for (int i = 0; i < (int)menu_title_boxes_.size(); ++i) {
+            if (!menu_title_boxes_[i].Contain(m.x, m.y)) continue;
+            menu_open(kMenus[i].id);
+            return true;
+        }
+    }
+    /* それ以外は sheet に流す (sheet が WheelUp/Down・行クリック等を処理)。 */
+    return false;
+}
+
+/* ----------------------------------------------------------------------
  * テスト用: CatchEvent → sheet OnEvent の経路をテストから再現する
  * -------------------------------------------------------------------- */
 void TuiApp::test_dispatch(Event ev) {
+    if (ev.is_mouse()) {
+        if (handle_mouse(ev.mouse())) return;
+        sheet_->OnEvent(ev);
+        return;
+    }
     if (about_handle_event(ev)) return;
     if (ev == Event::F1) { about_visible_ = true; about_scroll_ = 0; return; }
     if (menu_handle_event(ev)) return;
@@ -858,7 +946,7 @@ int TuiApp::run(const std::string &initial_file) {
                 text(a),
                 text(m) | inverted,
                 text(c),
-            });
+            }) | reflect(prompt_box_);
             base = vbox({ body | flex, prompt_el });
         } else if (sheet_->compact_mode()) {
             base = vbox({ body | flex });
@@ -882,6 +970,12 @@ int TuiApp::run(const std::string &initial_file) {
     });
 
     auto root = CatchEvent(renderer, [this](Event ev) {
+        if (ev.is_mouse()) {
+            /* TuiApp 自身が消費しないマウスは sheet (CatchEvent の child)
+             * に流す。handle_mouse() が false ならここで false を返せば
+             * Renderer 経由で sheet->OnEvent() に届く。 */
+            return handle_mouse(ev.mouse());
+        }
         /* About が開いている間は全イベントを吸収する。 */
         if (about_handle_event(ev)) return true;
         /* 非表示のときに F1 で開く。 */

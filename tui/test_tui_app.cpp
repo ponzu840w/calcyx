@@ -260,12 +260,12 @@ static void test_menu_bar() {
     EXPECT("menu: closed after Enter",
            app.test_menu_active() == MenuId::None);
 
-    /* --- Help → About 経路 --- */
+    /* --- File → About 経路 (Alt+F → 'b') --- */
     EXPECT("menu: about hidden", !app.test_about_visible());
-    app.test_dispatch(Event::Special("\x1b" "h"));
-    EXPECT("menu: Help opened", app.test_menu_active() == MenuId::Help);
-    app.test_dispatch(Event::Return);
-    EXPECT("menu: About opened via Help/About", app.test_about_visible());
+    app.test_dispatch(Event::Special("\x1b" "f"));
+    EXPECT("menu: File opened", app.test_menu_active() == MenuId::File);
+    app.test_dispatch(Event::Character("b"));  /* "A&bout calcyx" の hot letter */
+    EXPECT("menu: About opened via File/About", app.test_about_visible());
     app.test_dispatch(Event::Escape);  /* About を閉じる */
 
     dump_render("6d. menu bar", app);

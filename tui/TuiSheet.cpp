@@ -4,6 +4,7 @@
 
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
+#include <ftxui/screen/string.hpp>
 
 #include <algorithm>
 #include <cstdio>
@@ -702,9 +703,12 @@ Element TuiSheet::render_row(int idx, bool is_focused, int result_col) const {
 
     Element left;
     if (is_focused) {
+        Element editor_el =
+            render_highlighted(editor_buf_, cursor_pos_, /*dim_style=*/false) |
+            reflect(editor_box_);
         left = hbox({
             text("> "),
-            render_highlighted(editor_buf_, cursor_pos_, /*dim_style=*/false),
+            editor_el,
         });
     } else {
         left = hbox({
@@ -746,12 +750,17 @@ Element TuiSheet::Render() {
     Elements rows;
     rows.reserve(n + 2);
 
+    /* マウス対応: 行ごとの Box をリセット。reflect で埋まる。 */
+    row_boxes_.assign(n, Box{});
+    editor_box_ = Box{};
+
     /* 2 列レイアウト: 左 = expr、右 = result。
      * カーソル行が画面外に出ないよう yframe + focus でスクロール。
      * 補完ポップアップは焦点行の直下に挟み込む。 */
     for (int i = 0; i < n; ++i) {
         Element row = render_row(i, i == focused_row_, 0);
         if (i == focused_row_) row = row | focus;
+        row = row | reflect(row_boxes_[i]);
         rows.push_back(row);
         if (i == focused_row_ && completion_visible()) {
             Element popup = hbox({
@@ -792,9 +801,82 @@ Element TuiSheet::Render() {
 }
 
 /* ----------------------------------------------------------------------
+ * マウス
+ * -------------------------------------------------------------------- */
+size_t TuiSheet::byte_pos_for_cell(const std::string &s, int target_cell) {
+    if (target_cell <= 0) return 0;
+    auto glyphs = Utf8ToGlyphs(s);
+    size_t byte = 0;
+    int    cell = 0;
+    for (const auto &g : glyphs) {
+        if (g.empty()) continue;  /* 全角文字の継続セル */
+        int w = string_width(g);
+        if (cell + w > target_cell) break;
+        byte += g.size();
+        cell += w;
+    }
+    return byte;
+}
+
+bool TuiSheet::handle_mouse(const Mouse &m) {
+    /* ホイール: 行単位スクロール。常に処理。 */
+    if (m.button == Mouse::WheelUp) {
+        action_row_up();
+        completion_.hide();
+        return true;
+    }
+    if (m.button == Mouse::WheelDown) {
+        action_row_down();
+        completion_.hide();
+        return true;
+    }
+
+    /* 左クリック (Pressed のみ反応、Released は吸収するだけ) */
+    if (m.button != Mouse::Left) return false;
+    if (m.motion != Mouse::Pressed) return true;
+
+    /* 補完ポップアップ内のクリック: 該当項目を選択して確定 */
+    if (completion_visible()) {
+        int idx = completion_.item_at(m.x, m.y);
+        if (idx >= 0) {
+            completion_.set_selected(idx);
+            completion_confirm();
+            return true;
+        }
+        /* 補完外をクリックしたら閉じる (確定はしない) */
+        completion_.hide();
+        /* fall through: 行 hit-test も試す */
+    }
+
+    /* 行 hit-test */
+    for (int i = 0; i < (int)row_boxes_.size(); ++i) {
+        if (!row_boxes_[i].Contain(m.x, m.y)) continue;
+        if (i != focused_row_) {
+            commit_if_changed();
+            focused_row_ = i;
+            load_editor_from_row();
+            completion_.hide();
+            return true;
+        }
+        /* 既にフォーカス行 — 編集領域内ならカーソル位置設定 */
+        if (editor_box_.Contain(m.x, m.y)) {
+            int target_cell = m.x - editor_box_.x_min;
+            cursor_pos_ = byte_pos_for_cell(editor_buf_, target_cell);
+        } else if (m.x < editor_box_.x_min) {
+            cursor_pos_ = 0;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+/* ----------------------------------------------------------------------
  * OnEvent
  * -------------------------------------------------------------------- */
 bool TuiSheet::OnEvent(Event ev) {
+    if (ev.is_mouse()) return handle_mouse(ev.mouse());
+
     /* 補完ポップアップが開いている間は、矢印・Enter・Esc を横取りする。
      * 文字入力・Backspace などはそのまま通して、更新後に key を追従させる。 */
     if (completion_visible()) {

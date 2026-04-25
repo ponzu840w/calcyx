@@ -2,6 +2,7 @@
 #define CALCYX_TUI_COMPLETION_H
 
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/box.hpp>
 
 #include <string>
 #include <vector>
@@ -48,6 +49,11 @@ public:
 
     int filtered_count() const { return (int)filtered_.size(); }
 
+    /* マウス対応: render() 中に各項目の Box が item_boxes_ に格納される。 *
+     * (x,y) を含む項目の絶対インデックスを返す。なければ -1。 */
+    int  item_at(int x, int y) const;
+    void set_selected(int idx);  /* 範囲外は無視 */
+
 private:
     void rebuild();
 
@@ -56,6 +62,9 @@ private:
     std::string       key_;
     int               selected_ = 0;
     bool              visible_  = false;
+
+    /* render() で更新 (mutable) */
+    mutable std::vector<ftxui::Box> item_boxes_;
 };
 
 } // namespace calcyx::tui

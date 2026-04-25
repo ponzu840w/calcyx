@@ -3,11 +3,14 @@
 
 #include <ftxui/component/component_base.hpp>
 #include <ftxui/component/event.hpp>
+#include <ftxui/component/mouse.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/box.hpp>
 
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "TuiCompletion.h"
 #include "sheet_model.h"
@@ -109,6 +112,11 @@ private:
     sheet_view_state_t capture_view_state() const;
     void               restore_view_state(const sheet_view_state_t &vs);
 
+    /* --- マウス --- */
+    bool   handle_mouse(const ftxui::Mouse &m);
+    /* UTF-8 文字列の指定セル列までの byte offset。日本語は cell 幅 2。 */
+    static size_t byte_pos_for_cell(const std::string &s, int target_cell);
+
     /* --- 描画 --- */
     ftxui::Element render_row(int idx, bool is_focused, int result_col) const;
     /* シンタックスハイライト: GUI の draw_expr_highlighted と同じカテゴリ分け。
@@ -134,6 +142,10 @@ private:
     TuiCompletion completion_;
     bool          auto_complete_ = true;  /* GUI の g_input_auto_completion 相当 */
     bool          compact_mode_  = false;
+
+    /* マウス: 各行と編集領域の Box (Render() で再構築)。 */
+    mutable std::vector<ftxui::Box> row_boxes_;
+    mutable ftxui::Box              editor_box_;
 };
 
 std::shared_ptr<TuiSheet> MakeTuiSheet(sheet_model_t *model);

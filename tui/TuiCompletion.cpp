@@ -76,6 +76,10 @@ void TuiCompletion::rebuild() {
 }
 
 Element TuiCompletion::render(int max_rows) const {
+    /* 描画ごとに item_boxes_ をフルサイズに作り直す。
+     * 描画されない項目は Contain() が常に false の (0,0,0,0) のまま。 */
+    item_boxes_.assign(filtered_.size(), Box{});
+
     if (!visible_ || filtered_.empty()) return text("");
 
     Elements rows;
@@ -92,6 +96,7 @@ Element TuiCompletion::render(int max_rows) const {
         std::string label = it.label.empty() ? it.id : it.label;
         Element row = text(label);
         if (i == sel) row = row | inverted;
+        row = row | reflect(item_boxes_[i]);
         rows.push_back(row);
     }
 
@@ -104,6 +109,18 @@ Element TuiCompletion::render(int max_rows) const {
         vbox(std::move(rows)) | frame,
         desc_el,
     }) | border | color(Color::CyanLight);
+}
+
+int TuiCompletion::item_at(int x, int y) const {
+    for (int i = 0; i < (int)item_boxes_.size(); ++i) {
+        if (item_boxes_[i].Contain(x, y)) return i;
+    }
+    return -1;
+}
+
+void TuiCompletion::set_selected(int idx) {
+    if (idx < 0 || idx >= (int)filtered_.size()) return;
+    selected_ = idx;
 }
 
 } // namespace calcyx::tui

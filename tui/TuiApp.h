@@ -2,7 +2,9 @@
 #define CALCYX_TUI_APP_H
 
 #include <ftxui/component/component_base.hpp>
+#include <ftxui/component/mouse.hpp>
 #include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/screen/box.hpp>
 
 #include <memory>
 #include <string>
@@ -16,7 +18,7 @@ class TuiSheet;
 
 /* メニュー識別子。None はメニュー未展開。 */
 enum class MenuId {
-    None, File, Edit, View, Format, Help,
+    None, File, Edit, View, Format,
 };
 
 /* 各メニュー項目が表すコマンド。invoke_menu_cmd() で switch する。 */
@@ -31,8 +33,6 @@ enum class MenuCmd {
     ToggleCompact, DecimalsInc, DecimalsDec, ToggleAutoComplete,
     /* Format */
     FormatAuto, FormatDec, FormatHex, FormatBin, FormatSI,
-    /* Help */
-    HelpAbout,
     /* Samples: Enter で開いているサンプルファイル (sample_item_ で選択) */
     OpenSample,
 };
@@ -133,6 +133,14 @@ private:
     /* Samples の一覧 (lazy populate)。空なら未スキャン。 */
     mutable std::vector<std::string> samples_files_;
     mutable bool                     samples_scanned_ = false;
+
+    /* マウス対応: 描画ごとに reflect で更新。 */
+    bool handle_mouse(const ftxui::Mouse &m);  /* true で吸収 */
+    mutable std::vector<ftxui::Box> menu_title_boxes_;
+    mutable std::vector<ftxui::Box> menu_item_boxes_;
+    mutable std::vector<ftxui::Box> submenu_item_boxes_;
+    mutable ftxui::Box              about_box_;
+    mutable ftxui::Box              prompt_box_;
 };
 
 } // namespace calcyx::tui
