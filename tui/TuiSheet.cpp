@@ -652,8 +652,13 @@ void TuiSheet::action_paste() {
 
     if (to_insert.find('\n') != std::string::npos ||
         to_insert.find('\r') != std::string::npos) {
-        /* TODO: マルチラインモーダルで「各行を別行 / 1 行に結合 / キャンセル」 */
-        if (status_cb_) status_cb_("Multi-line paste not yet supported");
+        /* マルチラインは TuiApp 側のモーダルへ委譲。コールバック未設定の
+         * テスト等ではフィードバックのみ。 */
+        if (multiline_paste_cb_) {
+            multiline_paste_cb_(to_insert);
+        } else if (status_cb_) {
+            status_cb_("Multi-line paste skipped (modal unavailable)");
+        }
         return;
     }
 
@@ -662,6 +667,93 @@ void TuiSheet::action_paste() {
     live_evaluate();
     if (status_cb_)
         status_cb_(from_self ? "Pasted expression" : "Pasted from clipboard");
+}
+
+namespace {
+/* \r\n / \n / \r どれでも 1 行として扱って分割。末尾空行はドロップする
+ * (コピー由来の trailing newline は 1 つ削ってあるが念のため)。 */
+std::vector<std::string> split_lines(const std::string &text) {
+    std::vector<std::string> lines;
+    std::string line;
+    for (size_t i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if (c == '\r') {
+            lines.push_back(line); line.clear();
+            if (i + 1 < text.size() && text[i + 1] == '\n') ++i;
+        } else if (c == '\n') {
+            lines.push_back(line); line.clear();
+        } else {
+            line += c;
+        }
+    }
+    if (!line.empty()) lines.push_back(line);
+    while (!lines.empty() && lines.back().empty()) lines.pop_back();
+    return lines;
+}
+} // namespace
+
+/* GUI の SheetView::multiline_paste 相当。現在行の直下に各行を 1 行ずつ
+ * 挿入し、まとめて 1 つの undo ステップとして commit する。 */
+void TuiSheet::paste_multiline_as_rows(const std::string &text) {
+    auto lines = split_lines(text);
+    if (lines.empty()) return;
+
+    commit_if_changed();
+    int insert_at = focused_row_ + 1;
+
+    std::vector<sheet_op_t> redo_ops;
+    redo_ops.reserve(lines.size());
+    for (size_t i = 0; i < lines.size(); ++i) {
+        sheet_op_t op{};
+        op.type  = SHEET_OP_INSERT;
+        op.index = (int)(insert_at + i);
+        op.expr  = lines[i].c_str();
+        redo_ops.push_back(op);
+    }
+    std::vector<sheet_op_t> undo_ops;
+    undo_ops.reserve(lines.size());
+    for (size_t i = 0; i < lines.size(); ++i) {
+        sheet_op_t op{};
+        op.type  = SHEET_OP_DELETE;
+        op.index = (int)(insert_at + (lines.size() - 1 - i));
+        op.expr  = nullptr;
+        undo_ops.push_back(op);
+    }
+
+    sheet_model_commit(model_,
+                       undo_ops.data(), (int)undo_ops.size(),
+                       redo_ops.data(), (int)redo_ops.size(),
+                       capture_view_state());
+
+    /* 挿入された最後の行にフォーカスを移す。 */
+    focused_row_ = insert_at + (int)lines.size() - 1;
+    load_editor_from_row();
+
+    if (status_cb_)
+        status_cb_("Pasted " + std::to_string(lines.size()) + " row(s)");
+}
+
+/* 改行を空白に変換して現在のカーソル位置に挿入。 */
+void TuiSheet::paste_multiline_as_single(const std::string &text) {
+    std::string flat;
+    flat.reserve(text.size());
+    for (size_t i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if (c == '\r' || c == '\n') {
+            if (!flat.empty() && flat.back() != ' ') flat.push_back(' ');
+            if (c == '\r' && i + 1 < text.size() && text[i + 1] == '\n') ++i;
+        } else {
+            flat.push_back(c);
+        }
+    }
+    /* 末尾の空白は削る */
+    while (!flat.empty() && flat.back() == ' ') flat.pop_back();
+
+    editor_buf_.insert(cursor_pos_, flat);
+    cursor_pos_ += flat.size();
+    live_evaluate();
+
+    if (status_cb_) status_cb_("Pasted as single line");
 }
 
 /* 小数桁の増減は engine 側のグローバル g_fmt_settings を直接触る (GUI と同じ)。

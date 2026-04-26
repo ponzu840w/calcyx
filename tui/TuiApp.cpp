@@ -44,6 +44,8 @@ TuiApp::TuiApp()
     sheet_->set_file_save_callback([this]() { do_file_save(); });
     sheet_->set_file_open_callback([this]() { do_file_open(); });
     sheet_->set_status_callback([this](std::string m) { flash_message(std::move(m)); });
+    sheet_->set_multiline_paste_callback(
+        [this](std::string raw) { paste_modal_open(std::move(raw)); });
 }
 
 TuiApp::~TuiApp() {
@@ -285,6 +287,152 @@ bool TuiApp::about_handle_event(Event ev) {
     if (ev == Event::PageDown) { about_scroll_ = std::min(kAboutMaxScroll, about_scroll_ + 5); return true; }
     /* その他のキーは吸収のみ (シートに流さない) */
     return true;
+}
+
+/* ----------------------------------------------------------------------
+ * Paste Options モーダル (改行入りクリップボード貼り付け時)
+ *
+ * GUI の PasteOptionForm を簡素化したラジオ 3 択。テキストプレビューと
+ * 選択肢を表示し、↑↓ で選択、Enter で確定、Esc でキャンセル。
+ * -------------------------------------------------------------------- */
+
+namespace {
+constexpr int kPasteChoiceMultiRows  = 0;
+constexpr int kPasteChoiceSingleLine = 1;
+constexpr int kPasteChoiceCancel     = 2;
+constexpr int kPasteChoiceCount      = 3;
+constexpr int kPastePreviewMaxLines  = 8;
+
+int count_lines(const std::string &s) {
+    int n = 1;
+    for (char c : s) if (c == '\n') ++n;
+    return n;
+}
+} // namespace
+
+void TuiApp::paste_modal_open(const std::string &raw_text) {
+    paste_modal_visible_ = true;
+    paste_modal_choice_  = kPasteChoiceMultiRows;
+    paste_modal_text_    = raw_text;
+}
+
+bool TuiApp::paste_modal_handle_event(Event ev) {
+    if (!paste_modal_visible_) return false;
+
+    if (ev == Event::Escape) {
+        paste_modal_visible_ = false;
+        paste_modal_text_.clear();
+        flash_message("Paste cancelled");
+        return true;
+    }
+    if (ev == Event::ArrowUp) {
+        paste_modal_choice_ = (paste_modal_choice_ - 1 + kPasteChoiceCount) %
+                               kPasteChoiceCount;
+        return true;
+    }
+    if (ev == Event::ArrowDown) {
+        paste_modal_choice_ = (paste_modal_choice_ + 1) % kPasteChoiceCount;
+        return true;
+    }
+    if (ev == Event::Return) {
+        paste_modal_confirm();
+        return true;
+    }
+    /* ホットキー: m / s / c で直接確定 (GUI の Calctus 風) */
+    if (ev == Event::Character("m") || ev == Event::Character("M")) {
+        paste_modal_choice_ = kPasteChoiceMultiRows;  paste_modal_confirm(); return true;
+    }
+    if (ev == Event::Character("s") || ev == Event::Character("S")) {
+        paste_modal_choice_ = kPasteChoiceSingleLine; paste_modal_confirm(); return true;
+    }
+    if (ev == Event::Character("c") || ev == Event::Character("C")) {
+        paste_modal_choice_ = kPasteChoiceCancel;     paste_modal_confirm(); return true;
+    }
+    /* 他キーは吸収のみ */
+    return true;
+}
+
+void TuiApp::paste_modal_confirm() {
+    int        choice = paste_modal_choice_;
+    std::string text  = std::move(paste_modal_text_);
+    paste_modal_visible_ = false;
+    paste_modal_text_.clear();
+
+    if (!sheet_) return;
+    switch (choice) {
+        case kPasteChoiceMultiRows:  sheet_->paste_multiline_as_rows(text);   break;
+        case kPasteChoiceSingleLine: sheet_->paste_multiline_as_single(text); break;
+        default: flash_message("Paste cancelled"); break;
+    }
+}
+
+Element TuiApp::paste_modal_overlay() const {
+    using namespace ftxui;
+
+    int total = count_lines(paste_modal_text_);
+
+    /* プレビュー: 先頭 8 行まで。それ以上なら "... and N more" 行を出す。 */
+    Elements preview;
+    {
+        std::string line;
+        int shown = 0;
+        size_t i = 0;
+        while (i < paste_modal_text_.size() && shown < kPastePreviewMaxLines) {
+            char c = paste_modal_text_[i++];
+            if (c == '\r' || c == '\n') {
+                if (c == '\r' && i < paste_modal_text_.size() &&
+                    paste_modal_text_[i] == '\n') ++i;
+                preview.push_back(text(line) | dim);
+                line.clear();
+                ++shown;
+            } else {
+                line += c;
+            }
+        }
+        if (shown < kPastePreviewMaxLines && !line.empty()) {
+            preview.push_back(text(line) | dim);
+            ++shown;
+        }
+        if (shown < total) {
+            preview.push_back(
+                text("... and " + std::to_string(total - shown) + " more line(s)")
+                | dim);
+        }
+    }
+
+    auto choice_row = [this](const char *label, const char *hint, int idx) {
+        bool selected = (paste_modal_choice_ == idx);
+        Element marker = selected ? text("[*] ") | color(Color::YellowLight)
+                                   : text("[ ] ");
+        Element body   = hbox({
+            std::move(marker),
+            text(label),
+            filler(),
+            text(hint) | dim,
+        });
+        if (selected) body = body | inverted;
+        return body;
+    };
+
+    Elements body;
+    body.push_back(text("Paste Options") | bold | center);
+    body.push_back(separator());
+    body.push_back(text("Clipboard contains " + std::to_string(total) +
+                        " line(s):") | dim);
+    for (auto &p : preview) body.push_back(std::move(p));
+    body.push_back(separator());
+    body.push_back(choice_row("Insert each line as a new row", "(M)",
+                              kPasteChoiceMultiRows));
+    body.push_back(choice_row("Join into single line at cursor", "(S)",
+                              kPasteChoiceSingleLine));
+    body.push_back(choice_row("Cancel", "(C / Esc)",
+                              kPasteChoiceCancel));
+    body.push_back(separator());
+    body.push_back(text("↑↓ select   Enter confirm   Esc cancel") | dim | center);
+
+    return vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
+           size(HEIGHT, LESS_THAN, 22) | clear_under |
+           reflect(paste_modal_box_) | center;
 }
 
 /* ----------------------------------------------------------------------
@@ -880,6 +1028,7 @@ void TuiApp::test_dispatch(Event ev) {
         sheet_->OnEvent(ev);
         return;
     }
+    if (paste_modal_handle_event(ev)) return;
     if (about_handle_event(ev)) return;
     if (ev == Event::F1) { about_visible_ = true; about_scroll_ = 0; return; }
     if (menu_handle_event(ev)) return;
@@ -971,6 +1120,7 @@ int TuiApp::run(const std::string &initial_file) {
         layers.push_back(base);
         if (menu_active_ != MenuId::None) layers.push_back(menu_overlay());
         if (about_visible_)               layers.push_back(about_overlay());
+        if (paste_modal_visible_)         layers.push_back(paste_modal_overlay());
         if (layers.size() == 1) return base;
         return dbox(std::move(layers));
     });
@@ -982,6 +1132,8 @@ int TuiApp::run(const std::string &initial_file) {
              * Renderer 経由で sheet->OnEvent() に届く。 */
             return handle_mouse(ev.mouse());
         }
+        /* Paste モーダル中は全キーをモーダルに渡す。 */
+        if (paste_modal_handle_event(ev)) return true;
         /* About が開いている間は全イベントを吸収する。 */
         if (about_handle_event(ev)) return true;
         /* 非表示のときに F1 で開く。 */

@@ -74,6 +74,8 @@ public:
     MenuId test_menu_active() const { return menu_active_; }
     int    test_menu_item()   const { return menu_item_; }
     bool   test_submenu_active() const { return submenu_active_; }
+    bool   test_paste_modal_visible() const { return paste_modal_visible_; }
+    int    test_paste_modal_choice()  const { return paste_modal_choice_; }
 
 private:
     enum class PromptMode {
@@ -95,6 +97,14 @@ private:
      * ↑↓ でショートカット一覧をスクロール。 */
     bool           about_handle_event(ftxui::Event ev);  /* true で吸収 */
     ftxui::Element about_overlay() const;
+
+    /* マルチライン貼り付けモーダル (TuiSheet からコールバックで開かれる)。
+     * ラジオ 3 択: 各行を別行 / 1 行に結合して挿入 / キャンセル。
+     * ↑↓ で選択、Enter で確定、Esc でキャンセル。 */
+    void           paste_modal_open(const std::string &raw_text);
+    bool           paste_modal_handle_event(ftxui::Event ev);  /* true で吸収 */
+    ftxui::Element paste_modal_overlay() const;
+    void           paste_modal_confirm();
 
     /* メニューバー (Alt+F/E/V/R/H で展開)。
      * 展開中: ↑↓ で項目移動、←→ で隣メニューへ、Enter で実行、Esc で閉じる。 */
@@ -123,6 +133,13 @@ private:
     /* About 状態 */
     bool about_visible_ = false;
     int  about_scroll_  = 0;
+
+    /* マルチライン貼り付けモーダル状態。
+     * paste_modal_choice_: 0=各行を別行 / 1=1 行に結合 / 2=キャンセル。 */
+    bool        paste_modal_visible_ = false;
+    int         paste_modal_choice_  = 0;
+    std::string paste_modal_text_;
+    mutable ftxui::Box paste_modal_box_;
 
     /* メニュー状態 */
     MenuId menu_active_     = MenuId::None;

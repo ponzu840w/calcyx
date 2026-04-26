@@ -7,6 +7,7 @@
 
 #include "TuiApp.h"
 #include "TuiSheet.h"
+#include "clipboard.h"
 
 extern "C" {
 #include "sheet_model.h"
@@ -271,11 +272,82 @@ static void test_menu_bar() {
     dump_render("6d. menu bar", app);
 }
 
+/* ----------------------------------------------------------------------
+ * シナリオ 6e: マルチライン Ctrl+V で "Paste Options" モーダルが開く
+ *
+ * clipboard をモック化して "a\nb\nc" をクリップボードに置き、Ctrl+V を
+ * 投げる。TuiSheet::action_paste が改行を検出して TuiApp の
+ * paste_modal_open を呼ぶ → モーダル可視。
+ *
+ *   - 'm' で各行を別行 → 行数が増える
+ *   - 'c' でキャンセル → 行数据变わらず
+ *   - 's' で 1 行結合 → エディタに空白区切りで挿入
+ *
+ * モーダル表示中は Sheet にイベントが届かないことも併せて確認する。
+ * -------------------------------------------------------------------- */
+static void test_paste_modal_multiline() {
+    clipboard::set_mock_for_test(true);
+
+    /* --- 6e.1: Multi rows --- */
+    {
+        TuiApp app;
+        clipboard::set_mock_buffer("a\nb\nc");
+        int rows_before = sheet_model_row_count(app.test_model());
+        EXPECT("6e.1: modal hidden", !app.test_paste_modal_visible());
+
+        app.test_dispatch(Event::Special("\x16"));  /* Ctrl+V */
+        EXPECT("6e.1: modal visible", app.test_paste_modal_visible());
+
+        /* モーダル中は Sheet にキーが落ちないことを確認 (適当な文字 'x') */
+        std::string before_buf = app.test_sheet()->test_editor_buf();
+        app.test_dispatch(Event::Character("x"));
+        EXPECT("6e.1: editor unchanged while modal open",
+               app.test_sheet()->test_editor_buf() == before_buf);
+
+        /* 'm' で各行を別行として挿入 */
+        app.test_dispatch(Event::Character("m"));
+        EXPECT("6e.1: modal closed after confirm",
+               !app.test_paste_modal_visible());
+        EXPECT("6e.1: rows increased",
+               sheet_model_row_count(app.test_model()) == rows_before + 3);
+    }
+
+    /* --- 6e.2: Cancel --- */
+    {
+        TuiApp app;
+        clipboard::set_mock_buffer("x\ny");
+        int rows_before = sheet_model_row_count(app.test_model());
+
+        app.test_dispatch(Event::Special("\x16"));
+        EXPECT("6e.2: modal visible", app.test_paste_modal_visible());
+
+        app.test_dispatch(Event::Escape);
+        EXPECT("6e.2: cancelled", !app.test_paste_modal_visible());
+        EXPECT("6e.2: rows unchanged",
+               sheet_model_row_count(app.test_model()) == rows_before);
+    }
+
+    /* --- 6e.3: Single line (改行を空白に変換) --- */
+    {
+        TuiApp app;
+        clipboard::set_mock_buffer("1+\n2");
+        app.test_dispatch(Event::Special("\x16"));
+        EXPECT("6e.3: modal visible", app.test_paste_modal_visible());
+        app.test_dispatch(Event::Character("s"));
+        EXPECT("6e.3: modal closed", !app.test_paste_modal_visible());
+        EXPECT("6e.3: editor has joined text",
+               app.test_sheet()->test_editor_buf() == "1+ 2");
+    }
+
+    clipboard::set_mock_for_test(false);
+}
+
 int main() {
     test_prompt_open_cancel();
     test_prompt_save_and_load();
     test_about_dialog();
     test_menu_bar();
+    test_paste_modal_multiline();
 
     if (g_failures > 0) {
         fprintf(stderr, "\n%d failure(s)\n", g_failures);

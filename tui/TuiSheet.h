@@ -40,6 +40,18 @@ public:
     /* コピー完了・再計算・クリア等の短いフィードバックを TuiApp の flash_message に流す */
     void set_status_callback(std::function<void(std::string)> cb) { status_cb_ = std::move(cb); }
 
+    /* 改行を含むテキストを Ctrl+V したときの "Paste Options" モーダル起動。
+     * TuiApp が ↑↓/Enter のラジオを担当し、確定時に paste_multiline_*() を呼ぶ。
+     * unset の場合は status_msg にスキップ表示する従来挙動になる。 */
+    void set_multiline_paste_callback(std::function<void(std::string)> cb) {
+        multiline_paste_cb_ = std::move(cb);
+    }
+    /* TuiApp のモーダル確定で呼ばれる。テキストを行で分割し、現在行の直下に
+     * 各行を新規行として挿入する (sheet_model_commit を 1 回でアトミック)。 */
+    void paste_multiline_as_rows  (const std::string &text);
+    /* 改行を空白に置換してカーソル位置に挿入する。 */
+    void paste_multiline_as_single(const std::string &text);
+
     /* TuiApp から sheet_model 経由での I/O 完了後に呼ぶ */
     void reload_focused_row();
 
@@ -141,6 +153,7 @@ private:
     std::function<void()>               file_open_cb_;
     std::function<void()>               file_save_cb_;
     std::function<void(std::string)>    status_cb_;
+    std::function<void(std::string)>    multiline_paste_cb_;
 
     TuiCompletion completion_;
     bool          auto_complete_ = true;  /* GUI の g_input_auto_completion 相当 */
