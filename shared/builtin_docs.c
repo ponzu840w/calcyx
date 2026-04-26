@@ -1,9 +1,10 @@
 /* 組み込み関数の説明文テーブル (UI 非依存)。
  * GUI の補完ポップアップと TUI から共有される。
  * 移植元: Calctus/Model/Functions/BuiltIns/ 各ファイルの Description 文字列
- * ローカライズが必要になったときは gettext の _() でラップする */
+ * ja 翻訳は shared/i18n_table.c に英語キーで登録 (Phase L5). */
 
 #include "builtin_docs.h"
+#include "i18n.h"
 #include <string.h>
 
 static const struct { const char *name; const char *desc; } DOCS[] = {
@@ -168,6 +169,6 @@ static const struct { const char *name; const char *desc; } DOCS[] = {
 const char *builtin_doc(const char *name) {
     size_t n = sizeof(DOCS) / sizeof(DOCS[0]);
     for (size_t i = 0; i < n; i++)
-        if (strcmp(DOCS[i].name, name) == 0) return DOCS[i].desc;
+        if (strcmp(DOCS[i].name, name) == 0) return _(DOCS[i].desc);
     return NULL;
 }

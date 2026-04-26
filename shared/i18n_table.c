@@ -282,7 +282,195 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "CLI: batch-evaluate a file",       "CLI: ファイルをバッチ評価" },
     { "CLI: pipe input",                  "CLI: パイプ入力" },
     { "Exit codes: 0=success, 1=eval error, 2=arg/file error\n",
-      "終了コード: 0=正常, 1=評価エラー, 2=引数/ファイルエラー\n" }
+      "終了コード: 0=正常, 1=評価エラー, 2=引数/ファイルエラー\n" },
+
+    /* === builtin_docs (組み込み関数の説明) ===
+     * shared/builtin_docs.c の各 desc に対応する ja 翻訳.
+     * 関数名 (sin / cos 等) と引数名 (`x` / `array` 等) は英語固定. */
+
+    /* 指数・対数 */
+    { "`y` power of `x`",                                "`x` の `y` 乗" },
+    { "Square root of `x`",                              "`x` の平方根" },
+    { "Exponential of `x`",                              "`x` の指数 (e^x)" },
+    { "Logarithm of `x`",                                "`x` の自然対数" },
+    { "Binary logarithm of `x`",                         "`x` の 2 進対数" },
+    { "Common logarithm of `x`",                         "`x` の常用対数" },
+    { "Ceiling of binary logarithm of `x`",              "`x` の 2 進対数の天井値" },
+    { "Ceiling of common logarithm of `x`",              "`x` の常用対数の天井値" },
+
+    /* 三角関数 */
+    { "Sine",                "正弦 (sin)" },
+    { "Cosine",              "余弦 (cos)" },
+    { "Tangent",             "正接 (tan)" },
+    { "Arcsine",             "逆正弦 (asin)" },
+    { "Arccosine",           "逆余弦 (acos)" },
+    { "Arctangent",          "逆正接 (atan)" },
+    { "Arctangent of a / b", "a / b の逆正接 (atan2)" },
+    { "Hyperbolic sine",     "双曲線正弦 (sinh)" },
+    { "Hyperbolic cosine",   "双曲線余弦 (cosh)" },
+    { "Hyperbolic tangent",  "双曲線正接 (tanh)" },
+
+    /* 丸め */
+    { "Largest integral value less than or equal to `x`",     "`x` 以下の最大整数 (床)" },
+    { "Smallest integral value greater than or equal to `x`", "`x` 以上の最小整数 (天井)" },
+    { "Integral part of `x`",                                  "`x` の整数部 (切捨て)" },
+    { "Nearest integer to `x`",                                "`x` に最も近い整数 (四捨五入)" },
+
+    /* 絶対値・符号 */
+    { "Absolute value of `x`",                                "`x` の絶対値" },
+    { "Returns 1 for positives, -1 for negatives, 0 otherwise.",
+      "正なら 1, 負なら -1, それ以外は 0 を返す" },
+    { "Magnitude of vector `x`",                              "ベクトル `x` の大きさ" },
+
+    /* 最大・最小 */
+    { "Maximum value of elements of the `array`",             "`array` の要素の最大値" },
+    { "Minimum value of elements of the `array`",             "`array` の要素の最小値" },
+
+    /* GCD / LCM */
+    { "Greatest common divisor of elements of the `array`.",  "`array` の要素の最大公約数" },
+    { "Least common multiple of elements of the `array`.",    "`array` の要素の最小公倍数" },
+
+    /* アサーション */
+    { "Asserts that `x` is true (non-zero).",                 "`x` が true (非ゼロ) であることを表明する" },
+    { "Returns true if all elements of `array` are non-zero.", "`array` の全要素が非ゼロなら true" },
+    { "Returns true if any element of `array` is non-zero.",   "`array` のいずれかの要素が非ゼロなら true" },
+
+    /* 日時 */
+    { "Converts `x` to datetime representation.",             "`x` を日時表現に変換する" },
+    { "Current epoch time",                                   "現在のエポック時刻" },
+    { "Converts from days to epoch time.",                    "日数からエポック時刻に変換" },
+    { "Converts from hours to epoch time.",                   "時間からエポック時刻に変換" },
+    { "Converts from minutes to epoch time.",                 "分からエポック時刻に変換" },
+    { "Converts from seconds to epoch time.",                 "秒からエポック時刻に変換" },
+    { "Converts from epoch time to days.",                    "エポック時刻から日数に変換" },
+    { "Converts from epoch time to hours.",                   "エポック時刻から時間に変換" },
+    { "Converts from epoch time to minutes.",                 "エポック時刻から分に変換" },
+    { "Converts from epoch time to seconds.",                 "エポック時刻から秒に変換" },
+
+    /* 表示形式 */
+    { "Converts `x` to binary representation.",               "`x` を 2 進数表現に変換する" },
+    { "Converts `x` to decimal representation.",              "`x` を 10 進数表現に変換する" },
+    { "Converts `x` to hexadecimal representation.",          "`x` を 16 進数表現に変換する" },
+    { "Converts `x` to octal representation.",                "`x` を 8 進数表現に変換する" },
+    { "Converts `x` to character representation.",            "`x` を文字表現に変換する" },
+    { "Converts `x` to binary prefixed representation.",      "`x` を 2 進接頭辞付き表現 (Ki/Mi/Gi 等) に変換" },
+    { "Converts `x` to SI prefixed representation.",          "`x` を SI 接頭辞付き表現 (k/M/G 等) に変換" },
+
+    /* 乱数 */
+    { "Generates a random value between 0.0 and 1.0.", "0.0 と 1.0 の間の乱数を生成" },
+    { "Generates a 32bit random integer.",             "32bit 乱数整数を生成" },
+    { "Generates a 64bit random integer.",             "64bit 乱数整数を生成" },
+
+    /* 配列操作 */
+    { "Length of `array`.",                                "`array` の要素数" },
+    { "Array from `start` to `stop` (exclusive).",         "`start` から `stop` (排他) までの配列" },
+    { "Array from `start` to `stop` (inclusive).",         "`start` から `stop` (包含) までの配列" },
+    { "Concatenates two arrays.",                          "2 つの配列を連結" },
+    { "Reverses the order of elements in `array`.",        "`array` の要素順を逆転" },
+    { "Applies `func` to each element of `array`.",        "`array` の各要素に `func` を適用" },
+    { "Filters `array` by `func` predicate.",              "`func` 述語で `array` をフィルタ" },
+    { "Counts elements of `array` matching `func`.",       "`func` に合致する `array` の要素数" },
+    { "Sorts `array`, optionally by `func` comparator.",   "`array` をソート (任意で `func` 比較子)" },
+    { "Aggregates `array` by applying `func` cumulatively.",
+      "`func` を累積適用して `array` を集約" },
+    { "Extends `array` by applying `func` `count` times.", "`func` を `count` 回適用して `array` を拡張" },
+    { "First index of `val` in `array`, or -1.",           "`array` の最初の `val` のインデックス (無ければ -1)" },
+    { "Last index of `val` in `array`, or -1.",            "`array` の最後の `val` のインデックス (無ければ -1)" },
+    { "Returns true if `array` contains `val`.",           "`array` に `val` が含まれるなら true" },
+    { "Elements of `array0` not in `array1`.",             "`array1` に含まれない `array0` の要素 (差集合)" },
+    { "Elements common to both arrays.",                   "両方の配列に共通する要素 (積集合)" },
+    { "Union of two arrays (no duplicates).",              "2 つの配列の和集合 (重複なし)" },
+    { "Removes duplicate elements from `array`.",          "`array` から重複要素を除去" },
+
+    /* 統計 */
+    { "Sum of elements of the `array`.",                          "`array` の要素の合計" },
+    { "Arithmetic mean of elements of the `array`.",              "`array` の要素の算術平均" },
+    { "Geometric mean of elements of the `array`.",               "`array` の要素の幾何平均" },
+    { "Harmonic mean of elements of the `array`.",                "`array` の要素の調和平均" },
+    { "Inverse of the sum of the inverses. Composite resistance of parallel resistors.",
+      "逆数和の逆数 (並列抵抗の合成抵抗)" },
+
+    /* 素数 */
+    { "Returns whether `x` is prime or not.", "`x` が素数かどうかを返す" },
+    { "`x`-th prime number.",                 "`x` 番目の素数" },
+    { "Returns prime factors of `x`.",        "`x` の素因数を返す" },
+
+    /* 方程式 */
+    { "Finds a root of `func` using Newton's method.", "ニュートン法で `func` の根を求める" },
+
+    /* 文字列 */
+    { "Converts byte-array to string.",                  "バイト配列を文字列に変換" },
+    { "Converts string to byte-array.",                  "文字列をバイト配列に変換" },
+    { "Removes whitespace from both ends of string.",    "文字列の両端の空白を除去" },
+    { "Removes leading whitespace from string.",         "文字列先頭の空白を除去" },
+    { "Removes trailing whitespace from string.",        "文字列末尾の空白を除去" },
+    { "Replaces occurrences of `old` with `new` in string.",
+      "文字列中の `old` を `new` で置換" },
+    { "Converts string to lower case.",                  "文字列を小文字に変換" },
+    { "Converts string to upper case.",                  "文字列を大文字に変換" },
+    { "Returns true if string starts with `prefix`.",    "文字列が `prefix` で始まれば true" },
+    { "Returns true if string ends with `suffix`.",      "文字列が `suffix` で終われば true" },
+    { "Splits string by delimiter into an array.",       "文字列を区切り文字で分割して配列に" },
+    { "Joins array elements into a string with separator.", "配列要素を区切り文字で連結して文字列に" },
+
+    /* グレイコード */
+    { "Converts the value from binary to gray-code.", "2 進数からグレイコードに変換" },
+    { "Converts the value from gray-code to binary.", "グレイコードから 2 進数に変換" },
+
+    /* ビット・バイト操作 */
+    { "Number of bits of `x` that have the value 1.",        "`x` のうち値が 1 のビット数 (popcount)" },
+    { "Packs array elements into an integer.",               "配列要素を整数にパック" },
+    { "Separates the value of `x` into elements of `b` bit width.",
+      "`x` の値を `b` ビット幅の要素に分解" },
+    { "Reverses the lower `b` bits of `x`.",                 "`x` の下位 `b` ビットを逆転" },
+    { "Reverses the lower `b` bytes of `x`.",                "`x` の下位 `b` バイトを逆転" },
+    { "Rotates the lower `b` bits of `x` to the left.",      "`x` の下位 `b` ビットを左回転" },
+    { "Rotates the lower `b` bits of `x` to the right.",     "`x` の下位 `b` ビットを右回転" },
+    { "Swaps even and odd bytes of `x`.",                    "`x` の偶数バイトと奇数バイトを入れ替え" },
+    { "Reverses the order of each 4 bytes of `x`.",          "`x` の 4 バイトごとに順序を逆転" },
+    { "Reverses the byte-order of `x`.",                     "`x` のバイト順を逆転" },
+    { "Swaps the nibble of each byte of `x`.",               "`x` の各バイトのニブルを入れ替え" },
+
+    /* 色変換 */
+    { "Generates 24 bit color value from R, G, B.",      "R, G, B から 24bit カラー値を生成" },
+    { "Converts from H, S, V to 24 bit RGB color value.", "H, S, V から 24bit RGB カラー値に変換" },
+    { "Converts the 24 bit RGB color value to HSV.",      "24bit RGB カラー値を HSV に変換" },
+    { "Converts from H, S, L to 24 bit color RGB value.", "H, S, L から 24bit RGB カラー値に変換" },
+    { "Converts the 24 bit RGB color value to HSL.",      "24bit RGB カラー値を HSL に変換" },
+    { "Converts 24bit RGB color to 24 bit YUV.",         "24bit RGB カラーを 24bit YUV に変換" },
+    { "Converts the 24 bit YUV color to 24 bit RGB.",    "24bit YUV カラーを 24bit RGB に変換" },
+    { "Downconverts RGB888 color to RGB565.",            "RGB888 カラーを RGB565 にダウンコンバート" },
+    { "Upconverts RGB565 color to RGB888.",              "RGB565 カラーを RGB888 にアップコンバート" },
+    { "Packs the 3 values to an RGB565 color.",          "3 つの値を RGB565 カラーにパック" },
+    { "Unpacks the RGB565 color to 3 values.",           "RGB565 カラーを 3 つの値にアンパック" },
+
+    /* ECC / パリティ */
+    { "Reduction XOR of `x` (same as even parity).",                   "`x` のリダクション XOR (偶パリティと同じ)" },
+    { "Odd parity of `x`.",                                            "`x` の奇パリティ" },
+    { "Width of ECC for `b`-bit data.",                                "`b` ビットデータに対する ECC の幅" },
+    { "Generates ECC code (`b`: data width, `x`: data).",              "ECC コードを生成 (`b`: データ幅, `x`: データ)" },
+    { "Decodes and corrects ECC (`b`: data width, `ecc`: ECC, `x`: data).",
+      "ECC をデコードして訂正 (`b`: データ幅, `ecc`: ECC, `x`: データ)" },
+
+    /* エンコーディング */
+    { "Encode `str` to UTF8 byte sequence.", "`str` を UTF8 バイト列にエンコード" },
+    { "Decode UTF8 byte sequence.",          "UTF8 バイト列をデコード" },
+    { "Escape URL string.",                  "URL 文字列をエスケープ" },
+    { "Unescape URL string.",                "URL 文字列をアンエスケープ" },
+    { "Encode string to Base64.",            "文字列を Base64 にエンコード" },
+    { "Decode Base64 to string.",            "Base64 を文字列にデコード" },
+    { "Encode byte-array to Base64.",        "バイト配列を Base64 にエンコード" },
+    { "Decode Base64 to byte-array.",        "Base64 をバイト配列にデコード" },
+
+    /* E 系列 */
+    { "Largest E-series value less than or equal to `x`.",     "`x` 以下の最大 E 系列値" },
+    { "Smallest E-series value greater than or equal to `x`.", "`x` 以上の最小 E 系列値" },
+    { "Nearest E-series value to `x`.",                        "`x` に最も近い E 系列値" },
+    { "E-series ratio for `x`.",                               "`x` の E 系列比" },
+
+    /* キャスト */
+    { "Rational fraction approximation of `x`.", "`x` の有理分数近似" },
+    { "Converts `x` to a real number.",          "`x` を実数に変換" }
 };
 
 const int CALCYX_TR_TABLE_JA_N =
