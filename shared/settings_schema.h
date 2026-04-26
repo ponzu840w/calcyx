@@ -24,11 +24,13 @@ typedef enum {
     CALCYX_SETTING_KIND_STRING          /* enum/列挙の生文字列 (将来用) */
 } calcyx_setting_kind_t;
 
-/* 各キーが GUI / TUI のどちらに作用するかの bitmask. */
+/* 各キーがどのフロントエンドに作用するかの bitmask. CORE はフロントエンド
+ * 非依存 (engine 寄り) のキー — 全フロントエンドで意味を持つ. */
 enum {
     CALCYX_SETTING_SCOPE_GUI  = 1 << 0,
     CALCYX_SETTING_SCOPE_TUI  = 1 << 1,
-    CALCYX_SETTING_SCOPE_BOTH = (1 << 0) | (1 << 1)
+    CALCYX_SETTING_SCOPE_CLI  = 1 << 2,
+    CALCYX_SETTING_SCOPE_CORE = (1 << 0) | (1 << 1) | (1 << 2)
 };
 
 typedef struct {

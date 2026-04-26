@@ -127,54 +127,121 @@ static int buf_append_kv_form(buf_t *b, const char *key, const char *value,
     return buf_append_kv(b, key, value);
 }
 
-/* スキーマエントリ d のドキュメントコメントを 1 行で出力する.
- * "# <desc>  range: lo..hi  default: <def>\n" のような形式.
+/* width 桁を目安に word-wrap して各行を "# <text>\n" として buf に追記.
+ * text 中の '\n' は段落区切りとして尊重する. width は "# " を除いた可視文字数.
+ * 単語境界 (空白) で折り返し, 単語単独で width を超える場合は強制改行. */
+static int buf_append_wrapped_comment(buf_t *b, const char *text, size_t width) {
+    const char *p;
+    if (!text || !*text) return 0;
+    p = text;
+    while (*p) {
+        const char *line_start = p;
+        const char *last_space = NULL;
+        const char *line_end;
+        size_t len = 0;
+        while (*p && *p != '\n' && len < width) {
+            if (*p == ' ') last_space = p;
+            p++;
+            len++;
+        }
+        if (*p == '\0' || *p == '\n') {
+            line_end = p;
+            if (*p == '\n') p++;
+        } else if (last_space && last_space > line_start) {
+            line_end = last_space;
+            p = last_space + 1;
+        } else {
+            /* 単語が width 超え or 行頭が空白なし → 強制改行. */
+            line_end = p;
+        }
+        if (buf_append_str(b, "# ") != 0) return -1;
+        if (buf_append(b, line_start,
+                       (size_t)(line_end - line_start)) != 0) return -1;
+        if (buf_append_str(b, "\n") != 0) return -1;
+    }
+    return 0;
+}
+
+/* スキーマエントリ d のドキュメントコメントを出力する.
+ * 形式:
+ *   # <desc を 78 桁で word-wrap した複数行>
+ *   # [SCOPE] default=<val> [range=lo..hi]
+ *
  * desc が NULL のキーには doc を出さない (COLOR 系: 説明はセクション
- * ヘッダ側で十分で, "# default: #102030" だけのゴミコメントを撒かない). */
-static int buf_append_doc(buf_t *b,
-                          const calcyx_setting_desc_t *d,
-                          const char *def_value) {
-    char  line[512];
-    char  tmp[128];
+ * ヘッダ側で十分で, ゴミコメントを撒かない). */
+static int buf_append_doc(buf_t *b, const calcyx_setting_desc_t *d) {
+    char meta[256];
+    char scope_buf[32];
     size_t pos = 0;
-    size_t cap = sizeof(line);
-    int   n;
+    int    n;
+    const char *scope_str;
 
     if (!d->desc) return 0;
-    line[0] = '\0';
-    n = snprintf(line + pos, cap - pos, "%s", d->desc);
-    if (n > 0) pos += (size_t)n;
-    if (pos >= cap) pos = cap - 1;
 
-    /* kind ごとの自動付与: range / values. desc とは "  " で区切る. */
-    tmp[0] = '\0';
+    /* 1. desc を word-wrap で書き出し. */
+    if (buf_append_wrapped_comment(b, d->desc, 78) != 0) return -1;
+
+    /* 2. scope 文字列の生成.
+     *   CORE  (= GUI|TUI|CLI 全立ち) → [CORE]
+     *   単一 → [GUI] / [TUI] / [CLI]
+     *   複合 → スラッシュ区切り [GUI/TUI] / [GUI/CLI] / ... */
+    if (d->scope == CALCYX_SETTING_SCOPE_CORE) {
+        scope_str = "CORE";
+    } else {
+        size_t sp = 0;
+        scope_buf[0] = '\0';
+        if (d->scope & CALCYX_SETTING_SCOPE_GUI) {
+            n = snprintf(scope_buf + sp, sizeof(scope_buf) - sp, "GUI");
+            if (n > 0) sp += (size_t)n;
+        }
+        if (d->scope & CALCYX_SETTING_SCOPE_TUI) {
+            n = snprintf(scope_buf + sp, sizeof(scope_buf) - sp,
+                         "%sTUI", sp > 0 ? "/" : "");
+            if (n > 0) sp += (size_t)n;
+        }
+        if (d->scope & CALCYX_SETTING_SCOPE_CLI) {
+            n = snprintf(scope_buf + sp, sizeof(scope_buf) - sp,
+                         "%sCLI", sp > 0 ? "/" : "");
+            if (n > 0) sp += (size_t)n;
+        }
+        scope_str = sp > 0 ? scope_buf : "?";
+    }
+    n = snprintf(meta + pos, sizeof(meta) - pos, "[%s]", scope_str);
+    if (n > 0) pos += (size_t)n;
+
     switch (d->kind) {
-    case CALCYX_SETTING_KIND_INT:
-        snprintf(tmp, sizeof(tmp), "range: %d..%d", d->i_lo, d->i_hi);
-        break;
     case CALCYX_SETTING_KIND_BOOL:
-        snprintf(tmp, sizeof(tmp), "values: true|false");
+        n = snprintf(meta + pos, sizeof(meta) - pos,
+                     " default=%s", d->b_def ? "true" : "false");
+        if (n > 0) pos += (size_t)n;
+        break;
+    case CALCYX_SETTING_KIND_INT:
+        n = snprintf(meta + pos, sizeof(meta) - pos,
+                     " default=%d range=%d..%d",
+                     d->i_def, d->i_lo, d->i_hi);
+        if (n > 0) pos += (size_t)n;
+        break;
+    case CALCYX_SETTING_KIND_FONT:
+    case CALCYX_SETTING_KIND_HOTKEY:
+    case CALCYX_SETTING_KIND_COLOR_PRESET:
+    case CALCYX_SETTING_KIND_STRING:
+        if (d->s_def && d->s_def[0]) {
+            n = snprintf(meta + pos, sizeof(meta) - pos,
+                         " default=%s", d->s_def);
+            if (n > 0) pos += (size_t)n;
+        }
         break;
     default:
         break;
     }
-    if (tmp[0]) {
-        n = snprintf(line + pos, cap - pos, "%s%s", pos > 0 ? "  " : "", tmp);
-        if (n > 0) pos += (size_t)n;
-        if (pos >= cap) pos = cap - 1;
-    }
+    if (pos >= sizeof(meta)) pos = sizeof(meta) - 1;
 
-    if (def_value && def_value[0]) {
-        n = snprintf(line + pos, cap - pos, "%sdefault: %s",
-                     pos > 0 ? "  " : "", def_value);
-        if (n > 0) pos += (size_t)n;
-        if (pos >= cap) pos = cap - 1;
+    if (pos > 0) {
+        if (buf_append_str(b, "# ") != 0) return -1;
+        if (buf_append(b, meta, pos) != 0) return -1;
+        if (buf_append_str(b, "\n") != 0) return -1;
     }
-
-    if (pos == 0) return 0;
-    if (buf_append_str(b, "# ") != 0) return -1;
-    if (buf_append(b, line, pos) != 0) return -1;
-    return buf_append_str(b, "\n");
+    return 0;
 }
 
 /* ---- ファイル読み込み (全文を malloc) ---- */
@@ -269,9 +336,35 @@ int calcyx_settings_write_preserving(const char            *path,
                                  * ていれば必ず uncomment して保存する. */
                                 int comment_now = was_commented && is_default;
                                 buf_append_kv_form(&out, key, val, comment_now);
+                                matched = 1;
+                            } else if (ret == 0) {
+                                /* DROP: 現状で出力対象外 (color_* で preset !=
+                                 * user-defined 等). 元の値を残して commented
+                                 * 形式に変換 — ユーザーが手動で戻したいとき
+                                 * コピペできるよう保持する. */
+                                const char *eq = strchr(line_buf, '=');
+                                if (eq) {
+                                    const char *vs = eq + 1;
+                                    size_t vlen;
+                                    char   orig_val[256];
+                                    while (*vs == ' ' || *vs == '\t') vs++;
+                                    vlen = strlen(vs);
+                                    while (vlen > 0
+                                           && (vs[vlen-1] == ' '
+                                               || vs[vlen-1] == '\t'))
+                                        vlen--;
+                                    if (vlen >= sizeof(orig_val))
+                                        vlen = sizeof(orig_val) - 1;
+                                    memcpy(orig_val, vs, vlen);
+                                    orig_val[vlen] = '\0';
+                                    buf_append_kv_form(&out, key, orig_val, 1);
+                                }
+                                matched = 1;
                             }
-                            /* ret == 0: 行を削除 (color_* で preset != user 時). */
-                            matched = 1;
+                            /* ret < 0 (LEAVE): matched=0 のまま. ループを抜けて
+                             * 元の行をそのまま転写経路に流す. seen[i]=1 を立てる
+                             * ことでセクションは既出扱いとなり Pass 2 で重複した
+                             * セクションヘッダや末尾追記が起きない. */
                             break;
                         }
                     }
@@ -395,7 +488,7 @@ int calcyx_settings_write_preserving(const char            *path,
                         int  ret = lookup(table[j].key, val, sizeof(val),
                                           &is_default, user);
                         if (ret > 0) {
-                            buf_append_doc(&add, &table[j], val);
+                            buf_append_doc(&add, &table[j]);
                             buf_append_kv_form(&add, table[j].key, val,
                                                is_default);
                         }
@@ -496,10 +589,12 @@ static int defaults_lookup(const char *key, char *buf, size_t buflen,
         snprintf(buf, buflen, "%s", d->s_def ? d->s_def : "");
         return 1;
     case CALCYX_SETTING_KIND_COLOR:
-        /* defaults は color_preset = 非 user なので color_* は出力しない. */
-        return 0;
+        /* defaults は color_preset = 非 user なので color_* は出力しない.
+         * init_defaults では既存行が無いので LEAVE/DROP のどちらでも結果は
+         * 「何も出力しない」で同じ. 意味的に「触らない」が妥当なので -1. */
+        return -1;
     default:
-        return 0;
+        return -1;
     }
 }
 

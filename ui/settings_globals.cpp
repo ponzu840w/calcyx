@@ -425,17 +425,21 @@ void settings_load() {
 namespace {
 
 // settings_writer に渡すコールバック: キー → 文字列値.
-// 戻り値: 1=書いた, 0=このキーは出力しない (color_* で preset != user 時).
-// out_is_default: 値がスキーマのデフォルトと一致しているかを通知する.
+// 戻り値:
+//   1  = 値を buf に書いた
+//   0  = DROP (color_* で preset != user-defined 時) — 既存行を commented 化して保持
+//   -1 = LEAVE (GUI 管轄外: TUI 専用キー, 未知キー) — 既存行をそのまま温存
+// 重要: TUI 専用キー (tui_color_source 等) は -1 を返す. GUI 保存で TUI 設定が
+// commented にされてしまわないようにするため.
 int gui_value_lookup(const char *key, char *buf, size_t buflen,
                      int *out_is_default, void *user) {
     (void)user;
     if (out_is_default) *out_is_default = 0;
     const calcyx_setting_desc_t *d = calcyx_settings_find(key);
-    if (!d) return 0;
-    if (!(d->scope & CALCYX_SETTING_SCOPE_GUI)) return 0;
+    if (!d) return -1;
+    if (!(d->scope & CALCYX_SETTING_SCOPE_GUI)) return -1;
     void *target = gui_target(key);
-    if (!target) return 0;
+    if (!target) return -1;
 
     switch (d->kind) {
     case CALCYX_SETTING_KIND_BOOL: {

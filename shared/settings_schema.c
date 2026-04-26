@@ -31,37 +31,42 @@
 #define STR(k, scope, sd, ds) \
     { CALCYX_SETTING_KIND_STRING, k, scope, 0,0,0, 0, sd, NULL, ds }
 
-#define G  CALCYX_SETTING_SCOPE_GUI
-#define T  CALCYX_SETTING_SCOPE_TUI
-#define B  CALCYX_SETTING_SCOPE_BOTH
+#define G    CALCYX_SETTING_SCOPE_GUI
+#define T    CALCYX_SETTING_SCOPE_TUI
+#define GT   (CALCYX_SETTING_SCOPE_GUI | CALCYX_SETTING_SCOPE_TUI)
+#define CORE CALCYX_SETTING_SCOPE_CORE
+
+/* desc 文字列の方針: scope / range / values / default はメタ行 (writer が
+ * 自動付与) で示されるので desc 側からは省く. desc は「何のための設定か」
+ * だけを短く書く. 冗長な "GUI ..." "(GUI sheet)" 等の scope 注釈も不要. */
 
 static const calcyx_setting_desc_t TABLE[] = {
     SEC("# ---- Font ----\n"),
     FONT("font",       G, "Courier",
-         "GUI font name (e.g. monospace, Courier, DejaVu Sans Mono). Ignored by TUI."),
+         "Font name (e.g. monospace, Courier, DejaVu Sans Mono)."),
     INTC("font_size",  G, 15, 8, 36,
-         "GUI font size in points."),
+         "Font size in points."),
 
     SEC("# ---- General ----\n"),
     BOOLE("remember_position", G, 1,
-          "Restore GUI window position and size on next launch."),
+          "Restore window position and size on next launch."),
     BOOLE("start_topmost",     G, 0,
-          "Pin the GUI window on top of other windows at startup."),
+          "Pin the window on top of other windows at startup."),
     BOOLE("show_rowlines",     G, 1,
-          "Draw thin separator lines between rows in the GUI sheet."),
-    INTC("max_array_length",   B, 256, 1, 1000000,
+          "Draw thin separator lines between rows in the sheet."),
+    INTC("max_array_length",   CORE, 256, 1, 1000000,
          "Maximum elements in arrays and strings (memory guard)."),
-    INTC("max_string_length",  B, 256, 1, 1000000,
+    INTC("max_string_length",  CORE, 256, 1, 1000000,
          "Maximum characters in a string value (memory guard)."),
-    INTC("max_call_depth",     B,  64, 1, 1000,
+    INTC("max_call_depth",     CORE,  64, 1, 1000,
          "Maximum function call recursion depth."),
 
     SEC("# ---- Input ----\n"),
-    BOOLE("auto_completion",            B, 1,
+    BOOLE("auto_completion",            GT, 1,
           "Show identifier/function completion popup while typing."),
     BOOLE("auto_close_brackets",        G, 0,
-          "Auto-insert the matching closing bracket when typing the opening one (GUI only)."),
-    BOOLE("bs_delete_empty_row",        B, 1,
+          "Auto-insert the matching closing bracket when typing the opening one."),
+    BOOLE("bs_delete_empty_row",        GT, 1,
           "Backspace at the start of an empty row deletes that row."),
     BOOLE("popup_independent_normal",   G, 0,
           "Show completion popup as a separate OS window in normal layout."),
@@ -69,28 +74,28 @@ static const calcyx_setting_desc_t TABLE[] = {
           "Show completion popup as a separate OS window in compact layout."),
 
     SEC("# ---- Number Format ----\n"),
-    INTC("decimal_digits",       B,   9,   1, 34,
-         "Number of digits to show after the decimal point."),
-    BOOLE("e_notation",          B,   1,
+    INTC("decimal_digits",       CORE,   9,   1, 34,
+         "Number of digits after the decimal point."),
+    BOOLE("e_notation",          CORE,   1,
           "Use scientific (E) notation for very large or very small numbers."),
-    INTC("e_positive_min",       B,  15,   1, 30,
+    INTC("e_positive_min",       CORE,  15,   1, 30,
          "Switch to E notation when the integer part has this many digits or more."),
-    INTC("e_negative_max",       B,  -5, -30, -1,
-         "Switch to E notation when the magnitude is 10^N or smaller (this is N)."),
-    BOOLE("e_alignment",         B,   0,
+    INTC("e_negative_max",       CORE,  -5, -30, -1,
+         "Switch to E notation when the magnitude is 10^N or smaller."),
+    BOOLE("e_alignment",         CORE,   0,
           "Right-align the mantissa width across results in E notation."),
     /* thousands_separator / hex_separator は GUI のシート描画時の桁区切り
      * 挿入フラグ. TUI は独自の描画なので参照しない (scope=GUI). */
     BOOLE("thousands_separator", G,   1,
-          "Insert '_' as a thousands separator in decimal display (GUI sheet)."),
+          "Insert '_' as a thousands separator in decimal display."),
     BOOLE("hex_separator",       G,   1,
-          "Insert '_' every 4 hex digits in hexadecimal display (GUI sheet)."),
+          "Insert '_' every 4 hex digits in hexadecimal display."),
 
     SEC("# ---- System Tray ----\n"),
     BOOLE("tray_icon",      G, 0,
-          "Show the calcyx icon in the system tray (GUI only)."),
+          "Show the calcyx icon in the system tray."),
     BOOLE("hotkey_enabled", G, 0,
-          "Enable a global hotkey to show or hide the GUI window."),
+          "Enable a global hotkey to show or hide the window."),
     BOOLE("hotkey_win",     G, 0,
           "Hotkey modifier: Win/Super/Cmd."),
     BOOLE("hotkey_alt",     G, 1,
@@ -103,46 +108,45 @@ static const calcyx_setting_desc_t TABLE[] = {
           "Hotkey base key in FLTK form (e.g. Space, F1, A)."),
 
     SEC("# ---- Colors ----\n"),
-    /* color_preset / color_* は Phase C で TUI も読むようになるので scope=B にしてある.
-     * ただし TUI 側は tui_color_source=mirror_gui のときだけ参照する条件付きアクセス. */
-    PRESET("color_preset", B, 0, "otaku-black",
-           "Color theme preset. The color_* keys below take effect only when set to 'user'."),
+    /* color_preset / color_* は Phase C で TUI も読むようになるので scope=GT.
+     * TUI 側は tui_color_source=mirror_gui のときだけ参照する条件付きアクセス. */
+    PRESET("color_preset", GT, 0, "otaku-black",
+           "Color theme preset. color_* keys below take effect only when set to user-defined."),
 
-    /* user-defined 時のみ出力される色エントリ */
-    COLOR("color_bg",          B),
-    COLOR("color_sel_bg",      B),
-    COLOR("color_rowline",     B),
-    COLOR("color_sep",         B),
-    COLOR("color_text",        B),
-    COLOR("color_cursor",      B),
-    COLOR("color_symbol",      B),
-    COLOR("color_ident",       B),
-    COLOR("color_special",     B),
-    COLOR("color_si_pfx",      B),
-    COLOR("color_paren0",      B),
-    COLOR("color_paren1",      B),
-    COLOR("color_paren2",      B),
-    COLOR("color_paren3",      B),
-    COLOR("color_error",       B),
-    COLOR("color_ui_win_bg",   B),
-    COLOR("color_ui_bg",       B),
-    COLOR("color_ui_input",    B),
-    COLOR("color_ui_btn",      B),
-    COLOR("color_ui_menu",     B),
-    COLOR("color_ui_text",     B),
-    COLOR("color_ui_label",    B),
-    COLOR("color_ui_dim",      B),
-    COLOR("color_pop_bg",      B),
-    COLOR("color_pop_sel",     B),
-    COLOR("color_pop_text",    B),
-    COLOR("color_pop_desc",    B),
-    COLOR("color_pop_desc_bg", B),
-    COLOR("color_pop_border",  B),
+    /* color_* は preset != user-defined のとき commented で書かれる. */
+    COLOR("color_bg",          GT),
+    COLOR("color_sel_bg",      GT),
+    COLOR("color_rowline",     GT),
+    COLOR("color_sep",         GT),
+    COLOR("color_text",        GT),
+    COLOR("color_cursor",      GT),
+    COLOR("color_symbol",      GT),
+    COLOR("color_ident",       GT),
+    COLOR("color_special",     GT),
+    COLOR("color_si_pfx",      GT),
+    COLOR("color_paren0",      GT),
+    COLOR("color_paren1",      GT),
+    COLOR("color_paren2",      GT),
+    COLOR("color_paren3",      GT),
+    COLOR("color_error",       GT),
+    COLOR("color_ui_win_bg",   GT),
+    COLOR("color_ui_bg",       GT),
+    COLOR("color_ui_input",    GT),
+    COLOR("color_ui_btn",      GT),
+    COLOR("color_ui_menu",     GT),
+    COLOR("color_ui_text",     GT),
+    COLOR("color_ui_label",    GT),
+    COLOR("color_ui_dim",      GT),
+    COLOR("color_pop_bg",      GT),
+    COLOR("color_pop_sel",     GT),
+    COLOR("color_pop_text",    GT),
+    COLOR("color_pop_desc",    GT),
+    COLOR("color_pop_desc_bg", GT),
+    COLOR("color_pop_border",  GT),
 
     SEC("# ---- TUI ----\n"),
     STR("tui_color_source", T, "semantic",
-        "TUI color rendering mode. 'semantic' = terminal palette + 2 accent colors; "
-        "'mirror_gui' = mirror the GUI color_* / color_preset.")
+        "Color rendering mode: 'semantic' (terminal palette + accent) or 'mirror_gui' (use color_*).")
 };
 
 static const int TABLE_N = (int)(sizeof(TABLE) / sizeof(TABLE[0]));

@@ -5,7 +5,9 @@
  *  - 既存 conf にユーザーコメントを足してから save → コメントが残る
  *  - 未知キーは保持される
  *  - 既存行は元の場所で値だけ更新される (順序保持)
- *  - lookup が 0 を返した行は削除される (color_preset 切替の挙動)
+ *  - lookup が 0 を返した行は元の値を保持して commented (#key = value) になる
+ *    (color_preset 切替で user-defined を解除したとき値を温存する挙動)
+ *  - lookup が値を返したとき commented 行は uncomment される (再 user-defined)
  *  - 初回生成 (空ファイル) で first_time_header が先頭に置かれる
  *  - スキーマに存在するが conf に未出現のキーが末尾追記される
  */
@@ -55,6 +57,17 @@ static int order_ok(const char *hay, const char *needle1, const char *needle2) {
     const char *p1 = strstr(hay, needle1);
     const char *p2 = strstr(hay, needle2);
     return p1 && p2 && p1 < p2;
+}
+
+/* hay 中に「行頭」で needle が現れるか. needle は \n を含まないこと. */
+static int contains_at_line_start(const char *hay, const char *needle) {
+    const char *p = hay;
+    size_t nlen = strlen(needle);
+    while ((p = strstr(p, needle)) != NULL) {
+        if (p == hay || p[-1] == '\n') return 1;
+        p += nlen;
+    }
+    return 0;
 }
 
 /* ---- lookup callbacks ---- */
@@ -145,11 +158,13 @@ static void test_first_time_header(void) {
     remove(path);
 }
 
-/* T3: lookup が 0 を返した行は出力に現れない (削除される) */
-static void test_lookup_zero_drops_line(void) {
+/* T3: lookup が 0 を返した行は元の値を保ったまま commented される.
+ * (color_preset = user-defined を解除して preset に戻したとき, 個別色値を
+ *  完全削除せず "#key = value" で残してコピペで復元できるようにする) */
+static void test_lookup_zero_comments_line(void) {
     char path[256];
     mkpath(path, sizeof(path), "calcyx_test_writer_T3.conf");
-    /* color_bg は basic lookup では 0 を返すので, 既存行があっても消える */
+    /* color_bg は basic lookup では 0 を返す. 既存行は保持されコメントアウト. */
     const char *body =
         "color_bg = #ababab\n"
         "decimal_digits = 6\n";
@@ -159,8 +174,34 @@ static void test_lookup_zero_drops_line(void) {
     check("T3 rc", rc == 0);
 
     char *out = read_all(path);
-    check("T3 color_bg line removed", !contains(out, "color_bg ="));
+    check("T3 color_bg value preserved as commented",
+          contains(out, "#color_bg = #ababab\n"));
+    check("T3 color_bg uncommented form gone",
+          !contains(out, "\ncolor_bg = #ababab"));
     check("T3 decimal_digits updated", contains(out, "decimal_digits = 12\n"));
+    free(out);
+    remove(path);
+}
+
+/* T3b: 既に commented な行 (#color_bg = ...) で lookup が値を返す場合,
+ * uncomment されて key = value 形式になる (再度 user-defined に切替えるシナリオ). */
+static void test_commented_uncomments_when_value_returned(void) {
+    char path[256];
+    mkpath(path, sizeof(path), "calcyx_test_writer_T3b.conf");
+    const char *body =
+        "#color_bg = #ababab\n"
+        "decimal_digits = 6\n";
+    write_all(path, body);
+
+    int rc = calcyx_settings_write_preserving(path, NULL,
+                                              lookup_user_colors, NULL);
+    check("T3b rc", rc == 0);
+
+    char *out = read_all(path);
+    check("T3b color_bg uncommented with new value",
+          contains_at_line_start(out, "color_bg = #102030\n"));
+    check("T3b old commented form gone",
+          !contains(out, "#color_bg = #ababab"));
     free(out);
     remove(path);
 }
@@ -184,6 +225,43 @@ static void test_user_preset_emits_colors(void) {
     remove(path);
 }
 
+/* T4b: lookup が -1 (LEAVE) を返したキーは元の行をそのまま転写し,
+ * 上書きも commenting も追記もされない. GUI 保存で TUI 専用キー
+ * (tui_color_source 等) が破壊されないことを担保する重要なシナリオ. */
+static int lookup_leave_decimal(const char *key, char *buf, size_t buflen,
+                                 int *out_is_default, void *user) {
+    (void)buf; (void)buflen; (void)user;
+    if (out_is_default) *out_is_default = 0;
+    /* decimal_digits は管轄外として LEAVE. それ以外も全部 LEAVE. */
+    if (strcmp(key, "decimal_digits") == 0) return -1;
+    return -1;
+}
+
+static void test_leave_preserves_line_verbatim(void) {
+    char path[256];
+    mkpath(path, sizeof(path), "calcyx_test_writer_T4b.conf");
+    /* 行頭の余分な空白も含めて完全に転写されるかは保証しないが, 値と
+     * commented/uncommented 状態は保持されるべき. */
+    const char *body =
+        "decimal_digits = 6\n"
+        "#auto_completion = false\n";
+    write_all(path, body);
+
+    int rc = calcyx_settings_write_preserving(path, NULL,
+                                              lookup_leave_decimal, NULL);
+    check("T4b rc", rc == 0);
+
+    char *out = read_all(path);
+    check("T4b uncommented value preserved verbatim",
+          contains(out, "decimal_digits = 6\n"));
+    check("T4b not modified to default",
+          !contains(out, "decimal_digits = 9"));
+    check("T4b commented form preserved verbatim",
+          contains(out, "#auto_completion = false\n"));
+    free(out);
+    remove(path);
+}
+
 /* T5: 既存ファイルがあるとき first_time_header は適用されない */
 static void test_header_not_applied_on_existing(void) {
     char path[256];
@@ -203,8 +281,10 @@ static void test_header_not_applied_on_existing(void) {
 int main(void) {
     test_preserve_comments();
     test_first_time_header();
-    test_lookup_zero_drops_line();
+    test_lookup_zero_comments_line();
+    test_commented_uncomments_when_value_returned();
     test_user_preset_emits_colors();
+    test_leave_preserves_line_verbatim();
     test_header_not_applied_on_existing();
 
     printf("\n%d passed, %d failed\n", g_pass, g_fail);
