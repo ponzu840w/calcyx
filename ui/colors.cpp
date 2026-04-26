@@ -1,7 +1,14 @@
 // colors.cpp — CalcyxColors プリセットとデフォルト値
+//
+// プリセット定義は shared/color_presets.{h,c} に一本化されている (TUI と
+// 共有するため)。ここでは shared の RGB パレットを Fl_Color に変換するだけ。
 
 #include "colors.h"
 #include <FL/fl_draw.H>
+
+extern "C" {
+#include "color_presets.h"
+}
 
 CalcyxColors g_colors;
 int g_color_preset = COLOR_PRESET_OTAKU_BLACK;
@@ -14,138 +21,43 @@ const ColorPresetInfo COLOR_PRESET_INFO[COLOR_PRESET_COUNT] = {
     { "user",            "User defined"    },
 };
 
-static void init_otaku_black(CalcyxColors *c) {
-    c->bg         = fl_rgb_color( 22,  22,  22);
-    c->sel_bg     = fl_rgb_color( 38,  42,  55);
-    c->rowline    = fl_rgb_color( 32,  32,  36);
-    c->sep        = fl_rgb_color( 55,  55,  65);
-    c->text       = fl_rgb_color(255, 255, 255);
-    c->cursor     = fl_rgb_color(180, 200, 255);
-    c->symbol     = fl_rgb_color( 64, 192, 255);
-    c->ident      = fl_rgb_color(192, 255, 128);
-    c->special    = fl_rgb_color(255, 192,  64);
-    c->si_pfx     = fl_rgb_color(224, 160, 255);
-    c->paren[0]   = fl_rgb_color( 64, 192, 255);
-    c->paren[1]   = fl_rgb_color(192, 128, 255);
-    c->paren[2]   = fl_rgb_color(255, 128, 192);
-    c->paren[3]   = fl_rgb_color(255, 192,  64);
-    c->error      = fl_rgb_color(110, 110, 110);
-    c->ui_win_bg  = fl_rgb_color( 30,  30,  30);
-    c->ui_bg      = fl_rgb_color( 38,  38,  43);
-    c->ui_input   = fl_rgb_color( 50,  52,  60);
-    c->ui_btn     = fl_rgb_color( 55,  60,  75);
-    c->ui_menu    = fl_rgb_color( 40,  40,  45);
-    c->ui_text    = fl_rgb_color(215, 215, 225);
-    c->ui_label   = fl_rgb_color(180, 180, 190);
-    c->pop_bg     = fl_rgb_color( 28,  28,  35);
-    c->pop_sel    = fl_rgb_color( 40,  80, 140);
-    c->pop_text   = fl_rgb_color(220, 220, 220);
-    c->pop_desc   = fl_rgb_color(150, 150, 160);
-    c->pop_desc_bg= fl_rgb_color( 20,  20,  28);
-    c->pop_border = fl_rgb_color( 80,  80, 100);
-}
-
-static void init_gyakubari_white(CalcyxColors *c) {
-    c->bg         = fl_rgb_color(250, 250, 250);
-    c->sel_bg     = fl_rgb_color(210, 220, 240);
-    c->rowline    = fl_rgb_color(230, 230, 232);
-    c->sep        = fl_rgb_color(200, 200, 210);
-    c->text       = fl_rgb_color(  0,   0,   0);
-    c->cursor     = fl_rgb_color( 40,  60, 160);
-    c->symbol     = fl_rgb_color(  0, 100, 200);
-    c->ident      = fl_rgb_color( 40, 130,   0);
-    c->special    = fl_rgb_color(180, 100,   0);
-    c->si_pfx     = fl_rgb_color(140,  60, 200);
-    c->paren[0]   = fl_rgb_color(  0, 100, 200);
-    c->paren[1]   = fl_rgb_color(140,  60, 200);
-    c->paren[2]   = fl_rgb_color(200,  50, 120);
-    c->paren[3]   = fl_rgb_color(180, 100,   0);
-    c->error      = fl_rgb_color(160, 160, 160);
-    c->ui_win_bg  = fl_rgb_color(240, 240, 245);
-    c->ui_bg      = fl_rgb_color(235, 235, 240);
-    c->ui_input   = fl_rgb_color(255, 255, 255);
-    c->ui_btn     = fl_rgb_color(220, 220, 228);
-    c->ui_menu    = fl_rgb_color(228, 228, 235);
-    c->ui_text    = fl_rgb_color( 30,  30,  35);
-    c->ui_label   = fl_rgb_color( 80,  80,  90);
-    c->pop_bg     = fl_rgb_color(255, 255, 255);
-    c->pop_sel    = fl_rgb_color(180, 210, 255);
-    c->pop_text   = fl_rgb_color( 20,  20,  25);
-    c->pop_desc   = fl_rgb_color( 90,  90, 100);
-    c->pop_desc_bg= fl_rgb_color(242, 242, 248);
-    c->pop_border = fl_rgb_color(180, 180, 200);
-}
-
-static void init_saboten_grey(CalcyxColors *c) {
-    c->bg         = fl_rgb_color( 32,  32,  32);
-    c->sel_bg     = fl_rgb_color(  0,   0,   0);
-    c->rowline    = fl_rgb_color( 40,  40,  40);
-    c->sep        = fl_rgb_color( 96,  96,  96);
-    c->text       = fl_rgb_color(255, 255, 255);
-    c->cursor     = fl_rgb_color(  0, 128, 255);
-    c->symbol     = fl_rgb_color( 64, 192, 255);
-    c->ident      = fl_rgb_color(192, 255, 128);
-    c->special    = fl_rgb_color(255, 192,  64);
-    c->si_pfx     = fl_rgb_color(224, 160, 255);
-    c->paren[0]   = fl_rgb_color( 64, 192, 255);
-    c->paren[1]   = fl_rgb_color(192, 128, 255);
-    c->paren[2]   = fl_rgb_color(255, 128, 192);
-    c->paren[3]   = fl_rgb_color(255, 192,  64);
-    c->error      = fl_rgb_color(255, 128, 128);
-    c->ui_win_bg  = fl_rgb_color( 40,  40,  40);
-    c->ui_bg      = fl_rgb_color( 48,  48,  48);
-    c->ui_input   = fl_rgb_color( 60,  60,  60);
-    c->ui_btn     = fl_rgb_color( 72,  72,  80);
-    c->ui_menu    = fl_rgb_color( 50,  50,  55);
-    c->ui_text    = fl_rgb_color(240, 240, 240);
-    c->ui_label   = fl_rgb_color(180, 180, 180);
-    c->pop_bg     = fl_rgb_color( 38,  38,  42);
-    c->pop_sel    = fl_rgb_color( 50,  85, 140);
-    c->pop_text   = fl_rgb_color(230, 230, 230);
-    c->pop_desc   = fl_rgb_color(150, 150, 155);
-    c->pop_desc_bg= fl_rgb_color( 28,  28,  32);
-    c->pop_border = fl_rgb_color( 90,  90,  96);
-}
-
-static void init_saboten_white(CalcyxColors *c) {
-    c->bg         = fl_rgb_color(224, 224, 224);
-    c->sel_bg     = fl_rgb_color(255, 255, 255);
-    c->rowline    = fl_rgb_color(216, 216, 216);
-    c->sep        = fl_rgb_color(160, 160, 160);
-    c->text       = fl_rgb_color(  0,   0,   0);
-    c->cursor     = fl_rgb_color(  0,  80, 160);
-    c->symbol     = fl_rgb_color(  0, 120, 192);
-    c->ident      = fl_rgb_color( 64, 160,   0);
-    c->special    = fl_rgb_color(192, 120,   0);
-    c->si_pfx     = fl_rgb_color(144,  80, 224);
-    c->paren[0]   = fl_rgb_color(  0, 120, 192);
-    c->paren[1]   = fl_rgb_color(128,  64, 192);
-    c->paren[2]   = fl_rgb_color(192,  64, 128);
-    c->paren[3]   = fl_rgb_color(192, 120,   0);
-    c->error      = fl_rgb_color(192,  64,  64);
-    c->ui_win_bg  = fl_rgb_color(235, 235, 235);
-    c->ui_bg      = fl_rgb_color(230, 230, 230);
-    c->ui_input   = fl_rgb_color(245, 245, 245);
-    c->ui_btn     = fl_rgb_color(210, 210, 215);
-    c->ui_menu    = fl_rgb_color(220, 220, 225);
-    c->ui_text    = fl_rgb_color( 20,  20,  25);
-    c->ui_label   = fl_rgb_color( 90,  90, 100);
-    c->pop_bg     = fl_rgb_color(245, 245, 248);
-    c->pop_sel    = fl_rgb_color(190, 215, 250);
-    c->pop_text   = fl_rgb_color( 15,  15,  20);
-    c->pop_desc   = fl_rgb_color(100, 100, 110);
-    c->pop_desc_bg= fl_rgb_color(232, 232, 238);
-    c->pop_border = fl_rgb_color(170, 170, 185);
+static Fl_Color rgb_to_fl(const calcyx_rgb_t &c) {
+    return fl_rgb_color(c.r, c.g, c.b);
 }
 
 void colors_init_preset(CalcyxColors *c, int preset) {
-    switch (preset) {
-    case COLOR_PRESET_OTAKU_BLACK:     init_otaku_black(c);     break;
-    case COLOR_PRESET_GYAKUBARI_WHITE: init_gyakubari_white(c); break;
-    case COLOR_PRESET_SABOTEN_GREY:    init_saboten_grey(c);    break;
-    case COLOR_PRESET_SABOTEN_WHITE:   init_saboten_white(c);   break;
-    default:                           init_otaku_black(c);     break;
-    }
+    calcyx_color_palette_t pal;
+    /* enum 値は ui/colors.h と shared/color_presets.h で一致しているのでそのまま渡す */
+    calcyx_color_preset_get(preset == COLOR_PRESET_USER_DEFINED
+                                ? CALCYX_COLOR_PRESET_OTAKU_BLACK
+                                : preset,
+                            &pal);
+
+    c->bg          = rgb_to_fl(pal.bg);
+    c->sel_bg      = rgb_to_fl(pal.sel_bg);
+    c->rowline     = rgb_to_fl(pal.rowline);
+    c->sep         = rgb_to_fl(pal.sep);
+    c->text        = rgb_to_fl(pal.text);
+    c->cursor      = rgb_to_fl(pal.cursor);
+    c->symbol      = rgb_to_fl(pal.symbol);
+    c->ident       = rgb_to_fl(pal.ident);
+    c->special     = rgb_to_fl(pal.special);
+    c->si_pfx      = rgb_to_fl(pal.si_pfx);
+    for (int i = 0; i < 4; i++) c->paren[i] = rgb_to_fl(pal.paren[i]);
+    c->error       = rgb_to_fl(pal.error);
+    c->ui_win_bg   = rgb_to_fl(pal.ui_win_bg);
+    c->ui_bg       = rgb_to_fl(pal.ui_bg);
+    c->ui_input    = rgb_to_fl(pal.ui_input);
+    c->ui_btn      = rgb_to_fl(pal.ui_btn);
+    c->ui_menu     = rgb_to_fl(pal.ui_menu);
+    c->ui_text     = rgb_to_fl(pal.ui_text);
+    c->ui_label    = rgb_to_fl(pal.ui_label);
+    c->pop_bg      = rgb_to_fl(pal.pop_bg);
+    c->pop_sel     = rgb_to_fl(pal.pop_sel);
+    c->pop_text    = rgb_to_fl(pal.pop_text);
+    c->pop_desc    = rgb_to_fl(pal.pop_desc);
+    c->pop_desc_bg = rgb_to_fl(pal.pop_desc_bg);
+    c->pop_border  = rgb_to_fl(pal.pop_border);
     // 無効化時文字 (Undo/Redo のグレーアウト等): text と menu 背景の中間色
     c->ui_dim = fl_color_average(c->ui_text, c->ui_menu, 0.5f);
 }
