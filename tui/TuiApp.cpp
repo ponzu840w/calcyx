@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "types/val.h"
+#include "settings_schema.h"
 
 #if defined(_WIN32)
 #  include <direct.h>  /* _mkdir */
@@ -346,36 +347,84 @@ void TuiApp::do_preferences() {
 }
 
 /* GUI と共有する設定キーだけ取り込む。フォント・色・ホットキーなど GUI 専用の
- * キーは黙って無視する (calcyx.conf 自体は両方が書き込みうる共有ファイル)。
- * 範囲は ui/settings_globals.cpp の SETTINGS_TABLE と揃えている。 */
+ * キーはスキーマの scope フラグで自動的にフィルタされる (calcyx.conf 自体は
+ * 両方が書き込みうる共有ファイル)。
+ *
+ * スキーマ駆動: shared/settings_schema.c の TABLE を 1 回走査して
+ * scope に CALCYX_SETTING_SCOPE_TUI が立っているキーのみ処理する。
+ * 各キーへの実際のバインドは下の dispatch 部 (strcmp 連鎖) で書く。
+ * スキーマには出るが TUI が扱わない BOTH キーは下の連鎖でカバー漏れ
+ * として認識できる (= スキーマ追加時に TUI 側でも反映を判断する強制点)。 */
 void TuiApp::apply_settings_from_conf() {
     auto kv = conf_read(preferences_conf_path());
     if (kv.empty()) return;
 
-    g_fmt_settings.decimal_len = std::clamp(
-        conf_get_int(kv, "decimal_digits", g_fmt_settings.decimal_len), 1, 34);
-    g_fmt_settings.e_notation = conf_get_bool(
-        kv, "e_notation", g_fmt_settings.e_notation);
-    g_fmt_settings.e_positive_min = std::clamp(
-        conf_get_int(kv, "e_positive_min", g_fmt_settings.e_positive_min), 1, 30);
-    g_fmt_settings.e_negative_max = std::clamp(
-        conf_get_int(kv, "e_negative_max", g_fmt_settings.e_negative_max), -30, -1);
-    g_fmt_settings.e_alignment = conf_get_bool(
-        kv, "e_alignment", g_fmt_settings.e_alignment);
+    /* TUI 側で受け取った値は最後にまとめて反映 (clamp はキーごとに) */
+    int  decimal_len    = g_fmt_settings.decimal_len;
+    bool e_notation     = g_fmt_settings.e_notation;
+    int  e_positive_min = g_fmt_settings.e_positive_min;
+    int  e_negative_max = g_fmt_settings.e_negative_max;
+    bool e_alignment    = g_fmt_settings.e_alignment;
 
     sheet_eval_limits_t lim;
-    lim.max_array_length  = std::clamp(
-        conf_get_int(kv, "max_array_length",  256), 1, 1000000);
-    lim.max_string_length = std::clamp(
-        conf_get_int(kv, "max_string_length", 256), 1, 1000000);
-    lim.max_call_depth    = std::clamp(
-        conf_get_int(kv, "max_call_depth",     64), 1, 1000);
+    lim.max_array_length  = 256;
+    lim.max_string_length = 256;
+    lim.max_call_depth    = 64;
+
+    bool auto_completion     = true;
+    bool bs_delete_empty_row = true;
+
+    int n = 0;
+    const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
+    for (int i = 0; i < n; i++) {
+        const calcyx_setting_desc_t &d = table[i];
+        if (!(d.scope & CALCYX_SETTING_SCOPE_TUI)) continue;
+        if (!d.key) continue;
+
+        /* キー → TUI 側変数へ振り分け. スキーマに新しい BOTH キーが
+         * 追加された際は ここに分岐を足すか、明示的に「無視」コメントで
+         * 残す方針。 */
+        if (strcmp(d.key, "decimal_digits") == 0) {
+            decimal_len = std::clamp(conf_get_int(kv, d.key, decimal_len),
+                                     d.i_lo, d.i_hi);
+        } else if (strcmp(d.key, "e_notation") == 0) {
+            e_notation = conf_get_bool(kv, d.key, e_notation);
+        } else if (strcmp(d.key, "e_positive_min") == 0) {
+            e_positive_min = std::clamp(conf_get_int(kv, d.key, e_positive_min),
+                                        d.i_lo, d.i_hi);
+        } else if (strcmp(d.key, "e_negative_max") == 0) {
+            e_negative_max = std::clamp(conf_get_int(kv, d.key, e_negative_max),
+                                        d.i_lo, d.i_hi);
+        } else if (strcmp(d.key, "e_alignment") == 0) {
+            e_alignment = conf_get_bool(kv, d.key, e_alignment);
+        } else if (strcmp(d.key, "max_array_length") == 0) {
+            lim.max_array_length = std::clamp(
+                conf_get_int(kv, d.key, lim.max_array_length), d.i_lo, d.i_hi);
+        } else if (strcmp(d.key, "max_string_length") == 0) {
+            lim.max_string_length = std::clamp(
+                conf_get_int(kv, d.key, lim.max_string_length), d.i_lo, d.i_hi);
+        } else if (strcmp(d.key, "max_call_depth") == 0) {
+            lim.max_call_depth = std::clamp(
+                conf_get_int(kv, d.key, lim.max_call_depth), d.i_lo, d.i_hi);
+        } else if (strcmp(d.key, "auto_completion") == 0) {
+            auto_completion = conf_get_bool(kv, d.key, auto_completion);
+        } else if (strcmp(d.key, "bs_delete_empty_row") == 0) {
+            bs_delete_empty_row = conf_get_bool(kv, d.key, bs_delete_empty_row);
+        }
+        /* color_preset / color_* は scope=BOTH だが現状 TUI は固有色運用.
+         * Phase C で tui_color_source=mirror_gui の経路から読む予定. */
+    }
+
+    g_fmt_settings.decimal_len    = decimal_len;
+    g_fmt_settings.e_notation     = e_notation;
+    g_fmt_settings.e_positive_min = e_positive_min;
+    g_fmt_settings.e_negative_max = e_negative_max;
+    g_fmt_settings.e_alignment    = e_alignment;
     sheet_model_set_limits(model_, lim);
 
     if (sheet_) {
-        sheet_->set_auto_complete(conf_get_bool(kv, "auto_completion", true));
-        sheet_->set_bs_delete_empty_row(
-            conf_get_bool(kv, "bs_delete_empty_row", true));
+        sheet_->set_auto_complete(auto_completion);
+        sheet_->set_bs_delete_empty_row(bs_delete_empty_row);
     }
 
     /* 桁数・E ノテーションが変わると既存行の表示も変わるので再評価。 */
