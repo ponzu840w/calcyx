@@ -36,6 +36,16 @@ target_compile_definitions(calcyx_cli PRIVATE
 
 set_target_properties(calcyx_cli PROPERTIES OUTPUT_NAME "calcyx")
 
+# 開発ツリーで TUI の File > Samples が動くよう exe の隣に samples/ をコピー。
+# パッケージ (cpack) では別途 ${CMAKE_SOURCE_DIR}/CMakeLists.txt の install
+# ルールで適切な場所 (Linux: share/calcyx/samples, Windows zip: samples/) に
+# 配置されるので、本ルールは build ツリーのみに作用する。
+add_custom_command(TARGET calcyx_cli POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/samples"
+        "$<TARGET_FILE_DIR:calcyx_cli>/samples"
+)
+
 if(WIN32)
     target_link_libraries(calcyx_cli PRIVATE
         -static -static-libgcc -static-libstdc++
