@@ -140,6 +140,9 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr) {
     return out;
 }
 
+/* ステータス行に `<...>` で囲んで表示するため列幅が常に 5 セルになるよう
+ * 3 文字に統一する。2 文字しか自然に当てられない SI のみ右パディングで揃える
+ * (`<SI >`)。Kibi/Char/Date/Color は GUI のメニュー名から短縮形をとる。 */
 const char *fmt_label(val_fmt_t fmt) {
     switch (fmt) {
         case FMT_REAL:       return "Dec";
@@ -147,13 +150,13 @@ const char *fmt_label(val_fmt_t fmt) {
         case FMT_HEX:        return "Hex";
         case FMT_BIN:        return "Bin";
         case FMT_OCT:        return "Oct";
-        case FMT_SI_PREFIX:  return "SI";
-        case FMT_BIN_PREFIX: return "Kibi";
-        case FMT_CHAR:       return "Char";
+        case FMT_SI_PREFIX:  return "SI ";
+        case FMT_BIN_PREFIX: return "Kib";
+        case FMT_CHAR:       return "Chr";
         case FMT_STRING:     return "Str";
-        case FMT_DATETIME:   return "Date";
-        case FMT_WEB_COLOR:  return "Color";
-        default:             return "?";
+        case FMT_DATETIME:   return "Dat";
+        case FMT_WEB_COLOR:  return "Col";
+        default:             return "?  ";
     }
 }
 
