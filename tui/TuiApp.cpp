@@ -266,8 +266,10 @@ Element TuiApp::about_overlay() const {
     body.push_back(separator());
     body.push_back(text(hint) | dim);
 
+    /* clear_under: ダイアログの背面セルを完全に塗り潰し、下層のシート内容や
+     * カーソルハイライト (inverted) が透けて見えないようにする。 */
     return vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
-           size(HEIGHT, LESS_THAN, 24) | reflect(about_box_) | center;
+           size(HEIGHT, LESS_THAN, 24) | clear_under | reflect(about_box_) | center;
 }
 
 bool TuiApp::about_handle_event(Event ev) {
@@ -469,6 +471,10 @@ Element TuiApp::menu_overlay() const {
 
     Element dd = vbox(std::move(rows)) | border;
 
+    /* clear_under: dropdown 自身の領域を不透明に塗り、下層シートの inverted
+     * カーソルや色付き文字が透けないようにする。 */
+    dd = dd | clear_under;
+
     /* Samples submenu があれば右側に並べる。 */
     if (submenu_active_ && def.id == MenuId::File) {
         /* samples の数が多いと縦長になるので表示は最大 12 行でスクロール。 */
@@ -493,7 +499,7 @@ Element TuiApp::menu_overlay() const {
                 srows.push_back(std::move(row));
             }
         }
-        Element sdd = vbox(std::move(srows)) | border;
+        Element sdd = vbox(std::move(srows)) | border | clear_under;
         dd = hbox({ dd, sdd });
     } else {
         submenu_item_boxes_.clear();
