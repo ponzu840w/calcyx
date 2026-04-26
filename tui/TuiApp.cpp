@@ -558,7 +558,7 @@ ftxui::Element apply_chrome_color(ftxui::Element e,
              | ftxui::bgcolor(Color::RGB(bg.r, bg.g, bg.b));
 }
 
-/* ライセンス情報 (GUI 版 ui/MainWindow.cpp の About と同じ構成).
+/* ライセンス情報 (GUI 版 gui/MainWindow.cpp の About と同じ構成).
  * TUI は FLTK を使わないので FLTK エントリは除外し, 代わりに FTXUI を載せる. */
 struct LicenseEntry {
     const char *name;
@@ -574,7 +574,7 @@ const LicenseEntry kLicenses[] = {
                    "MIT License",
                    "https://github.com/shapoco/calctus" },
     { "FTXUI",     "Copyright (c) 2019 Arthur Sonzogni",
-                   "MIT License",
+                   "MIT License (modified build)",
                    "https://github.com/ArthurSonzogni/FTXUI" },
     { "mpdecimal", "Copyright (c) 2008-2024 Stefan Krah",
                    "BSD 2-Clause",

@@ -619,10 +619,14 @@ static void show_about(MainWindow *win) {
         "<p><b>calcyx</b> \xe2\x80\x94 Copyright \xc2\xa9 2026 ponzu840w \xe2\x80\x94 MIT License</p>"
         "<p><b>Calctus</b> \xe2\x80\x94 Copyright \xc2\xa9 2022 shapoco \xe2\x80\x94 MIT License<br>"
         "<a href='https://github.com/shapoco/calctus'>https://github.com/shapoco/calctus</a></p>"
-        "<p><b>FLTK</b> \xe2\x80\x94 Copyright \xc2\xa9 1998-2024 Bill Spitzak and others \xe2\x80\x94 LGPL<br>"
+        "<p><b>FLTK</b> \xe2\x80\x94 Copyright \xc2\xa9 1998-2024 Bill Spitzak and others \xe2\x80\x94 LGPL (modified build)<br>"
         "<a href='https://www.fltk.org'>https://www.fltk.org</a></p>"
         "<p><b>mpdecimal</b> \xe2\x80\x94 Copyright \xc2\xa9 2008-2024 Stefan Krah \xe2\x80\x94 BSD 2-Clause<br>"
         "<a href='https://www.bytereef.org/mpdecimal'>https://www.bytereef.org/mpdecimal</a></p>"
+        "<p><b>zlib</b> \xe2\x80\x94 Copyright \xc2\xa9 1995-2024 Jean-loup Gailly and Mark Adler \xe2\x80\x94 zlib License<br>"
+        "<a href='https://zlib.net'>https://zlib.net</a></p>"
+        "<p><b>libpng</b> \xe2\x80\x94 Copyright \xc2\xa9 1995-2024 The PNG Reference Library Authors \xe2\x80\x94 PNG Reference Library License v2<br>"
+        "<a href='http://www.libpng.org/pub/png/libpng.html'>http://www.libpng.org/pub/png/libpng.html</a></p>"
         "</font>";
     hv.value(html.c_str());
 
