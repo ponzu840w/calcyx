@@ -1,5 +1,4 @@
 # ---- Font ----
-# Any font name installed on the system (e.g. monospace, DejaVu Sans Mono)
 font = Courier
 font_size = 15
 
@@ -37,10 +36,7 @@ hotkey_shift = false
 hotkey_key = Space
 
 # ---- Colors ----
-# Preset: otaku-black, gyakubari-white, saboten-grey, saboten-white, user
 color_preset = otaku-black
 
 # ---- TUI ----
-# tui_color_source: 'semantic' (default) — 端末色基調 + 意味付け 2 色
-#                   'mirror_gui'         — calcyx.conf の color_* / color_preset を再現
 tui_color_source = semantic

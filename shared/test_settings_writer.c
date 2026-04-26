@@ -59,9 +59,13 @@ static int order_ok(const char *hay, const char *needle1, const char *needle2) {
 
 /* ---- lookup callbacks ---- */
 
-/* シンプルな lookup: 主要キーに固定値を返す. color_* は emit しない. */
-static int lookup_basic(const char *key, char *buf, size_t buflen, void *user) {
+/* シンプルな lookup: 主要キーに固定値を返す. color_* は emit しない.
+ * is_default の動作はテスト個別の関心事ではないので 0 (= 非デフォルト) を返す.
+ * これにより writer はコメントアウトせず素の "key = value" を出す. */
+static int lookup_basic(const char *key, char *buf, size_t buflen,
+                        int *out_is_default, void *user) {
     (void)user;
+    if (out_is_default) *out_is_default = 0;
     if (strcmp(key, "decimal_digits") == 0)      { snprintf(buf, buflen, "12"); return 1; }
     if (strcmp(key, "auto_completion") == 0)     { snprintf(buf, buflen, "true"); return 1; }
     if (strcmp(key, "auto_close_brackets") == 0) { snprintf(buf, buflen, "false"); return 1; }
@@ -74,8 +78,10 @@ static int lookup_basic(const char *key, char *buf, size_t buflen, void *user) {
 }
 
 /* user-defined preset 想定: color_preset = user-defined, 一部 color_* も emit. */
-static int lookup_user_colors(const char *key, char *buf, size_t buflen, void *user) {
+static int lookup_user_colors(const char *key, char *buf, size_t buflen,
+                              int *out_is_default, void *user) {
     (void)user;
+    if (out_is_default) *out_is_default = 0;
     if (strcmp(key, "color_preset") == 0) { snprintf(buf, buflen, "user-defined"); return 1; }
     if (strcmp(key, "color_bg") == 0)     { snprintf(buf, buflen, "#102030"); return 1; }
     if (strcmp(key, "color_text") == 0)   { snprintf(buf, buflen, "#ffffff"); return 1; }

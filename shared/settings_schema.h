@@ -44,6 +44,9 @@ typedef struct {
     const char  *s_def;       /* FONT/HOTKEY/STRING/COLOR_PRESET (id) */
 
     const char  *section;     /* SECTION ヘッダ本文 (改行とコメント込み) */
+    const char  *desc;        /* 1 行説明 (NULL 可). writer がテンプレ用ドキュメント
+                               * コメントとして書き出す. range / 列挙値は kind から
+                               * 自動付与されるので desc には書かない. */
 } calcyx_setting_desc_t;
 
 /* スキーマの全エントリ (定義順 = conf 出力順). count != NULL なら *count に件数. */

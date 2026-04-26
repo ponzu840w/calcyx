@@ -54,22 +54,33 @@ static int buf_append_kv(buf_t *b, const char *key, const char *value) {
     return buf_append_str(b, "\n");
 }
 
-/* ---- 行解析: key = value の "key" 部分を抽出. なければ NULL. ---- */
-
-/* line は \n 抜きの 1 行 (NUL 終端). 戻り値: key を新規 malloc して返す.
- * key が抽出できなかった場合は NULL. NUL は line を破壊しない. */
-static char *line_extract_key(const char *line) {
+/* ---- 行解析: key = value の "key" 部分を抽出. なければ NULL. ----
+ *
+ * 'key = value'  → key を返し *out_commented = 0.
+ * '#key = value' (# の直後がキー) → key を返し *out_commented = 1.
+ *                                    (writer が出力する commented-default 形式)
+ * '# free text' / 空行 / その他 → NULL.
+ *
+ * out_commented は NULL 可. 戻り値 key は呼び出し側で free すること. */
+static char *line_extract_key(const char *line, int *out_commented) {
     const char *eq, *p, *ks, *ke;
     size_t klen;
     char *out;
+    if (out_commented) *out_commented = 0;
     if (!line) return NULL;
-    /* 先頭スペースを飛ばす. ただし '#' や空行はキーではない. */
     p = line;
     while (*p == ' ' || *p == '\t') p++;
-    if (*p == '\0' || *p == '#') return NULL;
+    if (*p == '\0') return NULL;
+    if (*p == '#') {
+        /* writer が出力する '#<key> = <value>' 形式を識別.
+         * '# 自由文', '## ', '#\0' 等は通常コメントとして扱い NULL を返す. */
+        const char *q = p + 1;
+        if (*q == '\0' || *q == ' ' || *q == '\t' || *q == '#') return NULL;
+        if (out_commented) *out_commented = 1;
+        p = q;
+    }
     eq = strchr(p, '=');
     if (!eq) return NULL;
-    /* key の範囲を確定 */
     ks = p;
     ke = eq;
     while (ke > ks && (ke[-1] == ' ' || ke[-1] == '\t')) ke--;
@@ -80,6 +91,67 @@ static char *line_extract_key(const char *line) {
     memcpy(out, ks, klen);
     out[klen] = '\0';
     return out;
+}
+
+/* "key = value\n" または "#key = value\n" を出力. is_commented は
+ * デフォルト値のときコメントアウトするかどうか. */
+static int buf_append_kv_form(buf_t *b, const char *key, const char *value,
+                              int is_commented) {
+    if (is_commented) {
+        if (buf_append_str(b, "#") != 0) return -1;
+    }
+    return buf_append_kv(b, key, value);
+}
+
+/* スキーマエントリ d のドキュメントコメントを 1 行で出力する.
+ * "# <desc>  range: lo..hi  default: <def>\n" のような形式.
+ * 何も書く要素がなければ何も出さず 0 を返す. */
+static int buf_append_doc(buf_t *b,
+                          const calcyx_setting_desc_t *d,
+                          const char *def_value) {
+    char  line[512];
+    char  tmp[128];
+    size_t pos = 0;
+    size_t cap = sizeof(line);
+    int   n;
+
+    line[0] = '\0';
+
+    if (d->desc) {
+        n = snprintf(line + pos, cap - pos, "%s", d->desc);
+        if (n > 0) pos += (size_t)n;
+        if (pos >= cap) pos = cap - 1;
+    }
+
+    /* kind ごとの自動付与: range / values. desc とは "  " で区切る. */
+    tmp[0] = '\0';
+    switch (d->kind) {
+    case CALCYX_SETTING_KIND_INT:
+        snprintf(tmp, sizeof(tmp), "range: %d..%d", d->i_lo, d->i_hi);
+        break;
+    case CALCYX_SETTING_KIND_BOOL:
+        snprintf(tmp, sizeof(tmp), "values: true|false");
+        break;
+    default:
+        break;
+    }
+    if (tmp[0]) {
+        n = snprintf(line + pos, cap - pos, "%s%s", pos > 0 ? "  " : "", tmp);
+        if (n > 0) pos += (size_t)n;
+        if (pos >= cap) pos = cap - 1;
+    }
+
+    if (def_value && def_value[0]) {
+        n = snprintf(line + pos, cap - pos, "%sdefault: %s",
+                     pos > 0 ? "  " : "", def_value);
+        if (n > 0) pos += (size_t)n;
+        if (pos >= cap) pos = cap - 1;
+    }
+
+    if (pos == 0) return 0;
+    if (buf_append_str(b, "# ") != 0) return -1;
+    if (buf_append(b, line, pos) != 0) return -1;
+    return buf_append_str(b, "\n");
 }
 
 /* ---- ファイル読み込み (全文を malloc) ---- */
@@ -158,22 +230,30 @@ int calcyx_settings_write_preserving(const char            *path,
             memcpy(line_buf, content + pos, line_len);
             line_buf[line_len] = '\0';
 
-            key = line_extract_key(line_buf);
-            if (key) {
-                for (i = 0; i < n_table; i++) {
-                    if (table[i].key && strcmp(table[i].key, key) == 0) {
-                        char val[256];
-                        int  ret = lookup(key, val, sizeof(val), user);
-                        seen[i] = 1;
-                        if (ret > 0) {
-                            buf_append_kv(&out, key, val);
+            {
+                int was_commented = 0;
+                key = line_extract_key(line_buf, &was_commented);
+                if (key) {
+                    for (i = 0; i < n_table; i++) {
+                        if (table[i].key && strcmp(table[i].key, key) == 0) {
+                            char val[256];
+                            int  is_default = 0;
+                            int  ret = lookup(key, val, sizeof(val),
+                                              &is_default, user);
+                            seen[i] = 1;
+                            if (ret > 0) {
+                                /* デフォルト値で commented 形式を維持; 値が変わっ
+                                 * ていれば必ず uncomment して保存する. */
+                                int comment_now = was_commented && is_default;
+                                buf_append_kv_form(&out, key, val, comment_now);
+                            }
+                            /* ret == 0: 行を削除 (color_* で preset != user 時). */
+                            matched = 1;
+                            break;
                         }
-                        /* ret == 0: 行を削除 (color_* で preset != user 時). */
-                        matched = 1;
-                        break;
                     }
+                    free(key);
                 }
-                free(key);
             }
             if (!matched) {
                 /* 元の行をそのまま転写. line_end は eol-1 (CR除去後) なので, content の
@@ -206,7 +286,9 @@ int calcyx_settings_write_preserving(const char            *path,
                 for (j = i + 1; j < next; j++) {
                     if (table[j].key && !seen[j]) {
                         char tmp_val[256];
-                        int  ret = lookup(table[j].key, tmp_val, sizeof(tmp_val), user);
+                        int  tmp_def = 0;
+                        int  ret = lookup(table[j].key, tmp_val, sizeof(tmp_val),
+                                          &tmp_def, user);
                         if (ret > 0) { has_missing = 1; break; }
                     }
                 }
@@ -220,13 +302,18 @@ int calcyx_settings_write_preserving(const char            *path,
                     if (table[i].section) {
                         buf_append_str(&out, table[i].section);
                     }
-                    /* セクション内のミッシングキーを順に出力 */
+                    /* セクション内のミッシングキーを順に出力. ドキュメントコメ
+                     * ント + (デフォルト値ならコメントアウトした) key = value 行. */
                     for (j = i + 1; j < next; j++) {
                         if (table[j].key && !seen[j]) {
                             char val[256];
-                            int  ret = lookup(table[j].key, val, sizeof(val), user);
+                            int  is_default = 0;
+                            int  ret = lookup(table[j].key, val, sizeof(val),
+                                              &is_default, user);
                             if (ret > 0) {
-                                buf_append_kv(&out, table[j].key, val);
+                                buf_append_doc(&out, &table[j], val);
+                                buf_append_kv_form(&out, table[j].key, val,
+                                                   is_default);
                             }
                         }
                     }
@@ -284,9 +371,11 @@ int calcyx_settings_write_preserving(const char            *path,
 
 /* ---- defaults lookup ---- */
 
-static int defaults_lookup(const char *key, char *buf, size_t buflen, void *user) {
+static int defaults_lookup(const char *key, char *buf, size_t buflen,
+                           int *out_is_default, void *user) {
     const calcyx_setting_desc_t *d;
     (void)user;
+    if (out_is_default) *out_is_default = 1;
     d = calcyx_settings_find(key);
     if (!d) return 0;
     switch (d->kind) {

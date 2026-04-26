@@ -426,8 +426,11 @@ namespace {
 
 // settings_writer に渡すコールバック: キー → 文字列値.
 // 戻り値: 1=書いた, 0=このキーは出力しない (color_* で preset != user 時).
-int gui_value_lookup(const char *key, char *buf, size_t buflen, void *user) {
+// out_is_default: 値がスキーマのデフォルトと一致しているかを通知する.
+int gui_value_lookup(const char *key, char *buf, size_t buflen,
+                     int *out_is_default, void *user) {
     (void)user;
+    if (out_is_default) *out_is_default = 0;
     const calcyx_setting_desc_t *d = calcyx_settings_find(key);
     if (!d) return 0;
     if (!(d->scope & CALCYX_SETTING_SCOPE_GUI)) return 0;
@@ -435,27 +438,47 @@ int gui_value_lookup(const char *key, char *buf, size_t buflen, void *user) {
     if (!target) return 0;
 
     switch (d->kind) {
-    case CALCYX_SETTING_KIND_BOOL:
-        snprintf(buf, buflen, "%s", *(bool *)target ? "true" : "false");
+    case CALCYX_SETTING_KIND_BOOL: {
+        bool v = *(bool *)target;
+        snprintf(buf, buflen, "%s", v ? "true" : "false");
+        if (out_is_default) *out_is_default = ((v ? 1 : 0) == d->b_def);
         return 1;
-    case CALCYX_SETTING_KIND_INT:
-        snprintf(buf, buflen, "%d", *(int *)target);
+    }
+    case CALCYX_SETTING_KIND_INT: {
+        int v = *(int *)target;
+        snprintf(buf, buflen, "%d", v);
+        if (out_is_default) *out_is_default = (v == d->i_def);
         return 1;
+    }
     case CALCYX_SETTING_KIND_FONT: {
         std::string name = font_id_to_name(*(int *)target);
         snprintf(buf, buflen, "%s", name.c_str());
+        if (out_is_default)
+            *out_is_default = (d->s_def && name == d->s_def);
         return 1;
     }
-    case CALCYX_SETTING_KIND_HOTKEY:
-        snprintf(buf, buflen, "%s", plat_flkey_to_keyname(*(int *)target));
+    case CALCYX_SETTING_KIND_HOTKEY: {
+        const char *kn = plat_flkey_to_keyname(*(int *)target);
+        snprintf(buf, buflen, "%s", kn);
+        if (out_is_default)
+            *out_is_default = (d->s_def && strcmp(kn, d->s_def) == 0);
         return 1;
-    case CALCYX_SETTING_KIND_COLOR_PRESET:
-        snprintf(buf, buflen, "%s", COLOR_PRESET_INFO[*(int *)target].id);
+    }
+    case CALCYX_SETTING_KIND_COLOR_PRESET: {
+        const char *id = COLOR_PRESET_INFO[*(int *)target].id;
+        snprintf(buf, buflen, "%s", id);
+        if (out_is_default)
+            *out_is_default = (d->s_def && strcmp(id, d->s_def) == 0);
         return 1;
+    }
     case CALCYX_SETTING_KIND_COLOR: {
         if (g_color_preset != COLOR_PRESET_USER_DEFINED) return 0;
         std::string hex = color_to_hex(*(Fl_Color *)target);
         snprintf(buf, buflen, "%s", hex.c_str());
+        /* COLOR は user-defined preset でしか出力しないので "デフォルト" 概念
+         * があいまい. user-defined はそれ自体ユーザーの選択なので常に
+         * uncomment 扱い (is_default=0) で出す. */
+        if (out_is_default) *out_is_default = 0;
         return 1;
     }
     default:

@@ -10,74 +10,103 @@
 #include <stdio.h>
 #include <string.h>
 
-/* ---- ヘルパマクロ ---- */
+/* ---- ヘルパマクロ ----
+ * desc は writer がドキュメントコメントとして書き出す 1 行説明.
+ * INT の range / BOOL の true|false / kind ごとのデフォルト値は writer が
+ * 自動付与するので desc には書かない. NULL なら追加情報なし. */
 #define SEC(hdr) \
-    { CALCYX_SETTING_KIND_SECTION, NULL, 0, 0,0,0, 0, NULL, hdr }
-#define BOOLE(k, scope, dv) \
-    { CALCYX_SETTING_KIND_BOOL, k, scope, 0,0,0, dv, NULL, NULL }
-#define INTC(k, scope, dv, lo, hi) \
-    { CALCYX_SETTING_KIND_INT, k, scope, lo, hi, dv, 0, NULL, NULL }
-#define FONT(k, scope, sd) \
-    { CALCYX_SETTING_KIND_FONT, k, scope, 0,0,0, 0, sd, NULL }
-#define HKEY(k, scope, sd) \
-    { CALCYX_SETTING_KIND_HOTKEY, k, scope, 0,0,0, 0, sd, NULL }
-#define PRESET(k, scope, di, sd) \
-    { CALCYX_SETTING_KIND_COLOR_PRESET, k, scope, 0,0,di, 0, sd, NULL }
+    { CALCYX_SETTING_KIND_SECTION, NULL, 0, 0,0,0, 0, NULL, hdr, NULL }
+#define BOOLE(k, scope, dv, ds) \
+    { CALCYX_SETTING_KIND_BOOL, k, scope, 0,0,0, dv, NULL, NULL, ds }
+#define INTC(k, scope, dv, lo, hi, ds) \
+    { CALCYX_SETTING_KIND_INT, k, scope, lo, hi, dv, 0, NULL, NULL, ds }
+#define FONT(k, scope, sd, ds) \
+    { CALCYX_SETTING_KIND_FONT, k, scope, 0,0,0, 0, sd, NULL, ds }
+#define HKEY(k, scope, sd, ds) \
+    { CALCYX_SETTING_KIND_HOTKEY, k, scope, 0,0,0, 0, sd, NULL, ds }
+#define PRESET(k, scope, di, sd, ds) \
+    { CALCYX_SETTING_KIND_COLOR_PRESET, k, scope, 0,0,di, 0, sd, NULL, ds }
 #define COLOR(k, scope) \
-    { CALCYX_SETTING_KIND_COLOR, k, scope, 0,0,0, 0, NULL, NULL }
-#define STR(k, scope, sd) \
-    { CALCYX_SETTING_KIND_STRING, k, scope, 0,0,0, 0, sd, NULL }
+    { CALCYX_SETTING_KIND_COLOR, k, scope, 0,0,0, 0, NULL, NULL, NULL }
+#define STR(k, scope, sd, ds) \
+    { CALCYX_SETTING_KIND_STRING, k, scope, 0,0,0, 0, sd, NULL, ds }
 
 #define G  CALCYX_SETTING_SCOPE_GUI
 #define T  CALCYX_SETTING_SCOPE_TUI
 #define B  CALCYX_SETTING_SCOPE_BOTH
 
 static const calcyx_setting_desc_t TABLE[] = {
-    SEC("# ---- Font ----\n"
-        "# Any font name installed on the system (e.g. monospace, DejaVu Sans Mono)\n"),
-    FONT("font",       G, "Courier"),
-    INTC("font_size",  G, 15, 8, 36),
+    SEC("# ---- Font ----\n"),
+    FONT("font",       G, "Courier",
+         "GUI font name (e.g. monospace, Courier, DejaVu Sans Mono). TUI は端末フォントを使うので無視."),
+    INTC("font_size",  G, 15, 8, 36,
+         "GUI font size (points)."),
 
     SEC("# ---- General ----\n"),
-    BOOLE("remember_position", G, 1),
-    BOOLE("start_topmost",     G, 0),
-    BOOLE("show_rowlines",     G, 1),
-    INTC("max_array_length",   B, 256, 1, 1000000),
-    INTC("max_string_length",  B, 256, 1, 1000000),
-    INTC("max_call_depth",     B,  64, 1, 1000),
+    BOOLE("remember_position", G, 1,
+          "GUI の位置とサイズを終了時に保存して次回復元する."),
+    BOOLE("start_topmost",     G, 0,
+          "GUI 起動時に常に手前に表示する."),
+    BOOLE("show_rowlines",     G, 1,
+          "GUI シートで行間に区切り線を描画する."),
+    INTC("max_array_length",   B, 256, 1, 1000000,
+         "配列・文字列の最大要素数 (実行時メモリ制限)."),
+    INTC("max_string_length",  B, 256, 1, 1000000,
+         "文字列の最大長 (実行時メモリ制限)."),
+    INTC("max_call_depth",     B,  64, 1, 1000,
+         "関数呼び出しの最大ネスト深度 (再帰防止)."),
 
     SEC("# ---- Input ----\n"),
-    BOOLE("auto_completion",            B, 1),
-    BOOLE("auto_close_brackets",        G, 0),
-    BOOLE("bs_delete_empty_row",        B, 1),
-    BOOLE("popup_independent_normal",   G, 0),
-    BOOLE("popup_independent_compact",  G, 1),
+    BOOLE("auto_completion",            B, 1,
+          "入力中に識別子・関数名の補完ポップアップを表示する."),
+    BOOLE("auto_close_brackets",        G, 0,
+          "GUI で開き括弧を入力したとき自動で閉じ括弧を補う."),
+    BOOLE("bs_delete_empty_row",        B, 1,
+          "空行の先頭で Backspace を押したときその行を削除する."),
+    BOOLE("popup_independent_normal",   G, 0,
+          "通常モードで補完ポップアップを独立 OS ウィンドウとして表示する."),
+    BOOLE("popup_independent_compact",  G, 1,
+          "コンパクトモードで補完ポップアップを独立 OS ウィンドウとして表示する."),
 
     SEC("# ---- Number Format ----\n"),
-    INTC("decimal_digits",       B,   9,   1, 34),
-    BOOLE("e_notation",          B,   1),
-    INTC("e_positive_min",       B,  15,   1, 30),
-    INTC("e_negative_max",       B,  -5, -30, -1),
-    BOOLE("e_alignment",         B,   0),
+    INTC("decimal_digits",       B,   9,   1, 34,
+         "小数点以下の表示桁数."),
+    BOOLE("e_notation",          B,   1,
+          "極端に大きい/小さい数を E (科学) 表記に切り替える."),
+    INTC("e_positive_min",       B,  15,   1, 30,
+         "正の数で何桁以上から E 表記に切り替えるか (整数部の桁数)."),
+    INTC("e_negative_max",       B,  -5, -30, -1,
+         "負の指数で何乗以下から E 表記に切り替えるか (10^N の N)."),
+    BOOLE("e_alignment",         B,   0,
+          "E 表記の仮数部を結果間で右揃えする."),
     /* thousands_separator / hex_separator は GUI のシート描画時の桁区切り
      * 挿入フラグ. TUI は独自の描画なので参照しない (scope=GUI). */
-    BOOLE("thousands_separator", G,   1),
-    BOOLE("hex_separator",       G,   1),
+    BOOLE("thousands_separator", G,   1,
+          "GUI シートで 10 進数に '_' で 3 桁区切りを入れる."),
+    BOOLE("hex_separator",       G,   1,
+          "GUI シートで 16 進数に '_' で 4 桁区切りを入れる."),
 
     SEC("# ---- System Tray ----\n"),
-    BOOLE("tray_icon",      G, 0),
-    BOOLE("hotkey_enabled", G, 0),
-    BOOLE("hotkey_win",     G, 0),
-    BOOLE("hotkey_alt",     G, 1),
-    BOOLE("hotkey_ctrl",    G, 0),
-    BOOLE("hotkey_shift",   G, 0),
-    HKEY ("hotkey_key",     G, "Space"),
+    BOOLE("tray_icon",      G, 0,
+          "GUI でシステムトレイにアイコンを表示する."),
+    BOOLE("hotkey_enabled", G, 0,
+          "GUI の表示/非表示を切り替えるグローバルホットキーを有効化する."),
+    BOOLE("hotkey_win",     G, 0,
+          "ホットキー修飾: Win/Super/Cmd."),
+    BOOLE("hotkey_alt",     G, 1,
+          "ホットキー修飾: Alt/Option."),
+    BOOLE("hotkey_ctrl",    G, 0,
+          "ホットキー修飾: Ctrl."),
+    BOOLE("hotkey_shift",   G, 0,
+          "ホットキー修飾: Shift."),
+    HKEY ("hotkey_key",     G, "Space",
+          "ホットキーの基本キー (Space, F1, A など FLTK 形式)."),
 
-    SEC("# ---- Colors ----\n"
-        "# Preset: otaku-black, gyakubari-white, saboten-grey, saboten-white, user\n"),
+    SEC("# ---- Colors ----\n"),
     /* color_preset / color_* は Phase C で TUI も読むようになるので scope=B にしてある.
      * ただし TUI 側は tui_color_source=mirror_gui のときだけ参照する条件付きアクセス. */
-    PRESET("color_preset", B, 0, "otaku-black"),
+    PRESET("color_preset", B, 0, "otaku-black",
+           "色プリセット. 'user' のときだけ下の color_* が反映される."),
 
     /* user-defined 時のみ出力される色エントリ */
     COLOR("color_bg",          B),
@@ -110,10 +139,9 @@ static const calcyx_setting_desc_t TABLE[] = {
     COLOR("color_pop_desc_bg", B),
     COLOR("color_pop_border",  B),
 
-    SEC("# ---- TUI ----\n"
-        "# tui_color_source: 'semantic' (default) — 端末色基調 + 意味付け 2 色\n"
-        "#                   'mirror_gui'         — calcyx.conf の color_* / color_preset を再現\n"),
-    STR("tui_color_source", T, "semantic")
+    SEC("# ---- TUI ----\n"),
+    STR("tui_color_source", T, "semantic",
+        "TUI の色付け方式. semantic=端末色基調+意味付け2色 / mirror_gui=GUI 色を再現.")
 };
 
 static const int TABLE_N = (int)(sizeof(TABLE) / sizeof(TABLE[0]));

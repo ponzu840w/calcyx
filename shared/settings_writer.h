@@ -21,9 +21,13 @@ extern "C" {
  *  - 戻り値 1: buf に値を書いた (key = buf 形式で出力する)
  *  - 戻り値 0: そのキーは出力すべきでない (色プリセット非 user 時の color_* 等).
  *              既存行があれば削除し, 末尾追記もしない.
- * SECTION エントリに対しては呼ばれない. */
+ *
+ * out_is_default が NULL でない場合, 値がスキーマのデフォルトと一致するなら
+ * *out_is_default = 1, そうでなければ 0 を書き込む. writer はデフォルト値を
+ * '#key = value' 形式 (コメントアウト) で出力する. SECTION エントリに対しては
+ * 呼ばれない. */
 typedef int (*calcyx_setting_value_fn)(const char *key, char *buf, size_t buflen,
-                                       void *user);
+                                       int *out_is_default, void *user);
 
 /* path の conf を読み, lookup の値で更新して書き戻す.
  *
