@@ -47,6 +47,7 @@ extern "C" {
 #include "eval/eval_ctx.h"
 #include "settings_io.h"
 #include "settings_schema.h"
+#include "settings_writer.h"
 #include "types/val.h"
 }
 
@@ -330,6 +331,21 @@ void check_cb(const char *key, const char *value, int line_no, void *user) {
     }
 }
 
+int run_init_config(const char *path) {
+    int rc = calcyx_settings_init_defaults(path,
+        "# calcyx user settings — edit freely.\n");
+    if (rc == 1) {
+        std::printf("created: %s\n", path);
+        return 0;
+    }
+    if (rc == 0) {
+        std::printf("already exists: %s\n", path);
+        return 0;
+    }
+    std::fprintf(stderr, "error: cannot write '%s'\n", path);
+    return 2;
+}
+
 int run_check_config(const char *path) {
     CheckCtx cx;
     cx.warnings = 0;
@@ -366,7 +382,8 @@ static void print_help(const char *prog) {
         "  -r, --repl         旧 CLI 対話 REPL (fgets 行ループ) を起動する\n"
         "  --print-config     現在解釈される設定を canonical 形式で stdout に出力\n"
         "  --check-config     conf を syntax check し、警告があれば exit 1\n"
-        "  --config <path>    --print-config / --check-config の対象 conf を指定\n"
+        "  --init-config      conf が無ければ既定値で生成 (上書きしない)\n"
+        "  --config <path>    --print-config / --check-config / --init-config の対象 conf を指定\n"
         "                       (省略時はプラットフォーム既定の calcyx.conf)\n"
         "  -V, --version      バージョンを表示\n"
         "  -h, --help         このヘルプを表示\n"
@@ -407,6 +424,7 @@ int main(int argc, char *argv[]) {
     bool force_repl  = false;
     bool do_print_config = false;
     bool do_check_config = false;
+    bool do_init_config  = false;
     const char *config_override = nullptr;
 
     for (int i = 1; i < argc; i++) {
@@ -457,6 +475,10 @@ int main(int argc, char *argv[]) {
             do_check_config = true;
             continue;
         }
+        if (std::strcmp(a, "--init-config") == 0) {
+            do_init_config = true;
+            continue;
+        }
         if (std::strcmp(a, "--config") == 0) {
             if (i + 1 >= argc) {
                 std::fprintf(stderr, "error: --config requires an argument\n");
@@ -472,8 +494,9 @@ int main(int argc, char *argv[]) {
         files.push_back(a);
     }
 
-    /* --print-config / --check-config は他フラグと独立。conf 関連だけ実行して exit. */
-    if (do_print_config || do_check_config) {
+    /* --print-config / --check-config / --init-config は他フラグと独立。
+     * conf 関連だけ実行して exit. */
+    if (do_print_config || do_check_config || do_init_config) {
         char path_buf[1024];
         const char *path;
         if (config_override) {
@@ -485,6 +508,7 @@ int main(int argc, char *argv[]) {
             }
             path = path_buf;
         }
+        if (do_init_config)  return run_init_config(path);
         if (do_print_config) return run_print_config(path);
         return run_check_config(path);
     }
