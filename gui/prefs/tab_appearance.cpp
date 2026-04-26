@@ -374,7 +374,7 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         int c = i / rows, r = i % rows;
         int cx = lx + 10 + c * col_w;
         int cy = sy + r * 24;
-        Fl_Box *lb = new Fl_Box(cx, cy, 70, 20, entries[i].label);
+        Fl_Box *lb = new Fl_Box(cx, cy, 70, 20, _(entries[i].label));
         style_label(lb);
         lb->labelsize(11);
         lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
@@ -392,7 +392,7 @@ void build_appearance_tab(DlgState &st, int tab_h) {
 
     ly = sy + rows * 24 + 4;
 
-    st.show_rowlines_chk = new Fl_Check_Button(lx + 10, ly, 300, 22, "Show row separator lines");
+    st.show_rowlines_chk = new Fl_Check_Button(lx + 10, ly, 300, 22, _("Show row separator lines"));
     style_check(st.show_rowlines_chk);
     st.show_rowlines_chk->value(g_show_rowlines ? 1 : 0);
     st.show_rowlines_chk->callback([](Fl_Widget *, void *data) {

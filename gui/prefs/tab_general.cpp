@@ -87,19 +87,19 @@ void build_general_tab(DlgState &st, int tab_h) {
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Window"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
         st.remember_pos_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            "Remember window position on exit");
+            _("Remember window position on exit"));
         style_check(st.remember_pos_chk);
         st.remember_pos_chk->value(g_remember_position ? 1 : 0);
         inner_y += 26;
 
         st.start_topmost_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            "Start with Always on Top");
+            _("Start with Always on Top"));
         style_check(st.start_topmost_chk);
         st.start_topmost_chk->value(g_start_topmost ? 1 : 0);
         inner_y += 22;
 
         Fl_Box *note = new Fl_Box(lx + 30, inner_y, sw - 40, 16,
-            "Sets the initial state at launch. Toggle anytime from View menu or pin button.");
+            _("Sets the initial state at launch. Toggle anytime from View menu or pin button."));
         note->box(FL_NO_BOX);
         note->labelcolor(DLG_LABEL);
         note->labelsize(11);
@@ -115,12 +115,12 @@ void build_general_tab(DlgState &st, int tab_h) {
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("System Tray"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
         st.tray_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            "Enable system tray icon");
+            _("Enable system tray icon"));
         style_check(st.tray_chk);
         st.tray_chk->value(g_tray_icon ? 1 : 0);
 
         Fl_Box *note = new Fl_Box(lx + 30, inner_y + 24, sw - 40, 18,
-            "When enabled, closing the window minimizes to tray.");
+            _("When enabled, closing the window minimizes to tray."));
         note->box(FL_NO_BOX);
         note->labelcolor(DLG_LABEL);
         note->labelsize(11);
@@ -136,12 +136,12 @@ void build_general_tab(DlgState &st, int tab_h) {
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         st.hotkey_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            "Enable global hotkey");
+            _("Enable global hotkey"));
         style_check(st.hotkey_chk);
         st.hotkey_chk->value(g_hotkey_enabled ? 1 : 0);
         inner_y += 26;
 
-        Fl_Box *mod_label = new Fl_Box(lx + 30, inner_y, 75, 22, "Modifiers:");
+        Fl_Box *mod_label = new Fl_Box(lx + 30, inner_y, 75, 22, _("Modifiers:"));
         style_label(mod_label);
         mod_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
         int mx = lx + 110;
@@ -179,7 +179,7 @@ void build_general_tab(DlgState &st, int tab_h) {
         st.hotkey_shift_chk->value(g_hotkey_shift ? 1 : 0);
         inner_y += 26;
 
-        Fl_Box *key_label = new Fl_Box(lx + 30, inner_y, 75, 22, "Key:");
+        Fl_Box *key_label = new Fl_Box(lx + 30, inner_y, 75, 22, _("Key:"));
         style_label(key_label);
         key_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
