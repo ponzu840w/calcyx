@@ -533,6 +533,35 @@ constexpr int kAboutVisibleRows  = 10;
 constexpr int kAboutMaxScroll    =
     (kShortcutCount > kAboutVisibleRows) ? kShortcutCount - kAboutVisibleRows : 0;
 
+/* ライセンス情報 (GUI 版 ui/MainWindow.cpp の About と同じ構成).
+ * TUI は FLTK を使わないので FLTK エントリは除外し, 代わりに FTXUI を載せる. */
+struct LicenseEntry {
+    const char *name;
+    const char *copyright;
+    const char *license;
+    const char *url;
+};
+const LicenseEntry kLicenses[] = {
+    { "calcyx",    "Copyright (c) 2026 ponzu840w",
+                   "MIT License",
+                   "https://github.com/ponzu840w/calcyx" },
+    { "Calctus",   "Copyright (c) 2022 shapoco",
+                   "MIT License",
+                   "https://github.com/shapoco/calctus" },
+    { "FTXUI",     "Copyright (c) 2019 Arthur Sonzogni",
+                   "MIT License",
+                   "https://github.com/ArthurSonzogni/FTXUI" },
+    { "mpdecimal", "Copyright (c) 2008-2024 Stefan Krah",
+                   "BSD 2-Clause",
+                   "https://www.bytereef.org/mpdecimal" },
+};
+constexpr int kLicenseCount = (int)(sizeof(kLicenses) / sizeof(kLicenses[0]));
+/* License 各エントリは 3 行 (name+copyright / license / url) + 区切り 1 行. */
+constexpr int kLicenseRowsPerEntry = 4;
+constexpr int kLicenseTotalRows    = kLicenseCount * kLicenseRowsPerEntry;
+constexpr int kLicenseMaxScroll    =
+    (kLicenseTotalRows > kAboutVisibleRows) ? kLicenseTotalRows - kAboutVisibleRows : 0;
+
 } /* namespace */
 
 Element TuiApp::about_overlay() const {
@@ -546,28 +575,67 @@ Element TuiApp::about_overlay() const {
     header.push_back(text("https://github.com/ponzu840w/calcyx") |
                       color(Color::CyanLight) | center);
     header.push_back(text(""));
-    header.push_back(text("Keyboard shortcuts") | bold);
+
+    /* タブ行: [Shortcuts] [License] — メニューバーと同じ括弧スタイルで揃える.
+     * アクティブタブは inverted で強調. クリック判定用に各タブを reflect で
+     * Box に記録しておく (handle_mouse から参照). */
+    about_tab_boxes_.assign((size_t)AboutTab::Count, Box{});
+    auto tab_label = [&](const char *label, AboutTab id) {
+        Element e = hbox({ text("["), text(label), text("]") });
+        if (about_tab_ == id) e = e | inverted;
+        return e | reflect(about_tab_boxes_[(int)id]);
+    };
+    header.push_back(hbox({
+        text(" "),
+        tab_label("Shortcuts", AboutTab::Shortcuts),
+        text(" "),
+        tab_label("License",   AboutTab::License),
+    }));
     header.push_back(separator());
 
-    /* ショートカット一覧をスクロール可能にするため、about_scroll_ の位置から
-     * 最大 kAboutVisibleRows 行だけ表示する。 */
-    int scroll = std::clamp(about_scroll_, 0, kAboutMaxScroll);
+    /* タブ別の行を組み立て. 全行を一度作ってから about_scroll_ で窓を切る. */
+    Elements all_rows;
+    int max_scroll = 0;
+    if (about_tab_ == AboutTab::Shortcuts) {
+        max_scroll = kAboutMaxScroll;
+        for (int i = 0; i < kShortcutCount; ++i) {
+            all_rows.push_back(hbox({
+                text(kShortcuts[i].key) | bold | size(WIDTH, EQUAL, 22),
+                text(" "),
+                text(kShortcuts[i].desc),
+            }));
+        }
+    } else {
+        max_scroll = kLicenseMaxScroll;
+        for (int i = 0; i < kLicenseCount; ++i) {
+            const LicenseEntry &le = kLicenses[i];
+            all_rows.push_back(hbox({
+                text(le.name) | bold,
+                text("  "),
+                text(le.copyright) | dim,
+            }));
+            all_rows.push_back(text(std::string("  ") + le.license));
+            all_rows.push_back(text(std::string("  ") + le.url) |
+                               color(Color::CyanLight));
+            all_rows.push_back(text(""));
+        }
+    }
+
+    int total = (int)all_rows.size();
+    int scroll = std::clamp(about_scroll_, 0, max_scroll);
 
     Elements rows;
-    for (int i = scroll; i < kShortcutCount && i < scroll + kAboutVisibleRows; ++i) {
-        rows.push_back(hbox({
-            text(kShortcuts[i].key) | bold | size(WIDTH, EQUAL, 22),
-            text(" "),
-            text(kShortcuts[i].desc),
-        }));
+    for (int i = scroll; i < total && i < scroll + kAboutVisibleRows; ++i) {
+        rows.push_back(std::move(all_rows[i]));
     }
-    /* スクロール可能なことを示すヒント */
-    std::string hint = "↑↓: scroll  (";
-    hint += std::to_string(scroll + 1);
+
+    /* スクロール / 操作ヒント */
+    std::string hint = "Tab: switch   ↑↓: scroll  (";
+    hint += std::to_string(std::min(scroll + 1, std::max(total, 1)));
     hint += "-";
-    hint += std::to_string(std::min(scroll + kAboutVisibleRows, kShortcutCount));
+    hint += std::to_string(std::min(scroll + kAboutVisibleRows, total));
     hint += "/";
-    hint += std::to_string(kShortcutCount);
+    hint += std::to_string(total);
     hint += ")   Esc / Enter / q: close";
 
     Elements body;
@@ -589,10 +657,29 @@ bool TuiApp::about_handle_event(Event ev) {
         about_visible_ = false;
         return true;
     }
+    /* タブ切替: Tab / Shift+Tab / ←/→. 切替時はスクロール位置をリセット. */
+    auto switch_tab = [&](AboutTab next) {
+        if (about_tab_ != next) {
+            about_tab_ = next;
+            about_scroll_ = 0;
+        }
+    };
+    if (ev == Event::Tab || ev == Event::ArrowRight) {
+        int n = (int)AboutTab::Count;
+        switch_tab((AboutTab)(((int)about_tab_ + 1) % n));
+        return true;
+    }
+    if (ev == Event::TabReverse || ev == Event::ArrowLeft) {
+        int n = (int)AboutTab::Count;
+        switch_tab((AboutTab)(((int)about_tab_ - 1 + n) % n));
+        return true;
+    }
+    int max_scroll = (about_tab_ == AboutTab::License) ? kLicenseMaxScroll
+                                                       : kAboutMaxScroll;
     if (ev == Event::ArrowUp)   { about_scroll_ = std::max(0, about_scroll_ - 1); return true; }
-    if (ev == Event::ArrowDown) { about_scroll_ = std::min(kAboutMaxScroll, about_scroll_ + 1); return true; }
-    if (ev == Event::PageUp)   { about_scroll_ = std::max(0, about_scroll_ - 5); return true; }
-    if (ev == Event::PageDown) { about_scroll_ = std::min(kAboutMaxScroll, about_scroll_ + 5); return true; }
+    if (ev == Event::ArrowDown) { about_scroll_ = std::min(max_scroll, about_scroll_ + 1); return true; }
+    if (ev == Event::PageUp)    { about_scroll_ = std::max(0, about_scroll_ - 5); return true; }
+    if (ev == Event::PageDown)  { about_scroll_ = std::min(max_scroll, about_scroll_ + 5); return true; }
     /* その他のキーは吸収のみ (シートに流さない) */
     return true;
 }
@@ -1232,7 +1319,7 @@ void TuiApp::menu_invoke_cmd(MenuCmd cmd) {
         case MenuCmd::ClearAll:    sheet_dispatch_key(sheet_.get(), Event::Special("\x1b[3;6~")); break;
         case MenuCmd::Preferences: do_preferences();                                       break;
         case MenuCmd::About:
-            about_visible_ = true; about_scroll_ = 0;                                     break;
+            about_visible_ = true; about_scroll_ = 0; about_tab_ = AboutTab::Shortcuts;   break;
         case MenuCmd::Exit:        screen_.Exit();                                         break;
 
         case MenuCmd::Undo:        sheet_dispatch_key(sheet_.get(), Event::Special("\x1a")); break;
@@ -1447,11 +1534,22 @@ bool TuiApp::handle_mouse(const Mouse &m) {
         return true;  /* メニュー中は他のマウスも吸収 */
     }
 
-    /* About: ホイールでスクロール、外側クリックで閉じる。 */
+    /* About: ホイールでスクロール、タブクリックで切替、外側クリックで閉じる。 */
     if (about_visible_) {
+        int max_scroll = (about_tab_ == AboutTab::License) ? kLicenseMaxScroll
+                                                           : kAboutMaxScroll;
         if (m.button == Mouse::WheelUp)   { about_scroll_ = std::max(0, about_scroll_ - 1); return true; }
-        if (m.button == Mouse::WheelDown) { about_scroll_ = std::min(kAboutMaxScroll, about_scroll_ + 1); return true; }
+        if (m.button == Mouse::WheelDown) { about_scroll_ = std::min(max_scroll, about_scroll_ + 1); return true; }
         if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
+            for (int i = 0; i < (int)about_tab_boxes_.size(); ++i) {
+                if (!about_tab_boxes_[i].Contain(m.x, m.y)) continue;
+                AboutTab next = (AboutTab)i;
+                if (about_tab_ != next) {
+                    about_tab_ = next;
+                    about_scroll_ = 0;
+                }
+                return true;
+            }
             if (!about_box_.Contain(m.x, m.y)) about_visible_ = false;
             return true;
         }
@@ -1537,7 +1635,7 @@ void TuiApp::test_dispatch(Event ev) {
     } else if (paste_modal_handle_event(ev)) {
     } else if (about_handle_event(ev)) {
     } else if (ev == Event::F1) {
-        about_visible_ = true; about_scroll_ = 0;
+        about_visible_ = true; about_scroll_ = 0; about_tab_ = AboutTab::Shortcuts;
     } else if (menu_handle_event(ev)) {
     } else if (!prompt_handle_event(ev)) {
         sheet_->OnEvent(ev);
@@ -1687,6 +1785,7 @@ int TuiApp::run(const std::string &initial_file) {
             /* 非表示のときに F1 で開く。 */
             about_visible_ = true;
             about_scroll_  = 0;
+            about_tab_     = AboutTab::Shortcuts;
             handled = true;
         } else if (menu_handle_event(ev)) {
             handled = true;

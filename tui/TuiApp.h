@@ -159,8 +159,10 @@ private:
     size_t       prompt_cursor_ = 0;
 
     /* About 状態 */
-    bool about_visible_ = false;
-    int  about_scroll_  = 0;
+    enum class AboutTab { Shortcuts = 0, License = 1, Count = 2 };
+    bool      about_visible_ = false;
+    int       about_scroll_  = 0;
+    AboutTab  about_tab_     = AboutTab::Shortcuts;
 
     /* マルチライン貼り付けモーダル状態。
      * paste_modal_choice_: 0=各行を別行 / 1=1 行に結合 / 2=キャンセル。 */
@@ -196,6 +198,7 @@ private:
     mutable std::vector<ftxui::Box> menu_item_boxes_;
     mutable std::vector<ftxui::Box> submenu_item_boxes_;
     mutable ftxui::Box              about_box_;
+    mutable std::vector<ftxui::Box> about_tab_boxes_;
     mutable ftxui::Box              prompt_box_;
 };
 
