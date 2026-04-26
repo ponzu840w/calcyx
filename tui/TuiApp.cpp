@@ -37,6 +37,9 @@
 
 #if defined(_WIN32)
 #  include <windows.h>
+   /* windows.h は RGB を 1 引数のマクロとして定義する. ftxui の
+    * Color::RGB(r, g, b) と衝突するので undef しておく. */
+#  undef RGB
 #endif
 
 using namespace ftxui;
