@@ -896,7 +896,10 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     if (sheet_model_row_error(model_, idx)) {
         right = text(res_text) | color(Color::Red);
     } else if (is_focused && editor_dirty()) {
-        right = text(res_text) | color(Color::Yellow);
+        /* "in-flight preview" を端末既定 fg に依存せずに目立たせる:
+         * 黄色背景 + 黒前景の "蛍光ペン" スタイル。bgcolor は親の Blue を
+         * この要素だけ上書きするので、白背景テーマでも視認できる。 */
+        right = text(res_text) | color(Color::Black) | bgcolor(Color::YellowLight);
     } else if (has_result) {
         right = render_highlighted(res_text, SIZE_MAX, /*dim_style=*/false);
     } else {
@@ -908,7 +911,12 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
         eq,
         right | flex,
     });
-    if (is_focused) row = row | bgcolor(Color::Blue);
+    /* フォーカス行は bg=Blue + fg=White を明示。色を片方だけ指定すると、
+     * 白背景テーマで端末既定 fg (薄いグレー等) と Blue bg のコントラストが
+     * 弱くなり選択行がほぼ見えなくなる。fg を明示することで Default 前景の
+     * 文字 (空白・数字等) を必ず白で描画する。トークン色付きの文字は親の
+     * fg を上書きするので、ハイライトはそのまま残る。 */
+    if (is_focused) row = row | bgcolor(Color::Blue) | color(Color::White);
     return row;
 }
 

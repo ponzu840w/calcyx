@@ -1293,8 +1293,11 @@ int TuiApp::run(const std::string &initial_file) {
             std::string a = b.substr(0, p);
             std::string m = (p < b.size()) ? std::string(1, b[p]) : std::string(" ");
             std::string c = (p < b.size()) ? b.substr(p + 1) : "";
+            /* "Open:" / "Save:" 等のラベル。白背景端末でも読めるよう
+             * 蛍光ペン (黒文字 + 黄色背景) スタイルで明示する。 */
             Element prompt_el = hbox({
-                text(prompt_label_) | color(Color::Yellow),
+                text(prompt_label_) | color(Color::Black) | bgcolor(Color::YellowLight),
+                text(" "),
                 text(a),
                 text(m) | inverted,
                 text(c),
