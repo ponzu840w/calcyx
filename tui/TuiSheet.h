@@ -148,9 +148,11 @@ private:
     bool   handle_mouse(const ftxui::Mouse &m);
     /* UTF-8 文字列の指定セル列までの byte offset。日本語は cell 幅 2。 */
     static size_t byte_pos_for_cell(const std::string &s, int target_cell);
+    /* UTF-8 文字列の表示セル幅。日本語は 2、ASCII は 1。 */
+    static int    display_cells(const std::string &s);
 
     /* --- 描画 --- */
-    ftxui::Element render_row(int idx, bool is_focused, int result_col) const;
+    ftxui::Element render_row(int idx, bool is_focused, int eq_col) const;
     /* シンタックスハイライト: GUI の draw_expr_highlighted と同じカテゴリ分け。
      * cursor_byte_pos が範囲内なら反転表示、末尾 (= size) なら末尾に反転スペース。
      * SIZE_MAX ならカーソルなし。dim_style=true でスパン全体に dim 属性を重ねる。 */

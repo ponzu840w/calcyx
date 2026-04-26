@@ -850,37 +850,40 @@ Element TuiSheet::render_highlighted(const std::string &expr,
     return hbox(std::move(els));
 }
 
-Element TuiSheet::render_row(int idx, bool is_focused, int result_col) const {
+Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     const char *expr_c  = sheet_model_row_expr(model_, idx);
     const char *result_c = sheet_model_row_result(model_, idx);
     std::string expr    = expr_c   ? expr_c   : "";
     std::string result  = result_c ? result_c : "";
 
-    Element left;
-    if (is_focused) {
-        Element editor_el =
-            render_highlighted(editor_buf_, cursor_pos_, /*dim_style=*/false) |
-            reflect(editor_box_);
-        left = hbox({
-            text("> "),
-            editor_el,
-        });
-    } else {
-        left = hbox({
-            text("  "),
-            render_highlighted(expr, SIZE_MAX, /*dim_style=*/true),
-        });
-    }
+    /* 左カラム: "> editor" or "  expr" を eq_col セル幅に揃える。 */
+    const std::string &left_src = is_focused ? editor_buf_ : expr;
+    int left_w = display_cells(left_src);  /* "> " の 2 セルは別途 */
+    int pad    = (eq_col > left_w) ? (eq_col - left_w) : 0;
 
-    /* 結果表示 */
+    Element expr_el;
+    if (is_focused) {
+        expr_el = render_highlighted(editor_buf_, cursor_pos_, /*dim_style=*/false) |
+                  reflect(editor_box_);
+    } else {
+        expr_el = render_highlighted(expr, SIZE_MAX, /*dim_style=*/true);
+    }
+    Element left = hbox({
+        text(is_focused ? "> " : "  "),
+        expr_el,
+        text(std::string(pad, ' ')),
+    });
+
+    /* 中央 "=": 結果がある行のみ表示。 */
+    bool has_result = false;
     std::string res_text;
     if (is_focused && editor_dirty()) {
-        res_text = live_preview_.empty() ? "" : ("= " + live_preview_);
+        if (!live_preview_.empty()) { has_result = true; res_text = live_preview_; }
     } else if (sheet_model_row_visible(model_, idx)) {
-        res_text = "= " + result;
-    } else {
-        res_text = "";
+        has_result = true; res_text = result;
     }
+
+    Element eq = text(has_result ? " = " : "   ");
 
     Element right = text(res_text);
     if (sheet_model_row_error(model_, idx)) {
@@ -892,9 +895,9 @@ Element TuiSheet::render_row(int idx, bool is_focused, int result_col) const {
     }
 
     Element row = hbox({
-        left | flex,
-        text(" "),
-        right,
+        left,
+        eq,
+        right | flex,
     });
     if (is_focused) row = row | bgcolor(Color::Blue);
     return row;
@@ -909,11 +912,28 @@ Element TuiSheet::Render() {
     row_boxes_.assign(n, Box{});
     editor_box_ = Box{};
 
-    /* 2 列レイアウト: 左 = expr、右 = result。
+    /* eq_col_: "=" カラムの位置を全行で揃える。
+     * 各行の expr (フォーカス行は editor_buf_) のセル幅の最大値。
+     * 上限は 60 セル (画面幅 80 を想定して 3/4 程度)。極端な式は溢れさせる。 */
+    int eq_col = 0;
+    for (int i = 0; i < n; ++i) {
+        std::string s;
+        if (i == focused_row_) {
+            s = editor_buf_;
+        } else {
+            const char *e = sheet_model_row_expr(model_, i);
+            s = e ? e : "";
+        }
+        int w = display_cells(s);
+        if (w > eq_col) eq_col = w;
+    }
+    if (eq_col > 60) eq_col = 60;
+
+    /* 2 列レイアウト: 左 = expr (eq_col 幅に padding)、右 = result。
      * カーソル行が画面外に出ないよう yframe + focus でスクロール。
      * 補完ポップアップは焦点行の直下に挟み込む。 */
     for (int i = 0; i < n; ++i) {
-        Element row = render_row(i, i == focused_row_, 0);
+        Element row = render_row(i, i == focused_row_, eq_col);
         if (i == focused_row_) row = row | focus;
         row = row | reflect(row_boxes_[i]);
         rows.push_back(row);
@@ -971,6 +991,16 @@ size_t TuiSheet::byte_pos_for_cell(const std::string &s, int target_cell) {
         cell += w;
     }
     return byte;
+}
+
+int TuiSheet::display_cells(const std::string &s) {
+    auto glyphs = Utf8ToGlyphs(s);
+    int n = 0;
+    for (const auto &g : glyphs) {
+        if (g.empty()) continue;
+        n += string_width(g);
+    }
+    return n;
 }
 
 bool TuiSheet::handle_mouse(const Mouse &m) {
