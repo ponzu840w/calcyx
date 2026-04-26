@@ -1231,10 +1231,16 @@ void TuiApp::test_dispatch(Event ev) {
  * -------------------------------------------------------------------- */
 
 #if !defined(_WIN32)
-/* Ctrl+Z (0x1A) と Ctrl+C (0x03) をシグナルではなく生バイトとして
- * 受け取るため、ISIG / IEXTEN を切る (microsoft/edit と同方針)。
- * FTXUI の Install/Uninstall が我々の改変済み termios を保存・復元するので、
- * 最終的に元の (我々が起動前に保存した) termios に戻す必要がある。
+/* Ctrl+Z (0x1A) / Ctrl+C (0x03) / Ctrl+S (0x13) / Ctrl+Q (0x11) を
+ * シグナルやフロー制御としてではなく生バイトとして受け取るため、
+ * ISIG / IEXTEN / IXON を落とす (microsoft/edit と同方針)。
+ *
+ * IXON を残すと kernel の tty 層が Ctrl+S を XOFF として吸収して出力を
+ * 凍結してしまい、アプリが復帰できなくなる (Ctrl+Q も XON として吸収
+ * されるので Quit が効かない)。
+ *
+ * FTXUI の Install/Uninstall が我々の改変済み termios を保存・復元する
+ * ので、最終的に元の (我々が起動前に保存した) termios に戻す必要がある。
  * RAII で保証する。 */
 class TermiosIsigGuard {
     int            fd_;
@@ -1247,6 +1253,7 @@ public:
         ok_ = true;
         struct termios t = saved_;
         t.c_lflag &= ~(ISIG | IEXTEN);
+        t.c_iflag &= ~IXON;
         ::tcsetattr(fd_, TCSANOW, &t);
     }
     ~TermiosIsigGuard() {
