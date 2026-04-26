@@ -4,8 +4,11 @@
 #include <cstdlib>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 
 #if defined(_WIN32)
+#  define WIN32_LEAN_AND_MEAN
+#  include <windows.h>
 #  define CALCYX_POPEN  _popen
 #  define CALCYX_PCLOSE _pclose
 #else
@@ -20,14 +23,76 @@ namespace {
 bool g_mock_on = false;
 std::string g_mock_buf;
 
+/* command_exists を毎回 fork+exec すると WSL では遅いので、結果をキャッシュ
+ * する。インストール状態がプロセス実行中に変わることはほぼないと割り切る。 */
 bool command_exists(const char *cmd) {
+    static std::unordered_map<std::string, bool> cache;
+    auto it = cache.find(cmd);
+    if (it != cache.end()) return it->second;
 #if defined(_WIN32)
     std::string check = std::string("where ") + cmd + " >nul 2>&1";
 #else
     std::string check = std::string("command -v ") + cmd + " >/dev/null 2>&1";
 #endif
-    return std::system(check.c_str()) == 0;
+    bool ok = std::system(check.c_str()) == 0;
+    cache.emplace(cmd, ok);
+    return ok;
 }
+
+#if defined(_WIN32)
+/* Win32 Clipboard API を直接叩く。_popen 経由だと cmd.exe を起動するため、
+ * UNC パス (\\wsl.localhost\... 等) から実行されたときに
+ *   "CMD.EXE was started with the above path as the current directory."
+ *   "UNC paths are not supported. Defaulting to Windows directory."
+ * が表示されてしまう。Win32 API なら cmd を経由しないし瞬時で済む。 */
+bool win32_clipboard_write(const std::string &utf8) {
+    int wlen = ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(), (int)utf8.size(),
+                                     nullptr, 0);
+    if (wlen < 0) return false;
+    HGLOBAL h = ::GlobalAlloc(GMEM_MOVEABLE, ((size_t)wlen + 1) * sizeof(wchar_t));
+    if (!h) return false;
+    auto *w = static_cast<wchar_t *>(::GlobalLock(h));
+    if (!w) { ::GlobalFree(h); return false; }
+    if (wlen > 0) {
+        ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(), (int)utf8.size(), w, wlen);
+    }
+    w[wlen] = L'\0';
+    ::GlobalUnlock(h);
+
+    if (!::OpenClipboard(nullptr)) { ::GlobalFree(h); return false; }
+    ::EmptyClipboard();
+    if (!::SetClipboardData(CF_UNICODETEXT, h)) {
+        ::CloseClipboard();
+        ::GlobalFree(h);
+        return false;
+    }
+    /* 所有権はクリップボードに移ったので GlobalFree しない。 */
+    ::CloseClipboard();
+    return true;
+}
+
+bool win32_clipboard_read(std::string &out) {
+    if (!::OpenClipboard(nullptr)) return false;
+    HANDLE h = ::GetClipboardData(CF_UNICODETEXT);
+    if (!h) { ::CloseClipboard(); return false; }
+    auto *w = static_cast<const wchar_t *>(::GlobalLock(h));
+    if (!w) { ::CloseClipboard(); return false; }
+
+    int u8len = ::WideCharToMultiByte(CP_UTF8, 0, w, -1, nullptr, 0, nullptr, nullptr);
+    if (u8len <= 0) {
+        ::GlobalUnlock(h);
+        ::CloseClipboard();
+        out.clear();
+        return false;
+    }
+    out.resize((size_t)u8len - 1);  /* -1 は終端 NUL */
+    ::WideCharToMultiByte(CP_UTF8, 0, w, -1, out.data(), u8len, nullptr, nullptr);
+
+    ::GlobalUnlock(h);
+    ::CloseClipboard();
+    return true;
+}
+#endif
 
 bool write_via_command(const char *cmd, const std::string &text) {
     FILE *p = CALCYX_POPEN(cmd, "w");
@@ -91,7 +156,7 @@ bool write(const std::string &text) {
 #if defined(__APPLE__)
     if (write_via_command("pbcopy", text)) return true;
 #elif defined(_WIN32)
-    if (write_via_command("clip", text)) return true;
+    if (win32_clipboard_write(text)) return true;
 #else
     /* Wayland 優先、次に X11、最後に WSL */
     if (std::getenv("WAYLAND_DISPLAY") && command_exists("wl-copy"))
@@ -112,7 +177,7 @@ bool read(std::string &out) {
 #if defined(__APPLE__)
     return read_via_command("pbpaste", out);
 #elif defined(_WIN32)
-    return read_via_command("powershell -NoProfile -Command Get-Clipboard", out);
+    return win32_clipboard_read(out);
 #else
     if (std::getenv("WAYLAND_DISPLAY") && command_exists("wl-paste"))
         if (read_via_command("wl-paste -n", out)) return true;
@@ -120,8 +185,13 @@ bool read(std::string &out) {
         if (read_via_command("xclip -selection clipboard -o", out)) return true;
     if (command_exists("xsel"))
         if (read_via_command("xsel --clipboard --output", out)) return true;
+    /* WSL のフォールバック: powershell.exe は起動が遅い (~0.5-数秒) ので
+     * 最終手段。WSLg 上では wl-clipboard / xclip をインストールすると
+     * 速くなる。 -NonInteractive で多少だけ立ち上がりが軽くなる。 */
     if (command_exists("powershell.exe"))
-        return read_via_command("powershell.exe -NoProfile -Command Get-Clipboard", out);
+        return read_via_command(
+            "powershell.exe -NoProfile -NonInteractive -Command Get-Clipboard",
+            out);
     return false;
 #endif
 }
