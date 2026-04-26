@@ -20,6 +20,7 @@ add_library(calcyx_engine STATIC
     ${CMAKE_SOURCE_DIR}/shared/builtin_docs.c
     ${CMAKE_SOURCE_DIR}/shared/sheet_model.c
     ${CMAKE_SOURCE_DIR}/shared/settings_schema.c
+    ${CMAKE_SOURCE_DIR}/shared/settings_writer.c
 )
 
 # shared/ は UI 非依存の共有モデル層 (completion_match / builtin_docs /

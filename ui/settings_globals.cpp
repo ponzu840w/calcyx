@@ -22,6 +22,7 @@
 extern "C" {
 #include "types/val.h"
 #include "settings_schema.h"
+#include "settings_writer.h"
 }
 
 // ---- グローバル変数 (初期値は settings_globals.h の DEFAULT_* 定数) ----
@@ -410,66 +411,61 @@ void settings_load() {
 }
 
 // ---- save ----
+//
+// shared/settings_writer.{h,c} の write_preserving に lookup を渡して
+// コメント・並び順・未知キーを保ったまま書き戻す。GUI 側の責務はキー名から
+// 現在値を文字列化することだけ。
+
+namespace {
+
+// settings_writer に渡すコールバック: キー → 文字列値.
+// 戻り値: 1=書いた, 0=このキーは出力しない (color_* で preset != user 時).
+int gui_value_lookup(const char *key, char *buf, size_t buflen, void *user) {
+    (void)user;
+    const calcyx_setting_desc_t *d = calcyx_settings_find(key);
+    if (!d) return 0;
+    if (!(d->scope & CALCYX_SETTING_SCOPE_GUI)) return 0;
+    void *target = gui_target(key);
+    if (!target) return 0;
+
+    switch (d->kind) {
+    case CALCYX_SETTING_KIND_BOOL:
+        snprintf(buf, buflen, "%s", *(bool *)target ? "true" : "false");
+        return 1;
+    case CALCYX_SETTING_KIND_INT:
+        snprintf(buf, buflen, "%d", *(int *)target);
+        return 1;
+    case CALCYX_SETTING_KIND_FONT: {
+        std::string name = font_id_to_name(*(int *)target);
+        snprintf(buf, buflen, "%s", name.c_str());
+        return 1;
+    }
+    case CALCYX_SETTING_KIND_HOTKEY:
+        snprintf(buf, buflen, "%s", plat_flkey_to_keyname(*(int *)target));
+        return 1;
+    case CALCYX_SETTING_KIND_COLOR_PRESET:
+        snprintf(buf, buflen, "%s", COLOR_PRESET_INFO[*(int *)target].id);
+        return 1;
+    case CALCYX_SETTING_KIND_COLOR: {
+        if (g_color_preset != COLOR_PRESET_USER_DEFINED) return 0;
+        std::string hex = color_to_hex(*(Fl_Color *)target);
+        snprintf(buf, buflen, "%s", hex.c_str());
+        return 1;
+    }
+    default:
+        return 0;
+    }
+}
+
+} // namespace
+
 void settings_save() {
     ensure_path();
-    FILE *fp = fopen(s_conf_path.c_str(), "w");
-    if (!fp) return;
-
-    fputs("# calcyx user settings\n"
-          "# Changes take effect on next launch, or immediately via Preferences dialog.\n"
-          "# This file is regenerated when saving from the Preferences dialog.\n"
-          "# Custom comments will not be preserved.\n", fp);
-
-    bool user_colors = (g_color_preset == COLOR_PRESET_USER_DEFINED);
-
-    int n = 0;
-    const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
-    for (int i = 0; i < n; i++) {
-        const calcyx_setting_desc_t &d = table[i];
-        switch (d.kind) {
-        case CALCYX_SETTING_KIND_SECTION:
-            fputc('\n', fp);
-            fputs(d.section, fp);
-            break;
-        default: {
-            if (!d.key) break;
-            if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) break;
-            void *target = gui_target(d.key);
-            if (!target) break;
-            switch (d.kind) {
-            case CALCYX_SETTING_KIND_BOOL:
-                fprintf(fp, "%s = %s\n", d.key,
-                        *(bool *)target ? "true" : "false");
-                break;
-            case CALCYX_SETTING_KIND_INT:
-                fprintf(fp, "%s = %d\n", d.key, *(int *)target);
-                break;
-            case CALCYX_SETTING_KIND_FONT:
-                fprintf(fp, "%s = %s\n", d.key,
-                        font_id_to_name(*(int *)target).c_str());
-                break;
-            case CALCYX_SETTING_KIND_HOTKEY:
-                fprintf(fp, "%s = %s\n", d.key,
-                        plat_flkey_to_keyname(*(int *)target));
-                break;
-            case CALCYX_SETTING_KIND_COLOR_PRESET:
-                fprintf(fp, "%s = %s\n", d.key,
-                        COLOR_PRESET_INFO[*(int *)target].id);
-                break;
-            case CALCYX_SETTING_KIND_COLOR:
-                if (user_colors) {
-                    fprintf(fp, "%s = %s\n", d.key,
-                            color_to_hex(*(Fl_Color *)target).c_str());
-                }
-                break;
-            default:
-                break;
-            }
-            break;
-        }
-        }
-    }
-
-    fclose(fp);
+    /* 既存ファイルが空 / 不在のときだけヘッダを置く. 既存ファイルにある
+     * ユーザー編集のコメントは write_preserving が温存する. */
+    const char *first_time_header = "# calcyx user settings — edit freely.\n";
+    calcyx_settings_write_preserving(s_conf_path.c_str(),
+                                     first_time_header,
+                                     gui_value_lookup, nullptr);
     update_crash_config_snapshot();
 }
