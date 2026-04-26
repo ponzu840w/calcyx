@@ -76,6 +76,9 @@ public:
     bool   test_submenu_active() const { return submenu_active_; }
     bool   test_paste_modal_visible() const { return paste_modal_visible_; }
     int    test_paste_modal_choice()  const { return paste_modal_choice_; }
+    bool   test_context_menu_visible() const { return context_menu_visible_; }
+    int    test_context_menu_item()    const { return context_menu_item_; }
+    void   test_open_context_menu(int x, int y) { context_menu_open(x, y); }
 
 private:
     enum class PromptMode {
@@ -105,6 +108,16 @@ private:
     bool           paste_modal_handle_event(ftxui::Event ev);  /* true で吸収 */
     ftxui::Element paste_modal_overlay() const;
     void           paste_modal_confirm();
+
+    /* 行右クリックコンテキストメニュー (TuiSheet の Mouse::Right から起動)。
+     * 行レベル操作 (コピー/カット/ペースト/挿入/削除) をその場で発火。
+     * ↑↓ で項目移動、Enter / 左クリックで実行、Esc / 外側クリックで閉じる。 */
+    void           context_menu_open(int x, int y);
+    void           context_menu_close();
+    bool           context_menu_handle_event(ftxui::Event ev);  /* true で吸収 */
+    ftxui::Element context_menu_overlay() const;
+    void           context_menu_move(int dir);    /* +1 / -1 */
+    void           context_menu_activate();        /* 現項目を実行 */
 
     /* メニューバー (Alt+F/E/V/R/H で展開)。
      * 展開中: ↑↓ で項目移動、←→ で隣メニューへ、Enter で実行、Esc で閉じる。 */
@@ -140,6 +153,17 @@ private:
     int         paste_modal_choice_  = 0;
     std::string paste_modal_text_;
     mutable ftxui::Box paste_modal_box_;
+
+    /* コンテキストメニュー状態。
+     * context_menu_item_: 現在の選択項目 (0..items.size-1)、separator はスキップ。
+     * 表示位置: 右クリック座標 (anchor) を起点に、画面右下にはみ出す場合だけ
+     * 上 / 左方向に倒す。 */
+    bool        context_menu_visible_ = false;
+    int         context_menu_item_    = 0;
+    int         context_menu_anchor_x_ = 0;
+    int         context_menu_anchor_y_ = 0;
+    mutable ftxui::Box              context_menu_box_;
+    mutable std::vector<ftxui::Box> context_menu_item_boxes_;
 
     /* メニュー状態 */
     MenuId menu_active_     = MenuId::None;

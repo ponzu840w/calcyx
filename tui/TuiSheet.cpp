@@ -986,6 +986,25 @@ bool TuiSheet::handle_mouse(const Mouse &m) {
         return true;
     }
 
+    /* 右クリック (Pressed のみ): 行 hit-test してフォーカス行を移動し、
+     * TuiApp 側のコンテキストメニューを開く。 unset なら無効。 */
+    if (m.button == Mouse::Right) {
+        if (m.motion != Mouse::Pressed) return true;
+        if (!context_menu_cb_) return false;
+        for (int i = 0; i < (int)row_boxes_.size(); ++i) {
+            if (!row_boxes_[i].Contain(m.x, m.y)) continue;
+            if (i != focused_row_) {
+                commit_if_changed();
+                focused_row_ = i;
+                load_editor_from_row();
+            }
+            completion_.hide();
+            context_menu_cb_(m.x, m.y);
+            return true;
+        }
+        return false;
+    }
+
     /* 左クリック (Pressed のみ反応、Released は吸収するだけ) */
     if (m.button != Mouse::Left) return false;
     if (m.motion != Mouse::Pressed) return true;
@@ -1168,6 +1187,45 @@ bool TuiSheet::OnEvent(Event ev) {
         else                completion_update_key();
     }
     return true;
+}
+
+/* ----------------------------------------------------------------------
+ * コンテキストメニュー用のパブリック API。
+ * 既存の private アクションを薄くラップしただけで、キーボード経路と
+ * メニュー経路で同じ実装を共有する。
+ * -------------------------------------------------------------------- */
+void TuiSheet::copy_focused_row()    { action_copy(); }
+void TuiSheet::cut_focused_row()     { action_cut(); }
+void TuiSheet::paste_at_cursor()     { action_paste(); }
+void TuiSheet::insert_row_above()    { action_insert_above(); }
+void TuiSheet::insert_row_below()    { action_commit_and_insert_below(); }
+void TuiSheet::delete_focused_row()  { action_delete_row(); }
+
+void TuiSheet::copy_focused_expr() {
+    commit_if_changed();
+    int idx = focused_row_;
+    int n   = sheet_model_row_count(model_);
+    if (idx < 0 || idx >= n) return;
+    const char *expr = sheet_model_row_expr(model_, idx);
+    std::string text = expr ? expr : "";
+    clipboard::write(text);
+    last_copied_text_ = text;
+    last_copied_expr_ = text;
+    if (status_cb_) status_cb_("copied expression");
+}
+
+void TuiSheet::copy_focused_result() {
+    commit_if_changed();
+    int idx = focused_row_;
+    int n   = sheet_model_row_count(model_);
+    if (idx < 0 || idx >= n) return;
+    const char *res = sheet_model_row_result(model_, idx);
+    std::string text = res ? res : "";
+    clipboard::write(text);
+    /* 結果コピーは式と一致しないので、Ctrl+V のラウンドトリップ短縮は無効化。 */
+    last_copied_text_.clear();
+    last_copied_expr_.clear();
+    if (status_cb_) status_cb_("copied result");
 }
 
 } // namespace calcyx::tui

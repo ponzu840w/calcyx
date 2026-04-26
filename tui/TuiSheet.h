@@ -52,6 +52,23 @@ public:
     /* 改行を空白に置換してカーソル位置に挿入する。 */
     void paste_multiline_as_single(const std::string &text);
 
+    /* 右クリックメニュー起動 (TuiApp 側に座標を渡す)。 unset なら無効。 */
+    void set_context_menu_callback(std::function<void(int x, int y)> cb) {
+        context_menu_cb_ = std::move(cb);
+    }
+
+    /* TuiApp のコンテキストメニューから呼ばれる行レベル操作。
+     * 既存の private アクションを薄くラップしただけ (キーボード経路と
+     * メニュー経路で同じ実装を共有する)。 */
+    void copy_focused_row();
+    void copy_focused_expr();
+    void copy_focused_result();
+    void cut_focused_row();
+    void paste_at_cursor();
+    void insert_row_above();
+    void insert_row_below();
+    void delete_focused_row();
+
     /* TuiApp から sheet_model 経由での I/O 完了後に呼ぶ */
     void reload_focused_row();
 
@@ -154,6 +171,7 @@ private:
     std::function<void()>               file_save_cb_;
     std::function<void(std::string)>    status_cb_;
     std::function<void(std::string)>    multiline_paste_cb_;
+    std::function<void(int, int)>       context_menu_cb_;
 
     TuiCompletion completion_;
     bool          auto_complete_ = true;  /* GUI の g_input_auto_completion 相当 */

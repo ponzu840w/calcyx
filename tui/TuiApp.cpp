@@ -46,6 +46,8 @@ TuiApp::TuiApp()
     sheet_->set_status_callback([this](std::string m) { flash_message(std::move(m)); });
     sheet_->set_multiline_paste_callback(
         [this](std::string raw) { paste_modal_open(std::move(raw)); });
+    sheet_->set_context_menu_callback(
+        [this](int x, int y) { context_menu_open(x, y); });
 }
 
 TuiApp::~TuiApp() {
@@ -433,6 +435,174 @@ Element TuiApp::paste_modal_overlay() const {
     return vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
            size(HEIGHT, LESS_THAN, 22) | clear_under |
            reflect(paste_modal_box_) | center;
+}
+
+/* ----------------------------------------------------------------------
+ * コンテキストメニュー (右クリック)
+ *
+ * ↑↓: 項目移動 (separator スキップ)
+ * Enter / 左クリック項目: 実行
+ * Esc / 外側クリック: 閉じる
+ * 各項目はキーボードショートカットも併記 (実際の処理はメインで動く)。
+ * -------------------------------------------------------------------- */
+namespace {
+
+enum class ContextCmd {
+    None,
+    Separator,
+    CopyRow,        /* 行を `expr = result` でコピー */
+    CopyExpr,       /* 式のみコピー */
+    CopyResult,     /* 結果のみコピー */
+    Cut,
+    Paste,
+    InsertAbove,
+    InsertBelow,
+    DeleteRow,
+};
+
+struct ContextItem {
+    const char *label;
+    const char *shortcut;  /* 表示用、空文字なら表示しない */
+    ContextCmd  cmd;
+};
+
+/* メニュー項目順は GUI の右クリックと揃える。 */
+constexpr ContextItem kContextMenu[] = {
+    { "Copy row",            "Ctrl+C",       ContextCmd::CopyRow     },
+    { "Copy expression",     "",             ContextCmd::CopyExpr    },
+    { "Copy result",         "",             ContextCmd::CopyResult  },
+    { "Cut",                 "Ctrl+X",       ContextCmd::Cut         },
+    { "Paste",               "Ctrl+V",       ContextCmd::Paste       },
+    { "-",                   "",             ContextCmd::Separator   },
+    { "Insert row above",    "Ctrl+Shift+N", ContextCmd::InsertAbove },
+    { "Insert row below",    "Enter",        ContextCmd::InsertBelow },
+    { "Delete row",          "Ctrl+D",       ContextCmd::DeleteRow   },
+};
+constexpr int kContextMenuCount = (int)(sizeof(kContextMenu) / sizeof(kContextMenu[0]));
+
+/* 最も長い label の表示幅 + 余白 + shortcut の合計 (ASCII 前提)。 */
+int context_menu_width() {
+    int w = 0;
+    for (const auto &it : kContextMenu) {
+        if (it.cmd == ContextCmd::Separator) continue;
+        int line = (int)std::strlen(it.label);
+        if (it.shortcut[0]) line += 2 + (int)std::strlen(it.shortcut);
+        if (line > w) w = line;
+    }
+    return w + 2;  /* 左右パディング */
+}
+
+} // namespace
+
+void TuiApp::context_menu_open(int x, int y) {
+    context_menu_visible_ = true;
+    context_menu_anchor_x_ = x;
+    context_menu_anchor_y_ = y;
+    /* 最初の非 separator を選ぶ。 */
+    context_menu_item_ = 0;
+    while (context_menu_item_ < kContextMenuCount &&
+           kContextMenu[context_menu_item_].cmd == ContextCmd::Separator) {
+        ++context_menu_item_;
+    }
+}
+
+void TuiApp::context_menu_close() {
+    context_menu_visible_ = false;
+}
+
+void TuiApp::context_menu_move(int dir) {
+    if (kContextMenuCount == 0) return;
+    int i = context_menu_item_;
+    for (int step = 0; step < kContextMenuCount; ++step) {
+        i = (i + dir + kContextMenuCount) % kContextMenuCount;
+        if (kContextMenu[i].cmd != ContextCmd::Separator) {
+            context_menu_item_ = i;
+            return;
+        }
+    }
+}
+
+void TuiApp::context_menu_activate() {
+    if (!sheet_) { context_menu_close(); return; }
+    if (context_menu_item_ < 0 || context_menu_item_ >= kContextMenuCount) {
+        context_menu_close();
+        return;
+    }
+    ContextCmd cmd = kContextMenu[context_menu_item_].cmd;
+    context_menu_close();
+
+    switch (cmd) {
+        case ContextCmd::CopyRow:     sheet_->copy_focused_row();      break;
+        case ContextCmd::CopyExpr:    sheet_->copy_focused_expr();     break;
+        case ContextCmd::CopyResult:  sheet_->copy_focused_result();   break;
+        case ContextCmd::Cut:         sheet_->cut_focused_row();       break;
+        case ContextCmd::Paste:       sheet_->paste_at_cursor();       break;
+        case ContextCmd::InsertAbove: sheet_->insert_row_above();      break;
+        case ContextCmd::InsertBelow: sheet_->insert_row_below();      break;
+        case ContextCmd::DeleteRow:   sheet_->delete_focused_row();    break;
+        case ContextCmd::Separator:
+        case ContextCmd::None:        break;
+    }
+}
+
+bool TuiApp::context_menu_handle_event(Event ev) {
+    if (!context_menu_visible_) return false;
+    if (ev == Event::Escape) {
+        context_menu_close();
+        return true;
+    }
+    if (ev == Event::ArrowUp)   { context_menu_move(-1); return true; }
+    if (ev == Event::ArrowDown) { context_menu_move(+1); return true; }
+    if (ev == Event::Return)    { context_menu_activate();   return true; }
+    /* 他キーは吸収 (誤入力でシートに届かないように)。 */
+    return true;
+}
+
+Element TuiApp::context_menu_overlay() const {
+    using namespace ftxui;
+
+    Elements rows;
+    context_menu_item_boxes_.assign(kContextMenuCount, Box{});
+    for (int i = 0; i < kContextMenuCount; ++i) {
+        const ContextItem &it = kContextMenu[i];
+        if (it.cmd == ContextCmd::Separator) {
+            rows.push_back(separator());
+            continue;
+        }
+        bool selected = (i == context_menu_item_);
+        Element row = hbox({
+            text(" "),
+            text(it.label),
+            filler(),
+            text(it.shortcut[0] ? std::string("  ") + it.shortcut
+                                : std::string(" ")) | dim,
+            text(" "),
+        }) | reflect(context_menu_item_boxes_[i]);
+        if (selected) row = row | inverted;
+        rows.push_back(std::move(row));
+    }
+
+    int w = context_menu_width();
+    /* アンカー位置からの相対配置: filler() でパディングしてから
+     * 左上に押し込む。画面端は FTXUI 側で自動クリップされる。 */
+    int anchor_x = std::max(0, context_menu_anchor_x_);
+    int anchor_y = std::max(0, context_menu_anchor_y_);
+
+    Element menu = vbox(std::move(rows)) | border |
+                   size(WIDTH, EQUAL, w + 2) | clear_under |
+                   reflect(context_menu_box_);
+
+    /* x: anchor_x 列ぶん左に空白 + メニュー、y: anchor_y 行ぶん上に空白 + メニュー */
+    Element anchored = hbox({
+        text(std::string(anchor_x, ' ')),
+        menu,
+        filler(),
+    });
+    return vbox({
+        text(std::string(anchor_y, ' ')),
+        anchored,
+        filler(),
+    });
 }
 
 /* ----------------------------------------------------------------------
@@ -947,6 +1117,25 @@ bool TuiApp::menu_handle_event(Event ev) {
  * マウスディスパッチ
  * -------------------------------------------------------------------- */
 bool TuiApp::handle_mouse(const Mouse &m) {
+    /* コンテキストメニュー中: 項目クリックで実行、外側クリックで閉じる。
+     * ホイール等は吸収。 */
+    if (context_menu_visible_) {
+        if (m.button == Mouse::Left && m.motion == Mouse::Pressed) {
+            for (int i = 0; i < (int)context_menu_item_boxes_.size(); ++i) {
+                if (i >= kContextMenuCount) break;
+                if (kContextMenu[i].cmd == ContextCmd::Separator) continue;
+                if (!context_menu_item_boxes_[i].Contain(m.x, m.y)) continue;
+                context_menu_item_ = i;
+                context_menu_activate();
+                return true;
+            }
+            /* 外側 → 閉じる。 */
+            context_menu_close();
+            return true;
+        }
+        return true;  /* メニュー中は他のマウスも吸収 */
+    }
+
     /* About: ホイールでスクロール、外側クリックで閉じる。 */
     if (about_visible_) {
         if (m.button == Mouse::WheelUp)   { about_scroll_ = std::max(0, about_scroll_ - 1); return true; }
@@ -1028,6 +1217,7 @@ void TuiApp::test_dispatch(Event ev) {
         sheet_->OnEvent(ev);
         return;
     }
+    if (context_menu_handle_event(ev)) return;
     if (paste_modal_handle_event(ev)) return;
     if (about_handle_event(ev)) return;
     if (ev == Event::F1) { about_visible_ = true; about_scroll_ = 0; return; }
@@ -1121,6 +1311,7 @@ int TuiApp::run(const std::string &initial_file) {
         if (menu_active_ != MenuId::None) layers.push_back(menu_overlay());
         if (about_visible_)               layers.push_back(about_overlay());
         if (paste_modal_visible_)         layers.push_back(paste_modal_overlay());
+        if (context_menu_visible_)        layers.push_back(context_menu_overlay());
         if (layers.size() == 1) return base;
         return dbox(std::move(layers));
     });
@@ -1132,6 +1323,8 @@ int TuiApp::run(const std::string &initial_file) {
              * Renderer 経由で sheet->OnEvent() に届く。 */
             return handle_mouse(ev.mouse());
         }
+        /* コンテキストメニュー中は全キーをメニューに渡す。 */
+        if (context_menu_handle_event(ev)) return true;
         /* Paste モーダル中は全キーをモーダルに渡す。 */
         if (paste_modal_handle_event(ev)) return true;
         /* About が開いている間は全イベントを吸収する。 */

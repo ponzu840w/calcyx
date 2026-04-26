@@ -342,12 +342,97 @@ static void test_paste_modal_multiline() {
     clipboard::set_mock_for_test(false);
 }
 
+/* ----------------------------------------------------------------------
+ * シナリオ 6f: 行右クリックコンテキストメニュー
+ *
+ * TuiSheet の Mouse::Right コールバック → TuiApp::context_menu_open()
+ * を直接呼んでメニューを開き、↑↓ で項目移動・Enter / Esc で確定 / 取消。
+ *
+ *   - ↑↓: 項目移動、separator はスキップ
+ *   - Enter で "Insert row below" → 行が追加される
+ *   - Esc で閉じる、状態变わらず
+ *   - 開いている間は Sheet にキーが届かない
+ * -------------------------------------------------------------------- */
+static void test_context_menu() {
+    /* --- 6f.1: open / move / cancel --- */
+    {
+        TuiApp app;
+        EXPECT("6f.1: hidden", !app.test_context_menu_visible());
+
+        app.test_open_context_menu(10, 5);
+        EXPECT("6f.1: visible after open", app.test_context_menu_visible());
+
+        int initial = app.test_context_menu_item();
+        app.test_dispatch(Event::ArrowDown);
+        EXPECT("6f.1: item moved",
+               app.test_context_menu_item() != initial);
+
+        /* メニュー中は Sheet にキーが届かない */
+        std::string buf_before = app.test_sheet()->test_editor_buf();
+        app.test_dispatch(Event::Character("z"));
+        EXPECT("6f.1: editor unchanged while menu open",
+               app.test_sheet()->test_editor_buf() == buf_before);
+
+        app.test_dispatch(Event::Escape);
+        EXPECT("6f.1: closed after Esc",
+               !app.test_context_menu_visible());
+    }
+
+    /* --- 6f.2: Enter on default item (Copy row) --- */
+    {
+        TuiApp app;
+        clipboard::set_mock_for_test(true);
+        clipboard::set_mock_buffer("");
+        sheet_model_t *m = app.test_model();
+        sheet_model_set_row_expr_raw(m, 0, "1+2");
+        sheet_model_eval_all(m);
+        app.test_sheet()->reload_focused_row();
+
+        app.test_open_context_menu(0, 0);
+        /* Default 項目は最初の非 separator = "Copy row" */
+        app.test_dispatch(Event::Return);
+        EXPECT("6f.2: closed after Enter",
+               !app.test_context_menu_visible());
+        EXPECT("6f.2: clipboard contains row text",
+               !clipboard::get_mock_buffer().empty());
+        clipboard::set_mock_for_test(false);
+    }
+
+    /* --- 6f.3: Insert row below を選択して実行 ---
+     *
+     * kContextMenu の順番:
+     *   0 CopyRow, 1 CopyExpr, 2 CopyResult, 3 Cut, 4 Paste,
+     *   5 Sep, 6 InsertAbove, 7 InsertBelow, 8 DeleteRow
+     * 0 → 7 は ArrowDown を 6 回 (separator 自動スキップ)。 */
+    {
+        TuiApp app;
+        sheet_model_t *m = app.test_model();
+        int rows_before = sheet_model_row_count(m);
+
+        app.test_open_context_menu(0, 0);
+        for (int i = 0; i < 6; ++i) app.test_dispatch(Event::ArrowDown);
+        app.test_dispatch(Event::Return);
+        EXPECT("6f.3: closed after Enter",
+               !app.test_context_menu_visible());
+        EXPECT("6f.3: row inserted below",
+               sheet_model_row_count(m) == rows_before + 1);
+    }
+
+    /* --- 6f.4: 描画ダンプ (画面状態の目視確認用) --- */
+    {
+        TuiApp app;
+        app.test_open_context_menu(20, 5);
+        dump_render("6f.4: context menu open", app);
+    }
+}
+
 int main() {
     test_prompt_open_cancel();
     test_prompt_save_and_load();
     test_about_dialog();
     test_menu_bar();
     test_paste_modal_multiline();
+    test_context_menu();
 
     if (g_failures > 0) {
         fprintf(stderr, "\n%d failure(s)\n", g_failures);
