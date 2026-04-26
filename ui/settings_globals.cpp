@@ -1,12 +1,11 @@
-// settings_globals.cpp — ユーザー設定の定義と永続化
+// settings_globals.cpp — ユーザー設定の定義と永続化 (GUI 側)
 //
-// calcyx.conf はコメント付きの key = value 形式。
-// ユーザーがテキストエディタで直接編集できる。
-// 設定ダイアログは GUI ヘルパーとしてこのファイルを読み書きする。
+// calcyx.conf はコメント付きの key = value 形式。ユーザーがテキストエディタで
+// 直接編集できる。設定ダイアログは GUI ヘルパーとしてこのファイルを読み書きする。
 //
-// init/load/save は SETTINGS_TABLE を駆動する統一ループで実装される。
-// conf フォーマットはバイト互換を維持する (セクションヘッダや色エントリ
-// の条件出力もテーブル側で表現)。
+// スキーマ (key 名・並び順・kind・デフォルト・範囲) は shared/settings_schema.c
+// に集約されている。本ファイルは GUI 側の「キー → グローバル変数ポインタ」
+// マッピングと、FLTK の Fl_Color / フォント ID 変換だけを担当する。
 
 #include "settings_globals.h"
 #include "app_prefs.h"
@@ -22,6 +21,7 @@
 
 extern "C" {
 #include "types/val.h"
+#include "settings_schema.h"
 }
 
 // ---- グローバル変数 (初期値は settings_globals.h の DEFAULT_* 定数) ----
@@ -114,134 +114,93 @@ void settings_set_path_for_test(const char *path) {
     s_conf_path = path ? path : "";
 }
 
-// --- 設定スキーマ ---
+// ---- スキーマキー → GUI グローバル変数 ポインタの対応表 ----
 //
-// SETTINGS_TABLE は save 順に並んだエントリリスト。section_header が
-// 非 NULL のエントリは直前に空行 + そのヘッダブロックを出力する。
-// key が NULL のエントリはセクションコメント区切り専用 (値なし)。
+// shared/settings_schema.c の TABLE は pure data (target ポインタを持たない) ので、
+// GUI 側で「キー名 → 自分の変数ポインタ」を別途持つ。エントリ数は ~53 で
+// 線形検索で十分速い。
 
 namespace {
 
-enum Kind {
-    K_BOOL,
-    K_INT,
-    K_FONT,        // target=int*, s_def=default font name
-    K_HOTKEY_KEY,  // target=int*, s_def=default key name ("Space")
-    K_COLOR_PRESET,
-    K_COLOR,       // target=Fl_Color* (user-defined 時のみ save)
-    K_SECTION,     // 出力専用: 空行 + section header コメント
+struct GuiTarget {
+    const char *key;
+    void       *target;   // bool*, int*, または Fl_Color*
 };
 
-struct Desc {
-    Kind         kind;
-    const char  *key;       // conf key; K_SECTION では NULL
-    void        *target;    // K_SECTION では NULL
-    int          i_def;     // K_INT, K_FONT, K_HOTKEY_KEY, K_COLOR_PRESET
-    int          i_lo;      // K_INT の下限 (K_FONT 等では 0)
-    int          i_hi;      // K_INT の上限
-    bool         b_def;     // K_BOOL
-    const char  *s_def;     // K_FONT, K_HOTKEY_KEY
-    const char  *section;   // K_SECTION の複数行ヘッダ ("# ---- XXX ----\n"+追加コメント)
-    // K_COLOR: target は Fl_Color*, 「def ポインタ」は CalcyxColors 内の対応メンバへのオフセット相当を
-    // 実装側で def_color(key) 関数で個別計算する。
+const GuiTarget GUI_TARGETS[] = {
+    // Font
+    {"font",       &g_font_id},
+    {"font_size",  &g_font_size},
+    // General
+    {"remember_position", &g_remember_position},
+    {"start_topmost",     &g_start_topmost},
+    {"show_rowlines",     &g_show_rowlines},
+    {"max_array_length",  &g_limit_max_array_length},
+    {"max_string_length", &g_limit_max_string_length},
+    {"max_call_depth",    &g_limit_max_call_depth},
+    // Input
+    {"auto_completion",            &g_input_auto_completion},
+    {"auto_close_brackets",        &g_input_auto_close_brackets},
+    {"bs_delete_empty_row",        &g_input_bs_delete_empty_row},
+    {"popup_independent_normal",   &g_popup_independent_normal},
+    {"popup_independent_compact",  &g_popup_independent_compact},
+    // Number Format
+    {"decimal_digits",       &g_fmt_settings.decimal_len},
+    {"e_notation",           &g_fmt_settings.e_notation},
+    {"e_positive_min",       &g_fmt_settings.e_positive_min},
+    {"e_negative_max",       &g_fmt_settings.e_negative_max},
+    {"e_alignment",          &g_fmt_settings.e_alignment},
+    {"thousands_separator",  &g_sep_thousands},
+    {"hex_separator",        &g_sep_hex},
+    // System Tray
+    {"tray_icon",      &g_tray_icon},
+    {"hotkey_enabled", &g_hotkey_enabled},
+    {"hotkey_win",     &g_hotkey_win},
+    {"hotkey_alt",     &g_hotkey_alt},
+    {"hotkey_ctrl",    &g_hotkey_ctrl},
+    {"hotkey_shift",   &g_hotkey_shift},
+    {"hotkey_key",     &g_hotkey_keycode},
+    // Colors
+    {"color_preset",    &g_color_preset},
+    {"color_bg",        &g_colors.bg},
+    {"color_sel_bg",    &g_colors.sel_bg},
+    {"color_rowline",   &g_colors.rowline},
+    {"color_sep",       &g_colors.sep},
+    {"color_text",      &g_colors.text},
+    {"color_cursor",    &g_colors.cursor},
+    {"color_symbol",    &g_colors.symbol},
+    {"color_ident",     &g_colors.ident},
+    {"color_special",   &g_colors.special},
+    {"color_si_pfx",    &g_colors.si_pfx},
+    {"color_paren0",    &g_colors.paren[0]},
+    {"color_paren1",    &g_colors.paren[1]},
+    {"color_paren2",    &g_colors.paren[2]},
+    {"color_paren3",    &g_colors.paren[3]},
+    {"color_error",     &g_colors.error},
+    {"color_ui_win_bg", &g_colors.ui_win_bg},
+    {"color_ui_bg",     &g_colors.ui_bg},
+    {"color_ui_input",  &g_colors.ui_input},
+    {"color_ui_btn",    &g_colors.ui_btn},
+    {"color_ui_menu",   &g_colors.ui_menu},
+    {"color_ui_text",   &g_colors.ui_text},
+    {"color_ui_label",  &g_colors.ui_label},
+    {"color_ui_dim",    &g_colors.ui_dim},
+    {"color_pop_bg",    &g_colors.pop_bg},
+    {"color_pop_sel",   &g_colors.pop_sel},
+    {"color_pop_text",  &g_colors.pop_text},
+    {"color_pop_desc",  &g_colors.pop_desc},
+    {"color_pop_desc_bg", &g_colors.pop_desc_bg},
+    {"color_pop_border",  &g_colors.pop_border},
 };
 
-// ヘルパー: エントリ作成マクロ
-#define SEC(hdr) { K_SECTION, nullptr, nullptr, 0,0,0, false, nullptr, hdr }
-#define BOOLE(k, t, d) { K_BOOL, k, &t, 0,0,0, d, nullptr, nullptr }
-#define INTC(k, t, d, lo, hi) { K_INT, k, &t, d, lo, hi, false, nullptr, nullptr }
-#define FONT(k, t, d)  { K_FONT, k, &t, 0,0,0, false, d, nullptr }
-#define HKEY(k, t, d)  { K_HOTKEY_KEY, k, &t, 0,0,0, false, d, nullptr }
-#define PRESET(k, t, d) { K_COLOR_PRESET, k, &t, d, 0,0, false, nullptr, nullptr }
-#define COLOR(k, t)    { K_COLOR, k, &t, 0,0,0, false, nullptr, nullptr }
-
-const Desc SETTINGS_TABLE[] = {
-    SEC("# ---- Font ----\n"
-        "# Any font name installed on the system (e.g. monospace, DejaVu Sans Mono)\n"),
-    FONT("font", g_font_id, "Courier"),
-    INTC("font_size", g_font_size, DEFAULT_FONT_SIZE, 8, 36),
-
-    SEC("# ---- General ----\n"),
-    BOOLE("remember_position", g_remember_position, DEFAULT_REMEMBER_POSITION),
-    BOOLE("start_topmost",     g_start_topmost,     DEFAULT_START_TOPMOST),
-    BOOLE("show_rowlines", g_show_rowlines, DEFAULT_SHOW_ROWLINES),
-    INTC("max_array_length",  g_limit_max_array_length,  DEFAULT_MAX_ARRAY_LENGTH,  1, 1000000),
-    INTC("max_string_length", g_limit_max_string_length, DEFAULT_MAX_STRING_LENGTH, 1, 1000000),
-    INTC("max_call_depth",    g_limit_max_call_depth,    DEFAULT_MAX_CALL_DEPTH,    1, 1000),
-
-    SEC("# ---- Input ----\n"),
-    BOOLE("auto_completion",     g_input_auto_completion,     DEFAULT_AUTO_COMPLETION),
-    BOOLE("auto_close_brackets", g_input_auto_close_brackets, DEFAULT_AUTO_CLOSE_BRACKETS),
-    BOOLE("bs_delete_empty_row", g_input_bs_delete_empty_row, DEFAULT_BS_DELETE_EMPTY_ROW),
-    BOOLE("popup_independent_normal",  g_popup_independent_normal,  DEFAULT_POPUP_INDEPENDENT_NORMAL),
-    BOOLE("popup_independent_compact", g_popup_independent_compact, DEFAULT_POPUP_INDEPENDENT_COMPACT),
-
-    SEC("# ---- Number Format ----\n"),
-    INTC("decimal_digits",  g_fmt_settings.decimal_len,    DEFAULT_FMT_DECIMAL_LEN,    1, 34),
-    BOOLE("e_notation",     g_fmt_settings.e_notation,     DEFAULT_FMT_E_NOTATION),
-    INTC("e_positive_min",  g_fmt_settings.e_positive_min, DEFAULT_FMT_E_POSITIVE_MIN,   1, 30),
-    INTC("e_negative_max",  g_fmt_settings.e_negative_max, DEFAULT_FMT_E_NEGATIVE_MAX, -30, -1),
-    BOOLE("e_alignment",    g_fmt_settings.e_alignment,    DEFAULT_FMT_E_ALIGNMENT),
-    BOOLE("thousands_separator", g_sep_thousands, DEFAULT_SEP_THOUSANDS),
-    BOOLE("hex_separator",       g_sep_hex,       DEFAULT_SEP_HEX),
-
-    SEC("# ---- System Tray ----\n"),
-    BOOLE("tray_icon",      g_tray_icon,      DEFAULT_TRAY_ICON),
-    BOOLE("hotkey_enabled", g_hotkey_enabled, DEFAULT_HOTKEY_ENABLED),
-    BOOLE("hotkey_win",     g_hotkey_win,     DEFAULT_HOTKEY_WIN),
-    BOOLE("hotkey_alt",     g_hotkey_alt,     DEFAULT_HOTKEY_ALT),
-    BOOLE("hotkey_ctrl",    g_hotkey_ctrl,    DEFAULT_HOTKEY_CTRL),
-    BOOLE("hotkey_shift",   g_hotkey_shift,   DEFAULT_HOTKEY_SHIFT),
-    HKEY ("hotkey_key",     g_hotkey_keycode, "Space"),
-
-    SEC("# ---- Colors ----\n"
-        "# Preset: otaku-black, gyakubari-white, saboten-grey, saboten-white, user\n"),
-    PRESET("color_preset", g_color_preset, DEFAULT_COLOR_PRESET),
-
-    // ---- user-defined 時のみ出力される色エントリ ----
-    COLOR("color_bg",       g_colors.bg),
-    COLOR("color_sel_bg",   g_colors.sel_bg),
-    COLOR("color_rowline",  g_colors.rowline),
-    COLOR("color_sep",      g_colors.sep),
-    COLOR("color_text",     g_colors.text),
-    COLOR("color_cursor",   g_colors.cursor),
-    COLOR("color_symbol",   g_colors.symbol),
-    COLOR("color_ident",    g_colors.ident),
-    COLOR("color_special",  g_colors.special),
-    COLOR("color_si_pfx",   g_colors.si_pfx),
-    COLOR("color_paren0",   g_colors.paren[0]),
-    COLOR("color_paren1",   g_colors.paren[1]),
-    COLOR("color_paren2",   g_colors.paren[2]),
-    COLOR("color_paren3",   g_colors.paren[3]),
-    COLOR("color_error",    g_colors.error),
-    COLOR("color_ui_win_bg", g_colors.ui_win_bg),
-    COLOR("color_ui_bg",    g_colors.ui_bg),
-    COLOR("color_ui_input", g_colors.ui_input),
-    COLOR("color_ui_btn",   g_colors.ui_btn),
-    COLOR("color_ui_menu",  g_colors.ui_menu),
-    COLOR("color_ui_text",  g_colors.ui_text),
-    COLOR("color_ui_label", g_colors.ui_label),
-    COLOR("color_ui_dim",   g_colors.ui_dim),
-    COLOR("color_pop_bg",   g_colors.pop_bg),
-    COLOR("color_pop_sel",  g_colors.pop_sel),
-    COLOR("color_pop_text", g_colors.pop_text),
-    COLOR("color_pop_desc", g_colors.pop_desc),
-    COLOR("color_pop_desc_bg", g_colors.pop_desc_bg),
-    COLOR("color_pop_border",  g_colors.pop_border),
-};
-
-#undef SEC
-#undef BOOLE
-#undef INTC
-#undef FONT
-#undef HKEY
-#undef PRESET
-#undef COLOR
-
-constexpr size_t SETTINGS_TABLE_N = sizeof(SETTINGS_TABLE)/sizeof(SETTINGS_TABLE[0]);
+void *gui_target(const char *key) {
+    for (const GuiTarget &t : GUI_TARGETS) {
+        if (strcmp(t.key, key) == 0) return t.target;
+    }
+    return nullptr;
+}
 
 // K_COLOR エントリに対応する CalcyxColors のデフォルトメンバ値を返す。
-// SETTINGS_TABLE の定義順と一致するよう手動で対応付ける。
 Fl_Color color_default(const char *key, const CalcyxColors &def) {
     struct { const char *k; Fl_Color CalcyxColors::*m; } simple[] = {
         {"color_bg",       &CalcyxColors::bg},
@@ -347,21 +306,38 @@ static void update_crash_config_snapshot() {
 }
 
 // ---- スカラー init (K_COLOR / K_SECTION 以外) ----
-static void apply_default_one(const Desc &d) {
+static void apply_default_one(const calcyx_setting_desc_t &d, void *target) {
+    if (!target) return;
     switch (d.kind) {
-    case K_BOOL:   *(bool *)d.target = d.b_def; break;
-    case K_INT:    *(int  *)d.target = d.i_def; break;
-    case K_FONT:   *(int  *)d.target = DEFAULT_FONT_ID; break;
-    case K_HOTKEY_KEY: *(int *)d.target = DEFAULT_HOTKEY_KEYCODE; break;
-    case K_COLOR_PRESET: *(int *)d.target = d.i_def; break;
-    case K_COLOR:
-    case K_SECTION:
+    case CALCYX_SETTING_KIND_BOOL:
+        *(bool *)target = (d.b_def != 0);
+        break;
+    case CALCYX_SETTING_KIND_INT:
+        *(int  *)target = d.i_def;
+        break;
+    case CALCYX_SETTING_KIND_FONT:
+        *(int  *)target = DEFAULT_FONT_ID;
+        break;
+    case CALCYX_SETTING_KIND_HOTKEY:
+        *(int *)target = DEFAULT_HOTKEY_KEYCODE;
+        break;
+    case CALCYX_SETTING_KIND_COLOR_PRESET:
+        *(int *)target = d.i_def;
+        break;
+    default:
         break;
     }
 }
 
 void settings_init_defaults() {
-    for (const Desc &d : SETTINGS_TABLE) apply_default_one(d);
+    int n = 0;
+    const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
+    for (int i = 0; i < n; i++) {
+        const calcyx_setting_desc_t &d = table[i];
+        if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) continue;
+        if (!d.key) continue;
+        apply_default_one(d, gui_target(d.key));
+    }
     update_crash_config_snapshot();
 }
 
@@ -370,37 +346,46 @@ void settings_load() {
     auto kv = read_conf();
     if (kv.empty()) return;
 
-    for (const Desc &d : SETTINGS_TABLE) {
+    int n = 0;
+    const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
+
+    for (int i = 0; i < n; i++) {
+        const calcyx_setting_desc_t &d = table[i];
+        if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) continue;
+        if (!d.key) continue;
+        void *target = gui_target(d.key);
+        if (!target) continue;
+
         switch (d.kind) {
-        case K_BOOL:
-            *(bool *)d.target = map_get_bool(kv, d.key, d.b_def);
+        case CALCYX_SETTING_KIND_BOOL:
+            *(bool *)target = map_get_bool(kv, d.key, d.b_def != 0);
             break;
-        case K_INT: {
+        case CALCYX_SETTING_KIND_INT: {
             int v = map_get_int(kv, d.key, d.i_def);
-            *(int *)d.target = std::clamp(v, d.i_lo, d.i_hi);
+            *(int *)target = std::clamp(v, d.i_lo, d.i_hi);
             break;
         }
-        case K_FONT:
-            *(int *)d.target = font_name_to_id(map_get(kv, d.key, d.s_def));
+        case CALCYX_SETTING_KIND_FONT:
+            *(int *)target = font_name_to_id(map_get(kv, d.key, d.s_def));
             break;
-        case K_HOTKEY_KEY: {
+        case CALCYX_SETTING_KIND_HOTKEY: {
             std::string kn = map_get(kv, d.key, d.s_def);
             int k = plat_keyname_to_flkey(kn.c_str());
-            *(int *)d.target = k ? k : DEFAULT_HOTKEY_KEYCODE;
+            *(int *)target = k ? k : DEFAULT_HOTKEY_KEYCODE;
             break;
         }
-        case K_COLOR_PRESET: {
-            std::string ps = map_get(kv, d.key, COLOR_PRESET_INFO[d.i_def].id);
+        case CALCYX_SETTING_KIND_COLOR_PRESET: {
+            std::string ps = map_get(kv, d.key,
+                COLOR_PRESET_INFO[d.i_def].id);
             int idx = d.i_def;
-            for (int i = 0; i < COLOR_PRESET_COUNT; i++) {
-                if (ps == COLOR_PRESET_INFO[i].id) { idx = i; break; }
+            for (int j = 0; j < COLOR_PRESET_COUNT; j++) {
+                if (ps == COLOR_PRESET_INFO[j].id) { idx = j; break; }
             }
-            *(int *)d.target = idx;
+            *(int *)target = idx;
             break;
         }
-        case K_COLOR:
-        case K_SECTION:
-            break;
+        default:
+            break;  // COLOR / SECTION は後段で処理
         }
     }
 
@@ -408,10 +393,14 @@ void settings_load() {
     if (g_color_preset == COLOR_PRESET_USER_DEFINED) {
         CalcyxColors def;
         colors_init_defaults(&def);
-        for (const Desc &d : SETTINGS_TABLE) {
-            if (d.kind != K_COLOR) continue;
+        for (int i = 0; i < n; i++) {
+            const calcyx_setting_desc_t &d = table[i];
+            if (d.kind != CALCYX_SETTING_KIND_COLOR) continue;
+            if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) continue;
+            void *target = gui_target(d.key);
+            if (!target) continue;
             Fl_Color fallback = color_default(d.key, def);
-            *(Fl_Color *)d.target = hex_to_color(map_get(kv, d.key, ""), fallback);
+            *(Fl_Color *)target = hex_to_color(map_get(kv, d.key, ""), fallback);
         }
     } else {
         colors_init_preset(&g_colors, g_color_preset);
@@ -432,33 +421,52 @@ void settings_save() {
           "# Custom comments will not be preserved.\n", fp);
 
     bool user_colors = (g_color_preset == COLOR_PRESET_USER_DEFINED);
-    for (const Desc &d : SETTINGS_TABLE) {
+
+    int n = 0;
+    const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
+    for (int i = 0; i < n; i++) {
+        const calcyx_setting_desc_t &d = table[i];
         switch (d.kind) {
-        case K_SECTION:
+        case CALCYX_SETTING_KIND_SECTION:
             fputc('\n', fp);
             fputs(d.section, fp);
             break;
-        case K_BOOL:
-            fprintf(fp, "%s = %s\n", d.key, *(bool *)d.target ? "true" : "false");
-            break;
-        case K_INT:
-            fprintf(fp, "%s = %d\n", d.key, *(int *)d.target);
-            break;
-        case K_FONT:
-            fprintf(fp, "%s = %s\n", d.key, font_id_to_name(*(int *)d.target).c_str());
-            break;
-        case K_HOTKEY_KEY:
-            fprintf(fp, "%s = %s\n", d.key, plat_flkey_to_keyname(*(int *)d.target));
-            break;
-        case K_COLOR_PRESET:
-            fprintf(fp, "%s = %s\n", d.key, COLOR_PRESET_INFO[*(int *)d.target].id);
-            break;
-        case K_COLOR:
-            if (user_colors) {
+        default: {
+            if (!d.key) break;
+            if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) break;
+            void *target = gui_target(d.key);
+            if (!target) break;
+            switch (d.kind) {
+            case CALCYX_SETTING_KIND_BOOL:
                 fprintf(fp, "%s = %s\n", d.key,
-                        color_to_hex(*(Fl_Color *)d.target).c_str());
+                        *(bool *)target ? "true" : "false");
+                break;
+            case CALCYX_SETTING_KIND_INT:
+                fprintf(fp, "%s = %d\n", d.key, *(int *)target);
+                break;
+            case CALCYX_SETTING_KIND_FONT:
+                fprintf(fp, "%s = %s\n", d.key,
+                        font_id_to_name(*(int *)target).c_str());
+                break;
+            case CALCYX_SETTING_KIND_HOTKEY:
+                fprintf(fp, "%s = %s\n", d.key,
+                        plat_flkey_to_keyname(*(int *)target));
+                break;
+            case CALCYX_SETTING_KIND_COLOR_PRESET:
+                fprintf(fp, "%s = %s\n", d.key,
+                        COLOR_PRESET_INFO[*(int *)target].id);
+                break;
+            case CALCYX_SETTING_KIND_COLOR:
+                if (user_colors) {
+                    fprintf(fp, "%s = %s\n", d.key,
+                            color_to_hex(*(Fl_Color *)target).c_str());
+                }
+                break;
+            default:
+                break;
             }
             break;
+        }
         }
     }
 
