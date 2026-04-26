@@ -4,8 +4,10 @@
  * GUI / TUI / CLI が同じテーブルを参照する。 */
 
 #include "settings_schema.h"
+#include "color_presets.h"
 
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 /* ---- ヘルパマクロ ---- */
@@ -23,6 +25,8 @@
     { CALCYX_SETTING_KIND_COLOR_PRESET, k, scope, 0,0,di, 0, sd, NULL }
 #define COLOR(k, scope) \
     { CALCYX_SETTING_KIND_COLOR, k, scope, 0,0,0, 0, NULL, NULL }
+#define STR(k, scope, sd) \
+    { CALCYX_SETTING_KIND_STRING, k, scope, 0,0,0, 0, sd, NULL }
 
 #define G  CALCYX_SETTING_SCOPE_GUI
 #define T  CALCYX_SETTING_SCOPE_TUI
@@ -104,7 +108,12 @@ static const calcyx_setting_desc_t TABLE[] = {
     COLOR("color_pop_text",    B),
     COLOR("color_pop_desc",    B),
     COLOR("color_pop_desc_bg", B),
-    COLOR("color_pop_border",  B)
+    COLOR("color_pop_border",  B),
+
+    SEC("# ---- TUI ----\n"
+        "# tui_color_source: 'semantic' (default) — 端末色基調 + 意味付け 2 色\n"
+        "#                   'mirror_gui'         — calcyx.conf の color_* / color_preset を再現\n"),
+    STR("tui_color_source", T, "semantic")
 };
 
 static const int TABLE_N = (int)(sizeof(TABLE) / sizeof(TABLE[0]));
@@ -125,11 +134,61 @@ const calcyx_setting_desc_t *calcyx_settings_find(const char *key) {
     return NULL;
 }
 
+/* COLOR キー名と calcyx_color_palette_t のフィールドオフセットの対応表.
+ * シンプルに strcmp で線形検索する (件数 28). */
+static const struct {
+    const char *key;
+    size_t      offset;
+} COLOR_KEY_OFFSETS[] = {
+    { "color_bg",          offsetof(calcyx_color_palette_t, bg) },
+    { "color_sel_bg",      offsetof(calcyx_color_palette_t, sel_bg) },
+    { "color_rowline",     offsetof(calcyx_color_palette_t, rowline) },
+    { "color_sep",         offsetof(calcyx_color_palette_t, sep) },
+    { "color_text",        offsetof(calcyx_color_palette_t, text) },
+    { "color_cursor",      offsetof(calcyx_color_palette_t, cursor) },
+    { "color_symbol",      offsetof(calcyx_color_palette_t, symbol) },
+    { "color_ident",       offsetof(calcyx_color_palette_t, ident) },
+    { "color_special",     offsetof(calcyx_color_palette_t, special) },
+    { "color_si_pfx",      offsetof(calcyx_color_palette_t, si_pfx) },
+    { "color_paren0",      offsetof(calcyx_color_palette_t, paren[0]) },
+    { "color_paren1",      offsetof(calcyx_color_palette_t, paren[1]) },
+    { "color_paren2",      offsetof(calcyx_color_palette_t, paren[2]) },
+    { "color_paren3",      offsetof(calcyx_color_palette_t, paren[3]) },
+    { "color_error",       offsetof(calcyx_color_palette_t, error) },
+    { "color_ui_win_bg",   offsetof(calcyx_color_palette_t, ui_win_bg) },
+    { "color_ui_bg",       offsetof(calcyx_color_palette_t, ui_bg) },
+    { "color_ui_input",    offsetof(calcyx_color_palette_t, ui_input) },
+    { "color_ui_btn",      offsetof(calcyx_color_palette_t, ui_btn) },
+    { "color_ui_menu",     offsetof(calcyx_color_palette_t, ui_menu) },
+    { "color_ui_text",     offsetof(calcyx_color_palette_t, ui_text) },
+    { "color_ui_label",    offsetof(calcyx_color_palette_t, ui_label) },
+    /* color_ui_dim はプリセット由来 (ui_text と ui_menu の中間色) なので
+     * テーブル外。COLOR_PRESET_INFO 経由でデフォルトを返さない。 */
+    { "color_pop_bg",      offsetof(calcyx_color_palette_t, pop_bg) },
+    { "color_pop_sel",     offsetof(calcyx_color_palette_t, pop_sel) },
+    { "color_pop_text",    offsetof(calcyx_color_palette_t, pop_text) },
+    { "color_pop_desc",    offsetof(calcyx_color_palette_t, pop_desc) },
+    { "color_pop_desc_bg", offsetof(calcyx_color_palette_t, pop_desc_bg) },
+    { "color_pop_border",  offsetof(calcyx_color_palette_t, pop_border) }
+};
+
 const char *calcyx_settings_color_default(const char *key,
                                           const char *preset_id) {
-    /* Phase A ではプリセット色テーブルを shared/ に持っていないので NULL.
-     * Phase C で shared/color_presets.c が入った後に実装する. */
-    (void)key;
-    (void)preset_id;
+    static char buf[8];
+    int preset;
+    calcyx_color_palette_t pal;
+    size_t i;
+    if (!key || !preset_id) return NULL;
+    preset = calcyx_color_preset_lookup(preset_id);
+    if (preset < 0) return NULL;
+    calcyx_color_preset_get(preset, &pal);
+    for (i = 0; i < sizeof(COLOR_KEY_OFFSETS)/sizeof(COLOR_KEY_OFFSETS[0]); i++) {
+        if (strcmp(COLOR_KEY_OFFSETS[i].key, key) == 0) {
+            const calcyx_rgb_t *rgb =
+                (const calcyx_rgb_t *)((const char *)&pal + COLOR_KEY_OFFSETS[i].offset);
+            snprintf(buf, sizeof(buf), "#%02X%02X%02X", rgb->r, rgb->g, rgb->b);
+            return buf;
+        }
+    }
     return NULL;
 }

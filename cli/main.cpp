@@ -218,7 +218,8 @@ int run_print_config(const char *path) {
         }
         case CALCYX_SETTING_KIND_FONT:
         case CALCYX_SETTING_KIND_HOTKEY:
-        case CALCYX_SETTING_KIND_COLOR_PRESET: {
+        case CALCYX_SETTING_KIND_COLOR_PRESET:
+        case CALCYX_SETTING_KIND_STRING: {
             const char *v = raw ? raw : (d.s_def ? d.s_def : "");
             std::printf("%s = %s\n", d.key, v);
             break;
@@ -309,10 +310,19 @@ void check_cb(const char *key, const char *value, int line_no, void *user) {
     }
     case CALCYX_SETTING_KIND_FONT:
     case CALCYX_SETTING_KIND_HOTKEY:
+    case CALCYX_SETTING_KIND_STRING:
         if (!*value) {
             std::fprintf(stderr,
                 "warning: line %d: '%s' is empty\n", line_no, key);
             cx->warnings++;
+        } else if (std::strcmp(key, "tui_color_source") == 0) {
+            if (std::strcmp(value, "semantic") != 0 &&
+                std::strcmp(value, "mirror_gui") != 0) {
+                std::fprintf(stderr,
+                    "warning: line %d: '%s' = '%s': expected 'semantic' or 'mirror_gui'\n",
+                    line_no, key, value);
+                cx->warnings++;
+            }
         }
         break;
     default:
