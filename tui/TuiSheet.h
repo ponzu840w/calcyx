@@ -26,9 +26,13 @@ namespace calcyx::tui {
  * 各メンバは calcyx_color_palette_t の一部。 */
 struct TuiPalette {
     bool active = false;
+    /* シート描画用 */
     calcyx_rgb_t bg{}, sel_bg{}, text{}, cursor{};
     calcyx_rgb_t symbol{}, ident{}, special{}, si_pfx{}, error{};
     calcyx_rgb_t paren[4]{};
+    /* UI クローム用 (メニューバー / 最下ヘルプ行).
+     * GUI の calcyx_color_palette_t.ui_* に対応. */
+    calcyx_rgb_t ui_menu{}, ui_text{}, ui_label{};
 };
 
 /* sheet_model をラップして、FTXUI の Component として振る舞う。

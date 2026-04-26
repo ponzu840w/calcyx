@@ -460,6 +460,9 @@ void TuiApp::apply_settings_from_conf() {
                     { "color_paren1",   &pal.paren[1] },
                     { "color_paren2",   &pal.paren[2] },
                     { "color_paren3",   &pal.paren[3] },
+                    { "color_ui_menu",  &pal.ui_menu },
+                    { "color_ui_text",  &pal.ui_text },
+                    { "color_ui_label", &pal.ui_label },
                 };
                 for (const auto &o : overrides) {
                     auto it = kv.find(o.key);
@@ -471,17 +474,20 @@ void TuiApp::apply_settings_from_conf() {
                 }
             }
 
-            tp.active  = true;
-            tp.bg      = pal.bg;
-            tp.sel_bg  = pal.sel_bg;
-            tp.text    = pal.text;
-            tp.cursor  = pal.cursor;
-            tp.symbol  = pal.symbol;
-            tp.ident   = pal.ident;
-            tp.special = pal.special;
-            tp.si_pfx  = pal.si_pfx;
-            tp.error   = pal.error;
+            tp.active   = true;
+            tp.bg       = pal.bg;
+            tp.sel_bg   = pal.sel_bg;
+            tp.text     = pal.text;
+            tp.cursor   = pal.cursor;
+            tp.symbol   = pal.symbol;
+            tp.ident    = pal.ident;
+            tp.special  = pal.special;
+            tp.si_pfx   = pal.si_pfx;
+            tp.error    = pal.error;
             for (int i = 0; i < 4; ++i) tp.paren[i] = pal.paren[i];
+            tp.ui_menu  = pal.ui_menu;
+            tp.ui_text  = pal.ui_text;
+            tp.ui_label = pal.ui_label;
         }
         sheet_->set_palette(tp);
     }
@@ -1128,7 +1134,15 @@ Element TuiApp::menu_bar_render() const {
         cells.push_back(std::move(cell));
         cells.push_back(text(" "));
     }
-    return hbox(std::move(cells));
+    /* 行末まで背景を塗るための filler. mirror_gui のときは ui_menu 色を当てる. */
+    cells.push_back(filler());
+    Element bar = hbox(std::move(cells));
+    if (sheet_ && sheet_->palette().active) {
+        const auto &p = sheet_->palette();
+        bar = bar | color(Color::RGB(p.ui_text.r, p.ui_text.g, p.ui_text.b))
+                  | bgcolor(Color::RGB(p.ui_menu.r, p.ui_menu.g, p.ui_menu.b));
+    }
+    return bar;
 }
 
 Element TuiApp::menu_overlay() const {
@@ -1736,6 +1750,14 @@ int TuiApp::run(const std::string &initial_file) {
         } else {
             bottom_slot = text(" F1 help  Alt+F menu  ^Q quit  "
                                "^Z/^Y undo/redo  F8-F12 fmt ") | dim;
+        }
+        /* mirror_gui のときは最下行も ui_menu 背景 + ui_text 文字色で塗る.
+         * 行末まで背景が広がるよう filler を足してから bgcolor を当てる. */
+        if (bottom_visible && sheet_->palette().active) {
+            const auto &p = sheet_->palette();
+            bottom_slot = hbox({ bottom_slot, filler() })
+                | color(Color::RGB(p.ui_text.r, p.ui_text.g, p.ui_text.b))
+                | bgcolor(Color::RGB(p.ui_menu.r, p.ui_menu.g, p.ui_menu.b));
         }
         base = bottom_visible
                  ? vbox({ body | flex, bottom_slot })
