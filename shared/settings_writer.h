@@ -35,6 +35,18 @@ int calcyx_settings_write_preserving(const char            *path,
                                      calcyx_setting_value_fn lookup,
                                      void                  *user);
 
+/* スキーマの既定値で path に conf を新規生成する. 既存ファイルがあれば
+ * 何もしない (上書きしない).
+ *
+ * - first_time_header: 先頭に書くコメント行. NULL なら省略.
+ * - 戻り値:  1 = 新規生成した
+ *            0 = 既に存在したのでスキップ
+ *           -1 = 書き込みエラー (errno が立つ).
+ *
+ * 内部的に calcyx_settings_write_preserving の defaults lookup 版を呼ぶだけ. */
+int calcyx_settings_init_defaults(const char *path,
+                                  const char *first_time_header);
+
 #ifdef __cplusplus
 }
 #endif

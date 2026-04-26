@@ -281,3 +281,42 @@ int calcyx_settings_write_preserving(const char            *path,
     free(out.data);
     return rc;
 }
+
+/* ---- defaults lookup ---- */
+
+static int defaults_lookup(const char *key, char *buf, size_t buflen, void *user) {
+    const calcyx_setting_desc_t *d;
+    (void)user;
+    d = calcyx_settings_find(key);
+    if (!d) return 0;
+    switch (d->kind) {
+    case CALCYX_SETTING_KIND_BOOL:
+        snprintf(buf, buflen, "%s", d->b_def ? "true" : "false");
+        return 1;
+    case CALCYX_SETTING_KIND_INT:
+        snprintf(buf, buflen, "%d", d->i_def);
+        return 1;
+    case CALCYX_SETTING_KIND_FONT:
+    case CALCYX_SETTING_KIND_HOTKEY:
+    case CALCYX_SETTING_KIND_COLOR_PRESET:
+    case CALCYX_SETTING_KIND_STRING:
+        snprintf(buf, buflen, "%s", d->s_def ? d->s_def : "");
+        return 1;
+    case CALCYX_SETTING_KIND_COLOR:
+        /* defaults は color_preset = 非 user なので color_* は出力しない. */
+        return 0;
+    default:
+        return 0;
+    }
+}
+
+int calcyx_settings_init_defaults(const char *path, const char *first_time_header) {
+    FILE *fp;
+    int   rc;
+    if (!path) return -1;
+    fp = fopen(path, "rb");
+    if (fp) { fclose(fp); return 0; }  /* 既存. */
+    rc = calcyx_settings_write_preserving(path, first_time_header,
+                                          defaults_lookup, NULL);
+    return (rc == 0) ? 1 : -1;
+}

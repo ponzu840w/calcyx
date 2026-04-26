@@ -344,6 +344,12 @@ void settings_init_defaults() {
 
 // ---- load ----
 void settings_load() {
+    /* 初回起動時に conf が無ければ canonical な既定値テンプレートを書き出す.
+     * ユーザーが手編集の足がかりにできる. 既存ファイルには触らない. */
+    ensure_path();
+    calcyx_settings_init_defaults(s_conf_path.c_str(),
+        "# calcyx user settings — edit freely.\n");
+
     auto kv = read_conf();
     if (kv.empty()) return;
 

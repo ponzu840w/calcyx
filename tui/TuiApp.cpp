@@ -16,6 +16,7 @@
 #include "settings_schema.h"
 #include "color_presets.h"
 #include "settings_io.h"
+#include "settings_writer.h"
 
 #if defined(_WIN32)
 #  include <direct.h>  /* _mkdir */
@@ -253,15 +254,6 @@ std::string preferences_conf_path() {
 #endif
 }
 
-/* ファイルが無ければ空ファイルを作る (エディタが新規作成扱いになるが、
- * 既に存在するなら何もしない)。 */
-void preferences_touch(const std::string &path) {
-    FILE *fp = std::fopen(path.c_str(), "r");
-    if (fp) { std::fclose(fp); return; }
-    fp = std::fopen(path.c_str(), "a");
-    if (fp) std::fclose(fp);
-}
-
 /* calcyx.conf の最小パーサ。GUI 側 (settings_globals.cpp::read_conf) の
  * 仕様に合わせる: '#' で始まる行と空行はスキップ、key=value の
  * 前後空白を除去して std::map に積む。FLTK 依存を引き込まないために
@@ -321,7 +313,10 @@ std::string preferences_shell_quote(const std::string &s) {
 
 void TuiApp::do_preferences() {
     std::string path = preferences_conf_path();
-    preferences_touch(path);
+    /* 通常は apply_settings_from_conf で初期生成済み. 万一削除されていても
+     * テンプレで再生成してから開く. */
+    calcyx_settings_init_defaults(path.c_str(),
+        "# calcyx user settings — edit freely.\n");
 
 #if defined(_WIN32)
     /* 関連付けされたエディタ (テキスト) で開く。ShellExecute は非同期だが
@@ -358,7 +353,13 @@ void TuiApp::do_preferences() {
  * スキーマには出るが TUI が扱わない BOTH キーは下の連鎖でカバー漏れ
  * として認識できる (= スキーマ追加時に TUI 側でも反映を判断する強制点)。 */
 void TuiApp::apply_settings_from_conf() {
-    auto kv = conf_read(preferences_conf_path());
+    std::string path = preferences_conf_path();
+    /* 初回起動時に conf が無ければ canonical な既定値テンプレートを書き出す.
+     * 手編集の足がかり. 既存ファイルには触らない. */
+    calcyx_settings_init_defaults(path.c_str(),
+        "# calcyx user settings — edit freely.\n");
+
+    auto kv = conf_read(path);
     if (kv.empty()) return;
 
     /* TUI 側で受け取った値は最後にまとめて反映 (clamp はキーごとに) */
