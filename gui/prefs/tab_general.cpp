@@ -1,6 +1,7 @@
 // tab_general.cpp — General タブ (Window / System Tray / Global Hotkey / Configuration)
 
 #include "prefs_common.h"
+#include "i18n.h"
 #include "app_prefs.h"
 #include "platform_tray.h"
 #include <FL/Fl_Box.H>
@@ -36,7 +37,7 @@ static void open_config_dir_cb(Fl_Widget *, void *) {
 }
 
 void build_general_tab(DlgState &st, int tab_h) {
-    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, " General ");
+    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, _(" General "));
     g->color(DLG_BG);
     g->selection_color(DLG_BG);
     g->labelcolor(DLG_TEXT);
@@ -49,9 +50,9 @@ void build_general_tab(DlgState &st, int tab_h) {
     // ===== Language =====
     {
         int body_h = 56;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Language");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Language"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
-        Fl_Box *lb = new Fl_Box(lx + 10, inner_y, 80, 22, "Language:");
+        Fl_Box *lb = new Fl_Box(lx + 10, inner_y, 80, 22, _("Language:"));
         lb->box(FL_NO_BOX);
         lb->labelcolor(DLG_LABEL);
         lb->labelsize(12);
@@ -70,7 +71,7 @@ void build_general_tab(DlgState &st, int tab_h) {
         else                          st.language_choice->value(0);  /* auto */
 
         Fl_Box *note = new Fl_Box(lx + 30, inner_y + 24, sw - 40, 18,
-            "Restart calcyx after changing language.");
+            _("Restart calcyx after changing language."));
         note->box(FL_NO_BOX);
         note->labelcolor(DLG_LABEL);
         note->labelsize(11);
@@ -83,7 +84,7 @@ void build_general_tab(DlgState &st, int tab_h) {
     // ===== Window =====
     {
         int body_h = 90;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Window");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Window"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
         st.remember_pos_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
             "Remember window position on exit");
@@ -111,7 +112,7 @@ void build_general_tab(DlgState &st, int tab_h) {
     // ===== System Tray =====
     {
         int body_h = 56;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "System Tray");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("System Tray"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
         st.tray_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
             "Enable system tray icon");
@@ -131,7 +132,7 @@ void build_general_tab(DlgState &st, int tab_h) {
     // ===== Global Hotkey =====
     {
         int body_h = 94;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Global Hotkey");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Global Hotkey"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         st.hotkey_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
@@ -218,7 +219,7 @@ void build_general_tab(DlgState &st, int tab_h) {
     // ===== Configuration =====
     {
         int body_h = 70;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Configuration");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Configuration"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         std::string cfg_dir = AppPrefs::config_dir();
@@ -228,7 +229,7 @@ void build_general_tab(DlgState &st, int tab_h) {
         path_box->labelsize(11);
         path_box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-        Fl_Button *open_btn = new Fl_Button(lx + 10, inner_y + 22, 120, 26, "Open folder");
+        Fl_Button *open_btn = new Fl_Button(lx + 10, inner_y + 22, 120, 26, _("Open folder"));
         open_btn->color(DLG_BTN);
         open_btn->labelcolor(DLG_TEXT);
         open_btn->labelsize(12);

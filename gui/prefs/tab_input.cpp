@@ -1,9 +1,10 @@
 // tab_input.cpp — Input タブ (補完 / 括弧の自動閉じ)
 
 #include "prefs_common.h"
+#include "i18n.h"
 
 void build_input_tab(DlgState &st, int tab_h) {
-    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, " Input ");
+    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, _(" Input "));
     g->color(DLG_BG);
     g->selection_color(DLG_BG);
     g->labelcolor(DLG_TEXT);
@@ -16,7 +17,7 @@ void build_input_tab(DlgState &st, int tab_h) {
     // ===== Completion =====
     {
         int body_h = 134;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Completion");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Completion"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         st.auto_complete_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
@@ -62,7 +63,7 @@ void build_input_tab(DlgState &st, int tab_h) {
     // ===== Brackets =====
     {
         int body_h = 36;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Brackets");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Brackets"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         st.auto_brackets_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
@@ -77,7 +78,7 @@ void build_input_tab(DlgState &st, int tab_h) {
     // ===== Editing =====
     {
         int body_h = 36;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Editing");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Editing"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         st.bs_delete_empty_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,

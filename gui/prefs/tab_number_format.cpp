@@ -6,6 +6,7 @@
 //   - Preview (プレビュー SheetView)
 
 #include "prefs_common.h"
+#include "i18n.h"
 #include "SheetView.h"
 #include <FL/Fl_Box.H>
 
@@ -29,7 +30,7 @@ static void exp_toggle_cb(Fl_Widget *, void *data) {
 }
 
 void build_number_format_tab(DlgState &st, int tab_h) {
-    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, " Number Format ");
+    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, _(" Number Format "));
     g->color(DLG_BG);
     g->selection_color(DLG_BG);
     g->labelcolor(DLG_TEXT);
@@ -42,7 +43,7 @@ void build_number_format_tab(DlgState &st, int tab_h) {
     // ===== Decimal =====
     {
         int body_h = 40;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Decimal");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Decimal"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         Fl_Box *lb = new Fl_Box(lx + 10, inner_y, 300, 22,
@@ -112,7 +113,7 @@ void build_number_format_tab(DlgState &st, int tab_h) {
     // ===== Numeric Separators =====
     {
         int body_h = 62;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Numeric Separators");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Numeric Separators"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         st.sep_thousands_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,

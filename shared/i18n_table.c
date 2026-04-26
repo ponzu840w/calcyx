@@ -69,7 +69,52 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     /* === GUI: About === */
     { "About calcyx",          "calcyx について" },
     { "A programmable calculator based on Calctus.",
-      "Calctus をベースにしたプログラム可能な電卓" }
+      "Calctus をベースにしたプログラム可能な電卓" },
+
+    /* === GUI: Preferences ダイアログ === */
+    { "Preferences",                "設定" },
+    { "Reset all settings to defaults", "すべての設定をデフォルトに戻す" },
+    { "Reset all settings to defaults?", "すべての設定をデフォルトに戻しますか?" },
+
+    /* タブ名 (FLTK タブの内側マージン用に前後スペース) */
+    { " General ",         " 一般 " },
+    { " Appearance ",      " 外観 " },
+    { " Input ",           " 入力 " },
+    { " Number Format ",   " 数値書式 " },
+    { " Calculation ",     " 計算 " },
+
+    /* General タブ */
+    { "Language",                              "言語" },
+    { "Language:",                             "言語:" },
+    { "Restart calcyx after changing language.",
+      "言語を変更したら calcyx を再起動してください。" },
+    { "Window",                                "ウィンドウ" },
+    { "System Tray",                           "システムトレイ" },
+    { "Global Hotkey",                         "グローバルホットキー" },
+    { "Configuration",                         "設定ファイル" },
+    { "Open folder",                           "フォルダを開く" },
+
+    /* Appearance タブ */
+    { "Font",                                  "フォント" },
+    { "Font:",                                 "フォント:" },
+    { "Size:",                                 "サイズ:" },
+    { "Colors",                                "色" },
+    { "Preset:",                               "プリセット:" },
+    { "Copy to user-defined",                  "ユーザー定義にコピー" },
+    { "Copy current preset colors to user-defined and switch to it for editing",
+      "現在のプリセット色をユーザー定義にコピーし, 編集モードに切替えます" },
+
+    /* Input タブ */
+    { "Completion",                            "補完" },
+    { "Brackets",                              "括弧" },
+    { "Editing",                               "編集" },
+
+    /* Number Format タブ */
+    { "Decimal",                               "小数" },
+    { "Numeric Separators",                    "数値区切り" },
+
+    /* Calculation タブ */
+    { "Limits",                                "上限" }
 };
 
 const int CALCYX_TR_TABLE_JA_N =

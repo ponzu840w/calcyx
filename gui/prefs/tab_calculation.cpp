@@ -1,10 +1,11 @@
 // tab_calculation.cpp — Calculation タブ (実行時制限)
 
 #include "prefs_common.h"
+#include "i18n.h"
 #include <FL/Fl_Box.H>
 
 void build_calculation_tab(DlgState &st, int tab_h) {
-    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, " Calculation ");
+    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, _(" Calculation "));
     g->color(DLG_BG);
     g->selection_color(DLG_BG);
     g->labelcolor(DLG_TEXT);
@@ -15,7 +16,7 @@ void build_calculation_tab(DlgState &st, int tab_h) {
     int ly = 50;
 
     int body_h = 110;
-    Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Limits");
+    Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Limits"));
     int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
     const int label_x = lx + 10;

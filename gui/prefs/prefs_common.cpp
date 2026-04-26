@@ -8,6 +8,7 @@
 // ・OK / Apply / Reset 動作 (apply_settings / reset_to_defaults)
 
 #include "prefs_common.h"
+#include "i18n.h"
 #include "SheetView.h"
 #include "settings_globals.h"
 #include "platform_tray.h"

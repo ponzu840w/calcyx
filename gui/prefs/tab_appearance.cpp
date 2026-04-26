@@ -1,9 +1,10 @@
-// tab_appearance.cpp — Appearance タブ (Font + Colors)
+// tab_appearance.cpp —" Appearance "タブ (Font + Colors)
 //
 // PrefsDialog.cpp から抜き出したタブ構築処理。フォント選択 Picker・
 // カラースウォッチ・プリセット選択とプレビュー SheetView を配置する。
 
 #include "prefs_common.h"
+#include "i18n.h"
 #include "SheetView.h"
 #include <FL/Fl_Hold_Browser.H>
 #include <FL/Fl_Color_Chooser.H>
@@ -170,9 +171,9 @@ static void open_font_picker(FontTab *ft, Fl_Window *parent) {
     }, &ps);
     prop_chk.callback(sys_chk.callback(), &ps);
 
-    Fl_Button ok_btn(PW - 170, PH - 40, 75, 30, "OK");
+    Fl_Button ok_btn(PW - 170, PH - 40, 75, 30, _("OK"));
     ok_btn.color(DLG_BTN); ok_btn.labelcolor(DLG_TEXT); ok_btn.labelsize(12);
-    Fl_Button cancel_btn(PW - 85, PH - 40, 75, 30, "Cancel");
+    Fl_Button cancel_btn(PW - 85, PH - 40, 75, 30, _("Cancel"));
     cancel_btn.color(DLG_BTN); cancel_btn.labelcolor(DLG_TEXT); cancel_btn.labelsize(12);
 
     bool accepted = false;
@@ -256,7 +257,7 @@ static void copy_to_user_cb(Fl_Widget *, void *data) {
 }
 
 void build_appearance_tab(DlgState &st, int tab_h) {
-    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, " Appearance ");
+    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, _(" Appearance "));
     g->color(DLG_BG);
     g->selection_color(DLG_BG);
     g->labelcolor(DLG_TEXT);
@@ -265,7 +266,7 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     int lx = 20, ly = 50;
 
     // --- Font ---
-    Fl_Box *sec_font = new Fl_Box(lx, ly, 200, 20, "Font");
+    Fl_Box *sec_font = new Fl_Box(lx, ly, 200, 20, _("Font"));
     sec_font->labelcolor(DLG_LABEL);
     sec_font->labelsize(12);
     sec_font->labelfont(FL_BOLD);
@@ -276,7 +277,7 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     st.font.selected_id = g_font_id;
     st.font.selected_name = font_id_to_display_name(g_font_id);
 
-    Fl_Box *lb1 = new Fl_Box(lx + 10, ly, lw, 25, "Font:");
+    Fl_Box *lb1 = new Fl_Box(lx + 10, ly, lw, 25, _("Font:"));
     style_label(lb1);
     lb1->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
@@ -290,7 +291,7 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     update_font_btn(&st.font);
 
     ly += 28;
-    Fl_Box *lb2 = new Fl_Box(lx + 10, ly, lw, 25, "Size:");
+    Fl_Box *lb2 = new Fl_Box(lx + 10, ly, lw, 25, _("Size:"));
     style_label(lb2);
     lb2->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
@@ -303,14 +304,14 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     ly += 30;
 
     // --- Colors ---
-    Fl_Box *sec_col = new Fl_Box(lx, ly, 200, 20, "Colors");
+    Fl_Box *sec_col = new Fl_Box(lx, ly, 200, 20, _("Colors"));
     sec_col->labelcolor(DLG_LABEL);
     sec_col->labelsize(12);
     sec_col->labelfont(FL_BOLD);
     sec_col->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
     ly += 22;
 
-    Fl_Box *lb_preset = new Fl_Box(lx + 10, ly, 60, 25, "Preset:");
+    Fl_Box *lb_preset = new Fl_Box(lx + 10, ly, 60, 25, _("Preset:"));
     style_label(lb_preset);
     lb_preset->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
     st.preset_choice = new Fl_Choice(lx + 70, ly, 200, 25);
@@ -324,11 +325,11 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     st.preset_choice->value(g_color_preset);
     st.preset_choice->callback(preset_change_cb, &st);
 
-    Fl_Button *copy_btn = new Fl_Button(lx + 275, ly, 150, 25, "Copy to user-defined");
+    Fl_Button *copy_btn = new Fl_Button(lx + 275, ly, 150, 25, _("Copy to user-defined"));
     copy_btn->color(DLG_BTN);
     copy_btn->labelcolor(DLG_TEXT);
     copy_btn->labelsize(12);
-    copy_btn->tooltip("Copy current preset colors to user-defined and switch to it for editing");
+    copy_btn->tooltip(_("Copy current preset colors to user-defined and switch to it for editing"));
     copy_btn->callback(copy_to_user_cb, &st);
     ly += 28;
 
