@@ -34,7 +34,7 @@ FLTK・mpdecimal はビルド時に自動取得される。
 |---|---|
 | macOS | `brew install cmake` |
 | Linux | `sudo apt install cmake` |
-| Linux (GUI) | `sudo apt install libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev` |
+| Linux (GUI) | `sudo apt install libx11-dev libxext-dev libxft-dev libxfixes-dev libxrender-dev libxcursor-dev libxinerama-dev libfontconfig1-dev libgl1-mesa-dev` |
 
 **ターゲット別の追加パッケージ**
 
