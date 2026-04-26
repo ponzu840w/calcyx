@@ -47,6 +47,30 @@ static int buf_append_str(buf_t *b, const char *s) {
     return buf_append(b, s, strlen(s));
 }
 
+/* pos に n バイトを挿入. 成功 0, 失敗 -1. */
+static int buf_insert(buf_t *b, size_t pos, const char *data, size_t n) {
+    if (n == 0) return 0;
+    if (pos > b->len) return -1;
+    if (buf_reserve(b, n) != 0) return -1;
+    memmove(b->data + pos + n, b->data + pos, b->len - pos);
+    memcpy(b->data + pos, data, n);
+    b->len += n;
+    return 0;
+}
+
+/* hay の中から needle を探す. 見つかれば hay 内のオフセット, 無ければ
+ * (size_t)-1. needle_len = 0 のときは 0 を返す. */
+static size_t find_substring(const char *hay, size_t hay_len,
+                             const char *needle, size_t needle_len) {
+    size_t i;
+    if (needle_len == 0) return 0;
+    if (hay_len < needle_len) return (size_t)-1;
+    for (i = 0; i + needle_len <= hay_len; i++) {
+        if (memcmp(hay + i, needle, needle_len) == 0) return i;
+    }
+    return (size_t)-1;
+}
+
 static int buf_append_kv(buf_t *b, const char *key, const char *value) {
     if (buf_append_str(b, key) != 0) return -1;
     if (buf_append_str(b, " = ") != 0) return -1;
@@ -105,7 +129,8 @@ static int buf_append_kv_form(buf_t *b, const char *key, const char *value,
 
 /* スキーマエントリ d のドキュメントコメントを 1 行で出力する.
  * "# <desc>  range: lo..hi  default: <def>\n" のような形式.
- * 何も書く要素がなければ何も出さず 0 を返す. */
+ * desc が NULL のキーには doc を出さない (COLOR 系: 説明はセクション
+ * ヘッダ側で十分で, "# default: #102030" だけのゴミコメントを撒かない). */
 static int buf_append_doc(buf_t *b,
                           const calcyx_setting_desc_t *d,
                           const char *def_value) {
@@ -115,13 +140,11 @@ static int buf_append_doc(buf_t *b,
     size_t cap = sizeof(line);
     int   n;
 
+    if (!d->desc) return 0;
     line[0] = '\0';
-
-    if (d->desc) {
-        n = snprintf(line + pos, cap - pos, "%s", d->desc);
-        if (n > 0) pos += (size_t)n;
-        if (pos >= cap) pos = cap - 1;
-    }
+    n = snprintf(line + pos, cap - pos, "%s", d->desc);
+    if (n > 0) pos += (size_t)n;
+    if (pos >= cap) pos = cap - 1;
 
     /* kind ごとの自動付与: range / values. desc とは "  " で区切る. */
     tmp[0] = '\0';
@@ -271,57 +294,138 @@ int calcyx_settings_write_preserving(const char            *path,
         buf_append_str(&out, first_time_header);
     }
 
-    /* --- Pass 2: 未出現の既知キーをセクション単位で末尾追記 --- */
+    /* --- Pass 2: 未出現の既知キーをセクション内の本来の位置に挿入 ---
+     *
+     * Pass 1 で out に書き込まれた既存セクションヘッダの位置を先に scan で求め,
+     * 各セクションの末尾 (= 次セクションのヘッダ直前) に挿入する. これにより
+     * 「Colors セクションのキーを追加したら Colors セクション内に入る」という
+     * 直感に沿った配置になる. */
     {
-        i = 0;
-        while (i < n_table) {
-            if (table[i].kind == CALCYX_SETTING_KIND_SECTION) {
-                int j, has_missing = 0;
-                /* セクション範囲 [i+1, next-section) を見て missing がいるか確認 */
-                int next = i + 1;
-                while (next < n_table &&
-                       table[next].kind != CALCYX_SETTING_KIND_SECTION) {
-                    next++;
+        size_t *section_pos = (size_t *)malloc((size_t)n_table * sizeof(size_t));
+        if (!section_pos) {
+            rc = -1;
+        } else {
+            int k;
+            size_t scan_from = 0;
+            /* 1. out 内のセクションヘッダ位置を schema 順に sequential search.
+             *    見つからなかった (= Pass 1 で出てこなかった) ものは (size_t)-1. */
+            for (k = 0; k < n_table; k++) section_pos[k] = (size_t)-1;
+            for (k = 0; k < n_table; k++) {
+                if (table[k].kind == CALCYX_SETTING_KIND_SECTION
+                        && table[k].section) {
+                    size_t hdr_len = strlen(table[k].section);
+                    size_t off = find_substring(out.data + scan_from,
+                                                out.len - scan_from,
+                                                table[k].section, hdr_len);
+                    if (off != (size_t)-1) {
+                        section_pos[k] = scan_from + off;
+                        scan_from = section_pos[k] + hdr_len;
+                    }
                 }
-                for (j = i + 1; j < next; j++) {
-                    if (table[j].key && !seen[j]) {
+            }
+
+            /* 2. セクションごとにミッシングキーの挿入 buf を作り, 適切な位置へ. */
+            k = 0;
+            while (k < n_table && rc == 0) {
+                int next_section, j, has_missing, has_seen;
+                buf_t  add;
+                size_t insert_pos;
+
+                if (table[k].kind != CALCYX_SETTING_KIND_SECTION) { k++; continue; }
+
+                next_section = n_table;
+                for (j = k + 1; j < n_table; j++) {
+                    if (table[j].kind == CALCYX_SETTING_KIND_SECTION) {
+                        next_section = j; break;
+                    }
+                }
+
+                has_missing = 0; has_seen = 0;
+                for (j = k + 1; j < next_section; j++) {
+                    if (!table[j].key) continue;
+                    if (seen[j]) {
+                        has_seen = 1;
+                    } else {
                         char tmp_val[256];
                         int  tmp_def = 0;
                         int  ret = lookup(table[j].key, tmp_val, sizeof(tmp_val),
                                           &tmp_def, user);
-                        if (ret > 0) { has_missing = 1; break; }
+                        if (ret > 0) has_missing = 1;
                     }
                 }
-                if (has_missing) {
-                    /* セクションヘッダ: 出力末尾が改行で終わっていなければ
-                     * 改行を入れてから "\n" + section */
-                    if (out.len > 0 && out.data[out.len - 1] != '\n') {
-                        buf_append(&out, "\n", 1);
+                if (!has_missing) { k = next_section; continue; }
+
+                /* 挿入位置 = 次セクションヘッダの直前 (= 現セクションの末尾).
+                 * 次セクションが out に無いか, 自身が最後のセクションなら out.len. */
+                insert_pos = out.len;
+                {
+                    int m;
+                    for (m = next_section; m < n_table; m++) {
+                        if (table[m].kind == CALCYX_SETTING_KIND_SECTION
+                                && section_pos[m] != (size_t)-1) {
+                            insert_pos = section_pos[m];
+                            break;
+                        }
                     }
-                    buf_append(&out, "\n", 1);
-                    if (table[i].section) {
-                        buf_append_str(&out, table[i].section);
+                }
+
+                /* 挿入 buf を構築. */
+                add.data = NULL; add.len = 0; add.cap = 0;
+
+                /* セクションヘッダが out に無いなら, ここで前置. */
+                if (!has_seen && section_pos[k] == (size_t)-1
+                        && table[k].section) {
+                    /* 直前のバイトが \n でないなら改行付与. 視覚セパレータの空行を
+                     * 1 行追加してからヘッダ. */
+                    if (insert_pos > 0 && out.data[insert_pos - 1] != '\n') {
+                        buf_append(&add, "\n", 1);
                     }
-                    /* セクション内のミッシングキーを順に出力. ドキュメントコメ
-                     * ント + (デフォルト値ならコメントアウトした) key = value 行. */
-                    for (j = i + 1; j < next; j++) {
-                        if (table[j].key && !seen[j]) {
-                            char val[256];
-                            int  is_default = 0;
-                            int  ret = lookup(table[j].key, val, sizeof(val),
-                                              &is_default, user);
-                            if (ret > 0) {
-                                buf_append_doc(&out, &table[j], val);
-                                buf_append_kv_form(&out, table[j].key, val,
-                                                   is_default);
+                    /* 末尾追記時のみ視覚的セパレータの空行を入れる. 中間挿入では
+                     * 既に直前に空行がある前提なので付けない. */
+                    if (insert_pos == out.len) {
+                        buf_append(&add, "\n", 1);
+                    }
+                    buf_append_str(&add, table[k].section);
+                }
+
+                for (j = k + 1; j < next_section; j++) {
+                    if (table[j].key && !seen[j]) {
+                        char val[256];
+                        int  is_default = 0;
+                        int  ret = lookup(table[j].key, val, sizeof(val),
+                                          &is_default, user);
+                        if (ret > 0) {
+                            buf_append_doc(&add, &table[j], val);
+                            buf_append_kv_form(&add, table[j].key, val,
+                                               is_default);
+                        }
+                    }
+                }
+
+                /* 中間挿入の場合, 直後にくる次セクションヘッダとの間に
+                 * 視覚的セパレータの空行を 1 行入れる. */
+                if (add.len > 0 && insert_pos < out.len) {
+                    buf_append(&add, "\n", 1);
+                }
+
+                if (add.len > 0) {
+                    if (buf_insert(&out, insert_pos, add.data, add.len) != 0) {
+                        rc = -1;
+                    } else {
+                        /* 挿入後, insert_pos 以降にあった section_pos を補正. */
+                        int m;
+                        for (m = 0; m < n_table; m++) {
+                            if (section_pos[m] != (size_t)-1
+                                    && section_pos[m] >= insert_pos) {
+                                section_pos[m] += add.len;
                             }
                         }
                     }
                 }
-                i = next;
-            } else {
-                i++;
+                free(add.data);
+                k = next_section;
             }
+            free(section_pos);
         }
     }
 
