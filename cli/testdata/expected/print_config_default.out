@@ -1,3 +1,6 @@
+# ---- Language ----
+language = auto
+
 # ---- Font ----
 font = Courier
 font_size = 15

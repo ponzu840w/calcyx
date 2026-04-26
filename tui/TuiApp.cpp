@@ -17,6 +17,7 @@
 #include "color_presets.h"
 #include "settings_io.h"
 #include "settings_writer.h"
+#include "i18n.h"
 
 #if defined(_WIN32)
 #  include <direct.h>  /* _mkdir */
@@ -364,6 +365,16 @@ void TuiApp::apply_settings_from_conf() {
 
     auto kv = conf_read(path);
     if (kv.empty()) return;
+
+    /* 言語: 起動時 1 回だけ反映. ホットリロードはしない. */
+    {
+        static bool s_lang_inited = false;
+        if (!s_lang_inited) {
+            auto it = kv.find("language");
+            calcyx_i18n_init(it != kv.end() ? it->second.c_str() : "auto");
+            s_lang_inited = true;
+        }
+    }
 
     /* TUI 側で受け取った値は最後にまとめて反映 (clamp はキーごとに) */
     int  decimal_len    = g_fmt_settings.decimal_len;

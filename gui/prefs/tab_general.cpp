@@ -46,6 +46,40 @@ void build_general_tab(DlgState &st, int tab_h) {
     const int sw = DW - 40;
     int ly = 50;
 
+    // ===== Language =====
+    {
+        int body_h = 56;
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Language");
+        int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
+        Fl_Box *lb = new Fl_Box(lx + 10, inner_y, 80, 22, "Language:");
+        lb->box(FL_NO_BOX);
+        lb->labelcolor(DLG_LABEL);
+        lb->labelsize(12);
+        lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+        st.language_choice = new Fl_Choice(lx + 90, inner_y, 200, 22);
+        st.language_choice->color(DLG_INPUT);
+        st.language_choice->textcolor(DLG_TEXT);
+        st.language_choice->labelsize(12);
+        st.language_choice->textsize(12);
+        st.language_choice->add("auto (follow OS)");
+        st.language_choice->add("English");
+        st.language_choice->add("\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e");  /* 日本語 */
+        if (g_language == "en")      st.language_choice->value(1);
+        else if (g_language == "ja") st.language_choice->value(2);
+        else                          st.language_choice->value(0);  /* auto */
+
+        Fl_Box *note = new Fl_Box(lx + 30, inner_y + 24, sw - 40, 18,
+            "Restart calcyx after changing language.");
+        note->box(FL_NO_BOX);
+        note->labelcolor(DLG_LABEL);
+        note->labelsize(11);
+        note->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+
+        sec->end();
+        ly += SECTION_TITLE_H + body_h + SECTION_GAP;
+    }
+
     // ===== Window =====
     {
         int body_h = 90;

@@ -41,6 +41,10 @@
  * だけを短く書く. 冗長な "GUI ..." "(GUI sheet)" 等の scope 注釈も不要. */
 
 static const calcyx_setting_desc_t TABLE[] = {
+    SEC("# ---- Language ----\n"),
+    STR("language", CORE, "auto",
+        "UI language: 'auto' (follow OS locale) / 'en' / 'ja'."),
+
     SEC("# ---- Font ----\n"),
     FONT("font",       G, "Courier",
          "Font name (e.g. monospace, Courier, DejaVu Sans Mono)."),

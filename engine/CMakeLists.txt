@@ -24,6 +24,9 @@ add_library(calcyx_engine STATIC
     ${CMAKE_SOURCE_DIR}/shared/settings_io.c
     ${CMAKE_SOURCE_DIR}/shared/color_presets.c
     ${CMAKE_SOURCE_DIR}/shared/path_utf8.c
+    ${CMAKE_SOURCE_DIR}/shared/i18n.c
+    ${CMAKE_SOURCE_DIR}/shared/i18n_locale.c
+    ${CMAKE_SOURCE_DIR}/shared/i18n_table.c
 )
 
 # shared/ は UI 非依存の共有モデル層 (completion_match / builtin_docs /

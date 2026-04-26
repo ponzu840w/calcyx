@@ -13,6 +13,7 @@
 #include "colors.h"
 #include "settings_globals.h"
 #include "crash_handler.h"
+#include "i18n.h"
 #include <string>
 #include <cstring>
 #include <cstdio>
@@ -104,6 +105,8 @@ int main(int argc, char **argv) {
     // ウィンドウジオメトリを前回終了時の設定から復元
     int wx = 0, wy = 0, ww = 520, wh = 600;
     settings_load();
+    /* 言語を確定. g_language は "auto"/"en"/"ja" のいずれか. */
+    calcyx_i18n_init(g_language.c_str());
     colors_apply_fl_scheme();
 
     if (g_remember_position) {

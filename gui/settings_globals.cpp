@@ -27,6 +27,7 @@ extern "C" {
 }
 
 // ---- グローバル変数 (初期値は settings_globals.h の DEFAULT_* 定数) ----
+std::string g_language = "auto";
 int  g_font_id   = DEFAULT_FONT_ID;
 int  g_font_size  = DEFAULT_FONT_SIZE;
 bool g_input_auto_completion    = DEFAULT_AUTO_COMPLETION;
@@ -130,6 +131,8 @@ struct GuiTarget {
 };
 
 const GuiTarget GUI_TARGETS[] = {
+    // Language
+    {"language",   &g_language},
     // Font
     {"font",       &g_font_id},
     {"font_size",  &g_font_size},
@@ -326,6 +329,9 @@ static void apply_default_one(const calcyx_setting_desc_t &d, void *target) {
     case CALCYX_SETTING_KIND_COLOR_PRESET:
         *(int *)target = d.i_def;
         break;
+    case CALCYX_SETTING_KIND_STRING:
+        *(std::string *)target = d.s_def ? d.s_def : "";
+        break;
     default:
         break;
     }
@@ -392,6 +398,10 @@ void settings_load() {
             *(int *)target = idx;
             break;
         }
+        case CALCYX_SETTING_KIND_STRING:
+            *(std::string *)target =
+                map_get(kv, d.key, d.s_def ? d.s_def : "");
+            break;
         default:
             break;  // COLOR / SECTION は後段で処理
         }
@@ -481,6 +491,13 @@ int gui_value_lookup(const char *key, char *buf, size_t buflen,
         snprintf(buf, buflen, "%s", id);
         if (out_is_default)
             *out_is_default = (d->s_def && strcmp(id, d->s_def) == 0);
+        return 1;
+    }
+    case CALCYX_SETTING_KIND_STRING: {
+        const std::string &s = *(std::string *)target;
+        snprintf(buf, buflen, "%s", s.c_str());
+        if (out_is_default)
+            *out_is_default = (d->s_def && s == d->s_def);
         return 1;
     }
     case CALCYX_SETTING_KIND_COLOR: {

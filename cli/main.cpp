@@ -45,6 +45,7 @@
 extern "C" {
 #include "eval/eval.h"
 #include "eval/eval_ctx.h"
+#include "i18n.h"
 #include "settings_io.h"
 #include "settings_schema.h"
 #include "settings_writer.h"
@@ -492,6 +493,23 @@ int main(int argc, char *argv[]) {
             return 2;
         }
         files.push_back(a);
+    }
+
+    /* 言語を conf から確定して i18n を初期化. config_override 反映後の
+     * パスから language キーを読む. 取れなければ "auto" → OS 検出. */
+    {
+        char path_buf[1024];
+        const char *path = config_override
+            ? config_override
+            : (calcyx_default_conf_path(path_buf, sizeof(path_buf)) ? path_buf : nullptr);
+        std::string lang = "auto";
+        if (path) {
+            ConfMap cm;
+            calcyx_conf_each(path, ConfMap::cb, &cm);
+            auto it = cm.kv.find("language");
+            if (it != cm.kv.end()) lang = it->second;
+        }
+        calcyx_i18n_init(lang.c_str());
     }
 
     /* --print-config / --check-config / --init-config は他フラグと独立。

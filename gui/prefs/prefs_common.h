@@ -97,6 +97,7 @@ struct DlgState {
     Fl_Check_Button *hotkey_ctrl_chk;
     Fl_Check_Button *hotkey_shift_chk;
     Fl_Choice       *hotkey_key_choice;
+    Fl_Choice       *language_choice;  /* General タブ: auto / en / ja */
     bool saved_tray_icon;
     bool saved_hotkey_enabled;
     bool saved_hotkey_win;

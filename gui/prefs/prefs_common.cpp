@@ -240,6 +240,14 @@ void apply_settings(DlgState *st) {
             g_hotkey_keycode = plat_keyname_to_flkey(names[ki]);
     }
 
+    /* Language: 起動時のみ反映されるので, 変更を保存だけする (リスタート要). */
+    {
+        static const char *kLangIds[] = {"auto", "en", "ja"};
+        int li = st->language_choice->value();
+        if (li >= 0 && li < (int)(sizeof(kLangIds) / sizeof(kLangIds[0])))
+            g_language = kLangIds[li];
+    }
+
     /* user_colors は g_user_colors (グローバル) に一本化されたので
      * st->user_colors への同期は不要. */
 
@@ -279,6 +287,9 @@ void apply_settings(DlgState *st) {
 
 // ---- Reset to defaults ----
 void reset_to_defaults(DlgState *st) {
+    // Language
+    st->language_choice->value(0);  /* auto */
+
     // Font
     st->font.selected_id = DEFAULT_FONT_ID;
     st->font.selected_name = font_id_to_display_name(DEFAULT_FONT_ID);
