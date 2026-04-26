@@ -3,12 +3,17 @@
 #include "TuiSheet.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <utility>
+
+#if defined(_WIN32)
+#  include <direct.h>  /* _mkdir */
+#endif
 
 #if !defined(_WIN32)
 #  include <termios.h>
@@ -182,6 +187,102 @@ void TuiApp::do_file_save() {
 
 void TuiApp::do_file_open() {
     prompt_begin(PromptMode::Open, sheet_->file_path());
+}
+
+/* ----------------------------------------------------------------------
+ * Preferences (calcyx.conf を外部エディタで開く)
+ * -------------------------------------------------------------------- */
+namespace {
+/* GUI の AppPrefs::config_dir / settings_globals.cpp::ensure_path と同じ
+ * パス決定ロジックを TUI 側で再実装。FLTK 依存を持ち込まないため、
+ * ヘッダ共通化は今回見送る。 */
+std::string preferences_config_dir() {
+    char buf[1024];
+#if defined(_WIN32)
+    /* %APPDATA%\calcyx — UTF-8 化は GUI 側ほど厳密にやらない (TUI なら
+     * パスに非 ASCII が混じってもエディタが解釈する想定)。 */
+    const char *appdata = std::getenv("APPDATA");
+    if (!appdata || !*appdata) appdata = ".";
+    std::snprintf(buf, sizeof(buf), "%s\\calcyx", appdata);
+    _mkdir(buf);
+#elif defined(__APPLE__)
+    const char *home = std::getenv("HOME");
+    if (!home) home = ".";
+    std::snprintf(buf, sizeof(buf), "%s/Library/Application Support/calcyx", home);
+    mkdir(buf, 0755);
+#else
+    const char *xdg = std::getenv("XDG_CONFIG_HOME");
+    if (xdg && xdg[0]) {
+        std::snprintf(buf, sizeof(buf), "%s/calcyx", xdg);
+    } else {
+        const char *home = std::getenv("HOME");
+        if (!home) home = ".";
+        std::snprintf(buf, sizeof(buf), "%s/.config/calcyx", home);
+    }
+    mkdir(buf, 0755);
+#endif
+    return buf;
+}
+
+std::string preferences_conf_path() {
+    std::string dir = preferences_config_dir();
+#if defined(_WIN32)
+    return dir + "\\calcyx.conf";
+#else
+    return dir + "/calcyx.conf";
+#endif
+}
+
+/* ファイルが無ければ空ファイルを作る (エディタが新規作成扱いになるが、
+ * 既に存在するなら何もしない)。 */
+void preferences_touch(const std::string &path) {
+    FILE *fp = std::fopen(path.c_str(), "r");
+    if (fp) { std::fclose(fp); return; }
+    fp = std::fopen(path.c_str(), "a");
+    if (fp) std::fclose(fp);
+}
+
+#if !defined(_WIN32)
+/* shell に渡す引数を single-quote で安全に包む。中身の ' は '\'' に置換。
+ * 基本的にユーザーの calcyx 設定ディレクトリ配下のパスなので心配は薄いが、
+ * ホームに記号が混じった環境のために最低限のサニタイズを入れる。 */
+std::string preferences_shell_quote(const std::string &s) {
+    std::string out = "'";
+    for (char c : s) {
+        if (c == '\'') out += "'\\''";
+        else           out += c;
+    }
+    out += "'";
+    return out;
+}
+#endif
+} /* namespace */
+
+void TuiApp::do_preferences() {
+    std::string path = preferences_conf_path();
+    preferences_touch(path);
+
+#if defined(_WIN32)
+    /* 関連付けされたエディタ (テキスト) で開く。ShellExecute は非同期だが
+     * TUI からの "編集中ロック" は必須ではないので、起動だけして戻る。 */
+    ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    flash_message("Opened: " + path);
+#else
+    /* $VISUAL → $EDITOR → vi の順で探す。FTXUI の端末モードは
+     * WithRestoredIO 経由で一時退避し、エディタが終了したら自動復帰。 */
+    const char *editor = std::getenv("VISUAL");
+    if (!editor || !*editor) editor = std::getenv("EDITOR");
+    if (!editor || !*editor) editor = "vi";
+
+    std::string cmd = std::string(editor) + " " + preferences_shell_quote(path);
+    /* WithRestoredIO は Closure を 1 個受け取って、それを「端末復帰 → 実行
+     * → 再インストール」でラップした Closure を返す。返り値を即時呼び出す。 */
+    screen_.WithRestoredIO([cmd] {
+        int rc = std::system(cmd.c_str());
+        (void)rc;
+    })();
+    flash_message("Edited: " + path);
+#endif
 }
 
 /* ----------------------------------------------------------------------
@@ -657,7 +758,7 @@ const MenuItem kFileMenu[] = {
     { "-",                "",              MenuCmd::None,           true,  false, false },
     { "&Clear All",       "Ctrl+Shift+Del",MenuCmd::ClearAll,       false, false, false },
     { "-",                "",              MenuCmd::None,           true,  false, false },
-    { "&Preferences...",  "",              MenuCmd::Preferences,    false, true,  false },
+    { "&Preferences...",  "",              MenuCmd::Preferences,    false, false, false },
     { "A&bout calcyx",    "F1",            MenuCmd::About,          false, false, false },
     { "-",                "",              MenuCmd::None,           true,  false, false },
     { "E&xit",            "Ctrl+Q",        MenuCmd::Exit,           false, false, false },
@@ -923,7 +1024,7 @@ void TuiApp::menu_invoke_cmd(MenuCmd cmd) {
         case MenuCmd::Open:        do_file_open();                                        break;
         case MenuCmd::Save:        do_file_save();                                        break;
         case MenuCmd::ClearAll:    sheet_dispatch_key(sheet_.get(), Event::Special("\x1b[3;6~")); break;
-        case MenuCmd::Preferences: flash_message("Preferences: not available in TUI");    break;
+        case MenuCmd::Preferences: do_preferences();                                       break;
         case MenuCmd::About:
             about_visible_ = true; about_scroll_ = 0;                                     break;
         case MenuCmd::Exit:        screen_.Exit();                                         break;

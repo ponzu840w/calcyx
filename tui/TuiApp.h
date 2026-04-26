@@ -94,6 +94,11 @@ private:
 
     void do_file_save();
     void do_file_open();
+    /* GUI と同じ calcyx.conf を $VISUAL/$EDITOR (Unix) や関連付けエディタ
+     * (Windows) で開く。FTXUI の端末ハンドリングを WithRestoredIO で一時退避。
+     * TUI 自身は現状 calcyx.conf を読み込まないため、編集内容は GUI からのみ
+     * 有効。flash で「次回 GUI 起動から有効」とフィードバックする。 */
+    void do_preferences();
     void flash_message(std::string msg);
 
     /* About ダイアログ (F1 で開閉)。F1 / Esc / q / Enter で閉じる、
