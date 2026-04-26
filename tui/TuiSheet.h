@@ -30,9 +30,12 @@ struct TuiPalette {
     calcyx_rgb_t bg{}, sel_bg{}, text{}, cursor{};
     calcyx_rgb_t symbol{}, ident{}, special{}, si_pfx{}, error{};
     calcyx_rgb_t paren[4]{};
-    /* UI クローム用 (メニューバー / 最下ヘルプ行).
-     * GUI の calcyx_color_palette_t.ui_* に対応. */
-    calcyx_rgb_t ui_menu{}, ui_text{}, ui_label{};
+    /* UI クローム用. GUI の calcyx_color_palette_t.ui_* に対応:
+     *   ui_menu  : メニューバー / ドロップダウン / コンテキストメニュー背景
+     *   ui_bg    : ダイアログ (About / Paste options 等) 背景
+     *   ui_text  : 上記の上に乗る文字色
+     *   ui_label : ラベル系のやや暗い文字色 */
+    calcyx_rgb_t ui_menu{}, ui_bg{}, ui_text{}, ui_label{};
 };
 
 /* sheet_model をラップして、FTXUI の Component として振る舞う。

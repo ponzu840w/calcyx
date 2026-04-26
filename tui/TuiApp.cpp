@@ -464,6 +464,7 @@ void TuiApp::apply_settings_from_conf() {
                     { "color_paren2",   &pal.paren[2] },
                     { "color_paren3",   &pal.paren[3] },
                     { "color_ui_menu",  &pal.ui_menu },
+                    { "color_ui_bg",    &pal.ui_bg },
                     { "color_ui_text",  &pal.ui_text },
                     { "color_ui_label", &pal.ui_label },
                 };
@@ -489,6 +490,7 @@ void TuiApp::apply_settings_from_conf() {
             tp.error    = pal.error;
             for (int i = 0; i < 4; ++i) tp.paren[i] = pal.paren[i];
             tp.ui_menu  = pal.ui_menu;
+            tp.ui_bg    = pal.ui_bg;
             tp.ui_text  = pal.ui_text;
             tp.ui_label = pal.ui_label;
         }
@@ -541,6 +543,20 @@ constexpr int kShortcutCount     = (int)(sizeof(kShortcuts) / sizeof(kShortcuts[
 constexpr int kAboutVisibleRows  = 10;
 constexpr int kAboutMaxScroll    =
     (kShortcutCount > kAboutVisibleRows) ? kShortcutCount - kAboutVisibleRows : 0;
+
+/* mirror_gui のとき overlay 全体に GUI 色を当てるヘルパー.
+ * which: ChromeColor::Menu (ドロップダウン / コンテキスト) → ui_menu
+ *        ChromeColor::Dialog (About / Paste options 等)     → ui_bg */
+enum class ChromeColor { Menu, Dialog };
+ftxui::Element apply_chrome_color(ftxui::Element e,
+                                  const TuiPalette &p,
+                                  ChromeColor which) {
+    if (!p.active) return e;
+    using ftxui::Color;
+    const calcyx_rgb_t &bg = (which == ChromeColor::Dialog) ? p.ui_bg : p.ui_menu;
+    return e | ftxui::color(Color::RGB(p.ui_text.r, p.ui_text.g, p.ui_text.b))
+             | ftxui::bgcolor(Color::RGB(bg.r, bg.g, bg.b));
+}
 
 /* ライセンス情報 (GUI 版 ui/MainWindow.cpp の About と同じ構成).
  * TUI は FLTK を使わないので FLTK エントリは除外し, 代わりに FTXUI を載せる. */
@@ -655,8 +671,10 @@ Element TuiApp::about_overlay() const {
 
     /* clear_under: ダイアログの背面セルを完全に塗り潰し、下層のシート内容や
      * カーソルハイライト (inverted) が透けて見えないようにする。 */
-    return vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
-           size(HEIGHT, LESS_THAN, 24) | clear_under | reflect(about_box_) | center;
+    Element dlg = vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
+                  size(HEIGHT, LESS_THAN, 24);
+    if (sheet_) dlg = apply_chrome_color(dlg, sheet_->palette(), ChromeColor::Dialog);
+    return dlg | clear_under | reflect(about_box_) | center;
 }
 
 bool TuiApp::about_handle_event(Event ev) {
@@ -834,9 +852,10 @@ Element TuiApp::paste_modal_overlay() const {
     body.push_back(separator());
     body.push_back(text("↑↓ select   Enter confirm   Esc cancel") | dim | center);
 
-    return vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
-           size(HEIGHT, LESS_THAN, 22) | clear_under |
-           reflect(paste_modal_box_) | center;
+    Element dlg = vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
+                  size(HEIGHT, LESS_THAN, 22);
+    if (sheet_) dlg = apply_chrome_color(dlg, sheet_->palette(), ChromeColor::Dialog);
+    return dlg | clear_under | reflect(paste_modal_box_) | center;
 }
 
 /* ----------------------------------------------------------------------
@@ -991,8 +1010,9 @@ Element TuiApp::context_menu_overlay() const {
     int anchor_y = std::max(0, context_menu_anchor_y_);
 
     Element menu = vbox(std::move(rows)) | border |
-                   size(WIDTH, EQUAL, w + 2) | clear_under |
-                   reflect(context_menu_box_);
+                   size(WIDTH, EQUAL, w + 2);
+    if (sheet_) menu = apply_chrome_color(menu, sheet_->palette(), ChromeColor::Menu);
+    menu = menu | clear_under | reflect(context_menu_box_);
 
     /* x: anchor_x 列ぶん左に空白 + メニュー、y: anchor_y 行ぶん上に空白 + メニュー */
     Element anchored = hbox({
@@ -1200,6 +1220,7 @@ Element TuiApp::menu_overlay() const {
     }
 
     Element dd = vbox(std::move(rows)) | border;
+    if (sheet_) dd = apply_chrome_color(dd, sheet_->palette(), ChromeColor::Menu);
 
     /* clear_under: dropdown 自身の領域を不透明に塗り、下層シートの inverted
      * カーソルや色付き文字が透けないようにする。 */
@@ -1229,7 +1250,9 @@ Element TuiApp::menu_overlay() const {
                 srows.push_back(std::move(row));
             }
         }
-        Element sdd = vbox(std::move(srows)) | border | clear_under;
+        Element sdd = vbox(std::move(srows)) | border;
+        if (sheet_) sdd = apply_chrome_color(sdd, sheet_->palette(), ChromeColor::Menu);
+        sdd = sdd | clear_under;
         dd = hbox({ dd, sdd });
     } else {
         submenu_item_boxes_.clear();
