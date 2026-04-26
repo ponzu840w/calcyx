@@ -946,15 +946,13 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
         });
     }
 
-    /* フォーカス行のハイライトは inverted (端末既定 fg/bg をピクセル単位で
-     * 入れ替える) を使う。bgcolor(Blue)+color(White) などの「色」指定は
-     * 単色テーマや低色数端末では塗り潰しになって読めなくなるが、inverted は
-     * 端末が天然に持っているコントラストペアをそのまま反転するだけなので、
-     * モノクロ・カラー問わず必ずコントラストが残る。
-     * 補完カーソルは独自に | inverted しており、FTXUI の inverted は XOR
-     * なので親の inverted と打ち消し合い、フォーカス行内では「反転帯の中の
-     * 非反転スポット」としてカーソルが見える。 */
-    if (is_focused) row = row | inverted;
+    /* フォーカス行のハイライトは bold + underlined。bgcolor(Blue)+color(White)
+     * などの「色」指定は単色テーマや低色数端末では塗り潰しになって読めなく
+     * なるし、inverted (fg/bg 反転) は 1 行まるごと帯状になって編集中の文字
+     * とカーソル反転が同居しづらかった。bold + underline なら本文は素のまま
+     * 残り、カーソル位置の inverted との視覚的衝突もない。先頭の "> " マーカー
+     * と合わせて 2 重に見分けがつく。 */
+    if (is_focused) row = row | bold | underlined;
     return row;
 }
 
