@@ -99,6 +99,11 @@ private:
      * TUI 自身は現状 calcyx.conf を読み込まないため、編集内容は GUI からのみ
      * 有効。flash で「次回 GUI 起動から有効」とフィードバックする。 */
     void do_preferences();
+    /* calcyx.conf からエンジン共通の設定を読み込んで反映する。
+     * GUI と共有する小数桁・E ノテーション・評価リミット・auto_completion
+     * を対象とする (フォント・色・ホットキーは GUI 専用のため無視)。
+     * 起動時とプリファレンス編集後に呼ぶ。 */
+    void apply_settings_from_conf();
     void flash_message(std::string msg);
 
     /* About ダイアログ (F1 で開閉)。F1 / Esc / q / Enter で閉じる、

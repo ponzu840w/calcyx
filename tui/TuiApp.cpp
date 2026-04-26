@@ -7,9 +7,12 @@
 #include <cstdlib>
 #include <cstring>
 #include <dirent.h>
+#include <map>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <utility>
+
+#include "types/val.h"
 
 #if defined(_WIN32)
 #  include <direct.h>  /* _mkdir */
@@ -53,6 +56,10 @@ TuiApp::TuiApp()
         [this](std::string raw) { paste_modal_open(std::move(raw)); });
     sheet_->set_context_menu_callback(
         [this](int x, int y) { context_menu_open(x, y); });
+
+    /* GUI と共有の calcyx.conf からエンジン関連設定を取り込む。
+     * 失敗しても黙って既定値で続行する。 */
+    apply_settings_from_conf();
 }
 
 TuiApp::~TuiApp() {
@@ -242,6 +249,47 @@ void preferences_touch(const std::string &path) {
     if (fp) std::fclose(fp);
 }
 
+/* calcyx.conf の最小パーサ。GUI 側 (settings_globals.cpp::read_conf) の
+ * 仕様に合わせる: '#' で始まる行と空行はスキップ、key=value の
+ * 前後空白を除去して std::map に積む。FLTK 依存を引き込まないために
+ * 自前実装にしているが、フォーマットはバイト互換。 */
+std::map<std::string, std::string> conf_read(const std::string &path) {
+    std::map<std::string, std::string> kv;
+    FILE *fp = std::fopen(path.c_str(), "r");
+    if (!fp) return kv;
+    char line[512];
+    while (std::fgets(line, sizeof(line), fp)) {
+        size_t len = std::strlen(line);
+        while (len > 0 && (line[len-1] == '\n' || line[len-1] == '\r'))
+            line[--len] = '\0';
+        if (line[0] == '#' || line[0] == '\0') continue;
+        char *eq = std::strchr(line, '=');
+        if (!eq) continue;
+        char *ke = eq - 1;
+        while (ke >= line && (*ke == ' ' || *ke == '\t')) --ke;
+        std::string key(line, ke - line + 1);
+        const char *vs = eq + 1;
+        while (*vs == ' ' || *vs == '\t') ++vs;
+        kv[key] = vs;
+    }
+    std::fclose(fp);
+    return kv;
+}
+
+bool conf_get_bool(const std::map<std::string, std::string> &kv,
+                   const char *key, bool def) {
+    auto it = kv.find(key);
+    if (it == kv.end()) return def;
+    const std::string &v = it->second;
+    return v == "true" || v == "1" || v == "yes";
+}
+
+int conf_get_int(const std::map<std::string, std::string> &kv,
+                 const char *key, int def) {
+    auto it = kv.find(key);
+    return (it != kv.end()) ? std::atoi(it->second.c_str()) : def;
+}
+
 #if !defined(_WIN32)
 /* shell に渡す引数を single-quote で安全に包む。中身の ' は '\'' に置換。
  * 基本的にユーザーの calcyx 設定ディレクトリ配下のパスなので心配は薄いが、
@@ -283,6 +331,43 @@ void TuiApp::do_preferences() {
     })();
     flash_message("Edited: " + path);
 #endif
+    /* エディタ終了直後に再読み込みして即時反映 (GUI 側との一貫性)。 */
+    apply_settings_from_conf();
+}
+
+/* GUI と共有する設定キーだけ取り込む。フォント・色・ホットキーなど GUI 専用の
+ * キーは黙って無視する (calcyx.conf 自体は両方が書き込みうる共有ファイル)。
+ * 範囲は ui/settings_globals.cpp の SETTINGS_TABLE と揃えている。 */
+void TuiApp::apply_settings_from_conf() {
+    auto kv = conf_read(preferences_conf_path());
+    if (kv.empty()) return;
+
+    g_fmt_settings.decimal_len = std::clamp(
+        conf_get_int(kv, "decimal_digits", g_fmt_settings.decimal_len), 1, 34);
+    g_fmt_settings.e_notation = conf_get_bool(
+        kv, "e_notation", g_fmt_settings.e_notation);
+    g_fmt_settings.e_positive_min = std::clamp(
+        conf_get_int(kv, "e_positive_min", g_fmt_settings.e_positive_min), 1, 30);
+    g_fmt_settings.e_negative_max = std::clamp(
+        conf_get_int(kv, "e_negative_max", g_fmt_settings.e_negative_max), -30, -1);
+    g_fmt_settings.e_alignment = conf_get_bool(
+        kv, "e_alignment", g_fmt_settings.e_alignment);
+
+    sheet_eval_limits_t lim;
+    lim.max_array_length  = std::clamp(
+        conf_get_int(kv, "max_array_length",  256), 1, 1000000);
+    lim.max_string_length = std::clamp(
+        conf_get_int(kv, "max_string_length", 256), 1, 1000000);
+    lim.max_call_depth    = std::clamp(
+        conf_get_int(kv, "max_call_depth",     64), 1, 1000);
+    sheet_model_set_limits(model_, lim);
+
+    if (sheet_)
+        sheet_->set_auto_complete(conf_get_bool(kv, "auto_completion", true));
+
+    /* 桁数・E ノテーションが変わると既存行の表示も変わるので再評価。 */
+    sheet_model_eval_all(model_);
+    if (sheet_) sheet_->reload_focused_row();
 }
 
 /* ----------------------------------------------------------------------
