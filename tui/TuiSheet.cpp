@@ -856,9 +856,12 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     std::string expr    = expr_c   ? expr_c   : "";
     std::string result  = result_c ? result_c : "";
 
-    /* 左カラム: "> editor" or "  expr" を eq_col セル幅に揃える。 */
+    /* 左カラム: "> editor" or "  expr" を eq_col セル幅に揃える。
+     * フォーカス行でカーソルが末尾にある場合、render_highlighted が末尾に
+     * 反転スペース 1 セルを追加するので、その分も幅に含める。 */
     const std::string &left_src = is_focused ? editor_buf_ : expr;
     int left_w = display_cells(left_src);  /* "> " の 2 セルは別途 */
+    if (is_focused && cursor_pos_ == editor_buf_.size()) left_w += 1;
     int pad    = (eq_col > left_w) ? (eq_col - left_w) : 0;
 
     Element expr_el;
@@ -920,6 +923,7 @@ Element TuiSheet::Render() {
 
     /* eq_col_: "=" カラムの位置を全行で揃える。
      * 各行の expr (フォーカス行は editor_buf_) のセル幅の最大値。
+     * フォーカス行のカーソルが末尾にあるときは反転スペース 1 セル分を加味。
      * 上限は 60 セル (画面幅 80 を想定して 3/4 程度)。極端な式は溢れさせる。 */
     int eq_col = 0;
     for (int i = 0; i < n; ++i) {
@@ -931,6 +935,7 @@ Element TuiSheet::Render() {
             s = e ? e : "";
         }
         int w = display_cells(s);
+        if (i == focused_row_ && cursor_pos_ == editor_buf_.size()) w += 1;
         if (w > eq_col) eq_col = w;
     }
     if (eq_col > 60) eq_col = 60;
