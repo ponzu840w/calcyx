@@ -1,0 +1,41 @@
+# ---- Font ----
+# Any font name installed on the system (e.g. monospace, DejaVu Sans Mono)
+font = Courier
+font_size = 15
+
+# ---- General ----
+remember_position = true
+start_topmost = false
+show_rowlines = true
+max_array_length = 256
+max_string_length = 256
+max_call_depth = 64
+
+# ---- Input ----
+auto_completion = true
+auto_close_brackets = false
+bs_delete_empty_row = true
+popup_independent_normal = false
+popup_independent_compact = true
+
+# ---- Number Format ----
+decimal_digits = 9
+e_notation = true
+e_positive_min = 15
+e_negative_max = -5
+e_alignment = false
+thousands_separator = true
+hex_separator = true
+
+# ---- System Tray ----
+tray_icon = false
+hotkey_enabled = false
+hotkey_win = false
+hotkey_alt = true
+hotkey_ctrl = false
+hotkey_shift = false
+hotkey_key = Space
+
+# ---- Colors ----
+# Preset: otaku-black, gyakubari-white, saboten-grey, saboten-white, user
+color_preset = otaku-black

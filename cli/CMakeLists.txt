@@ -131,4 +131,20 @@ if(CALCYX_TESTS_ENABLED)
 
     # エラー時の終了コード 1
     calcyx_cli_golden_test(error_exit STDERR error_exit.err EXIT 1)
+
+    # --print-config: 空 conf でデフォルト一覧を canonical 出力
+    calcyx_cli_golden_test(print_config_default
+        STDOUT print_config_default.out
+        WORKDIR "${CLI_TESTDATA}")
+
+    # --check-config: 警告無し
+    calcyx_cli_golden_test(check_config_clean
+        STDOUT check_config_clean.out
+        WORKDIR "${CLI_TESTDATA}")
+
+    # --check-config: 各種 warning + exit 1
+    calcyx_cli_golden_test(check_config_warnings
+        STDERR check_config_warnings.err
+        EXIT 1
+        WORKDIR "${CLI_TESTDATA}")
 endif()

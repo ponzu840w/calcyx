@@ -1,0 +1,3 @@
+--check-config
+--config
+conf/with_warnings.conf

@@ -1,0 +1,5 @@
+warning: line 2: 'auto_completion' = 'maybe': not a bool (expected true/false/1/0/yes/no)
+warning: line 3: unknown key 'unknown_key_xyz'
+warning: line 4: 'max_call_depth' = 9999: out of range [1, 1000]
+warning: line 5: 'color_text' = '#zzzzzz': expected '#RRGGBB'
+4 warning(s) in conf/with_warnings.conf

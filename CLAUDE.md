@@ -6,16 +6,16 @@ https://github.com/shapoco/calctus (C# / .NET)
 
 ## テストの方針
 
-ctest には 39 本のテストが 4 系統 (engine 29 / gui 2 / cli 6 / tui 2) で登録されています
+ctest には 42 本のテストが 4 系統 (engine 29 / gui 2 / cli 9 / tui 2) で登録されています
 (`ctest --preset unix` で全実行)。
 
 クロスターゲット別の登録件数は以下のとおり:
 
 | プリセット | engine | gui | cli | tui | 計 | 備考 |
 |---|---|---|---|---|---|---|
-| `unix` | 29 | 2 | 6 | 2 | 39 | ネイティブ Linux / macOS |
-| `win` | 29 | 2 | 6 | 2 | 39 | Windows クロスビルド全テスト |
-| `win-headless` | 29 | (除外) | 6 | 2 | 37 | gui ラベルを filter 除外 |
+| `unix` | 29 | 2 | 9 | 2 | 42 | ネイティブ Linux / macOS |
+| `win` | 29 | 2 | 9 | 2 | 42 | Windows クロスビルド全テスト |
+| `win-headless` | 29 | (除外) | 9 | 2 | 40 | gui ラベルを filter 除外 |
 | `web` | 2 | (なし) | (なし) | (なし) | 2 | `engine/types` と `engine/parser` のみ |
 
 `win` / `win-headless` は WSL であれば `.exe` をネイティブ実行、非 WSL では `wine`
@@ -82,13 +82,16 @@ ctest には 39 本のテストが 4 系統 (engine 29 / gui 2 / cli 6 / tui 2) 
   - `test_type_and_commit(const char *)` — エディタに入力してコミット
   - `test_insert_row(int)` / `test_delete_row(int)` — 行操作
 
-### CLI (`cli`, 6 本)
+### CLI (`cli`, 9 本)
 
 `cli/CMakeLists.txt` の `calcyx_cli_golden_test()` ヘルパで登録。
 `cli/testdata/expected/*.out` と `*.err` のゴールデンファイルに対して
 stdout / stderr / 終了コードを改行 LF 正規化のうえ完全一致で検証する。
 引数は `cli/testdata/args/*.args` (1 行 1 引数) に分離して CMake リストの
 `;` エスケープを回避している。
+
+`--print-config` / `--check-config` テストは `cli/testdata/conf/*.conf`
+(空 conf, 警告含む conf) を `--config` で指定する形で固定入力にしている。
 
 テスト対象は統合バイナリ `calcyx`。ctest 配下では stdin が tty でないため、
 `-e` / `-o` / 位置引数ファイルはそのまま CLI モードに落ちる。TUI モードに
