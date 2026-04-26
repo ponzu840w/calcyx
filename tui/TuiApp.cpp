@@ -1032,9 +1032,9 @@ Element TuiApp::menu_bar_render() const {
     cells.push_back(text(" "));
     for (int i = 0; i < kMenuCount; ++i) {
         Element cell = hbox({
-            text(" "),
+            text("["),
             label_elements(kMenus[i].title, /*disabled=*/false),
-            text(" "),
+            text("]"),
         });
         if (kMenus[i].id == menu_active_) cell = cell | inverted;
         cell = cell | reflect(menu_title_boxes_[i]);
