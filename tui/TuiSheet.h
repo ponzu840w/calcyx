@@ -15,7 +15,21 @@
 #include "TuiCompletion.h"
 #include "sheet_model.h"
 
+extern "C" {
+#include "color_presets.h"
+}
+
 namespace calcyx::tui {
+
+/* GUI 色を再現するときに参照するパレット。active=false の場合は
+ * 従来のセマンティック (端末色 + 16 色基調) で描画する。
+ * 各メンバは calcyx_color_palette_t の一部。 */
+struct TuiPalette {
+    bool active = false;
+    calcyx_rgb_t bg{}, sel_bg{}, text{}, cursor{};
+    calcyx_rgb_t symbol{}, ident{}, special{}, si_pfx{}, error{};
+    calcyx_rgb_t paren[4]{};
+};
 
 /* sheet_model をラップして、FTXUI の Component として振る舞う。
  * フォーカス行のみを編集対象とし、矢印上下で別の行へ移動すると
@@ -95,6 +109,11 @@ public:
     /* GUI の g_input_auto_completion 相当。View メニューから toggle。 */
     bool  auto_complete() const { return auto_complete_; }
     void  set_auto_complete(bool v) { auto_complete_ = v; }
+
+    /* tui_color_source = mirror_gui のときのパレット。active=true で描画が
+     * GUI と同じ RGB に切り替わる。デフォルトは inactive (= 従来挙動). */
+    void set_palette(const TuiPalette &p) { palette_ = p; }
+    const TuiPalette& palette() const { return palette_; }
 
     /* GUI の g_input_bs_delete_empty_row 相当。空行で BS を押すと
      * 行を削除して上に詰める挙動。誤削除を嫌うユーザーは calcyx.conf
@@ -194,6 +213,7 @@ private:
     bool          compact_mode_        = false;
     bool          read_only_           = false;
     bool          bs_delete_empty_row_ = true;
+    TuiPalette    palette_;  /* active=false なら従来のセマンティック描画 */
 
     /* 直近の Ctrl+C で書き込んだクリップボードテキストと、その行の式部分。
      * Ctrl+V 時にクリップボードの内容と last_copied_text_ が完全一致なら、

@@ -14,6 +14,8 @@
 
 #include "types/val.h"
 #include "settings_schema.h"
+#include "color_presets.h"
+#include "settings_io.h"
 
 #if defined(_WIN32)
 #  include <direct.h>  /* _mkdir */
@@ -411,8 +413,8 @@ void TuiApp::apply_settings_from_conf() {
         } else if (strcmp(d.key, "bs_delete_empty_row") == 0) {
             bs_delete_empty_row = conf_get_bool(kv, d.key, bs_delete_empty_row);
         }
-        /* color_preset / color_* は scope=BOTH だが現状 TUI は固有色運用.
-         * Phase C で tui_color_source=mirror_gui の経路から読む予定. */
+        /* color_preset / color_* は tui_color_source=mirror_gui のときだけ
+         * 下のパレット構築フェーズで読む。 */
     }
 
     g_fmt_settings.decimal_len    = decimal_len;
@@ -425,6 +427,62 @@ void TuiApp::apply_settings_from_conf() {
     if (sheet_) {
         sheet_->set_auto_complete(auto_completion);
         sheet_->set_bs_delete_empty_row(bs_delete_empty_row);
+
+        /* tui_color_source: semantic (default) | mirror_gui
+         * mirror_gui のとき color_preset を読み, user-defined なら
+         * 個別 color_* キーで上書きしてから TuiPalette を sheet に渡す. */
+        TuiPalette tp;
+        auto src_it = kv.find("tui_color_source");
+        std::string src = (src_it != kv.end()) ? src_it->second : "semantic";
+        if (src == "mirror_gui") {
+            std::string preset_id = "otaku-black";
+            auto pit = kv.find("color_preset");
+            if (pit != kv.end()) preset_id = pit->second;
+            int pid = calcyx_color_preset_lookup(preset_id.c_str());
+            if (pid < 0) pid = CALCYX_COLOR_PRESET_OTAKU_BLACK;
+            calcyx_color_palette_t pal;
+            calcyx_color_preset_get(pid, &pal);
+
+            /* user-defined なら conf の color_* で個別上書き. */
+            if (pid == CALCYX_COLOR_PRESET_USER_DEFINED) {
+                struct { const char *key; calcyx_rgb_t *dst; } overrides[] = {
+                    { "color_bg",       &pal.bg },
+                    { "color_sel_bg",   &pal.sel_bg },
+                    { "color_text",     &pal.text },
+                    { "color_cursor",   &pal.cursor },
+                    { "color_symbol",   &pal.symbol },
+                    { "color_ident",    &pal.ident },
+                    { "color_special",  &pal.special },
+                    { "color_si_pfx",   &pal.si_pfx },
+                    { "color_error",    &pal.error },
+                    { "color_paren0",   &pal.paren[0] },
+                    { "color_paren1",   &pal.paren[1] },
+                    { "color_paren2",   &pal.paren[2] },
+                    { "color_paren3",   &pal.paren[3] },
+                };
+                for (const auto &o : overrides) {
+                    auto it = kv.find(o.key);
+                    if (it == kv.end()) continue;
+                    unsigned char rgb[3];
+                    if (calcyx_conf_parse_hex_color(it->second.c_str(), rgb)) {
+                        o.dst->r = rgb[0]; o.dst->g = rgb[1]; o.dst->b = rgb[2];
+                    }
+                }
+            }
+
+            tp.active  = true;
+            tp.bg      = pal.bg;
+            tp.sel_bg  = pal.sel_bg;
+            tp.text    = pal.text;
+            tp.cursor  = pal.cursor;
+            tp.symbol  = pal.symbol;
+            tp.ident   = pal.ident;
+            tp.special = pal.special;
+            tp.si_pfx  = pal.si_pfx;
+            tp.error   = pal.error;
+            for (int i = 0; i < 4; ++i) tp.paren[i] = pal.paren[i];
+        }
+        sheet_->set_palette(tp);
     }
 
     /* 桁数・E ノテーションが変わると既存行の表示も変わるので再評価。 */

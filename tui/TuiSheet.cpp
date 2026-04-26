@@ -48,10 +48,18 @@ size_t word_right(const std::string &s, size_t pos) {
     return p;
 }
 
+/* RGB → ftxui::Color 変換。calcyx_rgb_t をそのまま 24bit カラーで返す。 */
+ftxui::Color rgb_to_ftxui(const calcyx_rgb_t &c) {
+    return ftxui::Color::RGB(c.r, c.g, c.b);
+}
+
 /* 1 文字ごとのハイライト色を組み立てる。範囲外 (TOK_EMPTY 等) は
  * Color::Default を残す → 端末デフォルト前景でそのまま描画される。
+ * palette.active が true の場合は GUI 色 (calcyx_color_palette_t) を
+ * RGB で再現する (mirror_gui モード)。
  * 移植元: ui/SheetView.cpp:220 draw_expr_highlighted。 */
-std::vector<ftxui::Color> build_char_colors(const std::string &expr) {
+std::vector<ftxui::Color> build_char_colors(const std::string &expr,
+                                             const TuiPalette &palette) {
     using ftxui::Color;
     std::vector<Color> out(expr.size(), Color::Default);
     if (expr.empty()) return out;
@@ -61,11 +69,27 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr) {
     lexer_tokenize(expr.c_str(), &q);
 
     /* 括弧ネスト色は GUI の g_colors.paren 4 色を FTXUI 色に置換。
-     * ネストごとに色を変えて対応関係を目で追いやすくする。 */
-    static const Color paren_colors[4] = {
+     * ネストごとに色を変えて対応関係を目で追いやすくする。
+     * palette.active=true なら GUI のパレット paren[0..3] を直接利用。 */
+    static const Color semantic_paren_colors[4] = {
         Color::YellowLight, Color::MagentaLight,
         Color::CyanLight,   Color::GreenLight,
     };
+    Color paren_colors[4];
+    Color c_ident, c_special, c_si_pfx, c_symbol;
+    if (palette.active) {
+        for (int i = 0; i < 4; ++i) paren_colors[i] = rgb_to_ftxui(palette.paren[i]);
+        c_ident   = rgb_to_ftxui(palette.ident);
+        c_special = rgb_to_ftxui(palette.special);
+        c_si_pfx  = rgb_to_ftxui(palette.si_pfx);
+        c_symbol  = rgb_to_ftxui(palette.symbol);
+    } else {
+        for (int i = 0; i < 4; ++i) paren_colors[i] = semantic_paren_colors[i];
+        c_ident   = Color::CyanLight;
+        c_special = Color::MagentaLight;
+        c_si_pfx  = Color::YellowLight;
+        c_symbol  = Color::RedLight;
+    }
     int paren_depth = 0;
 
     auto paint = [&](int p, int end, Color c) {
@@ -88,28 +112,28 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr) {
 
         switch (tok.type) {
             case TOK_WORD:
-                paint(p, end, Color::CyanLight);
+                paint(p, end, c_ident);
                 break;
             case TOK_BOOL_LIT:
-                paint(p, end, Color::MagentaLight);
+                paint(p, end, c_special);
                 break;
             case TOK_NUM_LIT:
                 if (tok.val) {
                     val_fmt_t vfmt = tok.val->fmt;
                     if (vfmt == FMT_SI_PREFIX) {
-                        if (end - 1 >= p) paint(end - 1, end, Color::YellowLight);
+                        if (end - 1 >= p) paint(end - 1, end, c_si_pfx);
                     } else if (vfmt == FMT_BIN_PREFIX) {
-                        if (end - 2 >= p) paint(end - 2, end, Color::YellowLight);
+                        if (end - 2 >= p) paint(end - 2, end, c_si_pfx);
                     } else if (vfmt == FMT_CHAR || vfmt == FMT_STRING ||
                                vfmt == FMT_DATETIME || vfmt == FMT_WEB_COLOR) {
-                        paint(p, end, Color::MagentaLight);
+                        paint(p, end, c_special);
                     } else {
                         /* 数値リテラル本体は既定色のまま。指数 (e/E 以降) だけ
                          * SI プレフィクスと同じ黄色で強調する。 */
                         for (int i = p + 1; i < end; ++i) {
                             if ((expr[i] == 'e' || expr[i] == 'E') &&
                                 std::isdigit((unsigned char)expr[i-1])) {
-                                paint(i, end, Color::YellowLight);
+                                paint(i, end, c_si_pfx);
                                 break;
                             }
                         }
@@ -118,7 +142,7 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr) {
                 break;
             case TOK_OP:
             case TOK_KEYWORD:
-                paint(p, end, Color::RedLight);
+                paint(p, end, c_symbol);
                 break;
             case TOK_SYMBOL:
                 if (tl == 1 && (tok.text[0] == '(' || tok.text[0] == ')')) {
@@ -128,7 +152,7 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr) {
                     if (tok.text[0] == '(') paren_depth++;
                     else if (paren_depth > 0) paren_depth--;
                 } else {
-                    paint(p, end, Color::RedLight);
+                    paint(p, end, c_symbol);
                 }
                 break;
             default:
@@ -809,7 +833,7 @@ void TuiSheet::action_format(val_fmt_t /*fmt*/, const char *fmt_func) {
 Element TuiSheet::render_highlighted(const std::string &expr,
                                       size_t cursor_byte_pos,
                                       bool   dim_style) const {
-    auto colors = build_char_colors(expr);
+    auto colors = build_char_colors(expr, palette_);
     int  n      = (int)expr.size();
 
     Elements els;
@@ -896,15 +920,24 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     /* 結果のシンタックスハイライト:
      *   - error 行: 赤一色 (per-token 色は無視)
      *   - dirty (preview): 黄色一色 (未コミットを示す)
-     *   - それ以外: render_highlighted で式と同じトークンベース色付け */
+     *   - それ以外: render_highlighted で式と同じトークンベース色付け
+     * mirror_gui (palette_.active) では Color::Red / YellowLight を
+     * GUI パレット (error / si_pfx + bg) で置換する。 */
     Element right;
     if (sheet_model_row_error(model_, idx)) {
-        right = text(res_text) | color(Color::Red);
+        Color err_c = palette_.active ? rgb_to_ftxui(palette_.error) : Color::Red;
+        right = text(res_text) | color(err_c);
     } else if (is_focused && editor_dirty()) {
         /* "in-flight preview" を端末既定 fg に依存せずに目立たせる:
          * 黄色背景 + 黒前景の "蛍光ペン" スタイル。bgcolor は親の Blue を
          * この要素だけ上書きするので、白背景テーマでも視認できる。 */
-        right = text(res_text) | color(Color::Black) | bgcolor(Color::YellowLight);
+        if (palette_.active) {
+            right = text(res_text)
+                  | color(rgb_to_ftxui(palette_.bg))
+                  | bgcolor(rgb_to_ftxui(palette_.si_pfx));
+        } else {
+            right = text(res_text) | color(Color::Black) | bgcolor(Color::YellowLight);
+        }
     } else if (has_result) {
         right = render_highlighted(res_text, SIZE_MAX, /*dim_style=*/false);
     } else {
@@ -951,8 +984,13 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
      * なるし、inverted (fg/bg 反転) は 1 行まるごと帯状になって編集中の文字
      * とカーソル反転が同居しづらかった。bold + underline なら本文は素のまま
      * 残り、カーソル位置の inverted との視覚的衝突もない。先頭の "> " マーカー
-     * と合わせて 2 重に見分けがつく。 */
-    if (is_focused) row = row | bold | underlined;
+     * と合わせて 2 重に見分けがつく。
+     * mirror_gui ではセマンティック underline を維持しつつ sel_bg を載せる
+     * (GUI と同じ「選択行のハイライト」が出る)。 */
+    if (is_focused) {
+        row = row | bold | underlined;
+        if (palette_.active) row = row | bgcolor(rgb_to_ftxui(palette_.sel_bg));
+    }
     return row;
 }
 
@@ -1034,7 +1072,12 @@ Element TuiSheet::Render() {
 
     /* compact_mode_ ではシート行のみ表示。status/help/separator は省略。 */
     if (compact_mode_) {
-        return vbox({ vbox(std::move(rows)) | yframe | flex });
+        Element body = vbox({ vbox(std::move(rows)) | yframe | flex });
+        if (palette_.active) {
+            body = body | color(rgb_to_ftxui(palette_.text))
+                        | bgcolor(rgb_to_ftxui(palette_.bg));
+        }
+        return body;
     }
 
     val_fmt_t cur_fmt = sheet_model_row_fmt(model_, focused_row_);
@@ -1051,13 +1094,18 @@ Element TuiSheet::Render() {
 
     /* ホットキー / プロンプト / flash は TuiApp 側の最下行にまとめて表示する。
      * ここではステータス行までで止める (separator の上はシート本文)。 */
-    return vbox({
+    Element body = vbox({
         vbox(std::move(rows)) | yframe | flex,
         separator(),
         hbox({
             text(status) | flex,
         }),
     });
+    if (palette_.active) {
+        body = body | color(rgb_to_ftxui(palette_.text))
+                    | bgcolor(rgb_to_ftxui(palette_.bg));
+    }
+    return body;
 }
 
 /* ----------------------------------------------------------------------
