@@ -242,6 +242,19 @@ static void preset_change_cb(Fl_Widget *, void *data) {
     refresh_previews(st);
 }
 
+/* 現在のプリセット色を g_user_colors にコピーし, user-defined に切替えて
+ * 編集可能状態に入る. ユーザーが「近いプリセットをベースに微調整したい」
+ * というシナリオを 1 クリックで行えるようにする. */
+static void copy_to_user_cb(Fl_Widget *, void *data) {
+    auto *st = static_cast<DlgState *>(data);
+    g_user_colors = g_colors;
+    st->preset_choice->value(COLOR_PRESET_USER_DEFINED);
+    colors_apply_preset(COLOR_PRESET_USER_DEFINED);
+    update_swatch_state(st);
+    refresh_dlg_colors(st);
+    refresh_previews(st);
+}
+
 void build_appearance_tab(DlgState &st, int tab_h) {
     Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, " Appearance ");
     g->color(DLG_BG);
@@ -310,6 +323,13 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         st.preset_choice->add(COLOR_PRESET_INFO[i].label);
     st.preset_choice->value(g_color_preset);
     st.preset_choice->callback(preset_change_cb, &st);
+
+    Fl_Button *copy_btn = new Fl_Button(lx + 275, ly, 150, 25, "Copy to user-defined");
+    copy_btn->color(DLG_BTN);
+    copy_btn->labelcolor(DLG_TEXT);
+    copy_btn->labelsize(12);
+    copy_btn->tooltip("Copy current preset colors to user-defined and switch to it for editing");
+    copy_btn->callback(copy_to_user_cb, &st);
     ly += 28;
 
     struct { const char *label; Fl_Color *color; } entries[] = {
