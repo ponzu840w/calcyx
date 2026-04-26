@@ -885,13 +885,19 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
 
     Element eq = text(has_result ? " = " : "   ");
 
-    Element right = text(res_text);
+    /* 結果のシンタックスハイライト:
+     *   - error 行: 赤一色 (per-token 色は無視)
+     *   - dirty (preview): 黄色一色 (未コミットを示す)
+     *   - それ以外: render_highlighted で式と同じトークンベース色付け */
+    Element right;
     if (sheet_model_row_error(model_, idx)) {
-        right = right | color(Color::Red);
+        right = text(res_text) | color(Color::Red);
     } else if (is_focused && editor_dirty()) {
-        right = right | color(Color::Yellow);
+        right = text(res_text) | color(Color::Yellow);
+    } else if (has_result) {
+        right = render_highlighted(res_text, SIZE_MAX, /*dim_style=*/false);
     } else {
-        right = right | color(Color::GreenLight);
+        right = text("");
     }
 
     Element row = hbox({
