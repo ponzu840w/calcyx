@@ -858,10 +858,19 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     std::string result  = result_c ? result_c : "";
 
     /* 左カラム: "> editor" or "  expr" を eq_col セル幅に揃える。
-     * フォーカス行でカーソルが末尾にある場合、render_highlighted が末尾に
-     * 反転スペース 1 セルを追加するので、その分も幅に含める。 */
+     *   content_w: 純粋な式の表示幅 (折り返し判定に使う)。
+     *   left_w   : フォーカス行でカーソル末尾の反転スペース 1 セルを足したもの
+     *              (" = " を eq_col 列に揃える padding に使う)。
+     * 折り返し判定にカーソル分の +1 を含めると、たまたま eq_col に収まる行が
+     * フォーカスした瞬間だけ折り返される (= ぴったり eq_col の式が +1 で
+     * 弾かれる) のでカーソル分は除外する。
+     * その代わり、フォーカス行が一番幅広でカーソル末尾のときは " = " が
+     * 1 セル右にずれる場合がある — この場合に限り、他行の " = " 列との
+     * 不一致は局所的なズレに留め、画面全体のレイアウト破綻 (誤った折返し)
+     * を優先して避ける。 */
     const std::string &left_src = is_focused ? editor_buf_ : expr;
-    int left_w = display_cells(left_src);  /* "> " の 2 セルは別途 */
+    int content_w = display_cells(left_src);
+    int left_w    = content_w;
     if (is_focused && cursor_pos_ == editor_buf_.size()) left_w += 1;
 
     Element expr_el;
@@ -901,8 +910,9 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
 
     /* GUI 準拠の 2 行レイアウト: 式が "=" カラムを超え、かつ結果がある場合は
      * 式を 1 行目フル幅で出し、結果を次の視覚行で同じ "=" カラムに揃える。
-     * 結果のない行 (visible=false) は常に 1 行レイアウト。 */
-    bool wrapped = has_result && left_w > eq_col;
+     * 結果のない行 (visible=false) は常に 1 行レイアウト。
+     * カーソルの反転スペースは折り返しの判断材料にしない (content_w で判定)。 */
+    bool wrapped = has_result && content_w > eq_col;
 
     Element row;
     if (wrapped) {
@@ -961,8 +971,11 @@ Element TuiSheet::Render() {
      *   そうでない場合は
      *     eq_col = max(min, avail - max_result_w)  — 結果が端末右端に張り付く
      *
-     * フォーカス行のカーソルが末尾にあるときは反転スペース 1 セル分を加味。
-     * 端末幅が取れない場合は 80 をフォールバックに使う。 */
+     * 端末幅が取れない場合は 80 をフォールバックに使う。
+     * カーソル末尾の反転スペース 1 セルは eq_col 計算に含めない (含めると
+     * フォーカス時にだけ余計な折り返しが起きる)。代わりに render_row 側で
+     * pad を吸収させる — フォーカス行が一番幅広で末尾カーソルのときに限り
+     * " = " が 1 セル右にずれるが、それは局所的なズレに留まる。 */
     constexpr int kMinEqCol = 8;
     int term_w = ftxui::Terminal::Size().dimx;
     if (term_w <= 0) term_w = 80;
@@ -980,7 +993,6 @@ Element TuiSheet::Render() {
             es = e ? e : "";
         }
         int ew = display_cells(es);
-        if (i == focused_row_ && cursor_pos_ == editor_buf_.size()) ew += 1;
         if (ew > max_expr_w) max_expr_w = ew;
 
         std::string rs;
