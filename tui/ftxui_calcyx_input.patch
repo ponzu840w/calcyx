@@ -1,0 +1,58 @@
+From: calcyx
+Subject: [PATCH] calcyx 用の入力パーサ修正 (C0 通過 + X10 マウス消費)
+
+(1) 0x18 (CAN) / 0x1A (SUB) を DROP せず SPECIAL として通す
+
+calcyx は Ctrl+Z / Ctrl+X を Undo / Cut に割り当てており、ISIG を
+termios で無効化することでカーネルにも食われないようにしている。
+本家 FTXUI は Parse() 冒頭でこの 2 バイトを DROP するため、
+これらをパッチで通している。
+
+(2) X10 マウス形式 (\e[M + 3 生バイト) を消費する
+
+FTXUI v5.0 の ParseCSI は \e[M を見ると即終端し、arguments=[0]
+(size!=3) で ParseMouse → SPECIAL を返す。後続 3 バイトは未消費の
+ため text input として漏れ、SGR モード (1006) を無視する端末
+(古い VTE 系の roxterm 経由 / tmux mouse off + 一部 xterm 系など)
+ではマウスを動かすたびに 'C3&' のような文字列がエディタに入る。
+
+ParseCSI で「素の \e[M (引数なし、`<` 修飾なし)」を検出した時のみ
+追加で 3 バイト読んで X10 形式として ParseMouse に渡す。SGR
+(\e[<...M / \e[<...m) の経路には影響しない。
+
+--- a/src/ftxui/component/terminal_input_parser.cpp
++++ b/src/ftxui/component/terminal_input_parser.cpp
+@@ -166,10 +166,6 @@
+   }
+ 
+   switch (Current()) {
+-    case 24:  // CAN NOLINT
+-    case 26:  // SUB NOLINT
+-      return DROP;
+-
+     case '\x1B':
+       return ParseESC();
+     default:
+@@ -347,6 +343,22 @@
+ 
+       switch (Current()) {
+         case 'M':
++          // X10 mouse: \e[M followed by 3 raw bytes (button+32, x+32, y+32).
++          // The CSI parser strips the 'M' but does not consume the 3 trailing
++          // bytes, so on terminals that ignore SGR mode (1006) those bytes
++          // leak as text input. Detect the bare \e[M case (no args, not the
++          // SGR `<` form) and read the 3 bytes here.
++          if (!altered && arguments.size() == 1 && arguments[0] == 0) {
++            std::vector<int> mouse_args;
++            for (int i = 0; i < 3; ++i) {
++              if (!Eat()) {
++                return UNCOMPLETED;
++              }
++              mouse_args.push_back(
++                  static_cast<unsigned char>(Current()) - 32);
++            }
++            return ParseMouse(false, true, std::move(mouse_args));
++          }
+           return ParseMouse(altered, true, std::move(arguments));
+         case 'm':
+           return ParseMouse(altered, false, std::move(arguments));

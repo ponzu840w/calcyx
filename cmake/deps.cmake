@@ -101,11 +101,13 @@ endif()
 # install target は ftxui::{screen,dom,component} の CMake config を
 # ${DEPS_DIR}/lib/cmake/ftxui/ に書き出すが、calcyx は -l 直指定でリンクするので
 # find_package は呼ばない (ネイティブ / mingw の両方で同じ扱いにできる)。
-# stamp サフィックス -p1: tui/ftxui_passthrough_ctrl.patch を適用したリビジョン。
-# 0x18 (CAN) / 0x1A (SUB) を terminal_input_parser で DROP せず SPECIAL として
-# 通すため。パッチを更新したらサフィックスをインクリメントしてリビルドを誘発する。
-set(_ftxui_patch  "${CMAKE_CURRENT_SOURCE_DIR}/tui/ftxui_passthrough_ctrl.patch")
-set(_ftxui_stamp  "${DEPS_DIR}/lib/libftxui-${FTXUI_VERSION}-p1.a.stamp")
+# stamp サフィックス -p2: tui/ftxui_calcyx_input.patch を適用したリビジョン。
+# (1) 0x18 (CAN) / 0x1A (SUB) を DROP せず SPECIAL として通す (Ctrl+Z/X 用)。
+# (2) X10 マウス形式 (\e[M + 3 生バイト) を ParseCSI で消費する
+#     (SGR モードを無視する端末でマウス移動が text 入力として漏れるバグ修正)。
+# パッチを更新したらサフィックスをインクリメントしてリビルドを誘発する。
+set(_ftxui_patch  "${CMAKE_CURRENT_SOURCE_DIR}/tui/ftxui_calcyx_input.patch")
+set(_ftxui_stamp  "${DEPS_DIR}/lib/libftxui-${FTXUI_VERSION}-p2.a.stamp")
 if(NOT EXISTS "${_ftxui_stamp}")
     if(WIN32 AND CMAKE_CROSSCOMPILING)
         set(_ftxui_toolchain -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
