@@ -96,6 +96,12 @@ public:
     bool  auto_complete() const { return auto_complete_; }
     void  set_auto_complete(bool v) { auto_complete_ = v; }
 
+    /* GUI の g_input_bs_delete_empty_row 相当。空行で BS を押すと
+     * 行を削除して上に詰める挙動。誤削除を嫌うユーザーは calcyx.conf
+     * で off にできる (Shift+BS / Ctrl+BS は影響を受けない)。 */
+    bool  bs_delete_empty_row() const { return bs_delete_empty_row_; }
+    void  set_bs_delete_empty_row(bool v) { bs_delete_empty_row_ = v; }
+
     /* --- テスト用アクセサ (本番コードからは使わない) --- */
     const std::string& test_editor_buf() const { return editor_buf_; }
     size_t             test_cursor_pos() const { return cursor_pos_; }
@@ -184,9 +190,10 @@ private:
     std::function<void(int, int)>       context_menu_cb_;
 
     TuiCompletion completion_;
-    bool          auto_complete_ = true;  /* GUI の g_input_auto_completion 相当 */
-    bool          compact_mode_  = false;
-    bool          read_only_     = false;
+    bool          auto_complete_       = true;
+    bool          compact_mode_        = false;
+    bool          read_only_           = false;
+    bool          bs_delete_empty_row_ = true;
 
     /* 直近の Ctrl+C で書き込んだクリップボードテキストと、その行の式部分。
      * Ctrl+V 時にクリップボードの内容と last_copied_text_ が完全一致なら、

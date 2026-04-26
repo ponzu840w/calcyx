@@ -1222,10 +1222,14 @@ bool TuiSheet::OnEvent(Event ev) {
             break;
         case Action::Backspace:
             /* GUI 互換: 編集中の行が空で BS → delete_row_up。
-             * 行を跨いだ編集継続ができるので "改行キー" の逆操作になる。 */
+             * 行を跨いだ編集継続ができるので "改行キー" の逆操作になる。
+             * Prefs (bs_delete_empty_row_) で off にされている場合はこの
+             * 「自動行削除」を無効化し、空行 BS は何もしない (誤削除防止)。 */
             if (editor_buf_.empty()) {
-                action_delete_row_up();
-                completion_.hide();
+                if (bs_delete_empty_row_) {
+                    action_delete_row_up();
+                    completion_.hide();
+                }
             } else {
                 action_backspace();
                 needs_key_update = true;

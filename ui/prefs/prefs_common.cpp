@@ -222,6 +222,7 @@ void apply_settings(DlgState *st) {
     write_dlg_to_globals(st);
     g_input_auto_completion     = st->auto_complete_chk->value() != 0;
     g_input_auto_close_brackets = st->auto_brackets_chk->value() != 0;
+    g_input_bs_delete_empty_row = st->bs_delete_empty_chk->value() != 0;
     g_popup_independent_normal  = st->popup_indep_normal_chk->value() != 0;
     g_popup_independent_compact = st->popup_indep_compact_chk->value() != 0;
 
@@ -306,6 +307,7 @@ void reset_to_defaults(DlgState *st) {
     // Input
     st->auto_complete_chk->value(DEFAULT_AUTO_COMPLETION ? 1 : 0);
     st->auto_brackets_chk->value(DEFAULT_AUTO_CLOSE_BRACKETS ? 1 : 0);
+    st->bs_delete_empty_chk->value(DEFAULT_BS_DELETE_EMPTY_ROW ? 1 : 0);
     st->popup_indep_normal_chk->value(DEFAULT_POPUP_INDEPENDENT_NORMAL ? 1 : 0);
     st->popup_indep_compact_chk->value(DEFAULT_POPUP_INDEPENDENT_COMPACT ? 1 : 0);
 

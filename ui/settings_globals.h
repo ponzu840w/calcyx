@@ -19,6 +19,7 @@ constexpr int  DEFAULT_FONT_ID              = FL_COURIER;
 constexpr int  DEFAULT_FONT_SIZE            = 15;
 constexpr bool DEFAULT_AUTO_COMPLETION      = true;
 constexpr bool DEFAULT_AUTO_CLOSE_BRACKETS  = false;
+constexpr bool DEFAULT_BS_DELETE_EMPTY_ROW  = true;
 // 補完ポップアップを独立ウィンドウ (Fl_Menu_Window) で出すかどうか。
 // true: メインウィンドウの境界を超えてはみ出せる (独立)
 // false: メインウィンドウ内にクリップされる (埋め込み)
@@ -48,6 +49,10 @@ extern int g_font_size;
 // 入力
 extern bool g_input_auto_completion;
 extern bool g_input_auto_close_brackets;
+/* 空行で BackSpace を押したときに行を削除して上に詰めるかどうか。
+ * 既定 true (Calctus 互換)。誤って行が消える事故が嫌なユーザーは
+ * Prefs で OFF にできる (その場合は Shift+BS / Ctrl+BS で明示削除)。 */
+extern bool g_input_bs_delete_empty_row;
 extern bool g_popup_independent_normal;   // 通常モード時の補完ポップアップ独立化
 extern bool g_popup_independent_compact;  // コンパクトモード時の補完ポップアップ独立化
 

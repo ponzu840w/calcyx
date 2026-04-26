@@ -29,6 +29,7 @@ int  g_font_id   = DEFAULT_FONT_ID;
 int  g_font_size  = DEFAULT_FONT_SIZE;
 bool g_input_auto_completion    = DEFAULT_AUTO_COMPLETION;
 bool g_input_auto_close_brackets = DEFAULT_AUTO_CLOSE_BRACKETS;
+bool g_input_bs_delete_empty_row = DEFAULT_BS_DELETE_EMPTY_ROW;
 bool g_popup_independent_normal  = DEFAULT_POPUP_INDEPENDENT_NORMAL;
 bool g_popup_independent_compact = DEFAULT_POPUP_INDEPENDENT_COMPACT;
 bool g_sep_thousands = DEFAULT_SEP_THOUSANDS;
@@ -171,6 +172,7 @@ const Desc SETTINGS_TABLE[] = {
     SEC("# ---- Input ----\n"),
     BOOLE("auto_completion",     g_input_auto_completion,     DEFAULT_AUTO_COMPLETION),
     BOOLE("auto_close_brackets", g_input_auto_close_brackets, DEFAULT_AUTO_CLOSE_BRACKETS),
+    BOOLE("bs_delete_empty_row", g_input_bs_delete_empty_row, DEFAULT_BS_DELETE_EMPTY_ROW),
     BOOLE("popup_independent_normal",  g_popup_independent_normal,  DEFAULT_POPUP_INDEPENDENT_NORMAL),
     BOOLE("popup_independent_compact", g_popup_independent_compact, DEFAULT_POPUP_INDEPENDENT_COMPACT),
 

@@ -74,5 +74,20 @@ void build_input_tab(DlgState &st, int tab_h) {
         ly += SECTION_TITLE_H + body_h + SECTION_GAP;
     }
 
+    // ===== Editing =====
+    {
+        int body_h = 36;
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Editing");
+        int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
+
+        st.bs_delete_empty_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+            "Backspace on empty row deletes the row");
+        style_check(st.bs_delete_empty_chk);
+        st.bs_delete_empty_chk->value(g_input_bs_delete_empty_row ? 1 : 0);
+
+        sec->end();
+        ly += SECTION_TITLE_H + body_h + SECTION_GAP;
+    }
+
     g->end();
 }

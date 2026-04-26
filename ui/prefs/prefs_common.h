@@ -82,6 +82,7 @@ struct DlgState {
     Fl_Check_Button *sep_hex_chk;
     Fl_Check_Button *auto_complete_chk;
     Fl_Check_Button *auto_brackets_chk;
+    Fl_Check_Button *bs_delete_empty_chk;
     Fl_Check_Button *popup_indep_normal_chk;
     Fl_Check_Button *popup_indep_compact_chk;
     // General tab

@@ -466,7 +466,10 @@ public:
                 // Shift+Del/BS (修飾なし): 行削除・上移動 → SheetView に委譲
                 if (shift && !ctrl && !meta && (key == FL_Delete || key == FL_BackSpace)) return 0;
                 // 空行での BackSpace: 行削除・上移動 → SheetView に委譲
-                if (!shift && !ctrl && !meta && key == FL_BackSpace && size() == 0) return 0;
+                // (Prefs で無効化されている場合は editor 側で吸収させる)
+                if (g_input_bs_delete_empty_row &&
+                    !shift && !ctrl && !meta && key == FL_BackSpace && size() == 0)
+                    return 0;
             }
             // Cmd+Z / Cmd+Y / Cmd+Shift+Z は SheetView::handle() に委譲 (Undo/Redo)
             if (meta && (key == 'z' || key == 'y')) {
@@ -1250,7 +1253,8 @@ int SheetView::handle(int event) {
         if (shift && !ctrl && (key == FL_Delete || key == FL_BackSpace)) {
             delete_row_up(); return 1;
         }
-        if (key == FL_BackSpace && !shift && !ctrl && editor_->size() == 0) {
+        if (key == FL_BackSpace && !shift && !ctrl && editor_->size() == 0
+            && g_input_bs_delete_empty_row) {
             delete_row_up(); return 1;
         }
 

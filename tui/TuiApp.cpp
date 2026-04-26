@@ -372,8 +372,11 @@ void TuiApp::apply_settings_from_conf() {
         conf_get_int(kv, "max_call_depth",     64), 1, 1000);
     sheet_model_set_limits(model_, lim);
 
-    if (sheet_)
+    if (sheet_) {
         sheet_->set_auto_complete(conf_get_bool(kv, "auto_completion", true));
+        sheet_->set_bs_delete_empty_row(
+            conf_get_bool(kv, "bs_delete_empty_row", true));
+    }
 
     /* 桁数・E ノテーションが変わると既存行の表示も変わるので再評価。 */
     sheet_model_eval_all(model_);
