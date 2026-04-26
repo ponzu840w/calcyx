@@ -34,27 +34,27 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
 
     { "&Edit/&Undo",              "編集(&E)/元に戻す(&U)" },
     { "&Edit/&Redo",              "編集(&E)/やり直し(&R)" },
-    { "&Edit/Copy &All",          "編集(&E)/すべてコピー(&A)" },
+    { "&Edit/Copy &All",          "編集(&E)/全行をコピー(&A)" },
     { "&Edit/&Insert Row Below",  "編集(&E)/下に行を挿入(&I)" },
     { "&Edit/Insert Row A&bove",  "編集(&E)/上に行を挿入(&B)" },
     { "&Edit/&Delete Row",        "編集(&E)/行を削除(&D)" },
     { "&Edit/Move Row &Up",       "編集(&E)/行を上に移動(&U)" },
     { "&Edit/Move Row Do&wn",     "編集(&E)/行を下に移動(&W)" },
-    { "&Edit/&Recalculate",       "編集(&E)/再計算(&R)" },
+    { "&Edit/&Recalculate",       "編集(&E)/強制再計算(&R)" },
 
     { "&View/Always on &Top",            "表示(&V)/常に手前に表示(&T)" },
     { "&View/&Compact Mode",             "表示(&V)/コンパクトモード(&C)" },
     { "&View/Sys&tem Tray",              "表示(&V)/システムトレイ(&T)" },
     { "&View/Color &Scheme",             "表示(&V)/カラースキーム(&S)" },
-    { "&View/Show &Row Lines",           "表示(&V)/行の境界線を表示(&R)" },
+    { "&View/Show &Row Lines",           "表示(&V)/罫線を表示(&R)" },
     { "&View/Zoom &In",                  "表示(&V)/拡大(&I)" },
     { "&View/Zoom &Out",                 "表示(&V)/縮小(&O)" },
     { "&View/Reset &Zoom",               "表示(&V)/拡大率をリセット(&Z)" },
     { "&View/Scientific Notation (&E)",  "表示(&V)/科学的記数法(&E)" },
     { "&View/Show Thousands &Separator", "表示(&V)/3 桁区切りを表示(&S)" },
     { "&View/Show &Hex Separator",       "表示(&V)/16 進区切りを表示(&H)" },
-    { "&View/Decimals &+",               "表示(&V)/小数桁 &+" },
-    { "&View/Decimals &\xe2\x88\x92",    "表示(&V)/小数桁 &\xe2\x88\x92" },
+    { "&View/Decimals &+",               "表示(&V)/小数桁数 &+" },
+    { "&View/Decimals &\xe2\x88\x92",    "表示(&V)/小数桁数 &\xe2\x88\x92" },
     { "&View/&Auto Completion",          "表示(&V)/自動補完(&A)" },
 
     /* === GUI: ファイルダイアログ === */
@@ -68,8 +68,8 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
 
     /* === GUI: About === */
     { "About calcyx",          "calcyx について" },
-    { "A programmable calculator based on Calctus.",
-      "Calctus をベースにしたプログラム可能な電卓" },
+    { "An engineering calculator based on Calctus.",
+      "Calctus ベースのエンジニアリング電卓" },
 
     /* === GUI: Preferences ダイアログ === */
     { "Preferences",                "設定" },
@@ -102,7 +102,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Preset:",                               "プリセット:" },
     { "Copy to user-defined",                  "ユーザー定義にコピー" },
     { "Copy current preset colors to user-defined and switch to it for editing",
-      "現在のプリセット色をユーザー定義にコピーし, 編集モードに切替えます" },
+      "現在のプリセット色をユーザー定義にコピーして編集可能にします" },
 
     /* Input タブ */
     { "Completion",                            "補完" },
@@ -114,7 +114,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Numeric Separators",                    "数値区切り" },
 
     /* Calculation タブ */
-    { "Limits",                                "上限" }
+    { "Limits",                                "リミット" }
 };
 
 const int CALCYX_TR_TABLE_JA_N =

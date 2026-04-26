@@ -614,7 +614,7 @@ static void show_about(MainWindow *win) {
         std::string("<center>"
                     "<b>calcyx " CALCYX_VERSION_FULL "</b><br>") +
         CALCYX_EDITION +
-        "<p>" + _("A programmable calculator based on Calctus.") + "</p>" +
+        "<p>" + _("An engineering calculator based on Calctus.") + "</p>" +
         "<a href='https://github.com/ponzu840w/calcyx'>https://github.com/ponzu840w/calcyx</a>"
         "</center>"
         "<font size=2>"
