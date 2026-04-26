@@ -775,7 +775,7 @@ static std::string find_icon_svg() {
     }
 #endif
     static const char *bases[] = {
-        "ui/icon.svg", "../ui/icon.svg", "../../ui/icon.svg",
+        "gui/icon.svg", "../gui/icon.svg", "../../gui/icon.svg",
         "icon.svg", "../icon.svg",
         "/usr/share/icons/hicolor/scalable/apps/calcyx.svg",
     };

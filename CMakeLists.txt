@@ -118,13 +118,13 @@ if(EMSCRIPTEN)
     set(CPACK_ARCHIVE_COMPONENT_INSTALL   OFF)
     include(CPack)
 else()
-    add_subdirectory(ui)
+    add_subdirectory(gui)
     add_subdirectory(cli)
     add_subdirectory(tui)
 
     # ---- samples / LICENSE / THIRD_PARTY_LICENSES のインストール ----
     if(APPLE)
-        # macOS: .app バンドル内に Resources/samples として埋め込み済み (ui/CMakeLists.txt)
+        # macOS: .app バンドル内に Resources/samples として埋め込み済み (gui/CMakeLists.txt)
         # LICENSE は zip のルートに置く
         install(FILES "${CMAKE_SOURCE_DIR}/LICENSE"
                       "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"

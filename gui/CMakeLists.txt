@@ -177,7 +177,7 @@ elseif(UNIX)
     install(TARGETS calcyx_ui RUNTIME DESTINATION bin COMPONENT gui)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/com.ponzu840w.calcyx.desktop"
         DESTINATION share/applications COMPONENT gui)
-    install(FILES "${CMAKE_SOURCE_DIR}/ui/icon.svg"
+    install(FILES "${CMAKE_SOURCE_DIR}/gui/icon.svg"
         DESTINATION share/icons/hicolor/scalable/apps
         RENAME calcyx.svg COMPONENT gui)
 endif()
@@ -205,11 +205,11 @@ target_link_libraries(test_settings PRIVATE
 
 # ===== ctest 登録 =====
 if(CALCYX_TESTS_ENABLED)
-    add_test(NAME ui/completion
+    add_test(NAME gui/completion
         COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_completion>)
-    set_tests_properties(ui/completion PROPERTIES LABELS "gui")
+    set_tests_properties(gui/completion PROPERTIES LABELS "gui")
 
-    add_test(NAME ui/settings
+    add_test(NAME gui/settings
         COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_settings>)
-    set_tests_properties(ui/settings PROPERTIES LABELS "gui")
+    set_tests_properties(gui/settings PROPERTIES LABELS "gui")
 endif()

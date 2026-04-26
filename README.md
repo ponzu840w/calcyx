@@ -126,7 +126,7 @@ ctest --preset win-headless
 
 ```
 engine/   C99 計算エンジン（types / parser / eval）
-ui/       FLTK GUI（macOS / Linux / Windows）
+gui/       FLTK GUI（macOS / Linux / Windows）
 cli/      CLI フロントエンド
 web/      Web フロントエンド（Vanilla JS + WebAssembly）
 ```
@@ -137,10 +137,10 @@ web/      Web フロントエンド（Vanilla JS + WebAssembly）
 
 | パス | 内容 |
 |---|---|
-| `build/ui/calcyx.app` | GUI アプリ本体 (macOS) |
-| `build/ui/calcyx-gui` | GUI アプリ本体 (Linux) |
+| `build/gui/calcyx.app` | GUI アプリ本体 (macOS) |
+| `build/gui/calcyx-gui` | GUI アプリ本体 (Linux) |
 | `build/cli/calcyx` | CLI (macOS / Linux) |
-| `build-win/ui/calcyx-gui.exe` | GUI アプリ本体 (Windows) |
+| `build-win/gui/calcyx-gui.exe` | GUI アプリ本体 (Windows) |
 | `build-win/cli/calcyx.exe` | CLI (Windows) |
 
 ## Calctus からの変更点

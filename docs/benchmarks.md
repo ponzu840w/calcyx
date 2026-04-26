@@ -4,7 +4,7 @@
 
 ## 計測方法
 
-- 対象バイナリ: `ui/calcyx-gui` (Linux), `ui/calcyx-gui.exe` (Windows)
+- 対象バイナリ: `gui/calcyx-gui` (Linux), `gui/calcyx-gui.exe` (Windows)
 - 起動時間: `CALCYX_BENCH_EXIT_MS=200` フックで自動終了させ、
   起動〜終了までの壁時計時間を計測
 - RSS: Linux は `/proc/PID/status` の VmHWM をポーリング、
@@ -67,9 +67,9 @@ Phase 2 の目的は「保守性向上」。機能追加・バグ修正は行わ
   `calcyx_ui_common` 静的ライブラリに集約 (二重コンパイル解消)
 - **I**: `engine/eval/builtin_array.c` (2197 行) をカテゴリ別
   6 ファイルに分割
-- **E**: `ui/settings_globals.cpp` の init/load/save を
+- **E**: `gui/settings_globals.cpp` の init/load/save を
   スキーマテーブル駆動に変更
-- **G**: `ui/PrefsDialog.cpp` (1244 行) を 5 タブファイルに分割
+- **G**: `gui/PrefsDialog.cpp` (1244 行) を 5 タブファイルに分割
 
 計測環境は Phase 1 と同一。
 
