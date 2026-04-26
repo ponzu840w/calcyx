@@ -249,8 +249,7 @@ Element TuiApp::about_overlay() const {
     Elements rows;
     for (int i = scroll; i < kShortcutCount && i < scroll + kAboutVisibleRows; ++i) {
         rows.push_back(hbox({
-            text(kShortcuts[i].key) | color(Color::YellowLight) |
-                size(WIDTH, EQUAL, 22),
+            text(kShortcuts[i].key) | bold | size(WIDTH, EQUAL, 22),
             text(" "),
             text(kShortcuts[i].desc),
         }));
@@ -404,7 +403,7 @@ Element TuiApp::paste_modal_overlay() const {
 
     auto choice_row = [this](const char *label, const char *hint, int idx) {
         bool selected = (paste_modal_choice_ == idx);
-        Element marker = selected ? text("[*] ") | color(Color::YellowLight)
+        Element marker = selected ? text("[*] ") | bold
                                    : text("[ ] ");
         Element body   = hbox({
             std::move(marker),
@@ -639,7 +638,9 @@ Element label_elements(const char *label, bool disabled) {
                 buf.clear();
             }
             Element hot = text(std::string(1, *p));
-            parts.push_back(disabled ? hot | dim : hot | color(Color::YellowLight));
+            /* ホットキー文字: bold + underlined は端末の "_F_ile" 表示と同じ
+             * 古典スタイル。色に依存しないので白背景・モノクロでも読める。 */
+            parts.push_back(disabled ? hot | dim : hot | bold | underlined);
             next_hot = false;
         } else {
             buf.push_back(*p);

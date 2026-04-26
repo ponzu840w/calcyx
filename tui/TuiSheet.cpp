@@ -911,12 +911,15 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
         eq,
         right | flex,
     });
-    /* フォーカス行は bg=Blue + fg=White を明示。色を片方だけ指定すると、
-     * 白背景テーマで端末既定 fg (薄いグレー等) と Blue bg のコントラストが
-     * 弱くなり選択行がほぼ見えなくなる。fg を明示することで Default 前景の
-     * 文字 (空白・数字等) を必ず白で描画する。トークン色付きの文字は親の
-     * fg を上書きするので、ハイライトはそのまま残る。 */
-    if (is_focused) row = row | bgcolor(Color::Blue) | color(Color::White);
+    /* フォーカス行のハイライトは inverted (端末既定 fg/bg をピクセル単位で
+     * 入れ替える) を使う。bgcolor(Blue)+color(White) などの「色」指定は
+     * 単色テーマや低色数端末では塗り潰しになって読めなくなるが、inverted は
+     * 端末が天然に持っているコントラストペアをそのまま反転するだけなので、
+     * モノクロ・カラー問わず必ずコントラストが残る。
+     * 補完カーソルは独自に | inverted しており、FTXUI の inverted は XOR
+     * なので親の inverted と打ち消し合い、フォーカス行内では「反転帯の中の
+     * 非反転スポット」としてカーソルが見える。 */
+    if (is_focused) row = row | inverted;
     return row;
 }
 
