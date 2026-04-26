@@ -1041,24 +1041,23 @@ Element TuiSheet::Render() {
 
     val_fmt_t cur_fmt = sheet_model_row_fmt(model_, focused_row_);
     std::string status =
-        "[" + std::to_string(focused_row_ + 1) + "/" + std::to_string(n) + "]  "
-        "fmt: " + fmt_label(cur_fmt);
-    if (!file_path_.empty()) status += "  file: " + file_path_;
-    if (editor_dirty())      status += "  *";
+        "[" + std::to_string(focused_row_ + 1) + "/" + std::to_string(n) +
+        "]<" + fmt_label(cur_fmt) + ">";
+    if (!file_path_.empty()) status += " file: " + file_path_;
+    if (editor_dirty())      status += " *";
     if (completion_visible()) {
         status += "  (" + std::to_string(completion_.filtered_count()) +
                    " candidates)";
     }
 
-    std::string help = " F1 help  Alt+F menu  ^Q quit  ^Z/^Y undo/redo  F8-F12 fmt ";
-
+    /* ホットキー / プロンプト / flash は TuiApp 側の最下行にまとめて表示する。
+     * ここではステータス行までで止める (separator の上はシート本文)。 */
     return vbox({
         vbox(std::move(rows)) | yframe | flex,
         separator(),
         hbox({
             text(status) | flex,
         }),
-        text(help) | dim,
     });
 }
 

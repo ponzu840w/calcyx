@@ -145,6 +145,11 @@ private:
     sheet_model_t            *model_ = nullptr;
     std::shared_ptr<TuiSheet> sheet_;
     std::string               status_message_;
+    /* 次のイベント先頭で status_message_ を消すフラグ。flash は「直後の
+     * 1 フレーム」だけ見せ、ユーザーが何かキーを押した瞬間に下段ヘルプへ
+     * 戻す。flash_message() 直後は false (=今回のフレームでは表示)、
+     * イベント末尾で flash があれば true に倒す。 */
+    bool                      flash_pending_clear_ = false;
     ftxui::ScreenInteractive  screen_;
 
     /* プロンプト状態 */

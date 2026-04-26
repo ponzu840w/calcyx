@@ -71,6 +71,8 @@ TuiApp::~TuiApp() {
  * -------------------------------------------------------------------- */
 void TuiApp::flash_message(std::string msg) {
     status_message_ = std::move(msg);
+    /* このフレームでは表示する。次イベントの先頭で消える。 */
+    flash_pending_clear_ = false;
 }
 
 /* ----------------------------------------------------------------------
@@ -1399,18 +1401,27 @@ bool TuiApp::handle_mouse(const Mouse &m) {
  * テスト用: CatchEvent → sheet OnEvent の経路をテストから再現する
  * -------------------------------------------------------------------- */
 void TuiApp::test_dispatch(Event ev) {
-    if (ev.is_mouse()) {
-        if (handle_mouse(ev.mouse())) return;
-        sheet_->OnEvent(ev);
-        return;
+    /* 本番 Loop 側の CatchEvent と同じ flash クリア手順を再現する
+     * (テストから flash の遅延消去を観測したい場合に整合する)。 */
+    if (flash_pending_clear_ &&
+        (!ev.is_mouse() || ev.mouse().motion == Mouse::Pressed)) {
+        status_message_.clear();
+        flash_pending_clear_ = false;
     }
-    if (context_menu_handle_event(ev)) return;
-    if (paste_modal_handle_event(ev)) return;
-    if (about_handle_event(ev)) return;
-    if (ev == Event::F1) { about_visible_ = true; about_scroll_ = 0; return; }
-    if (menu_handle_event(ev)) return;
-    if (prompt_handle_event(ev)) return;
-    sheet_->OnEvent(ev);
+
+    if (ev.is_mouse()) {
+        if (!handle_mouse(ev.mouse())) sheet_->OnEvent(ev);
+    } else if (context_menu_handle_event(ev)) {
+    } else if (paste_modal_handle_event(ev)) {
+    } else if (about_handle_event(ev)) {
+    } else if (ev == Event::F1) {
+        about_visible_ = true; about_scroll_ = 0;
+    } else if (menu_handle_event(ev)) {
+    } else if (!prompt_handle_event(ev)) {
+        sheet_->OnEvent(ev);
+    }
+
+    if (!status_message_.empty()) flash_pending_clear_ = true;
 }
 
 /* ----------------------------------------------------------------------
@@ -1472,8 +1483,13 @@ int TuiApp::run(const std::string &initial_file) {
         Element body = sheet_->Render();
 
         Element base;
-        /* プロンプト入力中は compact でも表示する (操作中は必須)。
-         * プロンプトなしの status_message_ は compact 時は省略。 */
+        /* 最下行は単一スロット。優先度: prompt > flash > help。
+         *   - prompt: Ctrl+O/S 入力中
+         *   - flash:  status_message_ あり (次イベントで消える)
+         *   - help:   ホットキーヒント (compact 時は何も出さない)
+         * compact 時は flash と help を隠し、prompt のみ表示する。 */
+        Element bottom_slot;
+        bool bottom_visible = true;
         if (prompt_mode_ != PromptMode::None) {
             const std::string &b = prompt_buf_;
             size_t p = std::min(prompt_cursor_, b.size());
@@ -1482,21 +1498,28 @@ int TuiApp::run(const std::string &initial_file) {
             std::string c = (p < b.size()) ? b.substr(p + 1) : "";
             /* "Open:" / "Save:" 等のラベル。白背景端末でも読めるよう
              * 蛍光ペン (黒文字 + 黄色背景) スタイルで明示する。 */
-            Element prompt_el = hbox({
+            bottom_slot = hbox({
                 text(prompt_label_) | color(Color::Black) | bgcolor(Color::YellowLight),
                 text(" "),
                 text(a),
                 text(m) | inverted,
                 text(c),
             }) | reflect(prompt_box_);
-            base = vbox({ body | flex, prompt_el });
+        } else if (!status_message_.empty()) {
+            if (sheet_->compact_mode()) {
+                bottom_visible = false;
+            } else {
+                bottom_slot = text(" " + status_message_ + " ") | dim;
+            }
         } else if (sheet_->compact_mode()) {
-            base = vbox({ body | flex });
+            bottom_visible = false;
         } else {
-            Element prompt_el =
-                text(status_message_.empty() ? " " : status_message_) | dim;
-            base = vbox({ body | flex, prompt_el });
+            bottom_slot = text(" F1 help  Alt+F menu  ^Q quit  "
+                               "^Z/^Y undo/redo  F8-F12 fmt ") | dim;
         }
+        base = bottom_visible
+                 ? vbox({ body | flex, bottom_slot })
+                 : vbox({ body | flex });
 
         /* compact のときはメニューバーも隠す (F6 / Ctrl+: で復帰)。 */
         if (!sheet_->compact_mode()) {
@@ -1514,26 +1537,44 @@ int TuiApp::run(const std::string &initial_file) {
     });
 
     auto root = CatchEvent(renderer, [this](Event ev) {
+        /* flash の遅延クリア: 前回の flash が「次イベントで消す」マーク
+         * 付きなら、今回のイベント先頭で消す。マウス移動などの passive
+         * イベントで消えないよう、キー / クリックに限定する。 */
+        if (flash_pending_clear_ &&
+            (!ev.is_mouse() || ev.mouse().motion == Mouse::Pressed)) {
+            status_message_.clear();
+            flash_pending_clear_ = false;
+        }
+
+        bool handled;
         if (ev.is_mouse()) {
             /* TuiApp 自身が消費しないマウスは sheet (CatchEvent の child)
              * に流す。handle_mouse() が false ならここで false を返せば
              * Renderer 経由で sheet->OnEvent() に届く。 */
-            return handle_mouse(ev.mouse());
-        }
-        /* コンテキストメニュー中は全キーをメニューに渡す。 */
-        if (context_menu_handle_event(ev)) return true;
-        /* Paste モーダル中は全キーをモーダルに渡す。 */
-        if (paste_modal_handle_event(ev)) return true;
-        /* About が開いている間は全イベントを吸収する。 */
-        if (about_handle_event(ev)) return true;
-        /* 非表示のときに F1 で開く。 */
-        if (ev == Event::F1) {
+            handled = handle_mouse(ev.mouse());
+        } else if (context_menu_handle_event(ev)) {
+            /* コンテキストメニュー中は全キーをメニューに渡す。 */
+            handled = true;
+        } else if (paste_modal_handle_event(ev)) {
+            /* Paste モーダル中は全キーをモーダルに渡す。 */
+            handled = true;
+        } else if (about_handle_event(ev)) {
+            /* About が開いている間は全イベントを吸収する。 */
+            handled = true;
+        } else if (ev == Event::F1) {
+            /* 非表示のときに F1 で開く。 */
             about_visible_ = true;
             about_scroll_  = 0;
-            return true;
+            handled = true;
+        } else if (menu_handle_event(ev)) {
+            handled = true;
+        } else {
+            handled = prompt_handle_event(ev);
         }
-        if (menu_handle_event(ev)) return true;
-        return prompt_handle_event(ev);
+
+        /* このイベントで flash が立ったなら、次イベントで消すマーク。 */
+        if (!status_message_.empty()) flash_pending_clear_ = true;
+        return handled;
     });
 
     screen_.Loop(root);
