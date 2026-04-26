@@ -15,5 +15,5 @@ Makefile
 /tmp
 .DS_Store
 debug.sh
-ui/icon.iconset/
+gui/icon.iconset/
 claude-hand.sh
