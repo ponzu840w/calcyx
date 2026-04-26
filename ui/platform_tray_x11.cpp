@@ -15,6 +15,7 @@
 #include <X11/Xutil.h>
 #include <cstring>
 #include <cstdio>
+#include <cstdlib>
 
 // キー名テーブル・変換関数は platform_tray_common.cpp にある。
 
