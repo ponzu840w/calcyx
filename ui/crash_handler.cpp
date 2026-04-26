@@ -18,7 +18,9 @@
 #  include <dbghelp.h>
 #  include <io.h>
 #  include <fcntl.h>
-#  define OPEN(p)  _open(p, _O_WRONLY | _O_CREAT | _O_TRUNC, 0644)
+/* Windows では UTF-8 → UTF-16 変換した s_crash_path_w を使って _wopen.
+ * シグナルハンドラ内では malloc を避け, 起動時に変換して保持しておく. */
+#  define OPEN(p)  _wopen(s_crash_path_w, _O_WRONLY | _O_CREAT | _O_TRUNC, 0644)
 #  define WRITE(fd, buf, n) _write(fd, buf, (unsigned)(n))
 #  define CLOSE(fd) _close(fd)
 #else
@@ -36,12 +38,18 @@
 #  define CLOSE(fd) close(fd)
 #endif
 
+#include "path_utf8.h"
+
 #ifndef CALCYX_VERSION_FULL
 #  define CALCYX_VERSION_FULL "unknown"
 #endif
 
 static char s_crash_path[1024];
 static char s_exe_path[1024];
+#if defined(_WIN32)
+/* シグナルハンドラ内 malloc を避けるため起動時に UTF-16 で保持. */
+static wchar_t s_crash_path_w[1024];
+#endif
 
 #define SHEET_SNAPSHOT_SIZE 4096
 static char s_sheet_snapshot[SHEET_SNAPSHOT_SIZE];
@@ -379,7 +387,19 @@ void crash_handler_install() {
     std::string dir = AppPrefs::config_dir();
 #if defined(_WIN32)
     snprintf(s_crash_path, sizeof(s_crash_path), "%s\\crash.log", dir.c_str());
-    GetModuleFileNameA(NULL, s_exe_path, sizeof(s_exe_path));
+    /* s_crash_path は UTF-8. シグナルハンドラ内で _wopen に渡せるよう
+     * UTF-16 版を起動時に作っておく. */
+    MultiByteToWideChar(CP_UTF8, 0, s_crash_path, -1, s_crash_path_w,
+                        (int)(sizeof(s_crash_path_w) / sizeof(s_crash_path_w[0])));
+    {
+        wchar_t wexe[1024];
+        if (GetModuleFileNameW(NULL, wexe, (DWORD)(sizeof(wexe) / sizeof(wexe[0]))) > 0) {
+            WideCharToMultiByte(CP_UTF8, 0, wexe, -1, s_exe_path,
+                                (int)sizeof(s_exe_path), NULL, NULL);
+        } else {
+            s_exe_path[0] = '\0';
+        }
+    }
 #elif defined(__APPLE__)
     snprintf(s_crash_path, sizeof(s_crash_path), "%s/crash.log", dir.c_str());
     uint32_t sz = sizeof(s_exe_path);
@@ -407,14 +427,14 @@ void crash_handler_install() {
 
 std::string crash_handler_check() {
     if (s_crash_path[0] == '\0') return "";
-    FILE *fp = fopen(s_crash_path, "r");
+    FILE *fp = calcyx_fopen(s_crash_path, "r");
     if (!fp) return "";
     std::string content;
     char buf[1024];
     while (size_t n = fread(buf, 1, sizeof(buf), fp))
         content.append(buf, n);
     fclose(fp);
-    remove(s_crash_path);
+    calcyx_remove(s_crash_path);
     return content;
 }
 

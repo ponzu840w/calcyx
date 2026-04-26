@@ -1,18 +1,16 @@
-/* settings_writer.c — コメント保持型 conf ライタ. */
+/* settings_writer.c — コメント保持型 conf ライタ.
+ *
+ * ファイル操作は path_utf8 経由 (calcyx_fopen / calcyx_rename / calcyx_remove).
+ * Windows で日本語ユーザー名等を含むパスでも文字化けしないよう UTF-8 を
+ * UTF-16 に変換してから _wfopen 等を呼ぶ. */
 
 #include "settings_writer.h"
 #include "settings_schema.h"
+#include "path_utf8.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef _WIN32
-#  include <io.h>
-#  define unlink _unlink
-#else
-#  include <unistd.h>
-#endif
 
 /* ---- dynamic byte buffer ---- */
 
@@ -252,7 +250,7 @@ static char *read_file_all(const char *path, size_t *out_len) {
     char *buf;
     size_t n;
     *out_len = 0;
-    fp = fopen(path, "rb");
+    fp = calcyx_fopen(path, "rb");
     if (!fp) return NULL;
     if (fseek(fp, 0, SEEK_END) != 0) { fclose(fp); return NULL; }
     sz = ftell(fp);
@@ -503,7 +501,7 @@ int calcyx_settings_write_preserving(const char            *path,
 
     /* --- atomic 書き出し: path.tmp に書いて rename --- */
     snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
-    fp = fopen(tmp_path, "wb");
+    fp = calcyx_fopen(tmp_path, "wb");
     if (!fp) {
         rc = -1;
     } else {
@@ -515,12 +513,12 @@ int calcyx_settings_write_preserving(const char            *path,
     if (rc == 0) {
 #ifdef _WIN32
         /* Windows の rename は dest が存在すると失敗するので, 先に消す. */
-        unlink(path);
+        calcyx_remove(path);
 #endif
-        if (rename(tmp_path, path) != 0) {
+        if (calcyx_rename(tmp_path, path) != 0) {
             /* fallback: tmp をそのまま正本にできなかった -> 直接コピー */
-            FILE *src = fopen(tmp_path, "rb");
-            FILE *dst = fopen(path, "wb");
+            FILE *src = calcyx_fopen(tmp_path, "rb");
+            FILE *dst = calcyx_fopen(path, "wb");
             if (src && dst) {
                 char chunk[4096];
                 size_t k;
@@ -532,10 +530,10 @@ int calcyx_settings_write_preserving(const char            *path,
             }
             if (src) fclose(src);
             if (dst) fclose(dst);
-            unlink(tmp_path);
+            calcyx_remove(tmp_path);
         }
     } else {
-        unlink(tmp_path);
+        calcyx_remove(tmp_path);
     }
 
     free(seen);
@@ -582,7 +580,7 @@ int calcyx_settings_init_defaults(const char *path, const char *first_time_heade
     FILE *fp;
     int   rc;
     if (!path) return -1;
-    fp = fopen(path, "rb");
+    fp = calcyx_fopen(path, "rb");
     if (fp) { fclose(fp); return 0; }  /* 既存. */
     rc = calcyx_settings_write_preserving(path, first_time_header,
                                           defaults_lookup, NULL);

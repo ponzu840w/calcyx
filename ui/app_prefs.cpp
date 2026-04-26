@@ -1,19 +1,17 @@
 // アプリ設定の読み書き
+//
+// パスは UTF-8 で扱い, ファイル操作は path_utf8 経由 (Windows で日本語
+// ユーザー名等を含むパスでも文字化けしないよう内部で UTF-16 変換).
 
 #include "app_prefs.h"
+#include "path_utf8.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <sys/stat.h>
 
 #if defined(_WIN32)
 #  include <windows.h>
 #  include <shlobj.h>
-#  include <direct.h>
-#  define MKDIR(p) _mkdir(p)
-#else
-#  include <errno.h>
-#  define MKDIR(p) mkdir((p), 0755)
 #endif
 
 // ---- 設定ディレクトリを返す (末尾にセパレータなし) ----
@@ -31,25 +29,28 @@ std::string AppPrefs::config_dir() {
             snprintf(buf, sizeof(buf), ".\\calcyx");
         }
     } else {
-        const char *appdata = getenv("APPDATA");
-        if (!appdata) appdata = ".";
-        snprintf(buf, sizeof(buf), "%s\\calcyx", appdata);
+        char appdata[1024];
+        if (calcyx_getenv_utf8("APPDATA", appdata, sizeof(appdata))) {
+            snprintf(buf, sizeof(buf), "%s\\calcyx", appdata);
+        } else {
+            snprintf(buf, sizeof(buf), ".\\calcyx");
+        }
     }
 #elif defined(__APPLE__)
-    const char *home = getenv("HOME");
-    if (!home) home = ".";
+    char home[1024];
+    if (!calcyx_getenv_utf8("HOME", home, sizeof(home))) snprintf(home, sizeof(home), ".");
     snprintf(buf, sizeof(buf), "%s/Library/Application Support/calcyx", home);
 #else
-    const char *xdg = getenv("XDG_CONFIG_HOME");
-    if (xdg && xdg[0]) {
+    char xdg[1024];
+    if (calcyx_getenv_utf8("XDG_CONFIG_HOME", xdg, sizeof(xdg))) {
         snprintf(buf, sizeof(buf), "%s/calcyx", xdg);
     } else {
-        const char *home = getenv("HOME");
-        if (!home) home = ".";
+        char home[1024];
+        if (!calcyx_getenv_utf8("HOME", home, sizeof(home))) snprintf(home, sizeof(home), ".");
         snprintf(buf, sizeof(buf), "%s/.config/calcyx", home);
     }
 #endif
-    MKDIR(buf);
+    calcyx_mkdir(buf);
     return buf;
 }
 
@@ -66,7 +67,7 @@ std::string AppPrefs::config_path() {
 // ---- コンストラクタ: ファイルを読み込む ----
 AppPrefs::AppPrefs() {
     path_ = config_path();
-    FILE *fp = fopen(path_.c_str(), "r");
+    FILE *fp = calcyx_fopen(path_.c_str(), "r");
     if (!fp) return;
     char line[512];
     while (fgets(line, sizeof(line), fp)) {
@@ -88,7 +89,7 @@ AppPrefs::AppPrefs() {
 // ---- デストラクタ: 変更があればファイルに書き出す ----
 AppPrefs::~AppPrefs() {
     if (!dirty_) return;
-    FILE *fp = fopen(path_.c_str(), "w");
+    FILE *fp = calcyx_fopen(path_.c_str(), "w");
     if (!fp) return;
     for (auto &kv : data_)
         fprintf(fp, "%s=%s\n", kv.first.c_str(), kv.second.c_str());

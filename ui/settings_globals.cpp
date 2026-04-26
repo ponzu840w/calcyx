@@ -23,6 +23,7 @@ extern "C" {
 #include "types/val.h"
 #include "settings_schema.h"
 #include "settings_writer.h"
+#include "path_utf8.h"
 }
 
 // ---- グローバル変数 (初期値は settings_globals.h の DEFAULT_* 定数) ----
@@ -246,7 +247,7 @@ Fl_Color color_default(const char *key, const CalcyxColors &def) {
 static std::map<std::string, std::string> read_conf() {
     ensure_path();
     std::map<std::string, std::string> kv;
-    FILE *fp = fopen(s_conf_path.c_str(), "r");
+    FILE *fp = calcyx_fopen(s_conf_path.c_str(), "r");
     if (!fp) return kv;
     char line[512];
     while (fgets(line, sizeof(line), fp)) {

@@ -14,9 +14,18 @@
 #endif
 
 static void open_config_dir_cb(Fl_Widget *, void *) {
-    std::string dir = AppPrefs::config_dir();
+    std::string dir = AppPrefs::config_dir();  /* UTF-8 */
 #if defined(_WIN32)
-    ShellExecuteA(NULL, "open", dir.c_str(), NULL, NULL, SW_SHOWNORMAL);
+    /* ShellExecuteA は ANSI = システムコードページ (日本語環境では CP932)
+     * として解釈するため, UTF-8 をそのまま渡すと "ポン酢" が "繝昴Φ驟｢"
+     * のように文字化けして存在しないパスを開こうとする. UTF-16 に変換し
+     * てから ShellExecuteW を呼ぶ. */
+    wchar_t wpath[MAX_PATH];
+    int n = MultiByteToWideChar(CP_UTF8, 0, dir.c_str(), -1, wpath,
+                                (int)(sizeof(wpath) / sizeof(wpath[0])));
+    if (n > 0) {
+        ShellExecuteW(NULL, L"open", wpath, NULL, NULL, SW_SHOWNORMAL);
+    }
 #elif defined(__APPLE__)
     std::string cmd = "open \"" + dir + "\"";
     if (system(cmd.c_str())) {}

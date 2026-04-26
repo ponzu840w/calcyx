@@ -1,53 +1,55 @@
-/* settings_io.c — see settings_io.h */
+/* settings_io.c — see settings_io.h
+ *
+ * パスは全プラットフォームで UTF-8 として扱う. Windows でユーザー名等に
+ * 非 ASCII が含まれても文字化けしないよう, ファイル操作は path_utf8 経由
+ * (内部で UTF-16 + _wfopen 等). 環境変数も calcyx_getenv_utf8 経由. */
 
 #include "settings_io.h"
+#include "path_utf8.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifdef _WIN32
-#  include <direct.h>
-#  define MKDIR(p) _mkdir(p)
-#else
-#  include <sys/stat.h>
-#  include <sys/types.h>
-#  define MKDIR(p) mkdir((p), 0755)
-#endif
 
 /* ---- default conf path ---- */
 
 int calcyx_default_conf_path(char *buf, size_t buflen) {
     if (!buf || buflen < 16) return 0;
 #if defined(_WIN32)
-    const char *appdata = getenv("APPDATA");
-    if (!appdata || !*appdata) return 0;
-    char dir[1024];
-    snprintf(dir, sizeof(dir), "%s\\calcyx", appdata);
-    MKDIR(dir);
-    snprintf(buf, buflen, "%s\\calcyx.conf", dir);
-    return 1;
-#elif defined(__APPLE__)
-    const char *home = getenv("HOME");
-    if (!home || !*home) return 0;
-    char dir[1024];
-    snprintf(dir, sizeof(dir), "%s/Library/Application Support/calcyx", home);
-    MKDIR(dir);
-    snprintf(buf, buflen, "%s/calcyx.conf", dir);
-    return 1;
-#else
-    char dir[1024];
-    const char *xdg = getenv("XDG_CONFIG_HOME");
-    if (xdg && *xdg) {
-        snprintf(dir, sizeof(dir), "%s/calcyx", xdg);
-    } else {
-        const char *home = getenv("HOME");
-        if (!home || !*home) return 0;
-        snprintf(dir, sizeof(dir), "%s/.config/calcyx", home);
+    {
+        char appdata[1024];
+        char dir[1024];
+        if (!calcyx_getenv_utf8("APPDATA", appdata, sizeof(appdata))) return 0;
+        snprintf(dir, sizeof(dir), "%s\\calcyx", appdata);
+        calcyx_mkdir(dir);
+        snprintf(buf, buflen, "%s\\calcyx.conf", dir);
+        return 1;
     }
-    MKDIR(dir);
-    snprintf(buf, buflen, "%s/calcyx.conf", dir);
-    return 1;
+#elif defined(__APPLE__)
+    {
+        char home[1024];
+        char dir[1024];
+        if (!calcyx_getenv_utf8("HOME", home, sizeof(home))) return 0;
+        snprintf(dir, sizeof(dir), "%s/Library/Application Support/calcyx", home);
+        calcyx_mkdir(dir);
+        snprintf(buf, buflen, "%s/calcyx.conf", dir);
+        return 1;
+    }
+#else
+    {
+        char dir[1024];
+        char xdg[1024];
+        if (calcyx_getenv_utf8("XDG_CONFIG_HOME", xdg, sizeof(xdg))) {
+            snprintf(dir, sizeof(dir), "%s/calcyx", xdg);
+        } else {
+            char home[1024];
+            if (!calcyx_getenv_utf8("HOME", home, sizeof(home))) return 0;
+            snprintf(dir, sizeof(dir), "%s/.config/calcyx", home);
+        }
+        calcyx_mkdir(dir);
+        snprintf(buf, buflen, "%s/calcyx.conf", dir);
+        return 1;
+    }
 #endif
 }
 
@@ -58,7 +60,7 @@ int calcyx_conf_each(const char *path, calcyx_conf_kv_fn cb, void *user) {
     char  line[1024];
     int   line_no = 0;
     if (!path || !cb) return -1;
-    fp = fopen(path, "rb");
+    fp = calcyx_fopen(path, "rb");
     if (!fp) return -1;
     while (fgets(line, sizeof(line), fp)) {
         char *p, *eq, *ke, *vs, *ve;
