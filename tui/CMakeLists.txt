@@ -15,6 +15,7 @@ set(TUI_LIB_SRC
     TuiSheet.cpp
     TuiCompletion.cpp
     keymap.cpp
+    clipboard.cpp
 )
 
 add_library(calcyx_tui_lib STATIC ${TUI_LIB_SRC})
