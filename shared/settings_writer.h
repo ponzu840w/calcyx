@@ -18,20 +18,18 @@ extern "C" {
 #endif
 
 /* スキーマのキー名を渡すと現在値を文字列化して buf に書く.
- *  - 戻り値 1: buf に値を書いた (key = buf 形式で出力する).
- *  - 戻り値 0: 値を出さないが既存行は「元の値のまま commented (#key = value)」
- *              に変換して保持する (色プリセット非 user 時の color_* など —
- *              プリセットに戻しても元の値をユーザーがコピペで復元できる).
- *              既存行が無い場合は末尾追記しない.
- *  - 戻り値 -1: このキーは管轄外 (scope 外, 未対応キーなど). 既存行を完全に
- *              そのまま転写し, 何の上書きも commenting も追記もしない.
- *              (例: GUI から save するとき TUI 専用の tui_color_source は
- *              GUI lookup が -1 を返し, ユーザーの設定が破壊されない.)
+ *  - 戻り値  1: 値を提供する. writer は key = value 形式で出力する.
+ *               is_default = 1 のときは '#key = value' (コメントアウト).
+ *  - 戻り値 -1: このキーは管轄外 (scope 外, 未対応キーなど). writer は
+ *               既存行を完全にそのまま転写し, 何の上書きも追記もしない.
+ *               (例: GUI から save するとき TUI 専用の tui_color_source は
+ *               GUI lookup が -1 を返し, ユーザーの設定が破壊されない.)
  *
- * out_is_default が NULL でない場合, 値がスキーマのデフォルトと一致するなら
- * *out_is_default = 1, そうでなければ 0 を書き込む. writer はデフォルト値を
- * '#key = value' 形式 (コメントアウト) で出力する. SECTION エントリに対しては
- * 呼ばれない. */
+ * 全キー必ず conf に書かれる前提. 「現状で出力対象外」のキー (color_* で
+ * preset != user-defined 等) は 1 を返した上で out_is_default=1 を立て,
+ * commented 形式で出力する.
+ *
+ * SECTION エントリに対しては呼ばれない. */
 typedef int (*calcyx_setting_value_fn)(const char *key, char *buf, size_t buflen,
                                        int *out_is_default, void *user);
 

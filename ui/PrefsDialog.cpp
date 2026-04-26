@@ -18,8 +18,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     st.ui_data = ui_data;
     st.saved_colors      = g_colors;
     st.saved_preset      = g_color_preset;
-    st.user_colors       = g_colors;
-    st.saved_user_colors = g_colors;
+    st.saved_user_colors = g_user_colors;
 
     Fl_Double_Window dlg(DW, DH, "Preferences");
     dlg.set_modal();
@@ -99,6 +98,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     cancel_btn.callback([](Fl_Widget *w, void *data) {
         auto *st = static_cast<DlgState *>(data);
         g_colors        = st->saved_colors;
+        g_user_colors   = st->saved_user_colors;
         g_color_preset  = st->saved_preset;
         g_font_id       = st->saved_font_id;
         g_font_size     = st->saved_font_size;

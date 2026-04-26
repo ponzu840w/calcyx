@@ -72,7 +72,16 @@ int calcyx_conf_each(const char *path, calcyx_conf_kv_fn cb, void *user) {
         }
         p = line;
         while (*p == ' ' || *p == '\t') p++;
-        if (*p == '\0' || *p == '#') continue;
+        if (*p == '\0') continue;
+        if (*p == '#') {
+            /* '#<key> = <value>' 形式 (writer 自動生成 / 手書きの commented
+             * 値) は値として読む. '# 自由文', '##...' は通常コメントとして
+             * 無視. これにより color_* を commented で温存する仕組みが
+             * 起動セッション越しに有効になる. */
+            char *q = p + 1;
+            if (*q == '\0' || *q == ' ' || *q == '\t' || *q == '#') continue;
+            p = q;
+        }
         eq = strchr(p, '=');
         if (!eq) continue;
         /* key range */

@@ -227,7 +227,8 @@ static void swatch_cb(Fl_Widget *, void *data) {
     Fl::get_color(*sd->target, r, g, b);
     if (fl_color_chooser("Color", r, g, b)) {
         *sd->target = fl_rgb_color(r, g, b);
-        sd->dlg->user_colors = g_colors;
+        /* g_colors と g_user_colors を同期 — グローバルバックアップを更新. */
+        g_user_colors = g_colors;
         update_swatch_labels(sd->dlg);
         refresh_previews(sd->dlg);
     }
@@ -235,12 +236,7 @@ static void swatch_cb(Fl_Widget *, void *data) {
 
 static void preset_change_cb(Fl_Widget *, void *data) {
     auto *st = static_cast<DlgState *>(data);
-    int preset = st->preset_choice->value();
-    if (preset == COLOR_PRESET_USER_DEFINED) {
-        g_colors = st->user_colors;
-    } else {
-        colors_init_preset(&g_colors, preset);
-    }
+    colors_apply_preset(st->preset_choice->value());
     update_swatch_state(st);
     refresh_dlg_colors(st);
     refresh_previews(st);

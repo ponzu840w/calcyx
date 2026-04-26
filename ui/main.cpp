@@ -81,6 +81,10 @@ int main(int argc, char **argv) {
     crash_handler_install();
 
     colors_init_defaults(&g_colors);
+    /* g_user_colors は preset = USER_DEFINED に切替えた瞬間に g_colors へコピー
+     * される. settings_load() が conf から値を読んで上書きするのでデフォルト
+     * 値は何でも良いが, 念のため otaku-black で初期化しておく. */
+    colors_init_defaults(&g_user_colors);
     settings_init_defaults();
 
     Fl::scheme("gtk+");

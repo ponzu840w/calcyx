@@ -737,8 +737,7 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
     } else if (strncmp(cmd, "scheme_", 7) == 0) {
         int idx = atoi(cmd + 7);
         if (idx >= 0 && idx < COLOR_PRESET_COUNT) {
-            g_color_preset = idx;
-            colors_init_preset(&g_colors, idx);
+            colors_apply_preset(idx);
             win->apply_ui_colors();
             win->sync_view_menu_toggles();
         }

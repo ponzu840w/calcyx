@@ -11,6 +11,7 @@ extern "C" {
 }
 
 CalcyxColors g_colors;
+CalcyxColors g_user_colors;  /* user-defined のバックアップ. main で初期化される. */
 int g_color_preset = COLOR_PRESET_OTAKU_BLACK;
 
 const ColorPresetInfo COLOR_PRESET_INFO[COLOR_PRESET_COUNT] = {
@@ -64,6 +65,15 @@ void colors_init_preset(CalcyxColors *c, int preset) {
 
 void colors_init_defaults(CalcyxColors *c) {
     colors_init_preset(c, COLOR_PRESET_OTAKU_BLACK);
+}
+
+void colors_apply_preset(int preset) {
+    g_color_preset = preset;
+    if (preset == COLOR_PRESET_USER_DEFINED) {
+        g_colors = g_user_colors;
+    } else {
+        colors_init_preset(&g_colors, preset);
+    }
 }
 
 void colors_apply_fl_scheme() {

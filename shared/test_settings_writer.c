@@ -1,13 +1,19 @@
 /* settings_writer の単体テスト. shared/ レイヤなので FLTK 非依存,
  * engine ラベル ctest として登録する.
  *
+ * lookup の戻り値は 2 値: 1 = PROVIDED (値を提供), -1 = LEAVE (管轄外).
+ * is_default = 1 なら writer は commented (#key = value) で書く.
+ *
  * 検証項目:
  *  - 既存 conf にユーザーコメントを足してから save → コメントが残る
  *  - 未知キーは保持される
  *  - 既存行は元の場所で値だけ更新される (順序保持)
- *  - lookup が 0 を返した行は元の値を保持して commented (#key = value) になる
- *    (color_preset 切替で user-defined を解除したとき値を温存する挙動)
- *  - lookup が値を返したとき commented 行は uncomment される (再 user-defined)
+ *  - lookup が is_default=1 を返した行は commented になる
+ *    (= ユーザーが値をデフォルトに戻した, あるいは color_* で
+ *       preset != user-defined のシナリオ)
+ *  - 既存 commented 行に対し lookup が is_default=0 を返したら uncomment される
+ *    (= 再度 user-defined に切替え)
+ *  - lookup が -1 を返したキーは行を転写し触らない (TUI 専用キー保護)
  *  - 初回生成 (空ファイル) で first_time_header が先頭に置かれる
  *  - スキーマに存在するが conf に未出現のキーが末尾追記される
  */
@@ -72,9 +78,8 @@ static int contains_at_line_start(const char *hay, const char *needle) {
 
 /* ---- lookup callbacks ---- */
 
-/* シンプルな lookup: 主要キーに固定値を返す. color_* は emit しない.
- * is_default の動作はテスト個別の関心事ではないので 0 (= 非デフォルト) を返す.
- * これにより writer はコメントアウトせず素の "key = value" を出す. */
+/* シンプルな lookup: 主要キーに固定値を返す. その他は -1 (LEAVE).
+ * is_default = 0 なので writer は素の "key = value" (uncommented) を出す. */
 static int lookup_basic(const char *key, char *buf, size_t buflen,
                         int *out_is_default, void *user) {
     (void)user;
@@ -86,11 +91,11 @@ static int lookup_basic(const char *key, char *buf, size_t buflen,
     if (strcmp(key, "max_string_length") == 0)   { snprintf(buf, buflen, "256"); return 1; }
     if (strcmp(key, "max_call_depth") == 0)      { snprintf(buf, buflen, "64"); return 1; }
     if (strcmp(key, "color_preset") == 0)        { snprintf(buf, buflen, "otaku-black"); return 1; }
-    /* color_* は preset != user-defined なので 0 を返す */
-    return 0;
+    /* 該当しないキーは管轄外 (LEAVE) */
+    return -1;
 }
 
-/* user-defined preset 想定: color_preset = user-defined, 一部 color_* も emit. */
+/* user-defined preset 想定: color_preset = user-defined, 一部 color_* を提供. */
 static int lookup_user_colors(const char *key, char *buf, size_t buflen,
                               int *out_is_default, void *user) {
     (void)user;
@@ -98,7 +103,19 @@ static int lookup_user_colors(const char *key, char *buf, size_t buflen,
     if (strcmp(key, "color_preset") == 0) { snprintf(buf, buflen, "user-defined"); return 1; }
     if (strcmp(key, "color_bg") == 0)     { snprintf(buf, buflen, "#102030"); return 1; }
     if (strcmp(key, "color_text") == 0)   { snprintf(buf, buflen, "#ffffff"); return 1; }
-    return 0;
+    return -1;
+}
+
+/* lookup が is_default=1 を返すケース: 値はデフォルト同等なので commented で書く. */
+static int lookup_default_marker(const char *key, char *buf, size_t buflen,
+                                 int *out_is_default, void *user) {
+    (void)user;
+    if (strcmp(key, "decimal_digits") == 0) {
+        snprintf(buf, buflen, "9");
+        if (out_is_default) *out_is_default = 1;
+        return 1;
+    }
+    return -1;
 }
 
 /* ---- tests ---- */
@@ -158,32 +175,29 @@ static void test_first_time_header(void) {
     remove(path);
 }
 
-/* T3: lookup が 0 を返した行は元の値を保ったまま commented される.
- * (color_preset = user-defined を解除して preset に戻したとき, 個別色値を
- *  完全削除せず "#key = value" で残してコピペで復元できるようにする) */
-static void test_lookup_zero_comments_line(void) {
+/* T3: lookup が is_default=1 を返したとき, 既存の uncommented 行は
+ *     '#key = value' (commented) に変換される. (= ユーザーが値をデフォルトに
+ *      戻した, あるいは preset 切替で color_* が default 同等になったケース) */
+static void test_default_marker_comments_line(void) {
     char path[256];
     mkpath(path, sizeof(path), "calcyx_test_writer_T3.conf");
-    /* color_bg は basic lookup では 0 を返す. 既存行は保持されコメントアウト. */
-    const char *body =
-        "color_bg = #ababab\n"
-        "decimal_digits = 6\n";
+    const char *body = "decimal_digits = 6\n";
     write_all(path, body);
 
-    int rc = calcyx_settings_write_preserving(path, NULL, lookup_basic, NULL);
+    int rc = calcyx_settings_write_preserving(path, NULL,
+                                              lookup_default_marker, NULL);
     check("T3 rc", rc == 0);
 
     char *out = read_all(path);
-    check("T3 color_bg value preserved as commented",
-          contains(out, "#color_bg = #ababab\n"));
-    check("T3 color_bg uncommented form gone",
-          !contains(out, "\ncolor_bg = #ababab"));
-    check("T3 decimal_digits updated", contains(out, "decimal_digits = 12\n"));
+    check("T3 default value commented",
+          contains(out, "#decimal_digits = 9\n"));
+    check("T3 old uncommented form gone",
+          !contains_at_line_start(out, "decimal_digits = 6"));
     free(out);
     remove(path);
 }
 
-/* T3b: 既に commented な行 (#color_bg = ...) で lookup が値を返す場合,
+/* T3b: 既に commented な行 (#color_bg = ...) で lookup が is_default=0 を返す場合,
  * uncomment されて key = value 形式になる (再度 user-defined に切替えるシナリオ). */
 static void test_commented_uncomments_when_value_returned(void) {
     char path[256];
@@ -281,7 +295,7 @@ static void test_header_not_applied_on_existing(void) {
 int main(void) {
     test_preserve_comments();
     test_first_time_header();
-    test_lookup_zero_comments_line();
+    test_default_marker_comments_line();
     test_commented_uncomments_when_value_returned();
     test_user_preset_emits_colors();
     test_leave_preserves_line_verbatim();

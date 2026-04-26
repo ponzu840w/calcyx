@@ -332,33 +332,10 @@ int calcyx_settings_write_preserving(const char            *path,
                                               &is_default, user);
                             seen[i] = 1;
                             if (ret > 0) {
-                                /* デフォルト値で commented 形式を維持; 値が変わっ
-                                 * ていれば必ず uncomment して保存する. */
-                                int comment_now = was_commented && is_default;
+                                /* PROVIDED: 値で書き換え. is_default なら
+                                 * '#key = value' 形式 (commented) で書く. */
+                                int comment_now = is_default;
                                 buf_append_kv_form(&out, key, val, comment_now);
-                                matched = 1;
-                            } else if (ret == 0) {
-                                /* DROP: 現状で出力対象外 (color_* で preset !=
-                                 * user-defined 等). 元の値を残して commented
-                                 * 形式に変換 — ユーザーが手動で戻したいとき
-                                 * コピペできるよう保持する. */
-                                const char *eq = strchr(line_buf, '=');
-                                if (eq) {
-                                    const char *vs = eq + 1;
-                                    size_t vlen;
-                                    char   orig_val[256];
-                                    while (*vs == ' ' || *vs == '\t') vs++;
-                                    vlen = strlen(vs);
-                                    while (vlen > 0
-                                           && (vs[vlen-1] == ' '
-                                               || vs[vlen-1] == '\t'))
-                                        vlen--;
-                                    if (vlen >= sizeof(orig_val))
-                                        vlen = sizeof(orig_val) - 1;
-                                    memcpy(orig_val, vs, vlen);
-                                    orig_val[vlen] = '\0';
-                                    buf_append_kv_form(&out, key, orig_val, 1);
-                                }
                                 matched = 1;
                             }
                             /* ret < 0 (LEAVE): matched=0 のまま. ループを抜けて
@@ -588,11 +565,14 @@ static int defaults_lookup(const char *key, char *buf, size_t buflen,
     case CALCYX_SETTING_KIND_STRING:
         snprintf(buf, buflen, "%s", d->s_def ? d->s_def : "");
         return 1;
-    case CALCYX_SETTING_KIND_COLOR:
-        /* defaults は color_preset = 非 user なので color_* は出力しない.
-         * init_defaults では既存行が無いので LEAVE/DROP のどちらでも結果は
-         * 「何も出力しない」で同じ. 意味的に「触らない」が妥当なので -1. */
-        return -1;
+    case CALCYX_SETTING_KIND_COLOR: {
+        /* 全キーが conf に書かれる前提のため, COLOR も初期 default として
+         * preset (otaku-black) 由来の色値を commented で書く. */
+        const char *def = calcyx_settings_color_default(key, "otaku-black");
+        snprintf(buf, buflen, "%s", def ? def : "#000000");
+        if (out_is_default) *out_is_default = 1;
+        return 1;
+    }
     default:
         return -1;
     }

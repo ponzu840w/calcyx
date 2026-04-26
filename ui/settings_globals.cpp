@@ -396,8 +396,11 @@ void settings_load() {
         }
     }
 
-    // 色: プリセット確定後に user-defined なら各 color_* を読む
-    if (g_color_preset == COLOR_PRESET_USER_DEFINED) {
+    /* 色: 全 color_* を g_user_colors に読み込む (preset によらず常に).
+     * conf の value が無いキー or 値が空のキーは otaku-black の default に
+     * フォールバック. settings_io reader は '#key=value' 形式 (commented)
+     * も値として返すため, preset != USER で commented 化された値も復元される. */
+    {
         CalcyxColors def;
         colors_init_defaults(&def);
         for (int i = 0; i < n; i++) {
@@ -406,12 +409,16 @@ void settings_load() {
             if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) continue;
             void *target = gui_target(d.key);
             if (!target) continue;
+            size_t offset = (char *)target - (char *)&g_colors;
+            Fl_Color *user_target =
+                (Fl_Color *)((char *)&g_user_colors + offset);
             Fl_Color fallback = color_default(d.key, def);
-            *(Fl_Color *)target = hex_to_color(map_get(kv, d.key, ""), fallback);
+            *user_target = hex_to_color(map_get(kv, d.key, ""), fallback);
         }
-    } else {
-        colors_init_preset(&g_colors, g_color_preset);
     }
+    /* g_colors は preset に応じて: USER_DEFINED なら g_user_colors のコピー,
+     * そうでなければ preset 由来の色値で上書き. */
+    colors_apply_preset(g_color_preset);
 
     update_crash_config_snapshot();
 }
@@ -476,17 +483,27 @@ int gui_value_lookup(const char *key, char *buf, size_t buflen,
         return 1;
     }
     case CALCYX_SETTING_KIND_COLOR: {
-        if (g_color_preset != COLOR_PRESET_USER_DEFINED) return 0;
-        std::string hex = color_to_hex(*(Fl_Color *)target);
+        /* COLOR キーは g_user_colors (バックアップ) の値を返す. preset 切替
+         * で g_colors が上書きされても g_user_colors は温存されているので,
+         * 「ユーザー定義カラー」が conf に常に保存される.
+         *
+         * is_default の判定:
+         *   - preset = USER_DEFINED → 0 (ユーザー意思 → uncommented で書かれる)
+         *   - それ以外              → 1 (アクティブでない値 → commented で書かれる)
+         *
+         * これにより全 COLOR キーが常に conf に登場し, preset 切替を繰返す
+         * 度に値の round-trip (commented ⇔ uncommented) が成立する. */
+        size_t offset = (char *)target - (char *)&g_colors;
+        Fl_Color *user_target = (Fl_Color *)((char *)&g_user_colors + offset);
+        std::string hex = color_to_hex(*user_target);
         snprintf(buf, buflen, "%s", hex.c_str());
-        /* COLOR は user-defined preset でしか出力しないので "デフォルト" 概念
-         * があいまい. user-defined はそれ自体ユーザーの選択なので常に
-         * uncomment 扱い (is_default=0) で出す. */
-        if (out_is_default) *out_is_default = 0;
+        if (out_is_default) {
+            *out_is_default = (g_color_preset != COLOR_PRESET_USER_DEFINED);
+        }
         return 1;
     }
     default:
-        return 0;
+        return -1;
     }
 }
 

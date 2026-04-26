@@ -108,7 +108,6 @@ struct DlgState {
     Fl_Spinner *limit_string_spin;
     Fl_Spinner *limit_depth_spin;
     Fl_Choice  *preset_choice;
-    CalcyxColors user_colors;
     SheetView  *sheet;
     CalcyxColors saved_colors;
     int         saved_preset;

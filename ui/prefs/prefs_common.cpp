@@ -240,8 +240,8 @@ void apply_settings(DlgState *st) {
             g_hotkey_keycode = plat_keyname_to_flkey(names[ki]);
     }
 
-    if (g_color_preset == COLOR_PRESET_USER_DEFINED)
-        st->user_colors = g_colors;
+    /* user_colors は g_user_colors (グローバル) に一本化されたので
+     * st->user_colors への同期は不要. */
 
     st->saved_font_id       = g_font_id;
     st->saved_font_size     = g_font_size;
@@ -256,7 +256,7 @@ void apply_settings(DlgState *st) {
     st->saved_start_topmost   = g_start_topmost;
     st->saved_preset          = g_color_preset;
     st->saved_colors          = g_colors;
-    st->saved_user_colors     = st->user_colors;
+    st->saved_user_colors     = g_user_colors;
     st->saved_tray_icon       = g_tray_icon;
     st->saved_hotkey_enabled  = g_hotkey_enabled;
     st->saved_hotkey_win      = g_hotkey_win;
@@ -288,7 +288,7 @@ void reset_to_defaults(DlgState *st) {
 
     // Colors
     st->preset_choice->value(DEFAULT_COLOR_PRESET);
-    colors_init_preset(&g_colors, DEFAULT_COLOR_PRESET);
+    colors_apply_preset(DEFAULT_COLOR_PRESET);
     for (int i = 0; i < st->colors.count; i++) {
         st->colors.swatches[i]->color(*st->colors.entries[i].target);
         st->colors.swatches[i]->redraw();
