@@ -115,6 +115,9 @@ void TuiApp::prompt_submit() {
     if (mode == PromptMode::Save) {
         if (sheet_model_save_file(model_, path.c_str())) {
             sheet_->set_file_path(path);
+            /* 明示的に書き込んだ瞬間にユーザーの作業ファイルへ昇格する。
+             * 以後の Ctrl+S は同じパスへ直書きでよい。 */
+            sheet_->set_read_only(false);
             flash_message("Saved: " + path);
         } else {
             flash_message("Save failed: " + path);
@@ -122,6 +125,8 @@ void TuiApp::prompt_submit() {
     } else { /* Open */
         if (sheet_model_load_file(model_, path.c_str())) {
             sheet_->set_file_path(path);
+            /* Ctrl+O で開いたファイルは編集対象。read_only は解除。 */
+            sheet_->set_read_only(false);
             sheet_->reload_focused_row();
             flash_message("Loaded: " + path);
         } else {
@@ -183,7 +188,10 @@ bool TuiApp::prompt_handle_event(Event ev) {
  * -------------------------------------------------------------------- */
 void TuiApp::do_file_save() {
     const std::string &path = sheet_->file_path();
-    if (path.empty()) {
+    /* read_only_ なファイル (サンプル等) は file_path_ への直書きを禁止し、
+     * 必ず Save-As プロンプトに落とす (配布版サンプルの誤上書き防止)。
+     * 既定値も空にして、ユーザーがゼロから書き先を入力するよう促す。 */
+    if (path.empty() || sheet_->read_only()) {
         prompt_begin(PromptMode::Save, "");
         return;
     }
@@ -1155,8 +1163,11 @@ void TuiApp::menu_invoke_cmd(MenuCmd cmd) {
             std::string path = dir + "/" + samples_files_[sub_idx];
             if (sheet_model_load_file(model_, path.c_str())) {
                 sheet_->set_file_path(path);
+                /* サンプルは読み取り専用。Ctrl+S は Save-As に落として
+                 * 配布版サンプルの上書きを防ぐ。 */
+                sheet_->set_read_only(true);
                 sheet_->reload_focused_row();
-                flash_message("Loaded: " + path);
+                flash_message("Loaded sample: " + samples_files_[sub_idx]);
             } else {
                 flash_message("Load failed: " + path);
             }

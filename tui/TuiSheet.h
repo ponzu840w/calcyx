@@ -79,6 +79,14 @@ public:
     const std::string& file_path()    const { return file_path_; }
     void  set_file_path(std::string p) { file_path_ = std::move(p); }
 
+    /* サンプルファイルなどテンプレートとして開いたときに true。
+     * Ctrl+S は file_path_ を直書きせず、必ず Save-As プロンプトに
+     * 落とす (誤って配布版サンプルを上書きしないため)。
+     * read_only=true のまま新規入力で保存した場合、保存後は false に
+     * 戻す責務は呼び出し側 (TuiApp::prompt_submit) にある。 */
+    bool  read_only() const { return read_only_; }
+    void  set_read_only(bool v) { read_only_ = v; }
+
     /* コンパクトモード: シート行だけ表示し、status/help を隠す。
      * TuiApp は compact_mode() を見て下段のステータスバーも隠す。 */
     bool  compact_mode() const { return compact_mode_; }
@@ -178,6 +186,7 @@ private:
     TuiCompletion completion_;
     bool          auto_complete_ = true;  /* GUI の g_input_auto_completion 相当 */
     bool          compact_mode_  = false;
+    bool          read_only_     = false;
 
     /* 直近の Ctrl+C で書き込んだクリップボードテキストと、その行の式部分。
      * Ctrl+V 時にクリップボードの内容と last_copied_text_ が完全一致なら、

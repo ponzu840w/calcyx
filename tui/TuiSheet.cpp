@@ -1044,6 +1044,7 @@ Element TuiSheet::Render() {
         "[" + std::to_string(focused_row_ + 1) + "/" + std::to_string(n) +
         "]<" + fmt_label(cur_fmt) + ">";
     if (!file_path_.empty()) status += " file: " + file_path_;
+    if (read_only_)          status += " [ro]";
     if (editor_dirty())      status += " *";
     if (completion_visible()) {
         status += "  (" + std::to_string(completion_.filtered_count()) +
