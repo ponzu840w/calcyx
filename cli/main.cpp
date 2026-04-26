@@ -371,42 +371,47 @@ int run_check_config(const char *path) {
 static void print_help(const char *prog) {
     std::fprintf(stderr,
         "calcyx " CALCYX_VERSION_FULL " (" CALCYX_EDITION ")\n"
-        "\n"
-        "Usage: %s [options] [file...]\n"
-        "\n"
-        "Options:\n"
-        "  -e <expr>          式を直接指定して評価（複数指定可、CLI モード）\n"
-        "  -o, --output <fmt> 出力形式 (CLI モード):\n"
-        "                       result  結果のみ（デフォルト）\n"
-        "                       both    式 = 結果\n"
-        "  -b, --batch        位置引数ファイル or stdin を CLI バッチ評価する (強制)\n"
-        "  -r, --repl         旧 CLI 対話 REPL (fgets 行ループ) を起動する\n"
-        "  --print-config     現在解釈される設定を canonical 形式で stdout に出力\n"
-        "  --check-config     conf を syntax check し、警告があれば exit 1\n"
-        "  --init-config      conf が無ければ既定値で生成 (上書きしない)\n"
-        "  --config <path>    --print-config / --check-config / --init-config の対象 conf を指定\n"
-        "                       (省略時はプラットフォーム既定の calcyx.conf)\n"
-        "  -V, --version      バージョンを表示\n"
-        "  -h, --help         このヘルプを表示\n"
-        "\n"
-        "モード判定:\n"
-        "  -e / -o / -b / -r があれば CLI モード。\n"
-        "  stdin が tty でなければ (パイプ / リダイレクト) CLI モード。\n"
-        "  それ以外 (対話端末で引数なし or 位置引数ファイルのみ) は TUI モード。\n"
-        "  位置引数のファイルは TUI 起動時にロードされる。\n"
-        "\n"
-        "コメント:\n"
-        "  ; 以降を行末コメントとして無視します（文字列・文字リテラル内を除く）\n"
-        "\n"
-        "Examples:\n"
-        "  %s                    TUI を起動\n"
-        "  %s file.txt           TUI でファイルを開く\n"
-        "  %s -e '1+1' -e 'x=42' CLI: 式を直接指定\n"
-        "  %s --batch file.txt   CLI: ファイルをバッチ評価\n"
-        "  echo 'hex(255)' | %s  CLI: パイプ\n"
-        "\n"
-        "Exit codes: 0=正常, 1=評価エラー, 2=引数/ファイルエラー\n",
-        prog, prog, prog, prog, prog, prog);
+        "\n");
+    std::fprintf(stderr, _("Usage: %s [options] [file...]\n"), prog);
+    std::fprintf(stderr, "\n%s",
+        _("Options:\n"
+          "  -e <expr>          Evaluate expression directly (repeatable, CLI mode)\n"
+          "  -o, --output <fmt> Output format (CLI mode):\n"
+          "                       result  result only (default)\n"
+          "                       both    expr = result\n"
+          "  -b, --batch        Force CLI batch evaluation of files / stdin\n"
+          "  -r, --repl         Launch the legacy CLI REPL (fgets line loop)\n"
+          "  --print-config     Print the resolved settings in canonical form\n"
+          "  --check-config     Syntax-check the conf; exit 1 if warnings\n"
+          "  --init-config      Create conf with defaults if missing (no overwrite)\n"
+          "  --config <path>    conf file for --print-config / --check-config / --init-config\n"
+          "                       (defaults to platform-specific calcyx.conf)\n"
+          "  -V, --version      Show version\n"
+          "  -h, --help         Show this help\n"
+          "\n"
+          "Mode selection:\n"
+          "  CLI mode if -e / -o / -b / -r is given.\n"
+          "  CLI mode if stdin is not a tty (pipe / redirect).\n"
+          "  TUI mode otherwise (interactive terminal with no flags or only file args).\n"
+          "  Positional files are loaded into the TUI at startup.\n"
+          "\n"
+          "Comments:\n"
+          "  Anything after `;` to end-of-line is a comment (except inside string/char literals).\n"
+          "\n"
+          "Examples:\n"));
+    std::fprintf(stderr,
+        "  %s                    %s\n"
+        "  %s file.txt           %s\n"
+        "  %s -e '1+1' -e 'x=42' %s\n"
+        "  %s --batch file.txt   %s\n"
+        "  echo 'hex(255)' | %s  %s\n",
+        prog, _("Launch TUI"),
+        prog, _("Open a file in TUI"),
+        prog, _("CLI: pass expressions directly"),
+        prog, _("CLI: batch-evaluate a file"),
+        prog, _("CLI: pipe input"));
+    std::fprintf(stderr, "\n%s",
+        _("Exit codes: 0=success, 1=eval error, 2=arg/file error\n"));
 }
 
 /* ----------------------------------------------------------------------
@@ -417,6 +422,11 @@ int main(int argc, char *argv[]) {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 #endif
+
+    /* 早期 i18n_init: conf を読む前に OS ロケールで仮決定しておくことで,
+     * --help / --version の出力も翻訳される. conf の language キーで明示
+     * 指定があれば argv 解析後に再 init する. */
+    calcyx_i18n_init("auto");
 
     output_mode_t            out = OUT_RESULT;
     std::vector<const char*> inline_exprs;

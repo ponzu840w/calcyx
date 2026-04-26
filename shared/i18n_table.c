@@ -221,7 +221,68 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Paste",               "貼り付け" },
     { "Insert row above",    "上に行を挿入" },
     { "Insert row below",    "下に行を挿入" },
-    { "Delete row",          "行を削除" }
+    { "Delete row",          "行を削除" },
+
+    /* === CLI: --help === */
+    { "Usage: %s [options] [file...]\n",
+      "使い方: %s [オプション] [ファイル...]\n" },
+    { "Options:\n"
+      "  -e <expr>          Evaluate expression directly (repeatable, CLI mode)\n"
+      "  -o, --output <fmt> Output format (CLI mode):\n"
+      "                       result  result only (default)\n"
+      "                       both    expr = result\n"
+      "  -b, --batch        Force CLI batch evaluation of files / stdin\n"
+      "  -r, --repl         Launch the legacy CLI REPL (fgets line loop)\n"
+      "  --print-config     Print the resolved settings in canonical form\n"
+      "  --check-config     Syntax-check the conf; exit 1 if warnings\n"
+      "  --init-config      Create conf with defaults if missing (no overwrite)\n"
+      "  --config <path>    conf file for --print-config / --check-config / --init-config\n"
+      "                       (defaults to platform-specific calcyx.conf)\n"
+      "  -V, --version      Show version\n"
+      "  -h, --help         Show this help\n"
+      "\n"
+      "Mode selection:\n"
+      "  CLI mode if -e / -o / -b / -r is given.\n"
+      "  CLI mode if stdin is not a tty (pipe / redirect).\n"
+      "  TUI mode otherwise (interactive terminal with no flags or only file args).\n"
+      "  Positional files are loaded into the TUI at startup.\n"
+      "\n"
+      "Comments:\n"
+      "  Anything after `;` to end-of-line is a comment (except inside string/char literals).\n"
+      "\n"
+      "Examples:\n",
+      "オプション:\n"
+      "  -e <式>            式を直接指定して評価 (複数指定可, CLI モード)\n"
+      "  -o, --output <形式> 出力形式 (CLI モード):\n"
+      "                       result  結果のみ (デフォルト)\n"
+      "                       both    式 = 結果\n"
+      "  -b, --batch        位置引数ファイル / stdin の CLI バッチ評価を強制\n"
+      "  -r, --repl         旧 CLI 対話 REPL (fgets 行ループ) を起動\n"
+      "  --print-config     現在解釈される設定を canonical 形式で stdout に出力\n"
+      "  --check-config     conf を syntax check し, 警告があれば exit 1\n"
+      "  --init-config      conf が無ければ既定値で生成 (上書きしない)\n"
+      "  --config <path>    --print-config / --check-config / --init-config の対象 conf を指定\n"
+      "                       (省略時はプラットフォーム既定の calcyx.conf)\n"
+      "  -V, --version      バージョンを表示\n"
+      "  -h, --help         このヘルプを表示\n"
+      "\n"
+      "モード判定:\n"
+      "  -e / -o / -b / -r があれば CLI モード\n"
+      "  stdin が tty でなければ (パイプ / リダイレクト) CLI モード\n"
+      "  それ以外 (対話端末で引数なし or 位置引数ファイルのみ) は TUI モード\n"
+      "  位置引数のファイルは TUI 起動時にロードされる\n"
+      "\n"
+      "コメント:\n"
+      "  ; 以降を行末コメントとして無視 (文字列・文字リテラル内を除く)\n"
+      "\n"
+      "例:\n" },
+    { "Launch TUI",                       "TUI を起動" },
+    { "Open a file in TUI",               "TUI でファイルを開く" },
+    { "CLI: pass expressions directly",   "CLI: 式を直接指定" },
+    { "CLI: batch-evaluate a file",       "CLI: ファイルをバッチ評価" },
+    { "CLI: pipe input",                  "CLI: パイプ入力" },
+    { "Exit codes: 0=success, 1=eval error, 2=arg/file error\n",
+      "終了コード: 0=正常, 1=評価エラー, 2=引数/ファイルエラー\n" }
 };
 
 const int CALCYX_TR_TABLE_JA_N =
