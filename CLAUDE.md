@@ -6,16 +6,16 @@ https://github.com/shapoco/calctus (C# / .NET)
 
 ## テストの方針
 
-ctest には 38 本のテストが 4 系統 (engine 28 / gui 2 / cli 6 / tui 2) で登録されています
+ctest には 39 本のテストが 4 系統 (engine 29 / gui 2 / cli 6 / tui 2) で登録されています
 (`ctest --preset unix` で全実行)。
 
 クロスターゲット別の登録件数は以下のとおり:
 
 | プリセット | engine | gui | cli | tui | 計 | 備考 |
 |---|---|---|---|---|---|---|
-| `unix` | 28 | 2 | 6 | 2 | 38 | ネイティブ Linux / macOS |
-| `win` | 28 | 2 | 6 | 2 | 38 | Windows クロスビルド全テスト |
-| `win-headless` | 28 | (除外) | 6 | 2 | 36 | gui ラベルを filter 除外 |
+| `unix` | 29 | 2 | 6 | 2 | 39 | ネイティブ Linux / macOS |
+| `win` | 29 | 2 | 6 | 2 | 39 | Windows クロスビルド全テスト |
+| `win-headless` | 29 | (除外) | 6 | 2 | 37 | gui ラベルを filter 除外 |
 | `web` | 2 | (なし) | (なし) | (なし) | 2 | `engine/types` と `engine/parser` のみ |
 
 `win` / `win-headless` は WSL であれば `.exe` をネイティブ実行、非 WSL では `wine`
@@ -36,7 +36,7 @@ ctest には 38 本のテストが 4 系統 (engine 28 / gui 2 / cli 6 / tui 2) 
   CLI 引数、UI 操作、プラットフォーム依存の挙動など) をカバーするために
   必要と判断した時点で、どんなテストをどう追加するかを提案する。
 
-### エンジン (`engine`, 28 本)
+### エンジン (`engine`, 29 本)
 
 **エンジンのテストコードは移植元リポジトリのものを使用する。**
 
@@ -56,6 +56,11 @@ ctest には 38 本のテストが 4 系統 (engine 28 / gui 2 / cli 6 / tui 2) 
   リグレッションを検知する目的。
 - `engine/sheet_model` — `shared/test_sheet_model.c` が SheetModel C API の
   undo/redo・行操作・補完候補生成・編集中プレビューを FLTK 非依存で検証
+  (calcyx 独自)。
+- `engine/settings_writer` — `shared/test_settings_writer.c` が
+  コメント保持型の conf ライタ (`shared/settings_writer.c`) を検証。
+  既存コメント・未知キーが保持されること、既存値が in-place 更新される
+  こと、`color_*` が `color_preset` に応じて出現/消失することを確認
   (calcyx 独自)。
 - `engine/Test_*` — `samples/Test_*.txt` を `engine/CMakeLists.txt` が glob で
   拾い、`engine/test_eval.c` がファイル単位で `assert(...)` 行を評価。移植元の

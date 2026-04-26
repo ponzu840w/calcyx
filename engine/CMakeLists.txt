@@ -49,6 +49,9 @@ target_link_libraries(test_parser PRIVATE calcyx_engine)
 add_executable(test_sheet_model ${CMAKE_SOURCE_DIR}/shared/test_sheet_model.c)
 target_link_libraries(test_sheet_model PRIVATE calcyx_engine)
 
+add_executable(test_settings_writer ${CMAKE_SOURCE_DIR}/shared/test_settings_writer.c)
+target_link_libraries(test_settings_writer PRIVATE calcyx_engine)
+
 # ===== ctest 登録 =====
 # CALCYX_TESTS_ENABLED が FALSE のとき (Windows cross + wine なし + 非 WSL、
 # または WASM + node なし) はプリセット単位でまるごとスキップする。
@@ -61,10 +64,11 @@ target_link_libraries(test_sheet_model PRIVATE calcyx_engine)
 #   デフォルト 64KB を超え、test_parser がスタックオーバーフローする
 #   のを防ぐ。
 if(EMSCRIPTEN)
-    target_link_options(test_types        PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
-    target_link_options(test_parser       PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
-    target_link_options(test_eval         PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
-    target_link_options(test_sheet_model  PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_types           PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_parser          PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_eval            PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_sheet_model     PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
+    target_link_options(test_settings_writer PRIVATE "-sNODERAWFS=1" "-sSTACK_SIZE=1mb")
 endif()
 
 if(CALCYX_TESTS_ENABLED)
@@ -79,6 +83,10 @@ if(CALCYX_TESTS_ENABLED)
     add_test(NAME engine/sheet_model
         COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_sheet_model>)
     set_tests_properties(engine/sheet_model PROPERTIES LABELS "engine")
+
+    add_test(NAME engine/settings_writer
+        COMMAND ${CALCYX_TEST_LAUNCHER} $<TARGET_FILE:test_settings_writer>)
+    set_tests_properties(engine/settings_writer PROPERTIES LABELS "engine")
 
     # engine/Test_* (test_eval による sample ファイル駆動テスト) は
     # WASM 下では mpdecimal の計算が極端に遅く 1 ファイル数分以上かかる
