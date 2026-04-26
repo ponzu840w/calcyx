@@ -45,8 +45,12 @@
 extern "C" {
 #include "eval/eval.h"
 #include "eval/eval_ctx.h"
+#include "settings_io.h"
+#include "settings_schema.h"
 #include "types/val.h"
 }
+
+#include <map>
 
 #include "TuiApp.h"
 
@@ -144,6 +148,197 @@ static int run_stream(FILE *fp, eval_ctx_t *ctx, output_mode_t out) {
 }
 
 /* ----------------------------------------------------------------------
+ * --print-config / --check-config
+ * -------------------------------------------------------------------- */
+
+namespace {
+
+const char *KNOWN_COLOR_PRESETS[] = {
+    "otaku-black", "gyakubari-white", "saboten-grey", "saboten-white",
+    "user-defined", nullptr
+};
+
+bool is_known_preset(const char *id) {
+    for (int i = 0; KNOWN_COLOR_PRESETS[i]; ++i) {
+        if (std::strcmp(KNOWN_COLOR_PRESETS[i], id) == 0) return true;
+    }
+    return false;
+}
+
+/* conf を std::map<key, value> で読む (settings_io 経由). */
+struct ConfMap {
+    std::map<std::string, std::string> kv;
+    static void cb(const char *key, const char *value, int /*line_no*/, void *user) {
+        auto *self = static_cast<ConfMap *>(user);
+        self->kv[key] = value;
+    }
+};
+
+/* effective preset: conf にあればそれ, なければ schema の s_def. */
+std::string effective_preset(const std::map<std::string, std::string> &kv) {
+    auto it = kv.find("color_preset");
+    if (it != kv.end()) return it->second;
+    const calcyx_setting_desc_t *d = calcyx_settings_find("color_preset");
+    return d && d->s_def ? d->s_def : "otaku-black";
+}
+
+int run_print_config(const char *path) {
+    ConfMap cm;
+    calcyx_conf_each(path, ConfMap::cb, &cm);   /* 失敗しても空 conf として続行 */
+    bool user_colors = (effective_preset(cm.kv) == "user-defined");
+
+    int n = 0;
+    const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
+    bool first_section = true;
+    for (int i = 0; i < n; ++i) {
+        const calcyx_setting_desc_t &d = table[i];
+        if (d.kind == CALCYX_SETTING_KIND_SECTION) {
+            if (!first_section) std::putchar('\n');
+            first_section = false;
+            if (d.section) std::fputs(d.section, stdout);
+            continue;
+        }
+        if (!d.key) continue;
+        auto it = cm.kv.find(d.key);
+        const char *raw = (it != cm.kv.end()) ? it->second.c_str() : nullptr;
+        switch (d.kind) {
+        case CALCYX_SETTING_KIND_BOOL: {
+            int v = d.b_def;
+            if (raw) (void)calcyx_conf_parse_bool(raw, &v);
+            std::printf("%s = %s\n", d.key, v ? "true" : "false");
+            break;
+        }
+        case CALCYX_SETTING_KIND_INT: {
+            int v = d.i_def;
+            if (raw) (void)calcyx_conf_parse_int(raw, &v);
+            if (v < d.i_lo) v = d.i_lo;
+            if (v > d.i_hi) v = d.i_hi;
+            std::printf("%s = %d\n", d.key, v);
+            break;
+        }
+        case CALCYX_SETTING_KIND_FONT:
+        case CALCYX_SETTING_KIND_HOTKEY:
+        case CALCYX_SETTING_KIND_COLOR_PRESET: {
+            const char *v = raw ? raw : (d.s_def ? d.s_def : "");
+            std::printf("%s = %s\n", d.key, v);
+            break;
+        }
+        case CALCYX_SETTING_KIND_COLOR: {
+            /* preset != user-defined のときは color_* を出力しない (settings_save の挙動と一致). */
+            if (!user_colors) break;
+            const char *v = raw ? raw : "#000000";
+            std::printf("%s = %s\n", d.key, v);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    return 0;
+}
+
+struct CheckCtx {
+    int   warnings;
+    /* 同じキーが複数回現れた場合の検出用. キー名 → 最初の行番号. */
+    std::map<std::string, int> seen;
+};
+
+void check_cb(const char *key, const char *value, int line_no, void *user) {
+    auto *cx = static_cast<CheckCtx *>(user);
+    {
+        auto it = cx->seen.find(key);
+        if (it != cx->seen.end()) {
+            std::fprintf(stderr,
+                "warning: line %d: duplicate key '%s' (first seen on line %d)\n",
+                line_no, key, it->second);
+            cx->warnings++;
+        } else {
+            cx->seen[key] = line_no;
+        }
+    }
+    const calcyx_setting_desc_t *d = calcyx_settings_find(key);
+    if (!d) {
+        std::fprintf(stderr, "warning: line %d: unknown key '%s'\n", line_no, key);
+        cx->warnings++;
+        return;
+    }
+    switch (d->kind) {
+    case CALCYX_SETTING_KIND_BOOL: {
+        int b;
+        if (!calcyx_conf_parse_bool(value, &b)) {
+            std::fprintf(stderr,
+                "warning: line %d: '%s' = '%s': not a bool (expected true/false/1/0/yes/no)\n",
+                line_no, key, value);
+            cx->warnings++;
+        }
+        break;
+    }
+    case CALCYX_SETTING_KIND_INT: {
+        int v;
+        if (!calcyx_conf_parse_int(value, &v)) {
+            std::fprintf(stderr,
+                "warning: line %d: '%s' = '%s': not an integer\n",
+                line_no, key, value);
+            cx->warnings++;
+        } else if (v < d->i_lo || v > d->i_hi) {
+            std::fprintf(stderr,
+                "warning: line %d: '%s' = %d: out of range [%d, %d]\n",
+                line_no, key, v, d->i_lo, d->i_hi);
+            cx->warnings++;
+        }
+        break;
+    }
+    case CALCYX_SETTING_KIND_COLOR: {
+        unsigned char rgb[3];
+        if (!calcyx_conf_parse_hex_color(value, rgb)) {
+            std::fprintf(stderr,
+                "warning: line %d: '%s' = '%s': expected '#RRGGBB'\n",
+                line_no, key, value);
+            cx->warnings++;
+        }
+        break;
+    }
+    case CALCYX_SETTING_KIND_COLOR_PRESET: {
+        if (!is_known_preset(value)) {
+            std::fprintf(stderr,
+                "warning: line %d: '%s' = '%s': unknown preset\n",
+                line_no, key, value);
+            cx->warnings++;
+        }
+        break;
+    }
+    case CALCYX_SETTING_KIND_FONT:
+    case CALCYX_SETTING_KIND_HOTKEY:
+        if (!*value) {
+            std::fprintf(stderr,
+                "warning: line %d: '%s' is empty\n", line_no, key);
+            cx->warnings++;
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+int run_check_config(const char *path) {
+    CheckCtx cx;
+    cx.warnings = 0;
+    int rc = calcyx_conf_each(path, check_cb, &cx);
+    if (rc != 0) {
+        std::fprintf(stderr, "error: cannot open '%s'\n", path);
+        return 2;
+    }
+    if (cx.warnings > 0) {
+        std::fprintf(stderr, "%d warning(s) in %s\n", cx.warnings, path);
+        return 1;
+    }
+    std::printf("ok: %s\n", path);
+    return 0;
+}
+
+}  // namespace
+
+/* ----------------------------------------------------------------------
  * ヘルプ
  * -------------------------------------------------------------------- */
 static void print_help(const char *prog) {
@@ -159,6 +354,10 @@ static void print_help(const char *prog) {
         "                       both    式 = 結果\n"
         "  -b, --batch        位置引数ファイル or stdin を CLI バッチ評価する (強制)\n"
         "  -r, --repl         旧 CLI 対話 REPL (fgets 行ループ) を起動する\n"
+        "  --print-config     現在解釈される設定を canonical 形式で stdout に出力\n"
+        "  --check-config     conf を syntax check し、警告があれば exit 1\n"
+        "  --config <path>    --print-config / --check-config の対象 conf を指定\n"
+        "                       (省略時はプラットフォーム既定の calcyx.conf)\n"
         "  -V, --version      バージョンを表示\n"
         "  -h, --help         このヘルプを表示\n"
         "\n"
@@ -196,6 +395,9 @@ int main(int argc, char *argv[]) {
     std::vector<const char*> files;
     bool force_batch = false;
     bool force_repl  = false;
+    bool do_print_config = false;
+    bool do_check_config = false;
+    const char *config_override = nullptr;
 
     for (int i = 1; i < argc; i++) {
         const char *a = argv[i];
@@ -237,11 +439,44 @@ int main(int argc, char *argv[]) {
             force_repl = true;
             continue;
         }
+        if (std::strcmp(a, "--print-config") == 0) {
+            do_print_config = true;
+            continue;
+        }
+        if (std::strcmp(a, "--check-config") == 0) {
+            do_check_config = true;
+            continue;
+        }
+        if (std::strcmp(a, "--config") == 0) {
+            if (i + 1 >= argc) {
+                std::fprintf(stderr, "error: --config requires an argument\n");
+                return 2;
+            }
+            config_override = argv[++i];
+            continue;
+        }
         if (a[0] == '-') {
             std::fprintf(stderr, "error: unknown option '%s'\n", a);
             return 2;
         }
         files.push_back(a);
+    }
+
+    /* --print-config / --check-config は他フラグと独立。conf 関連だけ実行して exit. */
+    if (do_print_config || do_check_config) {
+        char path_buf[1024];
+        const char *path;
+        if (config_override) {
+            path = config_override;
+        } else {
+            if (!calcyx_default_conf_path(path_buf, sizeof(path_buf))) {
+                std::fprintf(stderr, "error: cannot determine default conf path\n");
+                return 2;
+            }
+            path = path_buf;
+        }
+        if (do_print_config) return run_print_config(path);
+        return run_check_config(path);
     }
 
     /* 明示的 CLI モードと TUI モードの判定。
