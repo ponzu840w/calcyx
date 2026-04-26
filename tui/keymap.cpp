@@ -13,10 +13,17 @@ namespace calcyx::tui {
 Action map(const ftxui::Event &ev) {
     using E = ftxui::Event;
 
-    /* 終了: Ctrl+Q / Ctrl+C。
-     * ISIG を切ってあるので Ctrl+C も SIGINT にならず生バイトで届く → Quit に拾う。 */
+    /* 終了: Ctrl+Q のみ。
+     * Ctrl+C は Copy に充てるため Quit から外した (ISIG を切ってあるので
+     * SIGINT には化けず、生の 0x03 が stdin に届く)。 */
     if (ev == E::Special("\x11")) return Action::Quit;
-    if (ev == E::Special("\x03")) return Action::Quit;
+
+    /* クリップボード (現在行 / 編集中バッファ)。
+     * Ctrl+X (0x18) と Ctrl+V (0x16) は FTXUI の C0 DROP パッチで
+     * 通るようになっている (cmake/deps.cmake の PATCH_COMMAND)。 */
+    if (ev == E::Special("\x03")) return Action::Copy;   /* Ctrl+C */
+    if (ev == E::Special("\x18")) return Action::Cut;    /* Ctrl+X */
+    if (ev == E::Special("\x16")) return Action::Paste;  /* Ctrl+V */
 
     /* Enter / Shift+Enter */
     if (ev == E::Return) return Action::CommitAndInsertBelow;
@@ -70,9 +77,10 @@ Action map(const ftxui::Event &ev) {
     if (ev == E::Special("\x1b[3;2~")) return Action::DeleteRowUp;
 
     /* 全体操作 */
-    if (ev == E::Special("\x1b[3;6~")) return Action::ClearAll;   /* Ctrl+Shift+Del */
-    if (ev == E::Special("\x1b" "c"))  return Action::CopyAll;    /* Alt+C */
-    if (ev == E::F5)                   return Action::Recalculate;
+    if (ev == E::Special("\x1b[3;6~"))  return Action::ClearAll;   /* Ctrl+Shift+Del */
+    if (ev == E::Special("\x1b[67;6u")) return Action::CopyAll;    /* Ctrl+Shift+C (CSI-u) */
+    if (ev == E::Special("\x1b" "c"))   return Action::CopyAll;    /* Alt+C (フォールバック) */
+    if (ev == E::F5)                    return Action::Recalculate;
 
     /* 小数桁. GUI の Ctrl+Shift+. / , は端末では拾えないため Alt+./, を使う。
      * 新しめの端末 (kitty/foot) で CSI-u が有効な場合の \x1b[46;6u / \x1b[44;6u

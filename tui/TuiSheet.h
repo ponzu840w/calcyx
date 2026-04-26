@@ -104,6 +104,9 @@ private:
     void action_recalculate();
     void action_clear_all();
     void action_copy_all();
+    void action_copy();             /* 現在行を `expr = result` 形式でコピー */
+    void action_cut();              /* コピーして行削除 */
+    void action_paste();             /* クリップボードをカーソル位置に挿入 */
     void action_decimals_inc();
     void action_decimals_dec();
     void action_format(val_fmt_t fmt, const char *fmt_func);
@@ -142,6 +145,13 @@ private:
     TuiCompletion completion_;
     bool          auto_complete_ = true;  /* GUI の g_input_auto_completion 相当 */
     bool          compact_mode_  = false;
+
+    /* 直近の Ctrl+C で書き込んだクリップボードテキストと、その行の式部分。
+     * Ctrl+V 時にクリップボードの内容と last_copied_text_ が完全一致なら、
+     * 「同一プロセスから直近にコピーした行の貼り付け」とみなして式部分のみ
+     * を挿入する (アプリ間のラウンドトリップではフル `expr = result` を貼る)。 */
+    std::string   last_copied_text_;
+    std::string   last_copied_expr_;
 
     /* マウス: 各行と編集領域の Box (Render() で再構築)。 */
     mutable std::vector<ftxui::Box> row_boxes_;

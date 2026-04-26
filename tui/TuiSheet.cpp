@@ -1,6 +1,7 @@
 #include "TuiSheet.h"
 
 #include "keymap.h"
+#include "clipboard.h"
 
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
@@ -554,31 +555,9 @@ void TuiSheet::action_clear_all() {
     if (status_cb_) status_cb_("Cleared");
 }
 
-/* 全コピー: OSC 52 経由でターミナルのクリップボードへ送る。
- * Windows Terminal / Kitty / WezTerm / Alacritty / iTerm2 / tmux(enable setting on)
- * が対応。非対応端末では無視される (フィードバックは "Copied (OSC 52)" のまま)。
+/* 全コピー: clipboard::write() に委譲。pbcopy / wl-copy / xclip / clip.exe
+ * のフォールバック → 最後に OSC 52 を試す。
  * 書式: "<expr> = <result>\n" を全行結合。移植元 ui/SheetView.cpp:1591。 */
-namespace {
-std::string osc52_base64(const std::string &in) {
-    static const char *chars =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    std::string out;
-    out.reserve(((in.size() + 2) / 3) * 4);
-    int val = 0, valb = -6;
-    for (unsigned char c : in) {
-        val = (val << 8) | c;
-        valb += 8;
-        while (valb >= 0) {
-            out.push_back(chars[(val >> valb) & 0x3F]);
-            valb -= 6;
-        }
-    }
-    if (valb > -6) out.push_back(chars[((val << 8) >> (valb + 8)) & 0x3F]);
-    while (out.size() % 4) out.push_back('=');
-    return out;
-}
-} // namespace
-
 void TuiSheet::action_copy_all() {
     std::string text;
     int n = sheet_model_row_count(model_);
@@ -592,13 +571,97 @@ void TuiSheet::action_copy_all() {
         }
         text += "\n";
     }
-    std::string b64 = osc52_base64(text);
-    /* OSC 52 は stdout/stderr どちらでもターミナルに届く。stderr を使って
-     * FTXUI の描画バッファ (stdout) と干渉させない。 */
-    std::fprintf(stderr, "\x1b]52;c;%s\x07", b64.c_str());
-    std::fflush(stderr);
+    bool ok = clipboard::write(text);
+    if (status_cb_) {
+        if (ok)
+            status_cb_("Copied " + std::to_string(n) + " row(s) to clipboard");
+        else
+            status_cb_("Clipboard write failed");
+    }
+}
+
+/* 単一行コピー: 編集中なら commit してから現在行を `expr = result` 形式で
+ * クリップボードへ書き込む。同時に last_copied_text_ / last_copied_expr_ を
+ * 更新し、直後の Ctrl+V で「式のみ」を貼り付けられるようにする。 */
+void TuiSheet::action_copy() {
+    commit_if_changed();
+    int n = sheet_model_row_count(model_);
+    if (focused_row_ < 0 || focused_row_ >= n) return;
+
+    const char *expr_p = sheet_model_row_expr  (model_, focused_row_);
+    const char *res_p  = sheet_model_row_result(model_, focused_row_);
+    bool        vis    = sheet_model_row_visible(model_, focused_row_);
+
+    std::string expr = expr_p ? expr_p : "";
+    std::string text = expr;
+    if (res_p && res_p[0] && vis) {
+        text += " = ";
+        text += res_p;
+    }
+
+    if (!clipboard::write(text)) {
+        if (status_cb_) status_cb_("Clipboard write failed");
+        return;
+    }
+    last_copied_text_ = text;
+    last_copied_expr_ = expr;
+    if (status_cb_) status_cb_("Copied row to clipboard");
+}
+
+/* Cut: コピーしてから現在行を削除。 */
+void TuiSheet::action_cut() {
+    int n = sheet_model_row_count(model_);
+    if (focused_row_ < 0 || focused_row_ >= n) return;
+
+    /* action_copy() の status_cb_ は cut の status で上書きするので、
+     * コピー失敗時のみフィードバックを返す。 */
+    commit_if_changed();
+    const char *expr_p = sheet_model_row_expr  (model_, focused_row_);
+    const char *res_p  = sheet_model_row_result(model_, focused_row_);
+    bool        vis    = sheet_model_row_visible(model_, focused_row_);
+    std::string expr = expr_p ? expr_p : "";
+    std::string text = expr;
+    if (res_p && res_p[0] && vis) { text += " = "; text += res_p; }
+
+    if (!clipboard::write(text)) {
+        if (status_cb_) status_cb_("Clipboard write failed; row not deleted");
+        return;
+    }
+    last_copied_text_ = text;
+    last_copied_expr_ = expr;
+
+    action_delete_row();
+    if (status_cb_) status_cb_("Cut row to clipboard");
+}
+
+/* Paste: クリップボードから読み込み、内容が直前の Ctrl+C/X と一致すれば
+ * 式部分のみを、そうでなければそのままを現在のカーソル位置に挿入する。
+ * 改行を含む場合はマルチライン挿入処理 (将来モーダル) — 現状は status のみ。 */
+void TuiSheet::action_paste() {
+    std::string text;
+    if (!clipboard::read(text)) {
+        if (status_cb_) status_cb_("Clipboard read failed");
+        return;
+    }
+    /* コマンド出力末尾の単一改行はおまけなので削る。複数改行は保持。 */
+    if (!text.empty() && text.back() == '\n') text.pop_back();
+    if (!text.empty() && text.back() == '\r') text.pop_back();
+
+    bool from_self = !last_copied_text_.empty() && text == last_copied_text_;
+    std::string to_insert = from_self ? last_copied_expr_ : text;
+
+    if (to_insert.find('\n') != std::string::npos ||
+        to_insert.find('\r') != std::string::npos) {
+        /* TODO: マルチラインモーダルで「各行を別行 / 1 行に結合 / キャンセル」 */
+        if (status_cb_) status_cb_("Multi-line paste not yet supported");
+        return;
+    }
+
+    editor_buf_.insert(cursor_pos_, to_insert);
+    cursor_pos_ += to_insert.size();
+    live_evaluate();
     if (status_cb_)
-        status_cb_("Copied " + std::to_string(n) + " row(s) to clipboard");
+        status_cb_(from_self ? "Pasted expression" : "Pasted from clipboard");
 }
 
 /* 小数桁の増減は engine 側のグローバル g_fmt_settings を直接触る (GUI と同じ)。
@@ -971,6 +1034,13 @@ bool TuiSheet::OnEvent(Event ev) {
         case Action::ClearAll:         action_clear_all();
                                        completion_.hide();          break;
         case Action::CopyAll:          action_copy_all();
+                                       completion_.hide();          break;
+        case Action::Copy:             action_copy();
+                                       completion_.hide();          break;
+        case Action::Cut:              action_cut();
+                                       completion_.hide();          break;
+        case Action::Paste:            action_paste();
+                                       needs_key_update = true;
                                        completion_.hide();          break;
         case Action::DecimalsInc:      action_decimals_inc();       break;
         case Action::DecimalsDec:      action_decimals_dec();       break;

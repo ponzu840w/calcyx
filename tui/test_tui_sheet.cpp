@@ -19,6 +19,7 @@
  */
 
 #include "TuiSheet.h"
+#include "clipboard.h"
 
 extern "C" {
 #include "sheet_model.h"
@@ -462,6 +463,99 @@ static void test_clear_recalc_decimals() {
  * F6 で compact_mode が toggle され、Render() 出力からステータス/ヘルプ行が
  * 消える (代わりにシート行だけになる)。もう一度押せば元に戻る。
  * -------------------------------------------------------------------- */
+/* ----------------------------------------------------------------------
+ * シナリオ 9: クリップボード (Ctrl+C / Ctrl+X / Ctrl+V)
+ *
+ * clipboard モジュールをモックバッファに切り替え、外部 I/O を発生させずに
+ * Ctrl+C/X/V のロジック (式 = 結果 形式 / アプリ内メタデータによる式のみ
+ * ペースト / 別ソースからのフルペースト / マルチライン拒否) を確認する。
+ * -------------------------------------------------------------------- */
+static void test_clipboard_copy_paste() {
+    clipboard::set_mock_for_test(true);
+
+    /* --- 9a: Ctrl+C で行コピー / Ctrl+V でメタデータ式ペースト --- */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+
+        /* row 0 = "1+1" を作って commit。Enter は row 1 (空) を作る。 */
+        type_str(*sheet, "1+1");
+        sheet->OnEvent(Event::Return);
+
+        /* row 0 ("1+1") に戻って Ctrl+C → mock = "1+1 = 2"。 */
+        sheet->OnEvent(Event::ArrowUp);
+        sheet->OnEvent(Event::Special("\x03"));
+        EXPECT("9a copy: clipboard text",
+               clipboard::get_mock_buffer() == "1+1 = 2");
+
+        /* row 1 (空) で Ctrl+V → メタデータ一致で式のみ貼られる。 */
+        sheet->OnEvent(Event::ArrowDown);
+        EXPECT("9a paste: row1 starts empty",
+               sheet->test_editor_buf().empty());
+        sheet->OnEvent(Event::Special("\x16"));
+        EXPECT("9a paste: expression-only",
+               sheet->test_editor_buf() == "1+1");
+        EXPECT("9a paste: live preview",
+               sheet->live_preview() == "2");
+
+        sheet.reset();
+        sheet_model_free(model);
+    }
+
+    /* --- 9b: 別ソース由来のクリップボードはフルテキストで貼られる --- */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+
+        clipboard::set_mock_buffer("99 = 99");
+        sheet->OnEvent(Event::Special("\x16"));
+        EXPECT("9b paste: full text inserted",
+               sheet->test_editor_buf() == "99 = 99");
+
+        sheet.reset();
+        sheet_model_free(model);
+    }
+
+    /* --- 9c: 改行入りクリップボードは v1 ではスキップ (editor 不変) --- */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+        type_str(*sheet, "abc");
+        std::string before = sheet->test_editor_buf();
+
+        clipboard::set_mock_buffer("a\nb\nc");
+        sheet->OnEvent(Event::Special("\x16"));
+        EXPECT("9c paste: multi-line keeps editor unchanged",
+               sheet->test_editor_buf() == before);
+
+        sheet.reset();
+        sheet_model_free(model);
+    }
+
+    /* --- 9d: Ctrl+X で行削除 + クリップボード書込 --- */
+    {
+        sheet_model_t *model = nullptr;
+        auto sheet = make_sheet(&model);
+
+        type_str(*sheet, "5+5");
+        sheet->OnEvent(Event::Return);   /* row 0 commit, row 1 へ */
+        sheet->OnEvent(Event::ArrowUp);  /* row 0 ("5+5") に戻る */
+
+        int rows_before = sheet_model_row_count(model);
+        sheet->OnEvent(Event::Special("\x18"));   /* Ctrl+X */
+        EXPECT("9d cut: clipboard text",
+               clipboard::get_mock_buffer() == "5+5 = 10");
+        EXPECT("9d cut: row removed",
+               sheet_model_row_count(model) == rows_before - 1);
+
+        dump_render("9d. after cut", *sheet);
+        sheet.reset();
+        sheet_model_free(model);
+    }
+
+    clipboard::set_mock_for_test(false);
+}
+
 static void test_compact_mode() {
     sheet_model_t *model = nullptr;
     auto sheet = make_sheet(&model);
@@ -493,6 +587,7 @@ int main() {
     test_format_hex();
     test_delete_row_variants();
     test_clear_recalc_decimals();
+    test_clipboard_copy_paste();
     test_compact_mode();
 
     if (g_failures > 0) {

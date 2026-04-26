@@ -48,7 +48,12 @@ enum class Action {
 
     /* 全体操作 */
     ClearAll,               /* Ctrl+Shift+Del */
-    CopyAll,                /* Alt+C (Ctrl+Shift+C は端末で Ctrl+C と区別不能なため) */
+    CopyAll,                /* Ctrl+Shift+C (CSI-u) / Alt+C (フォールバック) */
+
+    /* クリップボード (現在行 / 編集中バッファ) */
+    Copy,                   /* Ctrl+C: 現在行を `expr = result` 形式でコピー */
+    Cut,                    /* Ctrl+X: コピー + 行削除 */
+    Paste,                  /* Ctrl+V: クリップボードを現在のカーソル位置に挿入 */
 
     /* 表示オプション */
     DecimalsInc,            /* Alt+. (GUI は Ctrl+Shift+.) */
