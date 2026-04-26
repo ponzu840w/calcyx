@@ -212,7 +212,7 @@ const Shortcut kShortcuts[] = {
     { "Tab / Ctrl+Space", "Trigger completion" },
     { "(while typing)",   "Auto-complete popup" },
     { "F5",               "Recalculate all" },
-    { "Ctrl+: / F6",      "Toggle compact mode" },
+    { "F6",               "Toggle compact mode" },
     { "F8-F12",           "Format: Auto / Dec / Hex / Bin / SI" },
     { "Alt+. / Alt+,",    "Decimal places +/-" },
     { "Alt+C",            "Copy all (OSC 52)" },

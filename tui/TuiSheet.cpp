@@ -6,6 +6,7 @@
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
 #include <ftxui/screen/string.hpp>
+#include <ftxui/screen/terminal.hpp>
 
 #include <algorithm>
 #include <cstdio>
@@ -862,7 +863,6 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     const std::string &left_src = is_focused ? editor_buf_ : expr;
     int left_w = display_cells(left_src);  /* "> " の 2 セルは別途 */
     if (is_focused && cursor_pos_ == editor_buf_.size()) left_w += 1;
-    int pad    = (eq_col > left_w) ? (eq_col - left_w) : 0;
 
     Element expr_el;
     if (is_focused) {
@@ -871,11 +871,6 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     } else {
         expr_el = render_highlighted(expr, SIZE_MAX, /*dim_style=*/true);
     }
-    Element left = hbox({
-        text(is_focused ? "> " : "  "),
-        expr_el,
-        text(std::string(pad, ' ')),
-    });
 
     /* 中央 "=": 結果がある行のみ表示。 */
     bool has_result = false;
@@ -885,8 +880,6 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     } else if (sheet_model_row_visible(model_, idx)) {
         has_result = true; res_text = result;
     }
-
-    Element eq = text(has_result ? " = " : "   ");
 
     /* 結果のシンタックスハイライト:
      *   - error 行: 赤一色 (per-token 色は無視)
@@ -906,11 +899,40 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
         right = text("");
     }
 
-    Element row = hbox({
-        left,
-        eq,
-        right | flex,
-    });
+    /* GUI 準拠の 2 行レイアウト: 式が "=" カラムを超え、かつ結果がある場合は
+     * 式を 1 行目フル幅で出し、結果を次の視覚行で同じ "=" カラムに揃える。
+     * 結果のない行 (visible=false) は常に 1 行レイアウト。 */
+    bool wrapped = has_result && left_w > eq_col;
+
+    Element row;
+    if (wrapped) {
+        Element line1 = hbox({
+            text(is_focused ? "> " : "  "),
+            expr_el,
+        });
+        /* 2 行目は "> " 相当の 2 セル + eq_col セルを空白でインデントして、
+         * 1 行レイアウトの "=" 位置と縦に揃える。 */
+        Element line2 = hbox({
+            text(std::string(2 + eq_col, ' ')),
+            text(" = "),
+            right,
+        });
+        row = vbox({ line1, line2 });
+    } else {
+        int pad = (eq_col > left_w) ? (eq_col - left_w) : 0;
+        Element left = hbox({
+            text(is_focused ? "> " : "  "),
+            expr_el,
+            text(std::string(pad, ' ')),
+        });
+        Element eq = text(has_result ? " = " : "   ");
+        row = hbox({
+            left,
+            eq,
+            right | flex,
+        });
+    }
+
     /* フォーカス行のハイライトは inverted (端末既定 fg/bg をピクセル単位で
      * 入れ替える) を使う。bgcolor(Blue)+color(White) などの「色」指定は
      * 単色テーマや低色数端末では塗り潰しになって読めなくなるが、inverted は
@@ -932,24 +954,53 @@ Element TuiSheet::Render() {
     row_boxes_.assign(n, Box{});
     editor_box_ = Box{};
 
-    /* eq_col_: "=" カラムの位置を全行で揃える。
-     * 各行の expr (フォーカス行は editor_buf_) のセル幅の最大値。
+    /* eq_col: "=" カラムの位置を全行で揃える。GUI の SheetView::layout_eq_pos
+     * (ui/SheetView.cpp:855) と同じロジック:
+     *   全式幅 + 全結果幅 + " = "(3) + "> "(2) が端末幅に収まる場合は
+     *     eq_col = max(min, max_expr_w)        — 結果は右側に余白を持って続く
+     *   そうでない場合は
+     *     eq_col = max(min, avail - max_result_w)  — 結果が端末右端に張り付く
+     *
      * フォーカス行のカーソルが末尾にあるときは反転スペース 1 セル分を加味。
-     * 上限は 60 セル (画面幅 80 を想定して 3/4 程度)。極端な式は溢れさせる。 */
-    int eq_col = 0;
+     * 端末幅が取れない場合は 80 をフォールバックに使う。 */
+    constexpr int kMinEqCol = 8;
+    int term_w = ftxui::Terminal::Size().dimx;
+    if (term_w <= 0) term_w = 80;
+    int avail = term_w - 5;  /* "> "(2) + " = "(3) */
+    if (avail < kMinEqCol) avail = kMinEqCol;
+
+    int max_expr_w   = 0;
+    int max_result_w = 0;
     for (int i = 0; i < n; ++i) {
-        std::string s;
+        std::string es;
         if (i == focused_row_) {
-            s = editor_buf_;
+            es = editor_buf_;
         } else {
             const char *e = sheet_model_row_expr(model_, i);
-            s = e ? e : "";
+            es = e ? e : "";
         }
-        int w = display_cells(s);
-        if (i == focused_row_ && cursor_pos_ == editor_buf_.size()) w += 1;
-        if (w > eq_col) eq_col = w;
+        int ew = display_cells(es);
+        if (i == focused_row_ && cursor_pos_ == editor_buf_.size()) ew += 1;
+        if (ew > max_expr_w) max_expr_w = ew;
+
+        std::string rs;
+        if (i == focused_row_ && editor_dirty()) {
+            rs = live_preview_;
+        } else if (sheet_model_row_visible(model_, i)) {
+            const char *r = sheet_model_row_result(model_, i);
+            rs = r ? r : "";
+        }
+        int rw = display_cells(rs);
+        if (rw > max_result_w) max_result_w = rw;
     }
-    if (eq_col > 60) eq_col = 60;
+
+    int eq_col;
+    if (max_expr_w + max_result_w < avail) {
+        eq_col = std::max(kMinEqCol, max_expr_w);
+    } else {
+        eq_col = std::max(kMinEqCol, avail - max_result_w);
+    }
+    if (eq_col > avail) eq_col = avail;
 
     /* 2 列レイアウト: 左 = expr (eq_col 幅に padding)、右 = result。
      * カーソル行が画面外に出ないよう yframe + focus でスクロール。
