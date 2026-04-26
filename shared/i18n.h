@@ -31,6 +31,10 @@ void calcyx_i18n_init(const char *lang_id);
 /* 現在固定中の言語を返す. */
 calcyx_lang_t calcyx_i18n_current(void);
 
+/* calcyx_i18n_init が呼ばれていれば 1, それ以外は 0. テスト等で先に
+ * i18n_init を呼んだあとに再初期化を抑止したいときに使う. */
+int calcyx_i18n_is_initialized(void);
+
 /* lang_id が "auto" / "en" / "ja" のいずれかなら 1, それ以外は 0. */
 int calcyx_i18n_lang_id_valid(const char *lang_id);
 

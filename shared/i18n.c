@@ -66,6 +66,10 @@ calcyx_lang_t calcyx_i18n_current(void) {
     return s_lang;
 }
 
+int calcyx_i18n_is_initialized(void) {
+    return s_initialized;
+}
+
 const char *calcyx_tr(const char *en) {
     calcyx_tr_entry_t key;
     calcyx_tr_entry_t *hit;

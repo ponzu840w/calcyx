@@ -11,6 +11,7 @@
 
 extern "C" {
 #include "sheet_model.h"
+#include "i18n.h"
 }
 
 #include <ftxui/component/event.hpp>
@@ -427,6 +428,9 @@ static void test_context_menu() {
 }
 
 int main() {
+    /* テストは英語前提のアサートなので OS ロケールに関係なく en で固定. */
+    calcyx_i18n_init("en");
+
     test_prompt_open_cancel();
     test_prompt_save_and_load();
     test_about_dialog();

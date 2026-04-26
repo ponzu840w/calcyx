@@ -114,7 +114,114 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Numeric Separators",                    "数値区切り" },
 
     /* Calculation タブ */
-    { "Limits",                                "リミット" }
+    { "Limits",                                "リミット" },
+
+    /* === TUI: メニューバータイトル === */
+    { "&File",   "ファイル(&F)" },
+    { "&Edit",   "編集(&E)" },
+    { "&View",   "表示(&V)" },
+    { "fo&Rmat", "書式(&R)" },
+
+    /* === TUI: File メニュー項目 === */
+    { "&Open...",         "開く(&O)..." },
+    { "&Save",            "保存(&S)" },
+    { "S&amples",         "サンプル(&A)" },
+    { "&Clear All",       "全消去(&C)" },
+    { "&Preferences...",  "設定(&P)..." },
+    { "A&bout calcyx",    "calcyx について(&B)" },
+    { "E&xit",            "終了(&X)" },
+
+    /* === TUI: Edit メニュー項目 === */
+    { "&Undo",              "元に戻す(&U)" },
+    { "&Redo",              "やり直し(&R)" },
+    { "Copy &All",          "全行をコピー(&A)" },
+    { "&Insert Row Below",  "下に行を挿入(&I)" },
+    { "Insert Row A&bove",  "上に行を挿入(&B)" },
+    { "&Delete Row",        "行を削除(&D)" },
+    { "Move Row &Up",       "行を上に移動(&U)" },
+    { "Move Row Do&wn",     "行を下に移動(&W)" },
+    { "R&ecalculate",       "強制再計算(&E)" },
+
+    /* === TUI: View メニュー項目 === */
+    { "&Compact Mode",       "コンパクトモード(&C)" },
+    { "Decimals &+",         "小数桁数 &+" },
+    { "Decimals &-",         "小数桁数 &-" },
+    { "&Auto Completion",    "自動補完(&A)" },
+
+    /* === TUI: Format メニュー項目 === */
+    { "&Auto",               "自動(&A)" },
+    { "&Decimal",            "10 進数(&D)" },
+    { "&Hex",                "16 進数(&H)" },
+    { "&Binary",             "2 進数(&B)" },
+    { "&SI Prefix",          "SI 接頭辞(&S)" },
+
+    /* === TUI: prompt label === */
+    { "Open file: ", "開くファイル: " },
+    { "Save as:   ", "保存先:       " },
+
+    /* === TUI: flash messages === */
+    { "Cancelled",                  "キャンセルしました" },
+    { "Path is empty",              "パスが空です" },
+    { "Saved: ",                    "保存しました: " },
+    { "Save failed: ",              "保存に失敗しました: " },
+    { "Loaded: ",                   "読み込みました: " },
+    { "Load failed: ",              "読み込みに失敗しました: " },
+    { "Opened: ",                   "開きました: " },
+    { "Edited: ",                   "編集しました: " },
+    { "Loaded sample: ",            "サンプルを読み込みました: " },
+    { "New file: ",                 "新規ファイル: " },
+    { "samples directory not found", "サンプルディレクトリが見つかりません" },
+    { "Paste cancelled",            "貼り付けをキャンセルしました" },
+
+    /* === TUI: ヘルプ行 === */
+    { " F1 help  Alt+F menu  ^Q quit  ^Z/^Y undo/redo  F8-F12 fmt ",
+      " F1 ヘルプ  Alt+F メニュー  ^Q 終了  ^Z/^Y 元に戻す/やり直し  F8-F12 書式 " },
+
+    /* === TUI: Paste Options ダイアログ === */
+    { "Paste Options",                       "貼り付けオプション" },
+    { "Clipboard contains ",                 "クリップボードに " },
+    { " line(s):",                           " 行あります:" },
+    { "Insert each line as a new row",       "各行を新しい行として挿入" },
+    { "Join into single line at cursor",     "カーソル位置に 1 行として結合" },
+    { "↑↓ select   Enter confirm   Esc cancel",
+      "↑↓ 選択   Enter 確定   Esc キャンセル" },
+
+    /* === TUI: About ダイアログ === */
+    { "An engineering calculator based on Calctus.",
+      "Calctus ベースのエンジニアリング電卓" },
+    { "Shortcuts",                           "ショートカット" },
+    { "License",                             "ライセンス" },
+    { "Tab: switch   ↑↓: scroll  (",         "Tab: 切替   ↑↓: スクロール  (" },
+    { ")   Esc / Enter / q: close",          ")   Esc / Enter / q: 閉じる" },
+
+    /* === TUI: ショートカット説明 === */
+    { "Commit and insert row below",         "確定して下に行を挿入" },
+    { "Insert row above",                    "上に行を挿入" },
+    { "Delete current row",                  "現在の行を削除" },
+    { "Delete row, move focus up",           "行を削除して上に移動" },
+    { "Move current row",                    "現在の行を移動" },
+    { "Undo / Redo",                         "元に戻す / やり直し" },
+    { "Trigger completion",                  "補完を起動" },
+    { "Auto-complete popup",                 "自動補完ポップアップ" },
+    { "Recalculate all",                     "全行を再計算" },
+    { "Toggle compact mode",                 "コンパクトモード切替" },
+    { "Format: Auto / Dec / Hex / Bin / SI", "書式: 自動 / 10 進 / 16 進 / 2 進 / SI" },
+    { "Decimal places +/-",                  "小数桁数 +/-" },
+    { "Copy all (OSC 52)",                   "全行をコピー (OSC 52)" },
+    { "Clear all rows",                      "全行を削除" },
+    { "Open / Save file",                    "ファイルを開く / 保存" },
+    { "Quit",                                "終了" },
+    { "This About dialog",                   "この About ダイアログ" },
+
+    /* === TUI: コンテキストメニュー === */
+    { "Copy row",            "行をコピー" },
+    { "Copy expression",     "式をコピー" },
+    { "Copy result",         "結果をコピー" },
+    { "Cut",                 "切り取り" },
+    { "Paste",               "貼り付け" },
+    { "Insert row above",    "上に行を挿入" },
+    { "Insert row below",    "下に行を挿入" },
+    { "Delete row",          "行を削除" }
 };
 
 const int CALCYX_TR_TABLE_JA_N =
