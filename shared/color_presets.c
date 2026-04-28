@@ -8,10 +8,10 @@
 #define RGB(R,G,B) { (unsigned char)(R), (unsigned char)(G), (unsigned char)(B) }
 
 static const calcyx_color_palette_t OTAKU_BLACK = {
-    /* bg/sel_bg/rowline/sep */
-    RGB( 22,  22,  22), RGB( 38,  42,  55), RGB( 32,  32,  36), RGB( 55,  55,  65),
-    /* text/cursor */
-    RGB(255, 255, 255), RGB(180, 200, 255),
+    /* bg/sel_bg/rowline */
+    RGB( 22,  22,  22), RGB( 38,  42,  55), RGB( 32,  32,  36),
+    /* text/accent */
+    RGB(255, 255, 255), RGB(0x6d, 0x80, 0xb8),
     /* symbol/ident/special/si_pfx */
     RGB( 64, 192, 255), RGB(192, 255, 128), RGB(255, 192,  64), RGB(224, 160, 255),
     /* paren[4] */
@@ -27,8 +27,8 @@ static const calcyx_color_palette_t OTAKU_BLACK = {
 };
 
 static const calcyx_color_palette_t GYAKUBARI_WHITE = {
-    RGB(250, 250, 250), RGB(210, 220, 240), RGB(230, 230, 232), RGB(200, 200, 210),
-    RGB(  0,   0,   0), RGB( 40,  60, 160),
+    RGB(250, 250, 250), RGB(210, 220, 240), RGB(230, 230, 232),
+    RGB(  0,   0,   0), RGB( 0x92,  0xC1, 0xFF),
     RGB(  0, 100, 200), RGB( 40, 130,   0), RGB(180, 100,   0), RGB(140,  60, 200),
     { RGB(  0, 100, 200), RGB(140,  60, 200), RGB(200,  50, 120), RGB(180, 100,   0) },
     RGB(160, 160, 160),
@@ -39,7 +39,7 @@ static const calcyx_color_palette_t GYAKUBARI_WHITE = {
 };
 
 static const calcyx_color_palette_t SABOTEN_GREY = {
-    RGB( 32,  32,  32), RGB(  0,   0,   0), RGB( 40,  40,  40), RGB( 96,  96,  96),
+    RGB( 32,  32,  32), RGB(  0,   0,   0), RGB( 40,  40,  40),
     RGB(255, 255, 255), RGB(  0, 128, 255),
     RGB( 64, 192, 255), RGB(192, 255, 128), RGB(255, 192,  64), RGB(224, 160, 255),
     { RGB( 64, 192, 255), RGB(192, 128, 255), RGB(255, 128, 192), RGB(255, 192,  64) },
@@ -51,7 +51,7 @@ static const calcyx_color_palette_t SABOTEN_GREY = {
 };
 
 static const calcyx_color_palette_t SABOTEN_WHITE = {
-    RGB(224, 224, 224), RGB(255, 255, 255), RGB(216, 216, 216), RGB(160, 160, 160),
+    RGB(224, 224, 224), RGB(255, 255, 255), RGB(216, 216, 216),
     RGB(  0,   0,   0), RGB(  0,  80, 160),
     RGB(  0, 120, 192), RGB( 64, 160,   0), RGB(192, 120,   0), RGB(144,  80, 224),
     { RGB(  0, 120, 192), RGB(128,  64, 192), RGB(192,  64, 128), RGB(192, 120,   0) },

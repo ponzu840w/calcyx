@@ -55,7 +55,7 @@ void style_check(Fl_Check_Button *chk) {
     chk->color(DLG_BG);
     chk->labelcolor(DLG_TEXT);
     chk->labelsize(12);
-    chk->selection_color(g_colors.cursor);
+    chk->selection_color(g_colors.accent);
 }
 
 void style_spinner(Fl_Spinner *sp) {
@@ -64,7 +64,7 @@ void style_spinner(Fl_Spinner *sp) {
     sp->labelcolor(DLG_LABEL);
     sp->labelsize(12);
     sp->textsize(12);
-    sp->selection_color(g_colors.cursor);
+    sp->selection_color(g_colors.accent);
 }
 
 // セクション枠を作る: 太字タイトル + 枠付き Fl_Group。呼び出し側で end() すること。
@@ -178,7 +178,7 @@ static void refresh_dlg_colors_recurse(Fl_Group *grp, DlgState *st) {
             cho->color(DLG_INPUT);
             cho->textcolor(DLG_TEXT);
             cho->labelcolor(DLG_LABEL);
-            cho->selection_color(g_colors.cursor);
+            cho->selection_color(g_colors.accent);
         } else if (auto *btn = dynamic_cast<Fl_Button *>(w)) {
             if (btn->box() == FL_DOWN_BOX) {
                 btn->color(DLG_INPUT);

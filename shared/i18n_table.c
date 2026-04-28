@@ -105,7 +105,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
       "現在のプリセット色をユーザー定義にコピーして編集可能にします" },
 
     /* Input タブ */
-    { "Completion",                            "補完" },
+    { "Completion",                            "入力補完" },
     { "Brackets",                              "括弧" },
     { "Editing",                               "編集" },
 
@@ -117,7 +117,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Limits",                                "リミット" },
     { "Max array length:",                     "配列の最大長:" },
     { "Max string length:",                    "文字列の最大長:" },
-    { "Max call recursion depth:",             "関数呼び出しの最大ネスト:" },
+    { "Max call recursion depth:",             "関数呼び出しの最大ネスト数:" },
 
     /* General タブ詳細 */
     { "Remember window position on exit",      "終了時のウィンドウ位置を記憶" },
@@ -132,30 +132,29 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Key:",                                  "キー:" },
 
     /* Input タブ詳細 */
-    { "Auto-completion on typing",             "入力中に自動補完" },
+    { "Auto-completion on typing",             "自動入力補完を有効化" },
     { "Ctrl+Space opens the popup regardless of this setting.",
-      "Ctrl+Space はこの設定に関わらずポップアップを開きます." },
+      "Ctrl+Space はこの設定に関わらずポップアップを開きます。" },
     { "Show popup as a separate window:",      "ポップアップを独立ウィンドウで表示:" },
     { "In normal mode",                        "通常モード時" },
     { "In compact mode",                       "コンパクトモード時" },
-    { "Auto-close brackets ( ) [ ] { }",       "括弧 ( ) [ ] { } を自動で閉じる" },
-    { "Backspace on empty row deletes the row", "空行で BackSpace を押すと行を削除" },
+    { "Auto-close brackets ( ) [ ] { }",       "閉じ括弧 ) ] } を自動で挿入する" },
+    { "Backspace on empty row deletes the row", "空行で BackSpace キーを押すと行を削除する" },
 
     /* Number Format タブ詳細 */
     { "Max length of decimal places to display:", "小数桁の最大表示桁数:" },
-    { "Scientific notation (E)",               "科学的記数法 (E)" },
-    { "Engineering alignment",                  "エンジニアリング桁揃え" },
+    { "Scientific notation (E)",               "科学的記数法 (E指数表記)" },
+    { "Engineering alignment",                  "エンジニアリング桁揃え（指数が3の倍数）" },
     { "Separate decimal numbers every 3 digits", "10 進数を 3 桁ごとに区切る" },
     { "Separate hex/bin/oct numbers every 4 digits",
       "16/2/8 進数を 4 桁ごとに区切る" },
 
     /* Appearance タブ詳細 (色エントリ名) */
     { "Background",   "背景" },
-    { "Selection",    "選択" },
+    { "Selection",    "選択行" },
     { "Row Line",     "行罫線" },
-    { "Separator",    "区切り線" },
     { "Text",         "テキスト" },
-    { "Cursor",       "カーソル" },
+    { "Accent",       "強調" },
     { "Symbols",      "記号" },
     { "Identifiers",  "識別子" },
     { "Literals",     "リテラル" },
@@ -165,21 +164,21 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Paren 3",      "括弧 3" },
     { "Paren 4",      "括弧 4" },
     { "Error",        "エラー" },
-    { "Win BG",       "ウィンドウ背景" },
-    { "Dlg BG",       "ダイアログ背景" },
+    { "Win BG",       "ｳｨﾝﾄﾞｳ背景" },
+    { "Dlg BG",       "ﾀﾞｲｱﾛｸﾞ背景" },
     { "UI Input",     "入力欄" },
     { "UI Button",    "ボタン" },
-    { "Menu BG",      "メニュー背景" },
+    { "Menu BG",      "ﾒﾆｭｰ背景" },
     { "UI Text",      "UI テキスト" },
     { "UI Label",     "UI ラベル" },
     { "UI Dim",       "UI 無効状態" },
-    { "Popup BG",     "ポップアップ背景" },
-    { "Popup Sel",    "ポップアップ選択" },
-    { "Popup Text",   "ポップアップテキスト" },
-    { "Popup Desc",   "ポップアップ説明" },
-    { "Popup DescBG", "ポップアップ説明背景" },
-    { "Popup Border", "ポップアップ枠" },
-    { "Show row separator lines", "行区切り線を表示" },
+    { "Popup BG",     "ﾎﾟｯﾌﾟｱｯﾌﾟ背景" },
+    { "Popup Sel",    "ﾎﾟｯﾌﾟｱｯﾌﾟ選択" },
+    { "Popup Text",   "ﾎﾟｯﾌﾟｱｯﾌﾟﾃｷｽﾄ" },
+    { "Popup Desc",   "ﾎﾟｯﾌﾟｱｯﾌﾟ説明" },
+    { "Popup DescBG", "ﾎﾟｯﾌﾟｱｯﾌﾟ説明背景" },
+    { "Popup Border", "ﾎﾟｯﾌﾟｱｯﾌﾟ枠" },
+    { "Show row separator lines", "罫線を表示" },
 
     /* === TUI: メニューバータイトル === */
     { "&File",   "ファイル(&F)" },

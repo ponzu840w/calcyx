@@ -461,7 +461,7 @@ void TuiApp::apply_settings_from_conf() {
                     { "color_bg",       &pal.bg },
                     { "color_sel_bg",   &pal.sel_bg },
                     { "color_text",     &pal.text },
-                    { "color_cursor",   &pal.cursor },
+                    { "color_accent",   &pal.accent },
                     { "color_symbol",   &pal.symbol },
                     { "color_ident",    &pal.ident },
                     { "color_special",  &pal.special },
@@ -490,7 +490,7 @@ void TuiApp::apply_settings_from_conf() {
             tp.bg       = pal.bg;
             tp.sel_bg   = pal.sel_bg;
             tp.text     = pal.text;
-            tp.cursor   = pal.cursor;
+            tp.accent   = pal.accent;
             tp.symbol   = pal.symbol;
             tp.ident    = pal.ident;
             tp.special  = pal.special;

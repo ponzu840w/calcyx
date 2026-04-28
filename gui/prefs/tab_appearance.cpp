@@ -83,7 +83,7 @@ static void open_font_picker(FontTab *ft, Fl_Window *parent) {
     browser.color(DLG_INPUT);
     browser.textcolor(DLG_TEXT);
     browser.textsize(13);
-    browser.selection_color(g_colors.cursor);
+    browser.selection_color(g_colors.accent);
 
     Fl_Check_Button sys_chk(10, PH - 82, 180, 22, "Use system fonts");
     sys_chk.labelcolor(DLG_LABEL);
@@ -314,18 +314,18 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     Fl_Box *lb_preset = new Fl_Box(lx + 10, ly, 60, 25, _("Preset:"));
     style_label(lb_preset);
     lb_preset->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    st.preset_choice = new Fl_Choice(lx + 70, ly, 200, 25);
+    st.preset_choice = new Fl_Choice(lx + 80, ly, 200, 25);
     st.preset_choice->color(DLG_INPUT);
     st.preset_choice->textcolor(DLG_TEXT);
     st.preset_choice->labelsize(12);
     st.preset_choice->textsize(12);
-    st.preset_choice->selection_color(g_colors.cursor);
+    st.preset_choice->selection_color(g_colors.accent);
     for (int i = 0; i < COLOR_PRESET_COUNT; i++)
         st.preset_choice->add(COLOR_PRESET_INFO[i].label);
     st.preset_choice->value(g_color_preset);
     st.preset_choice->callback(preset_change_cb, &st);
 
-    Fl_Button *copy_btn = new Fl_Button(lx + 275, ly, 150, 25, _("Copy to user-defined"));
+    Fl_Button *copy_btn = new Fl_Button(lx + 285, ly, 150, 25, _("Copy to user-defined"));
     copy_btn->color(DLG_BTN);
     copy_btn->labelcolor(DLG_TEXT);
     copy_btn->labelsize(12);
@@ -337,9 +337,8 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         { "Background",   &g_colors.bg },
         { "Selection",    &g_colors.sel_bg },
         { "Row Line",     &g_colors.rowline },
-        { "Separator",    &g_colors.sep },
         { "Text",         &g_colors.text },
-        { "Cursor",       &g_colors.cursor },
+        { "Accent",       &g_colors.accent },
         { "Symbols",      &g_colors.symbol },
         { "Identifiers",  &g_colors.ident },
         { "Literals",     &g_colors.special },
@@ -365,7 +364,7 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         { "Popup Border", &g_colors.pop_border },
     };
 
-    const int n_entries = 29;
+    const int n_entries = (int)(sizeof(entries) / sizeof(entries[0]));
     st.colors.count = n_entries;
     const int cols = 3, rows = 10;
     int col_w = (DW - 40) / cols;

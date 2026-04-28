@@ -615,20 +615,20 @@ SheetView::SheetView(int x, int y, int w, int h, bool preview)
     editor_ = new SheetLineInput(x, y, expr_w(), ROW_H);
     editor_->box(FL_FLAT_BOX);
     editor_->color(g_colors.sel_bg);
-    editor_->textcolor(g_colors.cursor);
+    editor_->textcolor(g_colors.accent);
     editor_->textfont(g_font_id);
     editor_->textsize(g_font_size);
-    editor_->cursor_color(g_colors.cursor);
+    editor_->cursor_color(g_colors.accent);
     editor_->when(0);
 
     // フォーカス行の結果表示（右辺: 読み取り専用 SheetLineInput、左辺と同じスタイル）
     auto *rd = new SheetLineInput(result_x(), y, result_w(), ROW_H, false);
     rd->box(FL_FLAT_BOX);
     rd->color(g_colors.sel_bg);
-    rd->textcolor(g_colors.cursor);
+    rd->textcolor(g_colors.accent);
     rd->textfont(g_font_id);
     rd->textsize(g_font_size);
-    rd->cursor_color(g_colors.cursor);
+    rd->cursor_color(g_colors.accent);
     rd->when(0);
     result_display_ = rd;
 

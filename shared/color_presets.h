@@ -18,11 +18,10 @@ typedef struct {
     calcyx_rgb_t bg;
     calcyx_rgb_t sel_bg;
     calcyx_rgb_t rowline;
-    calcyx_rgb_t sep;
 
-    /* テキスト / カーソル */
+    /* テキスト / アクセント */
     calcyx_rgb_t text;
-    calcyx_rgb_t cursor;
+    calcyx_rgb_t accent;
 
     /* シンタックスハイライト */
     calcyx_rgb_t symbol;
