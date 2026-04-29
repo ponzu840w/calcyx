@@ -27,9 +27,9 @@ assert(all(split(",","abc,def,ghi")==["abc", "def", "ghi"]))
 assert(join("|",["abc","def","ghi"])=="abc|def|ghi")
 s="abcdef"
 assert(s[2]=='c')
-# 文字列スライスは calcyx 独自仕様（両端インクルーシブ）。
-# Calctus は Substring(from, to-from) 式で末尾エクスクルーシブのため、
-# s[2:4] は "cd" だが、calcyx では配列・ビットフィールドと揃えて "cde" を返す。
+; 文字列スライスは calcyx 独自仕様 (両端インクルーシブ)。
+; Calctus は Substring(from, to-from) 式で末尾エクスクルーシブのため、
+; s[2:4] は "cd" だが、calcyx では配列・ビットフィールドと揃えて "cde" を返す。
 assert(s[2:4]=="cde")
 assert(s[2:4]="XYZ"=="XYZ")
 s="abXYZef"

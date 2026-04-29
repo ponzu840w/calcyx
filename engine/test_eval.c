@@ -35,8 +35,8 @@ int main(int argc, char *argv[]) {
                            || line[len-1] == ' ' || line[len-1] == '\t'))
             line[--len] = '\0';
 
-        /* 空行・コメント行はスキップ */
-        if (len == 0 || line[0] == '#' || line[0] == '/')
+        /* 空行・コメント行はスキップ (`;` は移植元で eval 側、`/` は当ハーネスのみ採用) */
+        if (len == 0 || line[0] == ';' || line[0] == '/')
             continue;
 
         /* エラー状態をリセット */

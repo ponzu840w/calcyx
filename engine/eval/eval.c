@@ -693,15 +693,15 @@ val_t *expr_eval(const expr_t *e, eval_ctx_t *ctx) {
 
 /* --- eval_str: 文字列の解析・評価 --- */
 
-/* ; 以降の行末コメントを除去。文字列リテラル ('...' / "...") 内の ; は除く。
- * エスケープシーケンス (\' / \") も正しく読み飛ばす。 */
+/* 行末コメントを除去 (`;` 以降)。
+ * 文字列/文字リテラル内は除く。エスケープシーケンス (\' / \") を読み飛ばす。 */
 void eval_strip_comment(char *buf) {
-    int in_str  = 0;  /* " の中 */
-    int in_char = 0;  /* ' の中 */
+    int in_str  = 0;
+    int in_char = 0;
     for (int i = 0; buf[i]; i++) {
         char c = buf[i];
         if (in_str) {
-            if (c == '\\')     { i++; continue; }   /* エスケープ読み飛ばし */
+            if (c == '\\')     { i++; continue; }
             if (c == '"')      { in_str = 0; }
         } else if (in_char) {
             if (c == '\\')     { i++; continue; }
@@ -714,6 +714,15 @@ void eval_strip_comment(char *buf) {
     }
 }
 
+/* 文字列が空白のみか. コメント除去後の判定に使う. */
+static int is_blank(const char *s) {
+    while (*s) {
+        if (*s != ' ' && *s != '\t' && *s != '\r' && *s != '\n') return 0;
+        s++;
+    }
+    return 1;
+}
+
 val_t *eval_str(const char *src, eval_ctx_t *ctx,
                 char *errmsg, int errmsg_len) {
     /* ; コメントを除去したコピーで評価 */
@@ -721,6 +730,11 @@ val_t *eval_str(const char *src, eval_ctx_t *ctx,
     strncpy(stripped, src, sizeof(stripped) - 1);
     stripped[sizeof(stripped) - 1] = '\0';
     eval_strip_comment(stripped);
+    /* コメントのみの行は空文字列扱い (errmsg 空 + NULL) */
+    if (is_blank(stripped)) {
+        if (errmsg && errmsg_len > 0) errmsg[0] = '\0';
+        return NULL;
+    }
     src = stripped;
 
     char parse_err[256] = "";
@@ -756,6 +770,7 @@ bool eval_result_visible(const char *src) {
     char stripped[2048];
     snprintf(stripped, sizeof(stripped), "%s", src);
     eval_strip_comment(stripped);
+    if (is_blank(stripped)) return false;  /* コメントのみ */
 
     char err[256] = "";
     expr_t *e = parse(stripped, err, sizeof(err));

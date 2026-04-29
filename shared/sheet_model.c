@@ -327,6 +327,13 @@ void sheet_model_eval_all(sheet_model_t *m) {
             r->error      = false;
             if (v->type == VAL_NULL || v->type == VAL_FUNC) r->visible = false;
             val_free(v);
+        } else if (errmsg[0] == '\0') {
+            /* コメントのみの行: 結果なし・非表示 */
+            sm_free(r->result);
+            r->result     = sm_strdup("");
+            r->error      = false;
+            r->visible    = false;
+            r->result_fmt = FMT_REAL;
         } else {
             sm_free(r->result);
             r->result     = sm_strdup(errmsg[0] ? errmsg : "error");
