@@ -8,6 +8,7 @@
 // マッピングと、FLTK の Fl_Color / フォント ID 変換だけを担当する。
 
 #include "settings_globals.h"
+#include "AppSettings.h"
 #include "app_prefs.h"
 #include "colors.h"
 #include "platform_tray.h"
@@ -26,30 +27,30 @@ extern "C" {
 #include "path_utf8.h"
 }
 
-// ---- グローバル変数 (初期値は settings_globals.h の DEFAULT_* 定数) ----
-std::string g_language = "auto";
-int  g_font_id   = DEFAULT_FONT_ID;
-int  g_font_size  = DEFAULT_FONT_SIZE;
-bool g_input_auto_completion    = DEFAULT_AUTO_COMPLETION;
-bool g_input_auto_close_brackets = DEFAULT_AUTO_CLOSE_BRACKETS;
-bool g_input_bs_delete_empty_row = DEFAULT_BS_DELETE_EMPTY_ROW;
-bool g_popup_independent_normal  = DEFAULT_POPUP_INDEPENDENT_NORMAL;
-bool g_popup_independent_compact = DEFAULT_POPUP_INDEPENDENT_COMPACT;
-bool g_sep_thousands = DEFAULT_SEP_THOUSANDS;
-bool g_sep_hex       = DEFAULT_SEP_HEX;
-int  g_limit_max_array_length  = DEFAULT_MAX_ARRAY_LENGTH;
-int  g_limit_max_string_length = DEFAULT_MAX_STRING_LENGTH;
-int  g_limit_max_call_depth    = DEFAULT_MAX_CALL_DEPTH;
-bool g_show_rowlines = DEFAULT_SHOW_ROWLINES;
-bool g_remember_position = DEFAULT_REMEMBER_POSITION;
-bool g_start_topmost     = DEFAULT_START_TOPMOST;
-bool g_tray_icon       = DEFAULT_TRAY_ICON;
-bool g_hotkey_enabled  = DEFAULT_HOTKEY_ENABLED;
-bool g_hotkey_win      = DEFAULT_HOTKEY_WIN;
-bool g_hotkey_alt      = DEFAULT_HOTKEY_ALT;
-bool g_hotkey_ctrl     = DEFAULT_HOTKEY_CTRL;
-bool g_hotkey_shift    = DEFAULT_HOTKEY_SHIFT;
-int  g_hotkey_keycode  = DEFAULT_HOTKEY_KEYCODE;
+// ---- 後方互換のための g_<name> 参照 (実体は g_settings.<name>) ----
+std::string &g_language                   = g_settings.language;
+int         &g_font_id                    = g_settings.font_id;
+int         &g_font_size                  = g_settings.font_size;
+bool        &g_input_auto_completion      = g_settings.input_auto_completion;
+bool        &g_input_auto_close_brackets  = g_settings.input_auto_close_brackets;
+bool        &g_input_bs_delete_empty_row  = g_settings.input_bs_delete_empty_row;
+bool        &g_popup_independent_normal   = g_settings.popup_independent_normal;
+bool        &g_popup_independent_compact  = g_settings.popup_independent_compact;
+bool        &g_sep_thousands              = g_settings.sep_thousands;
+bool        &g_sep_hex                    = g_settings.sep_hex;
+int         &g_limit_max_array_length     = g_settings.limit_max_array_length;
+int         &g_limit_max_string_length    = g_settings.limit_max_string_length;
+int         &g_limit_max_call_depth       = g_settings.limit_max_call_depth;
+bool        &g_show_rowlines              = g_settings.show_rowlines;
+bool        &g_remember_position          = g_settings.remember_position;
+bool        &g_start_topmost              = g_settings.start_topmost;
+bool        &g_tray_icon                  = g_settings.tray_icon;
+bool        &g_hotkey_enabled             = g_settings.hotkey_enabled;
+bool        &g_hotkey_win                 = g_settings.hotkey_win;
+bool        &g_hotkey_alt                 = g_settings.hotkey_alt;
+bool        &g_hotkey_ctrl                = g_settings.hotkey_ctrl;
+bool        &g_hotkey_shift               = g_settings.hotkey_shift;
+int         &g_hotkey_keycode             = g_settings.hotkey_keycode;
 
 static std::string s_conf_path;
 

@@ -4,15 +4,17 @@
 // 共有するため)。ここでは shared の RGB パレットを Fl_Color に変換するだけ。
 
 #include "colors.h"
+#include "AppSettings.h"
 #include <FL/fl_draw.H>
 
 extern "C" {
 #include "color_presets.h"
 }
 
-CalcyxColors g_colors;
-CalcyxColors g_user_colors;  /* user-defined のバックアップ. main で初期化される. */
-int g_color_preset = COLOR_PRESET_OTAKU_BLACK;
+/* 実体は g_settings 内. 既存コードのため参照で再公開している. */
+CalcyxColors &g_colors       = g_settings.colors;
+CalcyxColors &g_user_colors  = g_settings.user_colors;
+int          &g_color_preset = g_settings.color_preset;
 
 const ColorPresetInfo COLOR_PRESET_INFO[COLOR_PRESET_COUNT] = {
     { "otaku-black",     "otaku-black"     },

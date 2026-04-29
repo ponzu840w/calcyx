@@ -107,7 +107,7 @@ struct DlgState {
     SheetView  *font_preview_sv;
     SheetView  *color_preview_sv;
     SheetView  *fmt_preview_sv;
-    /* Cancel ボタンで全 g_* を戻すための単一スナップショット */
+    /* Cancel ボタンで全設定を戻すための単一スナップショット */
     AppSettings::Snapshot saved;
     void (*ui_cb)(void *);
     void       *ui_data;

@@ -1,68 +1,42 @@
 #include "AppSettings.h"
 #include "settings_globals.h"
 
-namespace AppSettings {
+/* 全 GUI 設定の単一所有 instance. デフォルト値は settings_globals.h の
+ * DEFAULT_* 定数. 色は colors_init_preset(otaku-black) で起動時に上書き. */
+AppSettings g_settings = {
+    /* language */                   "auto",
+    /* font_id */                    DEFAULT_FONT_ID,
+    /* font_size */                  DEFAULT_FONT_SIZE,
+    /* input_auto_completion */      DEFAULT_AUTO_COMPLETION,
+    /* input_auto_close_brackets */  DEFAULT_AUTO_CLOSE_BRACKETS,
+    /* input_bs_delete_empty_row */  DEFAULT_BS_DELETE_EMPTY_ROW,
+    /* popup_independent_normal */   DEFAULT_POPUP_INDEPENDENT_NORMAL,
+    /* popup_independent_compact */  DEFAULT_POPUP_INDEPENDENT_COMPACT,
+    /* sep_thousands */              DEFAULT_SEP_THOUSANDS,
+    /* sep_hex */                    DEFAULT_SEP_HEX,
+    /* limit_max_array_length */     DEFAULT_MAX_ARRAY_LENGTH,
+    /* limit_max_string_length */    DEFAULT_MAX_STRING_LENGTH,
+    /* limit_max_call_depth */       DEFAULT_MAX_CALL_DEPTH,
+    /* show_rowlines */              DEFAULT_SHOW_ROWLINES,
+    /* remember_position */          DEFAULT_REMEMBER_POSITION,
+    /* start_topmost */              DEFAULT_START_TOPMOST,
+    /* tray_icon */                  DEFAULT_TRAY_ICON,
+    /* hotkey_enabled */             DEFAULT_HOTKEY_ENABLED,
+    /* hotkey_win */                 DEFAULT_HOTKEY_WIN,
+    /* hotkey_alt */                 DEFAULT_HOTKEY_ALT,
+    /* hotkey_ctrl */                DEFAULT_HOTKEY_CTRL,
+    /* hotkey_shift */               DEFAULT_HOTKEY_SHIFT,
+    /* hotkey_keycode */             DEFAULT_HOTKEY_KEYCODE,
+    /* color_preset */               DEFAULT_COLOR_PRESET,
+    /* colors */                     {},
+    /* user_colors */                {},
+};
 
-Snapshot capture() {
-    Snapshot s;
-    s.language                   = g_language;
-    s.font_id                    = g_font_id;
-    s.font_size                  = g_font_size;
-    s.input_auto_completion      = g_input_auto_completion;
-    s.input_auto_close_brackets  = g_input_auto_close_brackets;
-    s.input_bs_delete_empty_row  = g_input_bs_delete_empty_row;
-    s.popup_independent_normal   = g_popup_independent_normal;
-    s.popup_independent_compact  = g_popup_independent_compact;
-    s.sep_thousands              = g_sep_thousands;
-    s.sep_hex                    = g_sep_hex;
-    s.limit_max_array_length     = g_limit_max_array_length;
-    s.limit_max_string_length    = g_limit_max_string_length;
-    s.limit_max_call_depth       = g_limit_max_call_depth;
-    s.show_rowlines              = g_show_rowlines;
-    s.remember_position          = g_remember_position;
-    s.start_topmost              = g_start_topmost;
-    s.tray_icon                  = g_tray_icon;
-    s.hotkey_enabled             = g_hotkey_enabled;
-    s.hotkey_win                 = g_hotkey_win;
-    s.hotkey_alt                 = g_hotkey_alt;
-    s.hotkey_ctrl                = g_hotkey_ctrl;
-    s.hotkey_shift               = g_hotkey_shift;
-    s.hotkey_keycode             = g_hotkey_keycode;
-    s.fmt                        = g_fmt_settings;
-    s.colors                     = g_colors;
-    s.user_colors                = g_user_colors;
-    s.color_preset               = g_color_preset;
-    return s;
+AppSettings::Snapshot AppSettings::capture() {
+    return { g_settings, g_fmt_settings };
 }
 
-void restore(const Snapshot &s) {
-    g_language                   = s.language;
-    g_font_id                    = s.font_id;
-    g_font_size                  = s.font_size;
-    g_input_auto_completion      = s.input_auto_completion;
-    g_input_auto_close_brackets  = s.input_auto_close_brackets;
-    g_input_bs_delete_empty_row  = s.input_bs_delete_empty_row;
-    g_popup_independent_normal   = s.popup_independent_normal;
-    g_popup_independent_compact  = s.popup_independent_compact;
-    g_sep_thousands              = s.sep_thousands;
-    g_sep_hex                    = s.sep_hex;
-    g_limit_max_array_length     = s.limit_max_array_length;
-    g_limit_max_string_length    = s.limit_max_string_length;
-    g_limit_max_call_depth       = s.limit_max_call_depth;
-    g_show_rowlines              = s.show_rowlines;
-    g_remember_position          = s.remember_position;
-    g_start_topmost              = s.start_topmost;
-    g_tray_icon                  = s.tray_icon;
-    g_hotkey_enabled             = s.hotkey_enabled;
-    g_hotkey_win                 = s.hotkey_win;
-    g_hotkey_alt                 = s.hotkey_alt;
-    g_hotkey_ctrl                = s.hotkey_ctrl;
-    g_hotkey_shift               = s.hotkey_shift;
-    g_hotkey_keycode             = s.hotkey_keycode;
-    g_fmt_settings               = s.fmt;
-    g_colors                     = s.colors;
-    g_user_colors                = s.user_colors;
-    g_color_preset               = s.color_preset;
+void AppSettings::restore(const Snapshot &snap) {
+    g_settings     = snap.s;
+    g_fmt_settings = snap.fmt;
 }
-
-}  // namespace AppSettings

@@ -71,9 +71,11 @@ extern const ColorPresetInfo COLOR_PRESET_INFO[COLOR_PRESET_COUNT];
  *                 が Preferences で色を編集すると g_colors と同時更新される.
  *                 preset = USER_DEFINED の瞬間 g_colors = g_user_colors. */
 
-extern CalcyxColors g_colors;
-extern CalcyxColors g_user_colors;
-extern int g_color_preset;
+/* 実体は AppSettings (gui/AppSettings.h) の g_settings に統合済み.
+ * 既存コードのため `g_<name>` の名前で参照を再公開している. */
+extern CalcyxColors &g_colors;
+extern CalcyxColors &g_user_colors;
+extern int          &g_color_preset;
 
 void colors_init_defaults(CalcyxColors *c);
 void colors_init_preset(CalcyxColors *c, int preset);

@@ -42,39 +42,35 @@ constexpr bool DEFAULT_FMT_E_ALIGNMENT      = false;
 constexpr int  DEFAULT_COLOR_PRESET         = 0;  // COLOR_PRESET_OTAKU_BLACK
 
 // ---- グローバル変数 ----
+// 実体は AppSettings (gui/AppSettings.h) に一元化されている.
+// 既存コードのために `g_<name>` の名前で参照を再公開している.
+//
+// 新規コードは可能なら g_settings.<name> 直接参照を推奨.
 
-// UI 言語: "auto" / "en" / "ja". 起動時の calcyx_i18n_init() で実言語に解決される.
-extern std::string g_language;
+extern std::string &g_language;
 
-// フォント
-extern int g_font_id;
-extern int g_font_size;
+extern int &g_font_id;
+extern int &g_font_size;
 
-// 入力
-extern bool g_input_auto_completion;
-extern bool g_input_auto_close_brackets;
+extern bool &g_input_auto_completion;
+extern bool &g_input_auto_close_brackets;
 /* 空行で BackSpace を押したときに行を削除して上に詰めるかどうか。
- * 既定 true (Calctus 互換)。誤って行が消える事故が嫌なユーザーは
- * Prefs で OFF にできる (その場合は Shift+BS / Ctrl+BS で明示削除)。 */
-extern bool g_input_bs_delete_empty_row;
-extern bool g_popup_independent_normal;   // 通常モード時の補完ポップアップ独立化
-extern bool g_popup_independent_compact;  // コンパクトモード時の補完ポップアップ独立化
+ * 既定 true (Calctus 互換)。 */
+extern bool &g_input_bs_delete_empty_row;
+extern bool &g_popup_independent_normal;
+extern bool &g_popup_independent_compact;
 
-// 桁区切り
-extern bool g_sep_thousands;
-extern bool g_sep_hex;
+extern bool &g_sep_thousands;
+extern bool &g_sep_hex;
 
-// 計算リミット
-extern int g_limit_max_array_length;
-extern int g_limit_max_string_length;
-extern int g_limit_max_call_depth;
+extern int &g_limit_max_array_length;
+extern int &g_limit_max_string_length;
+extern int &g_limit_max_call_depth;
 
-// 表示
-extern bool g_show_rowlines;
+extern bool &g_show_rowlines;
 
-// ウィンドウ
-extern bool g_remember_position;
-extern bool g_start_topmost;
+extern bool &g_remember_position;
+extern bool &g_start_topmost;
 
 // ---- システムトレイ・ホットキー ----
 constexpr bool DEFAULT_TRAY_ICON       = false;
@@ -85,13 +81,13 @@ constexpr bool DEFAULT_HOTKEY_CTRL     = false;
 constexpr bool DEFAULT_HOTKEY_SHIFT    = false;
 constexpr int  DEFAULT_HOTKEY_KEYCODE  = ' ';  // Space
 
-extern bool g_tray_icon;
-extern bool g_hotkey_enabled;
-extern bool g_hotkey_win;
-extern bool g_hotkey_alt;
-extern bool g_hotkey_ctrl;
-extern bool g_hotkey_shift;
-extern int  g_hotkey_keycode;
+extern bool &g_tray_icon;
+extern bool &g_hotkey_enabled;
+extern bool &g_hotkey_win;
+extern bool &g_hotkey_alt;
+extern bool &g_hotkey_ctrl;
+extern bool &g_hotkey_shift;
+extern int  &g_hotkey_keycode;
 
 // ---- 関数 ----
 void settings_init_defaults();
