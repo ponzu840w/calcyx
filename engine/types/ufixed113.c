@@ -54,33 +54,93 @@ ufixed113_t ufixed113_ssr(ufixed113_t a, uint32_t carry) {
     return a;
 }
 
+/* word-level シフト (1bit ずつ ssl/ssr を呼ぶ実装より高速).
+ * n を word 数 + bit 数に分け、word 単位の bulk move + bit 単位の合成で計算する. */
+
 ufixed113_t ufixed113_lsl(ufixed113_t a, uint32_t n) {
     if (n == 0) return a;
-    uint32_t limit = (n < UFIXED113_NUM_BITS) ? n : UFIXED113_NUM_BITS;
-    for (uint32_t i = 0; i < limit; i++)
-        a = ufixed113_ssl(a, 0);
-    if (n >= UFIXED113_NUM_BITS) a = UFIXED113_ZERO;
-    return a;
+    if (n >= UFIXED113_NUM_BITS) return UFIXED113_ZERO;
+
+    uint32_t ws = n / UFIXED113_WORD_BITS;
+    uint32_t bs = n % UFIXED113_WORD_BITS;
+
+    ufixed113_t r = UFIXED113_ZERO;
+
+    if (bs == 0) {
+        for (int i = (int)ws; i < UFIXED113_N_WORDS; i++)
+            r.w[i] = a.w[i - (int)ws];
+    } else {
+        uint32_t bsc = UFIXED113_WORD_BITS - bs;
+        for (int i = (int)ws; i < UFIXED113_N_WORDS; i++) {
+            int hi_idx = i - (int)ws;
+            int lo_idx = hi_idx - 1;
+            uint32_t hi = a.w[hi_idx];
+            uint32_t lo = (lo_idx >= 0) ? a.w[lo_idx] : 0;
+            r.w[i] = ((hi << bs) | (lo >> bsc)) & UFIXED113_MASK;
+        }
+    }
+    r.w[MSB_IDX] &= 1;
+    return r;
 }
 
 ufixed113_t ufixed113_lsr(ufixed113_t a, uint32_t n) {
     if (n == 0) return a;
-    uint32_t limit = (n < UFIXED113_NUM_BITS) ? n : UFIXED113_NUM_BITS;
-    for (uint32_t i = 0; i < limit; i++)
-        a = ufixed113_ssr(a, 0);
-    if (n >= UFIXED113_NUM_BITS) a = UFIXED113_ZERO;
-    return a;
+    if (n >= UFIXED113_NUM_BITS) return UFIXED113_ZERO;
+
+    uint32_t ws = n / UFIXED113_WORD_BITS;
+    uint32_t bs = n % UFIXED113_WORD_BITS;
+
+    ufixed113_t r = UFIXED113_ZERO;
+
+    if (bs == 0) {
+        for (int i = 0; i + (int)ws < UFIXED113_N_WORDS; i++)
+            r.w[i] = a.w[i + (int)ws];
+    } else {
+        uint32_t bsc = UFIXED113_WORD_BITS - bs;
+        for (int i = 0; i + (int)ws < UFIXED113_N_WORDS; i++) {
+            int lo_idx = i + (int)ws;
+            int hi_idx = lo_idx + 1;
+            uint32_t lo = a.w[lo_idx];
+            uint32_t hi = (hi_idx < UFIXED113_N_WORDS) ? a.w[hi_idx] : 0;
+            r.w[i] = ((lo >> bs) | (hi << bsc)) & UFIXED113_MASK;
+        }
+    }
+    r.w[MSB_IDX] &= 1;
+    return r;
 }
 
 ufixed113_t ufixed113_asr(ufixed113_t a, uint32_t n) {
     if (n == 0) return a;
-    uint32_t fill  = a.w[MSB_IDX];
-    uint32_t limit = (n < UFIXED113_NUM_BITS) ? n : UFIXED113_NUM_BITS;
-    for (uint32_t i = 0; i < limit; i++)
-        a = ufixed113_ssr(a, fill);
+    uint32_t sign = a.w[MSB_IDX] & 1;
     if (n >= UFIXED113_NUM_BITS)
-        a = fill ? ufixed113_not(UFIXED113_ZERO) : UFIXED113_ZERO;
-    return a;
+        return sign ? ufixed113_not(UFIXED113_ZERO) : UFIXED113_ZERO;
+
+    uint32_t ws = n / UFIXED113_WORD_BITS;
+    uint32_t bs = n % UFIXED113_WORD_BITS;
+    uint32_t fill = sign ? UFIXED113_MASK : 0;
+
+    /* MSB ワードは bit 0 のみ有効. 上位 27bit を sign 拡張して一様に扱う. */
+    a.w[MSB_IDX] = fill;
+
+    ufixed113_t r;
+
+    if (bs == 0) {
+        for (int i = 0; i < UFIXED113_N_WORDS; i++) {
+            int src = i + (int)ws;
+            r.w[i] = (src < UFIXED113_N_WORDS) ? a.w[src] : fill;
+        }
+    } else {
+        uint32_t bsc = UFIXED113_WORD_BITS - bs;
+        for (int i = 0; i < UFIXED113_N_WORDS; i++) {
+            int lo_idx = i + (int)ws;
+            int hi_idx = lo_idx + 1;
+            uint32_t lo = (lo_idx < UFIXED113_N_WORDS) ? a.w[lo_idx] : fill;
+            uint32_t hi = (hi_idx < UFIXED113_N_WORDS) ? a.w[hi_idx] : fill;
+            r.w[i] = ((lo >> bs) | (hi << bsc)) & UFIXED113_MASK;
+        }
+    }
+    r.w[MSB_IDX] = sign;
+    return r;
 }
 
 /* --- ビット操作 --- */
