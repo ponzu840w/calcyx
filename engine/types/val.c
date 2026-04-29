@@ -362,12 +362,23 @@ val_t *val_bit_not(const val_t *a) {
 val_t *val_add(const val_t *a, const val_t *b) {
     /* 文字列連結 */
     if (a->type == VAL_STR || b->type == VAL_STR) {
-        char sa[256], sb[256];
-        val_to_str(a, sa, sizeof(sa));
-        val_to_str(b, sb, sizeof(sb));
-        char sc[512];
-        snprintf(sc, sizeof(sc), "%s%s", sa, sb);
-        return val_new_str(sc);
+        /* 文字列側は str_v を直接使い、非文字列側のみ val_to_str する.
+         * 非文字列の表現は real/frac/array いずれも 1KB に収まる. */
+        char nbuf_a[1024], nbuf_b[1024];
+        const char *sa = (a->type == VAL_STR) ? a->str_v : nbuf_a;
+        const char *sb = (b->type == VAL_STR) ? b->str_v : nbuf_b;
+        if (a->type != VAL_STR) val_to_str(a, nbuf_a, sizeof(nbuf_a));
+        if (b->type != VAL_STR) val_to_str(b, nbuf_b, sizeof(nbuf_b));
+        size_t la = strlen(sa), lb = strlen(sb);
+        if (la + lb > VAL_STRING_MAX_LEN) return NULL;
+        char *sc = (char *)malloc(la + lb + 1);
+        if (!sc) return NULL;
+        memcpy(sc, sa, la);
+        memcpy(sc + la, sb, lb);
+        sc[la + lb] = '\0';
+        val_t *r = val_new_str(sc);
+        free(sc);
+        return r;
     }
     val_t *ua = val_upconvert(a, b);
     if (!ua) return NULL;
@@ -423,8 +434,8 @@ val_t *val_mul(const val_t *a, const val_t *b) {
         if (slen * (size_t)n > VAL_STRING_MAX_LEN) return NULL;
         char *buf = (char *)malloc(slen * (size_t)n + 1);
         if (!buf) return NULL;
-        buf[0] = '\0';
-        for (int i = 0; i < n; i++) strcat(buf, a->str_v);
+        for (int i = 0; i < n; i++) memcpy(buf + (size_t)i * slen, a->str_v, slen);
+        buf[slen * (size_t)n] = '\0';
         val_t *r = val_new_str(buf);
         free(buf);
         return r;

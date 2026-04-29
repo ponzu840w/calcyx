@@ -315,7 +315,7 @@ static expr_t *p_expr(parser_t *p, bool root) {
             break;
         }
 
-        /* 左結合の縮約 */
+        /* 左結合の縮約 (pop 2 push 1 なので val_top/op_top は純減、上限チェック不要) */
         while (op_top > 0 && !p->has_error) {
             const op_def_t *lop = op_find(OPTYPE_BINARY, op_stk[op_top - 1].text);
             if (!lop || !op_reduce_before(lop, rop)) break;
@@ -331,10 +331,20 @@ static expr_t *p_expr(parser_t *p, bool root) {
             val_stk[val_top++] = node;
         }
 
+        if (op_top >= EXPR_STACK_MAX) {
+            PERROR(p, rtok, "Expression too complex");
+            tok_free(&rtok);
+            goto cleanup;
+        }
         op_stk[op_top++] = rtok;
 
         expr_t *next = p_unary_expr(p);
         if (!next || p->has_error) break;
+        if (val_top >= EXPR_STACK_MAX) {
+            PERROR(p, rtok, "Expression too complex");
+            expr_free(next);
+            goto cleanup;
+        }
         val_stk[val_top++] = next;
     }
 

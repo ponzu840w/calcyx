@@ -229,6 +229,36 @@ static void test_parse_ok(void) {
     if (e) expr_free(e);
 }
 
+/* ---- Parser: スタック上限の境界 (右結合 = チェイン) ----
+ *
+ * EXPR_STACK_MAX = 128 (parser.c). 右結合演算子は op_stk が
+ * 演算子の数だけ積み上がる。ネイティブで右結合なのは = のみ。
+ * a0=a1=a2=...=aN のチェインを N >= EXPR_STACK_MAX で組み、
+ * クラッシュではなく parse エラーで安全に拒否されることを確認。
+ */
+static void test_parse_deep_right_assoc(void) {
+    /* "a0=a1=a2=...=aN" を N+1 個並べる: 演算子 N 個 (右結合 =) */
+    const int N = 200;
+    /* 各識別子は最大 5 文字 ("a999") + "=" -> 1 entry あたり 6 byte 上限 */
+    size_t bufsz = (size_t)(N + 1) * 8 + 16;
+    char *src = (char *)malloc(bufsz);
+    EXPECT("[parser] deep alloc", src != NULL);
+    if (!src) return;
+    char *p = src;
+    for (int i = 0; i <= N; i++) {
+        if (i > 0) *p++ = '=';
+        p += sprintf(p, "a%d", i);
+    }
+    *p = '\0';
+
+    char errmsg[128] = {0};
+    expr_t *e = parse(src, errmsg, sizeof(errmsg));
+    /* スタック越えで NULL が返ること (クラッシュしないこと自体が主目的) */
+    EXPECT("[parser] deep = chain rejected safely", e == NULL);
+    if (e) expr_free(e);
+    free(src);
+}
+
 /* ---- main ---- */
 
 int main(void) {
@@ -253,6 +283,7 @@ int main(void) {
     /* Parser: エラー検出 / 正常系 */
     test_parse_errors();
     test_parse_ok();
+    test_parse_deep_right_assoc();
 
     if (g_failures == 0) {
         printf("All parser/lexer tests passed.\n");
