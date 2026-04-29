@@ -8,6 +8,7 @@
 
 #include "settings_globals.h"
 #include "colors.h"
+#include "AppSettings.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Tabs.H>
 #include <FL/Fl_Group.H>
@@ -98,35 +99,16 @@ struct DlgState {
     Fl_Check_Button *hotkey_shift_chk;
     Fl_Choice       *hotkey_key_choice;
     Fl_Choice       *language_choice;  /* General タブ: auto / en / ja */
-    bool saved_tray_icon;
-    bool saved_hotkey_enabled;
-    bool saved_hotkey_win;
-    bool saved_hotkey_alt;
-    bool saved_hotkey_ctrl;
-    bool saved_hotkey_shift;
-    int  saved_hotkey_keycode;
     Fl_Spinner *limit_array_spin;
     Fl_Spinner *limit_string_spin;
     Fl_Spinner *limit_depth_spin;
     Fl_Choice  *preset_choice;
     SheetView  *sheet;
-    CalcyxColors saved_colors;
-    int         saved_preset;
-    CalcyxColors saved_user_colors;
     SheetView  *font_preview_sv;
     SheetView  *color_preview_sv;
     SheetView  *fmt_preview_sv;
-    Fl_Font     saved_font_id;
-    int         saved_font_size;
-    fmt_settings_t saved_fmt;
-    bool        saved_sep_thousands;
-    bool        saved_sep_hex;
-    int         saved_limit_array;
-    int         saved_limit_string;
-    int         saved_limit_depth;
-    bool        saved_show_rowlines;
-    bool        saved_remember_pos;
-    bool        saved_start_topmost;
+    /* Cancel ボタンで全 g_* を戻すための単一スナップショット */
+    AppSettings::Snapshot saved;
     void (*ui_cb)(void *);
     void       *ui_data;
     Fl_Window  *dlg_win;

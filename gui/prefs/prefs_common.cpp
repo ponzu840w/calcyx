@@ -252,27 +252,9 @@ void apply_settings(DlgState *st) {
     /* user_colors は g_user_colors (グローバル) に一本化されたので
      * st->user_colors への同期は不要. */
 
-    st->saved_font_id       = g_font_id;
-    st->saved_font_size     = g_font_size;
-    st->saved_fmt           = g_fmt_settings;
-    st->saved_sep_thousands = g_sep_thousands;
-    st->saved_sep_hex       = g_sep_hex;
-    st->saved_limit_array   = g_limit_max_array_length;
-    st->saved_limit_string  = g_limit_max_string_length;
-    st->saved_limit_depth   = g_limit_max_call_depth;
-    st->saved_show_rowlines   = g_show_rowlines;
-    st->saved_remember_pos    = g_remember_position;
-    st->saved_start_topmost   = g_start_topmost;
-    st->saved_preset          = g_color_preset;
-    st->saved_colors          = g_colors;
-    st->saved_user_colors     = g_user_colors;
-    st->saved_tray_icon       = g_tray_icon;
-    st->saved_hotkey_enabled  = g_hotkey_enabled;
-    st->saved_hotkey_win      = g_hotkey_win;
-    st->saved_hotkey_alt      = g_hotkey_alt;
-    st->saved_hotkey_ctrl     = g_hotkey_ctrl;
-    st->saved_hotkey_shift    = g_hotkey_shift;
-    st->saved_hotkey_keycode  = g_hotkey_keycode;
+    /* Apply 後の状態を新たなスナップショットに. これ以降 Cancel すれば
+     * Apply 直後の値に戻る. */
+    st->saved = AppSettings::capture();
 
     st->sheet->apply_font();
     st->sheet->live_eval();

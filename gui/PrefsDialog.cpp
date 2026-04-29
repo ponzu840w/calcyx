@@ -17,9 +17,9 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     st.sheet = sheet;
     st.ui_cb = ui_cb;
     st.ui_data = ui_data;
-    st.saved_colors      = g_colors;
-    st.saved_preset      = g_color_preset;
-    st.saved_user_colors = g_user_colors;
+    /* Cancel 用に全設定をスナップショット (色 / フォント / 数値書式 / 制限 /
+     * トレイ・ホットキー / 表示) を 1 個の構造体にまとめて取得. */
+    st.saved = AppSettings::capture();
 
     Fl_Double_Window dlg(DW, DH, _("Preferences"));
     dlg.set_modal();
@@ -41,24 +41,6 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
 
     tabs.end();
 
-    // プレビューの初期化 (Cancel 復元用に現在値をスナップショット)
-    st.saved_font_id          = g_font_id;
-    st.saved_font_size        = g_font_size;
-    st.saved_fmt              = g_fmt_settings;
-    st.saved_sep_thousands    = g_sep_thousands;
-    st.saved_sep_hex          = g_sep_hex;
-    st.saved_limit_array      = g_limit_max_array_length;
-    st.saved_limit_string     = g_limit_max_string_length;
-    st.saved_limit_depth      = g_limit_max_call_depth;
-    st.saved_show_rowlines    = g_show_rowlines;
-    st.saved_remember_pos     = g_remember_position;
-    st.saved_tray_icon        = g_tray_icon;
-    st.saved_hotkey_enabled   = g_hotkey_enabled;
-    st.saved_hotkey_win       = g_hotkey_win;
-    st.saved_hotkey_alt       = g_hotkey_alt;
-    st.saved_hotkey_ctrl      = g_hotkey_ctrl;
-    st.saved_hotkey_shift     = g_hotkey_shift;
-    st.saved_hotkey_keycode   = g_hotkey_keycode;
     refresh_previews(&st);
     update_swatch_state(&st);
 
@@ -99,27 +81,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
 
     cancel_btn.callback([](Fl_Widget *w, void *data) {
         auto *st = static_cast<DlgState *>(data);
-        g_colors        = st->saved_colors;
-        g_user_colors   = st->saved_user_colors;
-        g_color_preset  = st->saved_preset;
-        g_font_id       = st->saved_font_id;
-        g_font_size     = st->saved_font_size;
-        g_fmt_settings  = st->saved_fmt;
-        g_sep_thousands           = st->saved_sep_thousands;
-        g_sep_hex                 = st->saved_sep_hex;
-        g_limit_max_array_length  = st->saved_limit_array;
-        g_limit_max_string_length = st->saved_limit_string;
-        g_limit_max_call_depth    = st->saved_limit_depth;
-        g_show_rowlines           = st->saved_show_rowlines;
-        g_remember_position       = st->saved_remember_pos;
-        g_start_topmost           = st->saved_start_topmost;
-        g_tray_icon               = st->saved_tray_icon;
-        g_hotkey_enabled          = st->saved_hotkey_enabled;
-        g_hotkey_win              = st->saved_hotkey_win;
-        g_hotkey_alt              = st->saved_hotkey_alt;
-        g_hotkey_ctrl             = st->saved_hotkey_ctrl;
-        g_hotkey_shift            = st->saved_hotkey_shift;
-        g_hotkey_keycode          = st->saved_hotkey_keycode;
+        AppSettings::restore(st->saved);
         st->sheet->apply_font();
         st->sheet->live_eval();
         st->sheet->redraw();
