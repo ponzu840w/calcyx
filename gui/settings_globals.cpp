@@ -341,10 +341,11 @@ void settings_init_defaults() {
 
 // ---- load ----
 void settings_load() {
-    /* 初回起動時に conf が無ければ canonical な既定値テンプレートを書き出す。
-     * ユーザーが手編集の足がかりにできる。 既存ファイルには触らない。 */
+    /* 起動時に conf を schema と同期。 既存ファイルがあれば値・コメント・
+     * 並び順は保ち、 schema に追加された未出現キーだけを既定値で再挿入する。
+     * 新規 conf 生成も同関数で兼ねる。 */
     ensure_path();
-    calcyx_settings_init_defaults(s_conf_path.c_str(),
+    calcyx_settings_sync_with_schema(s_conf_path.c_str(),
         "# calcyx user settings — edit freely.\n");
 
     auto kv = read_conf();

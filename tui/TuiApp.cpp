@@ -315,9 +315,10 @@ std::string preferences_shell_quote(const std::string &s) {
 
 void TuiApp::do_preferences() {
     std::string path = preferences_conf_path();
-    /* 通常は apply_settings_from_conf で初期生成済み。 万一削除されていても
-     * テンプレで再生成してから開く。 */
-    calcyx_settings_init_defaults(path.c_str(),
+    /* 通常は apply_settings_from_conf で初期生成済み。 念のため schema と
+     * 同期して開く (= ユーザがファイルを消した直後でも再生成、 schema 追加
+     * 項目があれば commented で挿入)。 */
+    calcyx_settings_sync_with_schema(path.c_str(),
         "# calcyx user settings — edit freely.\n");
 
 #if defined(_WIN32)
@@ -349,9 +350,10 @@ void TuiApp::do_preferences() {
  * BOTH キーが下の dispatch (strcmp 連鎖) でカバー漏れになれば気付ける。 */
 void TuiApp::apply_settings_from_conf() {
     std::string path = preferences_conf_path();
-    /* 初回起動時に conf が無ければ canonical な既定値テンプレートを書き出す。
-     * 手編集の足がかり。 既存ファイルには触らない。 */
-    calcyx_settings_init_defaults(path.c_str(),
+    /* 起動時に conf を schema と同期。 既存ファイルがあれば値・コメント・
+     * 並び順は保ち、 schema に追加された未出現キーだけを既定値で再挿入する。
+     * 新規 conf 生成も同関数で兼ねる。 */
+    calcyx_settings_sync_with_schema(path.c_str(),
         "# calcyx user settings — edit freely.\n");
 
     auto kv = conf_read(path);

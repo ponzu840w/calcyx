@@ -30,6 +30,14 @@ int calcyx_settings_write_preserving(const char            *path,
 int calcyx_settings_init_defaults(const char *path,
                                   const char *first_time_header);
 
+/* path のスキーマ同期。 既存ファイルがあれば保持し、 conf に書かれていない
+ * schema 既知キーを既定値で挿入する (writer の Pass 2 経路)。 ユーザの編集
+ * (コメント、 並び順、 未知キー) は保たれる。 既存ファイルがなければ
+ * init_defaults と同等。
+ * 戻り値: 0=成功、 非 0=エラー。 */
+int calcyx_settings_sync_with_schema(const char *path,
+                                     const char *first_time_header);
+
 #ifdef __cplusplus
 }
 #endif

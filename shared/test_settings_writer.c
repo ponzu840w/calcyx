@@ -261,8 +261,9 @@ static void test_leave_preserves_line_verbatim(void) {
     remove(path);
 }
 
-/* T5: 既存ファイルがあるとき first_time_header は適用されない */
-static void test_header_not_applied_on_existing(void) {
+/* T5: 既存ファイルの先頭に first_time_header が無ければ挿入される
+ * (ユーザがヘッダ行だけ削除したケースの復活)。 */
+static void test_header_injected_when_missing(void) {
     char path[256];
     mkpath(path, sizeof(path), "calcyx_test_writer_T5.conf");
     write_all(path, "decimal_digits = 6\n");
@@ -272,7 +273,28 @@ static void test_header_not_applied_on_existing(void) {
     check("T5 rc", rc == 0);
 
     char *out = read_all(path);
-    check("T5 header not injected", !contains(out, "# brand new"));
+    check("T5 header injected at top", strncmp(out, "# brand new\n", 12) == 0);
+    /* 既存内容は転写される (lookup_basic で 6 → 12 に書き換わる)。 */
+    check("T5 existing content kept",  contains(out, "decimal_digits = 12\n"));
+    free(out);
+    remove(path);
+}
+
+/* T5b: 既存ファイル先頭が first_time_header と一致するなら重複挿入しない。 */
+static void test_header_not_duplicated(void) {
+    char path[256];
+    mkpath(path, sizeof(path), "calcyx_test_writer_T5b.conf");
+    write_all(path, "# brand new\ndecimal_digits = 6\n");
+
+    int rc = calcyx_settings_write_preserving(path, "# brand new\n",
+                                              lookup_basic, NULL);
+    check("T5b rc", rc == 0);
+
+    char *out = read_all(path);
+    /* 「# brand new\n」 が 1 回しか出ない */
+    const char *p1 = strstr(out, "# brand new\n");
+    int duplicated = p1 && strstr(p1 + 1, "# brand new\n");
+    check("T5b header not duplicated", !duplicated);
     free(out);
     remove(path);
 }
@@ -284,7 +306,8 @@ int main(void) {
     test_commented_uncomments_when_value_returned();
     test_user_preset_emits_colors();
     test_leave_preserves_line_verbatim();
-    test_header_not_applied_on_existing();
+    test_header_injected_when_missing();
+    test_header_not_duplicated();
 
     printf("\n%d passed, %d failed\n", g_pass, g_fail);
     return g_fail == 0 ? 0 : 1;

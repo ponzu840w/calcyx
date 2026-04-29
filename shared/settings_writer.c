@@ -2,6 +2,7 @@
 
 #include "settings_writer.h"
 #include "settings_schema.h"
+#include "settings_io.h"     /* calcyx_conf_each: sync 用 pre-load */
 #include "path_utf8.h"
 
 #include <stdio.h>
@@ -278,8 +279,18 @@ int calcyx_settings_write_preserving(const char            *path,
 
     content = read_file_all(path, &content_len);
 
-    /* --- Pass 1: 既存行を走査して buf へ転写 --- */
+    /* --- Pass 1: 既存行を走査して buf へ転写 ---
+     * first_time_header が指定されていて、 既存内容の先頭がそれと
+     * バイト一致しない場合は先頭にヘッダを挿入してから走査に入る。
+     * これで「ユーザがヘッダ行だけ消した」 ケースでも復活する。 */
     if (content && content_len > 0) {
+        if (first_time_header) {
+            size_t hlen = strlen(first_time_header);
+            if (content_len < hlen
+                    || memcmp(content, first_time_header, hlen) != 0) {
+                buf_append_str(&out, first_time_header);
+            }
+        }
         pos = 0;
         while (pos < content_len) {
             size_t eol = pos;
@@ -565,4 +576,81 @@ int calcyx_settings_init_defaults(const char *path, const char *first_time_heade
     rc = calcyx_settings_write_preserving(path, first_time_header,
                                           defaults_lookup, NULL);
     return (rc == 0) ? 1 : -1;
+}
+
+/* ---- sync_with_schema: conf を pre-load して「既存値優先、 不足は defaults」
+ * の lookup を渡し、 schema 不足キーを既定値で再挿入する。 ---- */
+
+typedef struct {
+    char **keys;
+    char **values;
+    int    n;
+    int    cap;
+} sync_kv_t;
+
+static void sync_kv_collect(const char *key, const char *value,
+                            int line_no, void *user) {
+    sync_kv_t *s = (sync_kv_t *)user;
+    char **nk, **nv;
+    int    new_cap;
+    (void)line_no;
+    if (s->n >= s->cap) {
+        new_cap = s->cap == 0 ? 16 : s->cap * 2;
+        nk = (char **)realloc(s->keys,   new_cap * sizeof(char *));
+        nv = (char **)realloc(s->values, new_cap * sizeof(char *));
+        if (!nk || !nv) { free(nk); free(nv); return; }
+        s->keys = nk; s->values = nv; s->cap = new_cap;
+    }
+    s->keys[s->n]   = strdup(key   ? key   : "");
+    s->values[s->n] = strdup(value ? value : "");
+    if (!s->keys[s->n] || !s->values[s->n]) {
+        free(s->keys[s->n]); free(s->values[s->n]);
+        return;
+    }
+    s->n++;
+}
+
+static int sync_lookup(const char *key, char *buf, size_t buflen,
+                       int *out_is_default, void *user) {
+    sync_kv_t *s = (sync_kv_t *)user;
+    int i;
+    for (i = 0; i < s->n; i++) {
+        if (strcmp(s->keys[i], key) == 0) {
+            /* 値が schema 既定値と一致するなら is_default=1 として返し、
+             * writer に commented (#key=value) で書き戻させる。 これで
+             * 「ユーザが触っていない項目はコメント状態のまま」 という
+             * 設計を保つ。 値が異なるならユーザ変更扱いで uncommented。 */
+            char def_buf[256];
+            int  def_dummy = 0;
+            int  def_ret = defaults_lookup(key, def_buf, sizeof(def_buf),
+                                            &def_dummy, NULL);
+            snprintf(buf, buflen, "%s", s->values[i]);
+            if (out_is_default) {
+                *out_is_default =
+                    (def_ret > 0 && strcmp(s->values[i], def_buf) == 0)
+                    ? 1 : 0;
+            }
+            return 1;
+        }
+    }
+    /* conf に未出現 → defaults を返して Pass 2 で commented で挿入させる。 */
+    return defaults_lookup(key, buf, buflen, out_is_default, NULL);
+}
+
+int calcyx_settings_sync_with_schema(const char *path, const char *first_time_header) {
+    int   rc;
+    sync_kv_t s = { NULL, NULL, 0, 0 };
+    int   i;
+    if (!path) return -1;
+    /* conf を pre-load (file 無し or 空 でも no-op で n=0)。 */
+    (void)calcyx_conf_each(path, sync_kv_collect, &s);
+    /* first_time_header は write_preserving 側で「中身ありなら無視」 される。
+     * 全文削除済み (空ファイル) や file 自体が無い場合でも先頭ヘッダが
+     * 復活するよう、 常に渡す。 sync_lookup は collected が空のとき
+     * defaults_lookup にフォールバックするので、 新規生成時も挙動は同等。 */
+    rc = calcyx_settings_write_preserving(path, first_time_header,
+                                          sync_lookup, &s);
+    for (i = 0; i < s.n; i++) { free(s.keys[i]); free(s.values[i]); }
+    free(s.keys); free(s.values);
+    return rc;
 }
