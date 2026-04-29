@@ -43,8 +43,15 @@ Action map(const ftxui::Event &ev) {
     if (ev == E::ArrowDown)  return Action::RowDown;
     if (ev == E::ArrowLeft)  return Action::CursorLeft;
     if (ev == E::ArrowRight) return Action::CursorRight;
-    if (ev == E::Home || ev == E::Special("\x01")) return Action::CursorHome; /* Ctrl+A */
-    if (ev == E::End  || ev == E::Special("\x05")) return Action::CursorEnd;  /* Ctrl+E */
+    /* Home/End: FTXUI 既定 (\e[H / \e[F) に加え、 macOS Terminal や tmux で
+     * 多く使われる代替シーケンス (\e[1~ / \e[4~ / \eOH / \eOF) も受ける。
+     * Ctrl+A / Ctrl+E (Emacs 風) も等価扱い。 */
+    if (ev == E::Home || ev == E::Special("\x01")
+            || ev == E::Special("\x1B[1~") || ev == E::Special("\x1BOH"))
+        return Action::CursorHome;
+    if (ev == E::End  || ev == E::Special("\x05")
+            || ev == E::Special("\x1B[4~") || ev == E::Special("\x1BOF"))
+        return Action::CursorEnd;
     if (ev == E::PageUp)   return Action::RowPageUp;
     if (ev == E::PageDown) return Action::RowPageDown;
 
