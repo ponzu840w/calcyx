@@ -386,13 +386,9 @@ static expr_t *p_expr(parser_t *p, bool root) {
         }
 
         if (root && !p_eos(p) && !p->has_error) {
-            /* 余分な閉じ括弧は無視 (テストファイルのバグ対応) */
-            while (!p_eos(p) && strcmp(p_peek(p)->text, ")") == 0) { token_t _t = p_read(p); tok_free(&_t); }
-            if (!p_eos(p)) {
-                PERROR(p, *p_peek(p), "Operator missing");
-                expr_free(expr);
-                return NULL;
-            }
+            PERROR(p, *p_peek(p), "Operator missing");
+            expr_free(expr);
+            return NULL;
         }
         return expr;
     }

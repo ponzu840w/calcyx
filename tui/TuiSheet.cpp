@@ -804,7 +804,7 @@ void TuiSheet::action_decimals_dec() {
 /* ----------------------------------------------------------------------
  * format 切替
  * -------------------------------------------------------------------- */
-void TuiSheet::action_format(val_fmt_t /*fmt*/, const char *fmt_func) {
+void TuiSheet::action_format(const char *fmt_func) {
     /* 既存ラッパーを剥がし、非 Auto なら新しいラッパーで包む */
     const char *cur_c = sheet_model_row_expr(model_, focused_row_);
     std::string cur   = cur_c ? cur_c : "";
@@ -1328,11 +1328,11 @@ bool TuiSheet::OnEvent(Event ev) {
                 status_cb_(compact_mode_ ? "Compact mode on" : "Compact mode off");
             break;
 
-        case Action::FormatAuto:       action_format(FMT_REAL,      "");    break;
-        case Action::FormatDec:        action_format(FMT_REAL,      "dec"); break;
-        case Action::FormatHex:        action_format(FMT_HEX,       "hex"); break;
-        case Action::FormatBin:        action_format(FMT_BIN,       "bin"); break;
-        case Action::FormatSI:         action_format(FMT_SI_PREFIX, "si");  break;
+        case Action::FormatAuto:       action_format("");    break;
+        case Action::FormatDec:        action_format("dec"); break;
+        case Action::FormatHex:        action_format("hex"); break;
+        case Action::FormatBin:        action_format("bin"); break;
+        case Action::FormatSI:         action_format("si");  break;
 
         case Action::FileOpen:
             if (file_open_cb_) file_open_cb_();

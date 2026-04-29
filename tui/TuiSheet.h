@@ -178,7 +178,7 @@ private:
     void action_paste();             /* クリップボードをカーソル位置に挿入 */
     void action_decimals_inc();
     void action_decimals_dec();
-    void action_format(val_fmt_t fmt, const char *fmt_func);
+    void action_format(const char *fmt_func);
 
     /* --- undo helpers --- */
     sheet_view_state_t capture_view_state() const;

@@ -4,6 +4,7 @@
 #include "completion_match.h"
 #include "colors.h"
 #include "MainWindow.h"
+#include "settings_globals.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <algorithm>
@@ -18,7 +19,7 @@ extern "C" void mac_configure_popup(Fl_Window *popup, Fl_Window *main_win);
 
 void CompletionPopupBase::init_widgets(int w) {
     list_ = new Fl_Select_Browser(0, 0, w, 0);
-    list_->textfont(FL_COURIER);
+    list_->textfont(g_font_id);
     list_->textsize(13);
     list_->box(FL_FLAT_BOX);
     list_->callback(list_cb, this);
