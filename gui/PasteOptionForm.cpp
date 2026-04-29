@@ -1,6 +1,7 @@
 // 移植元: Calctus/UI/PasteOptionForm.cs
 
 #include "PasteOptionForm.h"
+#include "i18n.h"
 #include "sheet_text.hpp"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
@@ -58,7 +59,7 @@ static std::string trim(const std::string &s) {
 // ---- コンストラクタ ----
 
 PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
-    : Fl_Window(640, 488, "Paste Options")
+    : Fl_Window(640, 488, _("Paste Options"))
 {
     set_modal();
     color(PF_BG);
@@ -102,8 +103,8 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
         b->color(PF_BG);
         b->box(FL_NO_BOX);
     };
-    make_label(MX,               half_w, "Clipboard Text:");
-    make_label(MX + half_w + GAP, half_w, "Text will be pasted:");
+    make_label(MX,               half_w, _("Clipboard Text:"));
+    make_label(MX + half_w + GAP, half_w, _("Text will be pasted:"));
     y += LBL_H + 2;
 
     // ---- テキストエリア ----
@@ -159,22 +160,22 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
     // 行3: 右下に [OK] [Cancel]
 
     // 左: Column Delimiter
-    make_small_label(MX, 110, "Column Delimiter:");
+    make_small_label(MX, 110, _("Column Delimiter:"));
     delimiter_input_ = make_input(MX + 114, 42);
     delimiter_input_->callback(delimiter_cb, this);
     delimiter_input_->when(FL_WHEN_CHANGED);
 
     // 右: Remove ボタン2つ (同じ y)
-    remove_comma_btn_ = make_btn(right_x, 140, "Remove Commas");
+    remove_comma_btn_ = make_btn(right_x, 140, _("Remove Commas"));
     remove_comma_btn_->callback(remove_comma_cb, this);
 
-    remove_right_btn_ = make_btn(right_x + 148, 160, "Remove Right-hands");
+    remove_right_btn_ = make_btn(right_x + 148, 160, _("Remove Right-hands"));
     remove_right_btn_->callback(remove_right_cb, this);
 
     y += C_H + MX / 2;
 
     // 左: Column Index
-    make_small_label(MX, 110, "Column Index:");
+    make_small_label(MX, 110, _("Column Index:"));
     col_number_input_ = make_input(MX + 114, 42);
     col_number_input_->value("1");
 
@@ -187,17 +188,17 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
     y += C_H + MX / 2;
 
     // 左半分の右寄せ: Select Column
-    select_col_btn_ = make_btn(MX + half_w - 120, 120, "Select Column");
+    select_col_btn_ = make_btn(MX + half_w - 120, 120, _("Select Column"));
     select_col_btn_->callback(select_col_cb, this);
 
     // ---- OK / Cancel (右下) ----
-    cancel_btn_ = new Fl_Button(W - MX - 90, H - MX - BTN_H, 90, BTN_H, "Cancel");
+    cancel_btn_ = new Fl_Button(W - MX - 90, H - MX - BTN_H, 90, BTN_H, _("Cancel"));
     cancel_btn_->color(PF_BTN_BG);
     cancel_btn_->labelcolor(PF_TEXT);
     cancel_btn_->box(FL_FLAT_BOX);
     cancel_btn_->callback(cancel_cb, this);
 
-    ok_btn_ = new Fl_Return_Button(W - MX - 90 - MX - 90, H - MX - BTN_H, 90, BTN_H, "OK");
+    ok_btn_ = new Fl_Return_Button(W - MX - 90 - MX - 90, H - MX - BTN_H, 90, BTN_H, _("OK"));
     ok_btn_->color(PF_BTN_BG);
     ok_btn_->labelcolor(PF_TEXT);
     ok_btn_->box(FL_FLAT_BOX);

@@ -259,15 +259,15 @@ MainWindow::MainWindow(int w, int h, const char *title)
     };
     // ツールチップ: macOS では Cmd (⌘)、それ以外は Ctrl で表記。
 #ifdef __APPLE__
-    const char *TT_UNDO    = "Undo (\xe2\x8c\x98Z)";
-    const char *TT_REDO    = "Redo (\xe2\x8c\x98Y)";
-    const char *TT_COMPACT = "Compact Mode (\xe2\x8c\x98:)";
-    const char *TT_TOPMOST = "Always on Top (\xe2\x8c\x98T)";
+    const char *TT_UNDO    = _("Undo (\xe2\x8c\x98Z)");
+    const char *TT_REDO    = _("Redo (\xe2\x8c\x98Y)");
+    const char *TT_COMPACT = _("Compact Mode (\xe2\x8c\x98:)");
+    const char *TT_TOPMOST = _("Always on Top (\xe2\x8c\x98T)");
 #else
-    const char *TT_UNDO    = "Undo (Ctrl+Z)";
-    const char *TT_REDO    = "Redo (Ctrl+Y)";
-    const char *TT_COMPACT = "Compact Mode (Ctrl+:)";
-    const char *TT_TOPMOST = "Always on Top (Ctrl+T)";
+    const char *TT_UNDO    = _("Undo (Ctrl+Z)");
+    const char *TT_REDO    = _("Redo (Ctrl+Y)");
+    const char *TT_COMPACT = _("Compact Mode (Ctrl+:)");
+    const char *TT_TOPMOST = _("Always on Top (Ctrl+T)");
 #endif
 
     // 右端から: [Format▼] PAD [📌] [▣] [→] [←]
@@ -306,7 +306,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
         else if (strcmp(l, "Hex") == 0) sc = FL_F + 10;
         else if (strcmp(l, "Bin") == 0) sc = FL_F + 11;
         else if (strcmp(l, "SI")  == 0) sc = FL_F + 12;
-        fmt_choice_->add(l, sc, nullptr);
+        fmt_choice_->add(_(l), sc, nullptr);
     }
     fmt_choice_->value(0);  // Auto
     fmt_choice_->callback(choice_cb, this);

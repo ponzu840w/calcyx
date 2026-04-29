@@ -175,6 +175,44 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Popup Border", "ﾎﾟｯﾌﾟｱｯﾌﾟ枠" },
     { "Show row separator lines", "罫線を表示" },
 
+    /* === GUI: ツールチップ (右上ボタン) ===
+     * macOS 版 (⌘) と他プラットフォーム版 (Ctrl+) の両方を登録する。
+     * ショートカット表記部分は untranslated。 */
+    { "Undo (\xe2\x8c\x98Z)",          "元に戻す (\xe2\x8c\x98Z)" },
+    { "Redo (\xe2\x8c\x98Y)",          "やり直し (\xe2\x8c\x98Y)" },
+    { "Compact Mode (\xe2\x8c\x98:)",  "コンパクトモード (\xe2\x8c\x98:)" },
+    { "Always on Top (\xe2\x8c\x98T)", "常に手前に表示 (\xe2\x8c\x98T)" },
+    { "Undo (Ctrl+Z)",          "元に戻す (Ctrl+Z)" },
+    { "Redo (Ctrl+Y)",          "やり直し (Ctrl+Y)" },
+    { "Compact Mode (Ctrl+:)",  "コンパクトモード (Ctrl+:)" },
+    { "Always on Top (Ctrl+T)", "常に手前に表示 (Ctrl+T)" },
+
+    /* === GUI: 書式 Choice (右上の Format ドロップダウン) === */
+    { "Auto", "自動" },
+    { "Dec",  "10 進" },
+    { "Hex",  "16 進" },
+    { "Bin",  "2 進" },
+    { "Oct",  "8 進" },
+    /* "SI" / "Kibi" は固定 (英語のまま表示) */
+    { "Char", "文字" },
+
+    /* === GUI: フォントピッカー (Appearance タブ → Font 選択) === */
+    { "Select Font",        "フォントを選択" },
+    { "Use system fonts",   "システムフォントを表示" },
+    { "Show proportional fonts (not recommended)",
+      "プロポーショナルフォントを表示 (非推奨)" },
+    { "Color",              "色" },
+
+    /* === GUI: PasteOptionForm (複数行ペーストダイアログ) ===
+     * "Paste Options" / "Cancel" / "OK" は他で定義済みなので再掲しない。 */
+    { "Clipboard Text:",       "クリップボード:" },
+    { "Text will be pasted:",  "貼り付け後:" },
+    { "Column Delimiter:",     "区切り文字:" },
+    { "Column Index:",         "列番号:" },
+    { "Select Column",         "列を抽出" },
+    { "Remove Commas",         "コンマを除去" },
+    { "Remove Right-hands",    "右辺を除去" },
+
     /* === TUI: メニューバータイトル === */
     { "&File",   "ファイル(&F)" },
     { "&Edit",   "編集(&E)" },

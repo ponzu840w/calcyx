@@ -116,7 +116,7 @@ void update_preview(FontTab *ft) {
 
 static void open_font_picker(FontTab *ft, Fl_Window *parent) {
     const int PW = 500, PH = 480;
-    Fl_Double_Window picker(PW, PH, "Select Font");
+    Fl_Double_Window picker(PW, PH, _("Select Font"));
     picker.set_modal();
     picker.color(DLG_BG);
 
@@ -126,12 +126,12 @@ static void open_font_picker(FontTab *ft, Fl_Window *parent) {
     browser.textsize(13);
     browser.selection_color(g_colors.accent);
 
-    Fl_Check_Button sys_chk(10, PH - 82, 180, 22, "Use system fonts");
+    Fl_Check_Button sys_chk(10, PH - 82, 180, 22, _("Use system fonts"));
     sys_chk.labelcolor(DLG_LABEL);
     sys_chk.labelsize(12);
 
     Fl_Check_Button prop_chk(200, PH - 82, PW - 210, 22,
-                             "Show proportional fonts (not recommended)");
+                             _("Show proportional fonts (not recommended)"));
     prop_chk.labelcolor(DLG_LABEL);
     prop_chk.labelsize(12);
 
@@ -205,7 +205,7 @@ static void swatch_cb(Fl_Widget *, void *data) {
         return;
     uchar r, g, b;
     Fl::get_color(*sd->target, r, g, b);
-    if (fl_color_chooser("Color", r, g, b)) {
+    if (fl_color_chooser(_("Color"), r, g, b)) {
         *sd->target = fl_rgb_color(r, g, b);
         /* g_colors と g_user_colors を同期 — グローバルバックアップを更新。 */
         g_user_colors = g_colors;
