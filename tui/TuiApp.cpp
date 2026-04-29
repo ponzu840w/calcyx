@@ -1,5 +1,6 @@
 #include "TuiApp.h"
 
+#include "PrefsScreen.h"
 #include "TuiSheet.h"
 
 #include <algorithm>
@@ -316,6 +317,24 @@ std::string preferences_shell_quote(const std::string &s) {
 }
 #endif
 } /* namespace */
+
+/* ----------------------------------------------------------------------
+ * Preferences 画面 (full-screen 切替方式)
+ * -------------------------------------------------------------------- */
+std::string TuiApp::preferences_conf_path_str() const {
+    return preferences_conf_path();  /* anonymous namespace の OS 別パス計算 */
+}
+
+void TuiApp::prefs_open() {
+    if (!prefs_) prefs_ = std::make_unique<PrefsScreen>(this);
+    prefs_->open();
+    prefs_visible_ = true;
+}
+
+void TuiApp::prefs_close() {
+    if (prefs_) prefs_->close();   /* PrefsScreen::close 内で overlay_closed 発行 */
+    prefs_visible_ = false;
+}
 
 void TuiApp::do_preferences() {
     std::string path = preferences_conf_path();
@@ -1394,7 +1413,7 @@ void TuiApp::menu_invoke_cmd(MenuCmd cmd) {
         case MenuCmd::Open:        do_file_open();                                        break;
         case MenuCmd::Save:        do_file_save();                                        break;
         case MenuCmd::ClearAll:    sheet_dispatch_key(sheet_.get(), Event::Special("\x1b[3;6~")); break;
-        case MenuCmd::Preferences: do_preferences();                                       break;
+        case MenuCmd::Preferences: prefs_open();                                            break;
         case MenuCmd::About:
             about_visible_ = true; about_scroll_ = 0; about_tab_ = AboutTab::Shortcuts;   break;
         case MenuCmd::Exit:        screen_.Exit();                                         break;
@@ -1710,7 +1729,11 @@ void TuiApp::test_dispatch(Event ev) {
         flash_pending_clear_ = false;
     }
 
-    if (ev.is_mouse()) {
+    if (prefs_visible_ && prefs_) {
+        prefs_->OnEvent(ev);
+        /* prefs が close() された場合は visible flag を同期。 */
+        if (!prefs_->visible()) prefs_visible_ = false;
+    } else if (ev.is_mouse()) {
         if (!handle_mouse(ev.mouse())) sheet_->OnEvent(ev);
     } else if (context_menu_handle_event(ev)) {
     } else if (paste_modal_handle_event(ev)) {
@@ -1774,6 +1797,9 @@ int TuiApp::run(const std::string &initial_file) {
 
     /* プロンプト入力中はシートへの入力を横取りする。 */
     auto renderer = Renderer(sheet_, [this] {
+        /* Preferences 画面表示中はシート描画を完全置換 (= dbox overlay 不使用)。 */
+        if (prefs_visible_ && prefs_) return prefs_->Render();
+
         Element body = sheet_->Render();
 
         Element base;
@@ -1846,7 +1872,12 @@ int TuiApp::run(const std::string &initial_file) {
         }
 
         bool handled;
-        if (ev.is_mouse()) {
+        if (prefs_visible_ && prefs_) {
+            /* Preferences 画面表示中は全イベントを prefs 専用 handler に丸投げ。
+             * close() されたら prefs_visible_ を同期。 */
+            handled = prefs_->OnEvent(ev);
+            if (!prefs_->visible()) prefs_visible_ = false;
+        } else if (ev.is_mouse()) {
             /* TuiApp 自身が消費しないマウスは sheet (CatchEvent の child)
              * に流す。handle_mouse() が false ならここで false を返せば
              * Renderer 経由で sheet->OnEvent() に届く。 */

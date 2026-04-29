@@ -77,6 +77,14 @@ public:
     bool   test_context_menu_visible() const { return context_menu_visible_; }
     int    test_context_menu_item()    const { return context_menu_item_; }
     void   test_open_context_menu(int x, int y) { context_menu_open(x, y); }
+    bool   test_prefs_visible() const { return prefs_visible_; }
+
+    /* PrefsScreen から使う public アクセサ。 */
+    std::string preferences_conf_path_str() const;
+    void        flash_message_public(const std::string &msg) { flash_message(msg); }
+    void        do_preferences_public() { do_preferences(); }
+    void        apply_settings_public() { apply_settings_from_conf(); }
+    void        overlay_closed_public() { overlay_closed(); }
 
 private:
     enum class PromptMode {
@@ -180,6 +188,12 @@ private:
      * 他 false)、 conf の "tui_clear_after_overlay" で auto/true/false 上書き可。 */
     bool   clear_after_overlay_ = false;
     void   overlay_closed();
+
+    /* Preferences 画面 (full-screen 切替方式)。 */
+    bool   prefs_visible_ = false;
+    std::unique_ptr<class PrefsScreen> prefs_;
+    void   prefs_open();
+    void   prefs_close();
 
     /* メニュー状態 */
     MenuId menu_active_     = MenuId::None;

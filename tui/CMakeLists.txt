@@ -14,6 +14,7 @@ set(TUI_LIB_SRC
     TuiApp.cpp
     TuiSheet.cpp
     TuiCompletion.cpp
+    PrefsScreen.cpp
     keymap.cpp
     clipboard.cpp
 )
