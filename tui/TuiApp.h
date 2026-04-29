@@ -96,8 +96,7 @@ private:
     void do_file_open();
     /* GUI と同じ calcyx.conf を $VISUAL/$EDITOR (Unix) や関連付けエディタ
      * (Windows) で開く。FTXUI の端末ハンドリングを WithRestoredIO で一時退避。
-     * TUI 自身は現状 calcyx.conf を読み込まないため、編集内容は GUI からのみ
-     * 有効。flash で「次回 GUI 起動から有効」とフィードバックする。 */
+     * エディタ終了後は apply_settings_from_conf() で即時再読込する。 */
     void do_preferences();
     /* calcyx.conf からエンジン共通の設定を読み込んで反映する。
      * GUI と共有する小数桁・E ノテーション・評価リミット・auto_completion
