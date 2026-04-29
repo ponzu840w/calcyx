@@ -2,6 +2,7 @@
 
 #include "keymap.h"
 #include "clipboard.h"
+#include "sheet_text.hpp"
 
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/color.hpp>
@@ -587,18 +588,8 @@ void TuiSheet::action_clear_all() {
  * のフォールバック → 最後に OSC 52 を試す。
  * 書式: "<expr> = <result>\n" を全行結合。移植元 ui/SheetView.cpp:1591。 */
 void TuiSheet::action_copy_all() {
-    std::string text;
+    std::string text = calcyx::format_all_rows_for_copy(model_);
     int n = sheet_model_row_count(model_);
-    for (int i = 0; i < n; ++i) {
-        const char *expr   = sheet_model_row_expr(model_, i);
-        const char *result = sheet_model_row_result(model_, i);
-        text += expr ? expr : "";
-        if (result && result[0] && sheet_model_row_visible(model_, i)) {
-            text += " = ";
-            text += result;
-        }
-        text += "\n";
-    }
     bool ok = clipboard::write(text);
     if (status_cb_) {
         if (ok)
@@ -616,16 +607,9 @@ void TuiSheet::action_copy() {
     int n = sheet_model_row_count(model_);
     if (focused_row_ < 0 || focused_row_ >= n) return;
 
-    const char *expr_p = sheet_model_row_expr  (model_, focused_row_);
-    const char *res_p  = sheet_model_row_result(model_, focused_row_);
-    bool        vis    = sheet_model_row_visible(model_, focused_row_);
-
-    std::string expr = expr_p ? expr_p : "";
-    std::string text = expr;
-    if (res_p && res_p[0] && vis) {
-        text += " = ";
-        text += res_p;
-    }
+    const char *expr_p = sheet_model_row_expr(model_, focused_row_);
+    std::string expr   = expr_p ? expr_p : "";
+    std::string text   = calcyx::format_row_for_copy(model_, focused_row_);
 
     if (!clipboard::write(text)) {
         if (status_cb_) status_cb_("Clipboard write failed");
@@ -644,12 +628,9 @@ void TuiSheet::action_cut() {
     /* action_copy() の status_cb_ は cut の status で上書きするので、
      * コピー失敗時のみフィードバックを返す。 */
     commit_if_changed();
-    const char *expr_p = sheet_model_row_expr  (model_, focused_row_);
-    const char *res_p  = sheet_model_row_result(model_, focused_row_);
-    bool        vis    = sheet_model_row_visible(model_, focused_row_);
-    std::string expr = expr_p ? expr_p : "";
-    std::string text = expr;
-    if (res_p && res_p[0] && vis) { text += " = "; text += res_p; }
+    const char *expr_p = sheet_model_row_expr(model_, focused_row_);
+    std::string expr   = expr_p ? expr_p : "";
+    std::string text   = calcyx::format_row_for_copy(model_, focused_row_);
 
     if (!clipboard::write(text)) {
         if (status_cb_) status_cb_("Clipboard write failed; row not deleted");
@@ -698,25 +679,9 @@ void TuiSheet::action_paste() {
 }
 
 namespace {
-/* \r\n / \n / \r どれでも 1 行として扱って分割。末尾空行はドロップする
- * (コピー由来の trailing newline は 1 つ削ってあるが念のため)。 */
+/* shared/sheet_text.hpp::split_lines の末尾空行ドロップ版エイリアス. */
 std::vector<std::string> split_lines(const std::string &text) {
-    std::vector<std::string> lines;
-    std::string line;
-    for (size_t i = 0; i < text.size(); ++i) {
-        char c = text[i];
-        if (c == '\r') {
-            lines.push_back(line); line.clear();
-            if (i + 1 < text.size() && text[i + 1] == '\n') ++i;
-        } else if (c == '\n') {
-            lines.push_back(line); line.clear();
-        } else {
-            line += c;
-        }
-    }
-    if (!line.empty()) lines.push_back(line);
-    while (!lines.empty() && lines.back().empty()) lines.pop_back();
-    return lines;
+    return calcyx::split_lines(text, /*drop_trailing_empty=*/true);
 }
 } // namespace
 

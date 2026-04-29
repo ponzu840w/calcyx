@@ -4,6 +4,7 @@
 #include "SheetLineInput.h"
 #include "PasteOptionForm.h"
 #include "sheet_highlight.h"
+#include "sheet_text.hpp"
 #include "colors.h"
 #include "settings_globals.h"
 #include "crash_handler.h"
@@ -1037,18 +1038,8 @@ void SheetView::multiline_paste(const std::string &text) {
 }
 
 void SheetView::copy_all_to_clipboard() const {
-    std::string text;
-    int n = sheet_model_row_count(model_);
-    for (int i = 0; i < n; i++) {
-        const char *expr   = sheet_model_row_expr(model_, i);
-        const char *result = sheet_model_row_result(model_, i);
-        text += expr ? expr : "";
-        if (result && result[0]) {
-            text += " = ";
-            text += result;
-        }
-        text += "\n";
-    }
+    /* with_visibility=false: GUI 側はもともと visible 判定なしで全行コピーしていた. */
+    std::string text = calcyx::format_all_rows_for_copy(model_, /*with_visibility=*/false);
     Fl::copy(text.c_str(), (int)text.size(), 1);
 }
 

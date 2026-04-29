@@ -1,6 +1,7 @@
 // 移植元: Calctus/UI/PasteOptionForm.cs
 
 #include "PasteOptionForm.h"
+#include "sheet_text.hpp"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
 #include <algorithm>
@@ -17,22 +18,9 @@ static const Fl_Color PF_TEXT     = fl_rgb_color(215, 215, 225);
 // ---- テキストユーティリティ ----
 
 // 改行で分割 (\r\n / \n / \r すべて対応)
+/* shared/sheet_text.hpp::split_lines のエイリアス (drop_trailing_empty=false). */
 static std::vector<std::string> split_lines(const std::string &text) {
-    std::vector<std::string> lines;
-    std::string line;
-    for (size_t i = 0; i < text.size(); i++) {
-        char c = text[i];
-        if (c == '\r') {
-            lines.push_back(line); line.clear();
-            if (i + 1 < text.size() && text[i+1] == '\n') ++i;
-        } else if (c == '\n') {
-            lines.push_back(line); line.clear();
-        } else {
-            line += c;
-        }
-    }
-    if (!line.empty()) lines.push_back(line);
-    return lines;
+    return calcyx::split_lines(text);
 }
 
 // 移植元: PasteOptionForm.splitLine()
