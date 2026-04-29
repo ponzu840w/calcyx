@@ -323,7 +323,8 @@ void build_appearance_tab(DlgState &st, int tab_h) {
 
         x += W_LABEL_NARROW;
         const int btn_w = DW - x - W_FONT_BTN_RPAD;
-        st.font.font_btn = new Fl_Button(x, ly, btn_w, H_CONTROL);
+        st.font.font_btn = make_lockable(
+            new Fl_Button(x, ly, btn_w, H_CONTROL), "font");
         st.font.font_btn->box(FL_DOWN_BOX);
         st.font.font_btn->color(DLG_INPUT);
         st.font.font_btn->labelcolor(DLG_TEXT);
@@ -341,7 +342,8 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
         x += W_LABEL_NARROW;
-        st.font.size_spin = new Fl_Spinner(x, ly, W_SIZE_SPIN, H_CONTROL);
+        st.font.size_spin = make_lockable(
+            new Fl_Spinner(x, ly, W_SIZE_SPIN, H_CONTROL), "font_size");
         style_spinner(st.font.size_spin);
         st.font.size_spin->range(8, 36);
         st.font.size_spin->step(1);
@@ -361,7 +363,8 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
         x += W_LABEL_PRESET + GAP_LABEL_INPUT;
-        st.preset_choice = new Fl_Choice(x, ly, W_PRESET_CHOICE, H_CONTROL);
+        st.preset_choice = make_lockable(
+            new Fl_Choice(x, ly, W_PRESET_CHOICE, H_CONTROL), "color_preset");
         st.preset_choice->color(DLG_INPUT);
         st.preset_choice->textcolor(DLG_TEXT);
         st.preset_choice->labelsize(12);
@@ -383,35 +386,35 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     ly += H_INPUT_ROW;
 
     /* --- 色 swatch グリッド --- */
-    struct { const char *label; Fl_Color *color; } entries[] = {
-        { "Background",   &g_colors.bg },
-        { "Selection",    &g_colors.sel_bg },
-        { "Row Line",     &g_colors.rowline },
-        { "Text",         &g_colors.text },
-        { "Accent",       &g_colors.accent },
-        { "Symbols",      &g_colors.symbol },
-        { "Identifiers",  &g_colors.ident },
-        { "Literals",     &g_colors.special },
-        { "SI Prefix",    &g_colors.si_pfx },
-        { "Error",        &g_colors.error },
-        { "Paren 1",      &g_colors.paren[0] },
-        { "Paren 2",      &g_colors.paren[1] },
-        { "Paren 3",      &g_colors.paren[2] },
-        { "Paren 4",      &g_colors.paren[3] },
-        { "Win BG",       &g_colors.ui_win_bg },
-        { "Dlg BG",       &g_colors.ui_bg },
-        { "UI Input",     &g_colors.ui_input },
-        { "UI Button",    &g_colors.ui_btn },
-        { "Menu BG",      &g_colors.ui_menu },
-        { "UI Text",      &g_colors.ui_text },
-        { "UI Label",     &g_colors.ui_label },
-        { "UI Dim",       &g_colors.ui_dim },
-        { "Popup BG",     &g_colors.pop_bg },
-        { "Popup Sel",    &g_colors.pop_sel },
-        { "Popup Text",   &g_colors.pop_text },
-        { "Popup Desc",   &g_colors.pop_desc },
-        { "Popup DescBG", &g_colors.pop_desc_bg },
-        { "Popup Border", &g_colors.pop_border },
+    struct { const char *label; Fl_Color *color; const char *key; } entries[] = {
+        { "Background",   &g_colors.bg,          "color_bg"          },
+        { "Selection",    &g_colors.sel_bg,      "color_sel_bg"      },
+        { "Row Line",     &g_colors.rowline,     "color_rowline"     },
+        { "Text",         &g_colors.text,        "color_text"        },
+        { "Accent",       &g_colors.accent,      "color_accent"      },
+        { "Symbols",      &g_colors.symbol,      "color_symbol"      },
+        { "Identifiers",  &g_colors.ident,       "color_ident"       },
+        { "Literals",     &g_colors.special,     "color_special"     },
+        { "SI Prefix",    &g_colors.si_pfx,      "color_si_pfx"      },
+        { "Error",        &g_colors.error,       "color_error"       },
+        { "Paren 1",      &g_colors.paren[0],    "color_paren0"      },
+        { "Paren 2",      &g_colors.paren[1],    "color_paren1"      },
+        { "Paren 3",      &g_colors.paren[2],    "color_paren2"      },
+        { "Paren 4",      &g_colors.paren[3],    "color_paren3"      },
+        { "Win BG",       &g_colors.ui_win_bg,   "color_ui_win_bg"   },
+        { "Dlg BG",       &g_colors.ui_bg,       "color_ui_bg"       },
+        { "UI Input",     &g_colors.ui_input,    "color_ui_input"    },
+        { "UI Button",    &g_colors.ui_btn,      "color_ui_btn"      },
+        { "Menu BG",      &g_colors.ui_menu,     "color_ui_menu"     },
+        { "UI Text",      &g_colors.ui_text,     "color_ui_text"     },
+        { "UI Label",     &g_colors.ui_label,    "color_ui_label"    },
+        { "UI Dim",       &g_colors.ui_dim,      "color_ui_dim"      },
+        { "Popup BG",     &g_colors.pop_bg,      "color_pop_bg"      },
+        { "Popup Sel",    &g_colors.pop_sel,     "color_pop_sel"     },
+        { "Popup Text",   &g_colors.pop_text,    "color_pop_text"    },
+        { "Popup Desc",   &g_colors.pop_desc,    "color_pop_desc"    },
+        { "Popup DescBG", &g_colors.pop_desc_bg, "color_pop_desc_bg" },
+        { "Popup Border", &g_colors.pop_border,  "color_pop_border"  },
     };
     const int n_entries = (int)(sizeof(entries) / sizeof(entries[0]));
     st.colors.count = n_entries;
@@ -436,14 +439,19 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         st.colors.swatch_data[i] = { entries[i].color, &st };
         btn->callback(swatch_cb, &st.colors.swatch_data[i]);
         st.colors.swatches[i] = btn;
-        st.colors.entries[i] = { entries[i].label, entries[i].color };
+        st.colors.entries[i] = { entries[i].label, entries[i].color, entries[i].key };
+        /* user_data に schema key 埋め込み (= debug + lock 判定の慣例)。
+         * deactivate は update_swatch_state が preset と locked を見て決める。 */
+        btn->user_data((void *)entries[i].key);
     }
     ly = grid_y0 + SWATCH_ROWS * SWATCH_ROW_H + SWATCH_AFTER_GAP;
 
     /* --- 罫線チェック --- */
-    st.show_rowlines_chk = new Fl_Check_Button(lx + CONTENT_INDENT, ly,
-                                                W_ROWLINES_CHK, H_ROWLINES_CHK,
-                                                _("Show row separator lines"));
+    st.show_rowlines_chk = make_lockable(
+        new Fl_Check_Button(lx + CONTENT_INDENT, ly,
+                            W_ROWLINES_CHK, H_ROWLINES_CHK,
+                            _("Show row separator lines")),
+        "show_rowlines");
     style_check(st.show_rowlines_chk);
     st.show_rowlines_chk->value(g_show_rowlines ? 1 : 0);
     st.show_rowlines_chk->callback([](Fl_Widget *, void *data) {

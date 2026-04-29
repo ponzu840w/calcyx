@@ -56,7 +56,8 @@ void build_general_tab(DlgState &st, int tab_h) {
         lb->labelsize(12);
         lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-        st.language_choice = new Fl_Choice(lx + 90, inner_y, 200, 22);
+        st.language_choice = make_lockable(
+            new Fl_Choice(lx + 90, inner_y, 200, 22), "language");
         st.language_choice->color(DLG_INPUT);
         st.language_choice->textcolor(DLG_TEXT);
         st.language_choice->labelsize(12);
@@ -84,14 +85,18 @@ void build_general_tab(DlgState &st, int tab_h) {
         int body_h = 90;
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Window"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
-        st.remember_pos_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Remember window position on exit"));
+        st.remember_pos_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Remember window position on exit")),
+            "remember_position");
         style_check(st.remember_pos_chk);
         st.remember_pos_chk->value(g_remember_position ? 1 : 0);
         inner_y += 26;
 
-        st.start_topmost_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Start with Always on Top"));
+        st.start_topmost_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Start with Always on Top")),
+            "start_topmost");
         style_check(st.start_topmost_chk);
         st.start_topmost_chk->value(g_start_topmost ? 1 : 0);
         inner_y += 22;
@@ -112,8 +117,10 @@ void build_general_tab(DlgState &st, int tab_h) {
         int body_h = 56;
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("System Tray"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
-        st.tray_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Enable system tray icon"));
+        st.tray_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Enable system tray icon")),
+            "tray_icon");
         style_check(st.tray_chk);
         st.tray_chk->value(g_tray_icon ? 1 : 0);
 
@@ -133,8 +140,10 @@ void build_general_tab(DlgState &st, int tab_h) {
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Global Hotkey"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
-        st.hotkey_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Enable global hotkey"));
+        st.hotkey_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Enable global hotkey")),
+            "hotkey_enabled");
         style_check(st.hotkey_chk);
         st.hotkey_chk->value(g_hotkey_enabled ? 1 : 0);
         inner_y += 26;
@@ -145,33 +154,41 @@ void build_general_tab(DlgState &st, int tab_h) {
         int mx = lx + 110;
 
 #ifdef __APPLE__
-        st.hotkey_win_chk = new Fl_Check_Button(mx, inner_y, 60, 22, "Cmd");
+        st.hotkey_win_chk = make_lockable(
+            new Fl_Check_Button(mx, inner_y, 60, 22, "Cmd"), "hotkey_win");
         style_check(st.hotkey_win_chk);
         st.hotkey_win_chk->value(g_hotkey_win ? 1 : 0);
         mx += 60;
-        st.hotkey_alt_chk = new Fl_Check_Button(mx, inner_y, 65, 22, "Option");
+        st.hotkey_alt_chk = make_lockable(
+            new Fl_Check_Button(mx, inner_y, 65, 22, "Option"), "hotkey_alt");
         style_check(st.hotkey_alt_chk);
         st.hotkey_alt_chk->value(g_hotkey_alt ? 1 : 0);
         mx += 65;
-        st.hotkey_ctrl_chk = new Fl_Check_Button(mx, inner_y, 60, 22, "Ctrl");
+        st.hotkey_ctrl_chk = make_lockable(
+            new Fl_Check_Button(mx, inner_y, 60, 22, "Ctrl"), "hotkey_ctrl");
         style_check(st.hotkey_ctrl_chk);
         st.hotkey_ctrl_chk->value(g_hotkey_ctrl ? 1 : 0);
         mx += 60;
-        st.hotkey_shift_chk = new Fl_Check_Button(mx, inner_y, 60, 22, "Shift");
+        st.hotkey_shift_chk = make_lockable(
+            new Fl_Check_Button(mx, inner_y, 60, 22, "Shift"), "hotkey_shift");
 #else
-        st.hotkey_win_chk = new Fl_Check_Button(mx, inner_y, 55, 22, "Win");
+        st.hotkey_win_chk = make_lockable(
+            new Fl_Check_Button(mx, inner_y, 55, 22, "Win"), "hotkey_win");
         style_check(st.hotkey_win_chk);
         st.hotkey_win_chk->value(g_hotkey_win ? 1 : 0);
         mx += 55;
-        st.hotkey_alt_chk = new Fl_Check_Button(mx, inner_y, 50, 22, "Alt");
+        st.hotkey_alt_chk = make_lockable(
+            new Fl_Check_Button(mx, inner_y, 50, 22, "Alt"), "hotkey_alt");
         style_check(st.hotkey_alt_chk);
         st.hotkey_alt_chk->value(g_hotkey_alt ? 1 : 0);
         mx += 50;
-        st.hotkey_ctrl_chk = new Fl_Check_Button(mx, inner_y, 55, 22, "Ctrl");
+        st.hotkey_ctrl_chk = make_lockable(
+            new Fl_Check_Button(mx, inner_y, 55, 22, "Ctrl"), "hotkey_ctrl");
         style_check(st.hotkey_ctrl_chk);
         st.hotkey_ctrl_chk->value(g_hotkey_ctrl ? 1 : 0);
         mx += 55;
-        st.hotkey_shift_chk = new Fl_Check_Button(mx, inner_y, 60, 22, "Shift");
+        st.hotkey_shift_chk = make_lockable(
+            new Fl_Check_Button(mx, inner_y, 60, 22, "Shift"), "hotkey_shift");
 #endif
         style_check(st.hotkey_shift_chk);
         st.hotkey_shift_chk->value(g_hotkey_shift ? 1 : 0);
@@ -181,7 +198,8 @@ void build_general_tab(DlgState &st, int tab_h) {
         style_label(key_label);
         key_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-        st.hotkey_key_choice = new Fl_Choice(lx + 110, inner_y, 100, 22);
+        st.hotkey_key_choice = make_lockable(
+            new Fl_Choice(lx + 110, inner_y, 100, 22), "hotkey_key");
         st.hotkey_key_choice->color(DLG_INPUT);
         st.hotkey_key_choice->textcolor(DLG_TEXT);
         st.hotkey_key_choice->labelcolor(DLG_LABEL);

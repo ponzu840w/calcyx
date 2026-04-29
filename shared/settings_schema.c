@@ -110,7 +110,7 @@ static const calcyx_setting_desc_t TABLE[] = {
     /* color_preset / color_* は Phase C で TUI も読むようになるので scope=GT.
      * TUI 側は tui_color_source=mirror_gui のときだけ参照する条件付きアクセス。 */
     PRESET("color_preset", GT, 0, "otaku-black",
-           "Color theme preset. color_* keys below take effect only when set to user-defined."),
+           "Color theme preset. color_* keys below take effect only when set to 'user'."),
 
     /* color_* は preset != user-defined のとき commented で書かれる。 */
     COLOR("color_bg",          GT),

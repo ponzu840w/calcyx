@@ -51,6 +51,7 @@ struct FontTab {
 struct ColorEntry {
     const char *label;
     Fl_Color   *target;
+    const char *schema_key;  /* calcyx.conf.override の lock 判定用 */
 };
 
 struct SwatchData {
@@ -146,3 +147,19 @@ void build_calculation_tab(DlgState &st, int tab_h);
 std::string font_id_to_display_name(Fl_Font id);
 void update_font_btn(FontTab *ft);
 void update_preview(FontTab *ft);
+
+// ---- calcyx.conf.override ロックを widget に当てるヘルパ ----
+// schema_key を user_data に埋め込み、 起動時 locked なら deactivate + tooltip。
+// build_*_tab で widget 作成時に make_lockable(new ..., "key") として包む。
+// schema 項目を新規追加するときも widget 作成行に key を渡すだけで lock 対応完了。
+#include "i18n.h"
+template<class W>
+W *make_lockable(W *w, const char *schema_key) {
+    if (!w || !schema_key) return w;
+    w->user_data((void *)schema_key);
+    if (settings_locked_keys().count(schema_key)) {
+        w->deactivate();
+        w->tooltip(_("Locked by calcyx.conf.override"));
+    }
+    return w;
+}

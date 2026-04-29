@@ -11,6 +11,7 @@
 #include <FL/Fl.H>
 #include <cstdio>
 #include <cstring>
+#include <set>
 #include <string>
 #include <map>
 #include <algorithm>
@@ -48,6 +49,8 @@ bool        &g_hotkey_shift               = g_settings.hotkey_shift;
 int         &g_hotkey_keycode             = g_settings.hotkey_keycode;
 
 static std::string s_conf_path;
+static std::string s_local_path;
+static std::set<std::string> s_locked_keys;
 
 // ---- フォント名 <-> ID 変換 (システムフォント対応) ----
 static bool s_sys_fonts_loaded = false;
@@ -98,9 +101,11 @@ static void ensure_path() {
     if (!s_conf_path.empty()) return;
     std::string dir = AppPrefs::config_dir();
 #if defined(_WIN32)
-    s_conf_path = dir + "\\calcyx.conf";
+    s_conf_path  = dir + "\\calcyx.conf";
+    s_local_path = dir + "\\calcyx.conf.override";
 #else
-    s_conf_path = dir + "/calcyx.conf";
+    s_conf_path  = dir + "/calcyx.conf";
+    s_local_path = dir + "/calcyx.conf.override";
 #endif
 }
 
@@ -111,6 +116,12 @@ const char *settings_path() {
 
 void settings_set_path_for_test(const char *path) {
     s_conf_path = path ? path : "";
+    s_local_path = path ? (std::string(path) + ".override") : "";
+    s_locked_keys.clear();
+}
+
+const std::set<std::string> &settings_locked_keys() {
+    return s_locked_keys;
 }
 
 // ---- スキーマキー → g_* ポインタの対応表 (~53 件、 線形検索で OK) ----
@@ -340,17 +351,38 @@ void settings_init_defaults() {
 }
 
 // ---- load ----
-void settings_load() {
-    /* 起動時に conf を schema と同期。 既存ファイルがあれば値・コメント・
-     * 並び順は保ち、 schema に追加された未出現キーだけを既定値で再挿入する。
-     * 新規 conf 生成も同関数で兼ねる。 */
-    ensure_path();
-    calcyx_settings_sync_with_schema(s_conf_path.c_str(),
-        "# calcyx user settings — edit freely.\n");
 
-    auto kv = read_conf();
-    if (kv.empty()) return;
+/* calcyx.conf.override: 同階層の override ファイル。 起動時にヘッダのみで
+ * 自動生成し、 以後 calcyx は読むだけ。 ここに書かれた key=value は
+ * calcyx.conf の値を強制上書きし、 該当 key を s_locked_keys に記録する。
+ * GUI Prefs 側で widget を deactivate するためのソース情報。 */
+static std::map<std::string, std::string> read_local_overrides() {
+    std::map<std::string, std::string> kv;
+    if (s_local_path.empty()) return kv;
+    FILE *fp = calcyx_fopen(s_local_path.c_str(), "r");
+    if (!fp) return kv;
+    char line[512];
+    while (fgets(line, sizeof(line), fp)) {
+        size_t len = strlen(line);
+        while (len > 0 && (line[len-1] == '\n' || line[len-1] == '\r'))
+            line[--len] = '\0';
+        if (line[0] == '#' || line[0] == '\0') continue;
+        char *eq = strchr(line, '=');
+        if (!eq) continue;
+        char *ke = eq - 1;
+        while (ke >= line && (*ke == ' ' || *ke == '\t')) ke--;
+        std::string key(line, ke - line + 1);
+        const char *vs = eq + 1;
+        while (*vs == ' ' || *vs == '\t') vs++;
+        kv[key] = vs;
+    }
+    fclose(fp);
+    return kv;
+}
 
+/* kv に存在する key だけ g_* に反映する。 部分 kv (= override のみなど) も
+ * 受け付ける: kv に無い key は g_* を保持する。 */
+static void apply_kv_to_globals(const std::map<std::string, std::string> &kv) {
     int n = 0;
     const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
 
@@ -358,6 +390,7 @@ void settings_load() {
         const calcyx_setting_desc_t &d = table[i];
         if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) continue;
         if (!d.key) continue;
+        if (kv.find(d.key) == kv.end()) continue;  /* 部分 kv: 未指定は保持 */
         void *target = gui_target(d.key);
         if (!target) continue;
 
@@ -394,33 +427,59 @@ void settings_load() {
                 map_get(kv, d.key, d.s_def ? d.s_def : "");
             break;
         default:
-            break;  // COLOR / SECTION は後段で処理
+            break;
         }
     }
 
     /* color_* は preset によらず常に g_user_colors に読み込む。
      * '#key=value' (commented) 形式も settings_io が値として返すので、
      * preset != USER のセッション越しの色設定が round-trip する。 */
-    {
-        CalcyxColors def;
-        colors_init_defaults(&def);
-        for (int i = 0; i < n; i++) {
-            const calcyx_setting_desc_t &d = table[i];
-            if (d.kind != CALCYX_SETTING_KIND_COLOR) continue;
-            if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) continue;
-            void *target = gui_target(d.key);
-            if (!target) continue;
-            size_t offset = (char *)target - (char *)&g_colors;
-            Fl_Color *user_target =
-                (Fl_Color *)((char *)&g_user_colors + offset);
-            Fl_Color fallback = color_default(d.key, def);
-            *user_target = hex_to_color(map_get(kv, d.key, ""), fallback);
-        }
+    CalcyxColors def;
+    colors_init_defaults(&def);
+    for (int i = 0; i < n; i++) {
+        const calcyx_setting_desc_t &d = table[i];
+        if (d.kind != CALCYX_SETTING_KIND_COLOR) continue;
+        if (!(d.scope & CALCYX_SETTING_SCOPE_GUI)) continue;
+        if (kv.find(d.key) == kv.end()) continue;
+        void *target = gui_target(d.key);
+        if (!target) continue;
+        size_t offset = (char *)target - (char *)&g_colors;
+        Fl_Color *user_target =
+            (Fl_Color *)((char *)&g_user_colors + offset);
+        Fl_Color fallback = color_default(d.key, def);
+        *user_target = hex_to_color(map_get(kv, d.key, ""), fallback);
     }
     /* g_colors は preset に応じて: USER_DEFINED なら g_user_colors のコピー、
      * そうでなければ preset 由来の色値で上書き。 */
     colors_apply_preset(g_color_preset);
+}
 
+void settings_load() {
+    /* 起動時に conf を schema と同期。 既存ファイルがあれば値・コメント・
+     * 並び順は保ち、 schema に追加された未出現キーだけを既定値で再挿入する。
+     * 新規 conf 生成も同関数で兼ねる。 */
+    ensure_path();
+    calcyx_settings_sync_with_schema(s_conf_path.c_str(),
+        "# calcyx user settings — edit freely.\n");
+    /* override ファイルはヘッダ 1 行だけで生成し、 以降は触らない。 */
+    calcyx_settings_init_header_only(s_local_path.c_str(),
+        "# calcyx local override — never edited by calcyx, "
+        "values here forcibly override calcyx.conf.\n");
+
+    auto kv = read_conf();
+
+    /* override ファイルの値で kv を上書き、 locked_keys に key を記録。 */
+    s_locked_keys.clear();
+    auto override_kv = read_local_overrides();
+    for (const auto &p : override_kv) {
+        kv[p.first] = p.second;
+        s_locked_keys.insert(p.first);
+    }
+    if (kv.empty()) {
+        update_crash_config_snapshot();
+        return;
+    }
+    apply_kv_to_globals(kv);
     update_crash_config_snapshot();
 }
 
@@ -511,5 +570,11 @@ void settings_save() {
     calcyx_settings_write_preserving(s_conf_path.c_str(),
                                      first_time_header,
                                      gui_value_lookup, nullptr);
+    /* save 直後は g_* に GUI で編集された (= conf 同期済み) 値が入っているが、
+     * override ファイルで強制上書きされている key は GUI で触らせない設計。
+     * Phase 2 まで widget の deactivate が無いので、 ここで override を再適用
+     * して g_* を最新化する (= 「Apply 後に override が無視される」 を防ぐ)。 */
+    auto override_kv = read_local_overrides();
+    if (!override_kv.empty()) apply_kv_to_globals(override_kv);
     update_crash_config_snapshot();
 }

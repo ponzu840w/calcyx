@@ -637,6 +637,18 @@ static int sync_lookup(const char *key, char *buf, size_t buflen,
     return defaults_lookup(key, buf, buflen, out_is_default, NULL);
 }
 
+int calcyx_settings_init_header_only(const char *path, const char *header) {
+    FILE *fp;
+    if (!path) return -1;
+    fp = calcyx_fopen(path, "rb");
+    if (fp) { fclose(fp); return 0; }
+    fp = calcyx_fopen(path, "wb");
+    if (!fp) return -1;
+    if (header && *header) fputs(header, fp);
+    fclose(fp);
+    return 1;
+}
+
 int calcyx_settings_sync_with_schema(const char *path, const char *first_time_header) {
     int   rc;
     sync_kv_t s = { NULL, NULL, 0, 0 };

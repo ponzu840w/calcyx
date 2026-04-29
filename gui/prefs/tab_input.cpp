@@ -20,8 +20,10 @@ void build_input_tab(DlgState &st, int tab_h) {
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Completion"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
-        st.auto_complete_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Auto-completion on typing"));
+        st.auto_complete_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Auto-completion on typing")),
+            "auto_completion");
         style_check(st.auto_complete_chk);
         st.auto_complete_chk->value(g_input_auto_completion ? 1 : 0);
         inner_y += 22;
@@ -45,14 +47,18 @@ void build_input_tab(DlgState &st, int tab_h) {
         pop_label->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
         inner_y += 22;
 
-        st.popup_indep_normal_chk = new Fl_Check_Button(lx + 30, inner_y, sw - 40, 22,
-            _("In normal mode"));
+        st.popup_indep_normal_chk = make_lockable(
+            new Fl_Check_Button(lx + 30, inner_y, sw - 40, 22,
+                _("In normal mode")),
+            "popup_independent_normal");
         style_check(st.popup_indep_normal_chk);
         st.popup_indep_normal_chk->value(g_popup_independent_normal ? 1 : 0);
         inner_y += 22;
 
-        st.popup_indep_compact_chk = new Fl_Check_Button(lx + 30, inner_y, sw - 40, 22,
-            _("In compact mode"));
+        st.popup_indep_compact_chk = make_lockable(
+            new Fl_Check_Button(lx + 30, inner_y, sw - 40, 22,
+                _("In compact mode")),
+            "popup_independent_compact");
         style_check(st.popup_indep_compact_chk);
         st.popup_indep_compact_chk->value(g_popup_independent_compact ? 1 : 0);
 
@@ -66,8 +72,10 @@ void build_input_tab(DlgState &st, int tab_h) {
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Brackets"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
-        st.auto_brackets_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Auto-close brackets ( ) [ ] { }"));
+        st.auto_brackets_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Auto-close brackets ( ) [ ] { }")),
+            "auto_close_brackets");
         style_check(st.auto_brackets_chk);
         st.auto_brackets_chk->value(g_input_auto_close_brackets ? 1 : 0);
 
@@ -81,8 +89,10 @@ void build_input_tab(DlgState &st, int tab_h) {
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Editing"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
-        st.bs_delete_empty_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Backspace on empty row deletes the row"));
+        st.bs_delete_empty_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Backspace on empty row deletes the row")),
+            "bs_delete_empty_row");
         style_check(st.bs_delete_empty_chk);
         st.bs_delete_empty_chk->value(g_input_bs_delete_empty_row ? 1 : 0);
 

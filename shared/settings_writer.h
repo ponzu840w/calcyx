@@ -38,6 +38,13 @@ int calcyx_settings_init_defaults(const char *path,
 int calcyx_settings_sync_with_schema(const char *path,
                                      const char *first_time_header);
 
+/* path にヘッダだけのファイルを新規生成する (既存があれば触らない)。
+ * テキスト編集者向けの「local override」 ファイル等、 calcyx 自身は二度と
+ * 書き換えない用途で使う。
+ * 戻り値: 1=新規生成、 0=既存スキップ、 -1=エラー。 */
+int calcyx_settings_init_header_only(const char *path,
+                                     const char *header);
+
 #ifdef __cplusplus
 }
 #endif

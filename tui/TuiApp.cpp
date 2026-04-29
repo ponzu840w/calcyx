@@ -258,6 +258,10 @@ std::string preferences_conf_path() {
 #endif
 }
 
+std::string preferences_local_path() {
+    return preferences_conf_path() + ".override";
+}
+
 /* calcyx.conf の最小パーサ (FLTK 非依存・GUI の read_conf とバイト互換)。
  * '#' 行と空行をスキップ、 key=value の前後空白を除去して std::map に。 */
 std::map<std::string, std::string> conf_read(const std::string &path) {
@@ -355,8 +359,17 @@ void TuiApp::apply_settings_from_conf() {
      * 新規 conf 生成も同関数で兼ねる。 */
     calcyx_settings_sync_with_schema(path.c_str(),
         "# calcyx user settings — edit freely.\n");
+    /* override ファイル: ヘッダ 1 行で生成し、 以後は読むだけ。 */
+    std::string local_path = preferences_local_path();
+    calcyx_settings_init_header_only(local_path.c_str(),
+        "# calcyx local override — never edited by calcyx, "
+        "values here forcibly override calcyx.conf.\n");
 
     auto kv = conf_read(path);
+    /* override ファイルの値で kv を上書き (key 単位)。 TUI には UI ダイアログ
+     * が無いので「locked keys を deactivate」 のような処理は不要。 */
+    auto override_kv = conf_read(local_path);
+    for (const auto &p : override_kv) kv[p.first] = p.second;
     if (kv.empty()) return;
 
     /* 言語: 起動時 1 回だけ反映。 ホットリロードはしない。

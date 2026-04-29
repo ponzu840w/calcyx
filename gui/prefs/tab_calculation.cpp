@@ -36,9 +36,15 @@ void build_calculation_tab(DlgState &st, int tab_h) {
         return sp;
     };
 
-    st.limit_array_spin  = add_row(_("Max array length:"),        1, 1000000, g_limit_max_array_length);
-    st.limit_string_spin = add_row(_("Max string length:"),       1, 1000000, g_limit_max_string_length);
-    st.limit_depth_spin  = add_row(_("Max call recursion depth:"), 1, 1000,    g_limit_max_call_depth);
+    st.limit_array_spin  = make_lockable(
+        add_row(_("Max array length:"),        1, 1000000, g_limit_max_array_length),
+        "max_array_length");
+    st.limit_string_spin = make_lockable(
+        add_row(_("Max string length:"),       1, 1000000, g_limit_max_string_length),
+        "max_string_length");
+    st.limit_depth_spin  = make_lockable(
+        add_row(_("Max call recursion depth:"), 1, 1000,    g_limit_max_call_depth),
+        "max_call_depth");
 
     sec->end();
     g->end();

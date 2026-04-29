@@ -139,6 +139,26 @@ void update_swatch_labels(DlgState *st) {
 
 void update_swatch_state(DlgState *st) {
     update_swatch_labels(st);
+    /* preset = USER_DEFINED のときだけ swatch をクリック可能にする (元設計)。
+     * さらに override で特定 color_* が固定されている場合はその swatch を
+     * preset によらず deactivate + tooltip。 */
+    bool user_def = (g_color_preset == COLOR_PRESET_USER_DEFINED);
+    const auto &locked = settings_locked_keys();
+    for (int i = 0; i < st->colors.count; i++) {
+        const char *key = st->colors.entries[i].schema_key;
+        bool is_locked = key && locked.count(key) > 0;
+        Fl_Button *btn = st->colors.swatches[i];
+        if (is_locked) {
+            btn->deactivate();
+            btn->tooltip(_("Locked by calcyx.conf.override"));
+        } else if (user_def) {
+            btn->activate();
+            btn->tooltip(nullptr);
+        } else {
+            btn->deactivate();
+            btn->tooltip(nullptr);
+        }
+    }
 }
 
 // ---- ダイアログ自身のウィジェットカラーを現在の g_colors.ui_* で更新 ----

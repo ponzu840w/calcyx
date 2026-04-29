@@ -86,6 +86,12 @@ void settings_init_defaults();
 void settings_load();
 void settings_save();
 
+/* calcyx.conf.local で強制 override されている key の集合 (テキスト派ユーザの
+ * セーフガード)。 GUI Prefs はここに含まれる key の widget を deactivate する。 */
+#include <set>
+#include <string>
+const std::set<std::string> &settings_locked_keys();
+
 // calcyx.conf のフルパスを返す
 const char *settings_path();
 

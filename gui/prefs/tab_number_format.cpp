@@ -45,7 +45,8 @@ void build_number_format_tab(DlgState &st, int tab_h) {
             _("Max length of decimal places to display:"));
         style_label(lb);
         lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-        st.fmt_decimal_spin = new Fl_Spinner(lx + 10 + 300, inner_y, 70, 22);
+        st.fmt_decimal_spin = make_lockable(
+            new Fl_Spinner(lx + 10 + 300, inner_y, 70, 22), "decimal_digits");
         style_spinner(st.fmt_decimal_spin);
         st.fmt_decimal_spin->range(1, 34);
         st.fmt_decimal_spin->step(1);
@@ -58,8 +59,10 @@ void build_number_format_tab(DlgState &st, int tab_h) {
     // ===== Scientific Notation =====
     // 構成: enable チェック (セクション外) + 枠内に 2 つの log10 閾値 + Engineering Alignment
     {
-        st.fmt_exp_chk = new Fl_Check_Button(lx + 4, ly, 220, 20,
-            _("Scientific notation (E)"));
+        st.fmt_exp_chk = make_lockable(
+            new Fl_Check_Button(lx + 4, ly, 220, 20,
+                _("Scientific notation (E)")),
+            "e_notation");
         style_check(st.fmt_exp_chk);
         st.fmt_exp_chk->value(g_fmt_settings.e_notation ? 1 : 0);
         st.fmt_exp_chk->callback(exp_toggle_cb, &st);
@@ -75,7 +78,8 @@ void build_number_format_tab(DlgState &st, int tab_h) {
         Fl_Box *lb_pos = new Fl_Box(lx + 10, inner_y, 110, 22, "log10(x) \xe2\x89\xa7");
         style_label(lb_pos);
         lb_pos->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-        st.fmt_exp_pos_spin = new Fl_Spinner(lx + 120, inner_y, 70, 22);
+        st.fmt_exp_pos_spin = make_lockable(
+            new Fl_Spinner(lx + 120, inner_y, 70, 22), "e_positive_min");
         style_spinner(st.fmt_exp_pos_spin);
         st.fmt_exp_pos_spin->range(1, 30);
         st.fmt_exp_pos_spin->step(1);
@@ -86,7 +90,8 @@ void build_number_format_tab(DlgState &st, int tab_h) {
         Fl_Box *lb_neg = new Fl_Box(lx + 10, inner_y, 110, 22, "log10(x) \xe2\x89\xa6");
         style_label(lb_neg);
         lb_neg->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-        st.fmt_exp_neg_spin = new Fl_Spinner(lx + 120, inner_y, 70, 22);
+        st.fmt_exp_neg_spin = make_lockable(
+            new Fl_Spinner(lx + 120, inner_y, 70, 22), "e_negative_max");
         style_spinner(st.fmt_exp_neg_spin);
         st.fmt_exp_neg_spin->range(-30, -1);
         st.fmt_exp_neg_spin->step(1);
@@ -94,8 +99,10 @@ void build_number_format_tab(DlgState &st, int tab_h) {
         st.fmt_exp_neg_spin->callback(fmt_change_cb, &st);
         inner_y += 26;
 
-        st.fmt_align_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Engineering alignment"));
+        st.fmt_align_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Engineering alignment")),
+            "e_alignment");
         style_check(st.fmt_align_chk);
         st.fmt_align_chk->value(g_fmt_settings.e_alignment ? 1 : 0);
         st.fmt_align_chk->callback(fmt_change_cb, &st);
@@ -111,15 +118,19 @@ void build_number_format_tab(DlgState &st, int tab_h) {
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Numeric Separators"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
-        st.sep_thousands_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Separate decimal numbers every 3 digits"));
+        st.sep_thousands_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Separate decimal numbers every 3 digits")),
+            "thousands_separator");
         style_check(st.sep_thousands_chk);
         st.sep_thousands_chk->value(g_sep_thousands ? 1 : 0);
         st.sep_thousands_chk->callback(fmt_change_cb, &st);
         inner_y += 26;
 
-        st.sep_hex_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            _("Separate hex/bin/oct numbers every 4 digits"));
+        st.sep_hex_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Separate hex/bin/oct numbers every 4 digits")),
+            "hex_separator");
         style_check(st.sep_hex_chk);
         st.sep_hex_chk->value(g_sep_hex ? 1 : 0);
         st.sep_hex_chk->callback(fmt_change_cb, &st);

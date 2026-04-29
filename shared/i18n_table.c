@@ -11,6 +11,7 @@ typedef struct {
 const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     /* === 共通 === */
     { "Restart to apply this change", "再起動後に変更が反映されます" },
+    { "Locked by calcyx.conf.override", "calcyx.conf.override で固定されています" },
     { "OK", "OK" },
     { "Cancel", "キャンセル" },
     { "Apply", "適用" },
