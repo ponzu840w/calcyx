@@ -56,6 +56,8 @@ endif()
 add_library(calcyx_ui_common STATIC
     colors.cpp
     SheetView.cpp
+    SheetLineInput.cpp
+    sheet_highlight.cpp
     CompletionPopup.cpp
     PasteOptionForm.cpp
     PrefsDialog.cpp
