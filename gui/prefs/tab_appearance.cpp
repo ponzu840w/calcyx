@@ -256,83 +256,158 @@ static void copy_to_user_cb(Fl_Widget *, void *data) {
     refresh_previews(st);
 }
 
+/* ---- レイアウト定数 ----
+ * このタブの寸法を変えるときに触る場所をここに集めている。
+ * 色ボタンの厚みを縮めたいときは SWATCH_BTN_H と SWATCH_ROW_H、
+ * セクション間隔は H_SECTION_HEAD / H_INPUT_ROW を調整する。 */
+
+/* タブグループ全体 */
+constexpr int GROUP_X      = 5;
+constexpr int GROUP_TOP    = 30;   // タブ上端からのオフセット (ly や preview_h の基準)
+constexpr int GROUP_BOTTOM_PAD = 25;   // tab_h からの引きしろ (グループ下端まで)
+constexpr int CONTENT_X0   = 20;   // セクション見出しの x 開始位置
+constexpr int CONTENT_Y0   = 50;   // 最初のセクション見出しの y 開始位置
+constexpr int CONTENT_INDENT = 10; // セクション内のさらなる左インデント
+
+/* 高さ */
+constexpr int H_SECTION_LBL = 20;  // セクション見出しの高さ
+constexpr int H_CONTROL     = 25;  // 通常の入力欄/ボタン高さ
+constexpr int H_SECTION_HEAD = 22; // セクション見出し直後の改行幅
+constexpr int H_INPUT_ROW   = 28;  // 通常の入力行の改行幅
+constexpr int H_SIZE_ROW    = 30;  // Font セクション末尾 (Size 行) の改行幅
+
+/* 横幅 */
+constexpr int W_LABEL_NARROW   = 60;   // "Font:" / "Size:"
+constexpr int W_LABEL_PRESET   = 60;   // "Preset:"
+constexpr int W_LABEL_SWATCH   = 100;  // 色エントリのラベル (日本語ラベルが収まる幅)
+constexpr int W_FONT_BTN_RPAD  = 40;   // Font ボタンの右パディング (DW からの引きしろ)
+constexpr int W_SIZE_SPIN      = 80;
+constexpr int W_PRESET_CHOICE  = 200;
+constexpr int W_COPY_BTN       = 150;
+constexpr int GAP_LABEL_INPUT  = 10;   // ラベルと入力欄の間 (Preset 行)
+constexpr int GAP_INPUT_INPUT  = 5;    // 隣り合う入力欄の間 (Choice → Copy ボタン)
+
+/* 色 swatch グリッド
+ * カラム幅は W_LABEL_SWATCH + SWATCH_BTN_W + SWATCH_COL_GAP の累積で決まる.
+ * ラベル領域を広げたいときは W_LABEL_SWATCH を, ボタンを縮めたいときは
+ * SWATCH_BTN_W を, カラム間の余白を変えたいときは SWATCH_COL_GAP を調整する. */
+constexpr int SWATCH_COLS    = 3;
+constexpr int SWATCH_ROWS    = 10;
+constexpr int SWATCH_BTN_W   = 65;
+constexpr int SWATCH_BTN_H   = 18;     // 色ボタンの高さ
+constexpr int SWATCH_ROW_H   = 24;     // 色ボタン行のピッチ (BTN_H + 行間)
+constexpr int SWATCH_COL_GAP = 5;      // カラム間の余白
+constexpr int SWATCH_AFTER_GAP = 4;
+constexpr int SWATCH_LABEL_FONT_SZ = 11;
+constexpr int SWATCH_BTN_FONT_SZ   = 10;
+
+/* 罫線チェック */
+constexpr int W_ROWLINES_CHK = 300;
+constexpr int H_ROWLINES_CHK = 22;
+constexpr int H_ROWLINES_AFTER = 4;
+
+/* Preview */
+constexpr int H_PREVIEW_MARGIN = 6;
+constexpr int W_PREVIEW_RPAD   = 50;
+
+/* ---- セクション見出し用ヘルパ ---- */
+static Fl_Box *make_section_header(int x, int y, const char *label) {
+    auto *box = new Fl_Box(x, y, 200, H_SECTION_LBL, _(label));
+    box->labelcolor(DLG_LABEL);
+    box->labelsize(12);
+    box->labelfont(FL_BOLD);
+    box->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+    return box;
+}
+
 void build_appearance_tab(DlgState &st, int tab_h) {
-    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, _(" Appearance "));
+    const int group_h     = tab_h - GROUP_BOTTOM_PAD;
+    const int group_bottom = GROUP_TOP + group_h;
+
+    Fl_Group *g = new Fl_Group(GROUP_X, GROUP_TOP, DW - 2 * GROUP_X, group_h, _(" Appearance "));
     g->color(DLG_BG);
     g->selection_color(DLG_BG);
     g->labelcolor(DLG_TEXT);
     g->labelsize(12);
 
-    int lx = 20, ly = 50;
+    const int lx = CONTENT_X0;
+    int ly = CONTENT_Y0;
 
     // --- Font ---
-    Fl_Box *sec_font = new Fl_Box(lx, ly, 200, 20, _("Font"));
-    sec_font->labelcolor(DLG_LABEL);
-    sec_font->labelsize(12);
-    sec_font->labelfont(FL_BOLD);
-    sec_font->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    ly += 22;
+    make_section_header(lx, ly, "Font");
+    ly += H_SECTION_HEAD;
 
-    int lw = 50;
-    st.font.selected_id = g_font_id;
+    st.font.selected_id   = g_font_id;
     st.font.selected_name = font_id_to_display_name(g_font_id);
 
-    Fl_Box *lb1 = new Fl_Box(lx + 10, ly, lw, 25, _("Font:"));
-    style_label(lb1);
-    lb1->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+    {
+        int x = lx + CONTENT_INDENT;
+        Fl_Box *lb = new Fl_Box(x, ly, W_LABEL_NARROW, H_CONTROL, _("Font:"));
+        style_label(lb);
+        lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-    st.font.font_btn = new Fl_Button(lx + 10 + lw, ly, DW - lx - lw - 50, 25);
-    st.font.font_btn->box(FL_DOWN_BOX);
-    st.font.font_btn->color(DLG_INPUT);
-    st.font.font_btn->labelcolor(DLG_TEXT);
-    st.font.font_btn->labelsize(13);
-    st.font.font_btn->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    st.font.font_btn->callback(font_btn_cb, &st);
-    update_font_btn(&st.font);
+        x += W_LABEL_NARROW;
+        const int btn_w = DW - x - W_FONT_BTN_RPAD;
+        st.font.font_btn = new Fl_Button(x, ly, btn_w, H_CONTROL);
+        st.font.font_btn->box(FL_DOWN_BOX);
+        st.font.font_btn->color(DLG_INPUT);
+        st.font.font_btn->labelcolor(DLG_TEXT);
+        st.font.font_btn->labelsize(13);
+        st.font.font_btn->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        st.font.font_btn->callback(font_btn_cb, &st);
+        update_font_btn(&st.font);
+    }
+    ly += H_INPUT_ROW;
 
-    ly += 28;
-    Fl_Box *lb2 = new Fl_Box(lx + 10, ly, lw, 25, _("Size:"));
-    style_label(lb2);
-    lb2->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+    {
+        int x = lx + CONTENT_INDENT;
+        Fl_Box *lb = new Fl_Box(x, ly, W_LABEL_NARROW, H_CONTROL, _("Size:"));
+        style_label(lb);
+        lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-    st.font.size_spin = new Fl_Spinner(lx + 10 + lw, ly, 80, 25);
-    style_spinner(st.font.size_spin);
-    st.font.size_spin->range(8, 36);
-    st.font.size_spin->step(1);
-    st.font.size_spin->value(g_font_size);
-    st.font.size_spin->callback(size_change_cb, &st);
-    ly += 30;
+        x += W_LABEL_NARROW;
+        st.font.size_spin = new Fl_Spinner(x, ly, W_SIZE_SPIN, H_CONTROL);
+        style_spinner(st.font.size_spin);
+        st.font.size_spin->range(8, 36);
+        st.font.size_spin->step(1);
+        st.font.size_spin->value(g_font_size);
+        st.font.size_spin->callback(size_change_cb, &st);
+    }
+    ly += H_SIZE_ROW;
 
     // --- Colors ---
-    Fl_Box *sec_col = new Fl_Box(lx, ly, 200, 20, _("Colors"));
-    sec_col->labelcolor(DLG_LABEL);
-    sec_col->labelsize(12);
-    sec_col->labelfont(FL_BOLD);
-    sec_col->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    ly += 22;
+    make_section_header(lx, ly, "Colors");
+    ly += H_SECTION_HEAD;
 
-    Fl_Box *lb_preset = new Fl_Box(lx + 10, ly, 60, 25, _("Preset:"));
-    style_label(lb_preset);
-    lb_preset->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
-    st.preset_choice = new Fl_Choice(lx + 80, ly, 200, 25);
-    st.preset_choice->color(DLG_INPUT);
-    st.preset_choice->textcolor(DLG_TEXT);
-    st.preset_choice->labelsize(12);
-    st.preset_choice->textsize(12);
-    st.preset_choice->selection_color(g_colors.accent);
-    for (int i = 0; i < COLOR_PRESET_COUNT; i++)
-        st.preset_choice->add(COLOR_PRESET_INFO[i].label);
-    st.preset_choice->value(g_color_preset);
-    st.preset_choice->callback(preset_change_cb, &st);
+    {
+        int x = lx + CONTENT_INDENT;
+        Fl_Box *lb = new Fl_Box(x, ly, W_LABEL_PRESET, H_CONTROL, _("Preset:"));
+        style_label(lb);
+        lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-    Fl_Button *copy_btn = new Fl_Button(lx + 285, ly, 150, 25, _("Copy to user-defined"));
-    copy_btn->color(DLG_BTN);
-    copy_btn->labelcolor(DLG_TEXT);
-    copy_btn->labelsize(12);
-    copy_btn->tooltip(_("Copy current preset colors to user-defined and switch to it for editing"));
-    copy_btn->callback(copy_to_user_cb, &st);
-    ly += 28;
+        x += W_LABEL_PRESET + GAP_LABEL_INPUT;
+        st.preset_choice = new Fl_Choice(x, ly, W_PRESET_CHOICE, H_CONTROL);
+        st.preset_choice->color(DLG_INPUT);
+        st.preset_choice->textcolor(DLG_TEXT);
+        st.preset_choice->labelsize(12);
+        st.preset_choice->textsize(12);
+        st.preset_choice->selection_color(g_colors.accent);
+        for (int i = 0; i < COLOR_PRESET_COUNT; i++)
+            st.preset_choice->add(COLOR_PRESET_INFO[i].label);
+        st.preset_choice->value(g_color_preset);
+        st.preset_choice->callback(preset_change_cb, &st);
 
+        x += W_PRESET_CHOICE + GAP_INPUT_INPUT;
+        Fl_Button *copy_btn = new Fl_Button(x, ly, W_COPY_BTN, H_CONTROL, _("Copy to user-defined"));
+        copy_btn->color(DLG_BTN);
+        copy_btn->labelcolor(DLG_TEXT);
+        copy_btn->labelsize(12);
+        copy_btn->tooltip(_("Copy current preset colors to user-defined and switch to it for editing"));
+        copy_btn->callback(copy_to_user_cb, &st);
+    }
+    ly += H_INPUT_ROW;
+
+    /* --- 色 swatch グリッド --- */
     struct { const char *label; Fl_Color *color; } entries[] = {
         { "Background",   &g_colors.bg },
         { "Selection",    &g_colors.sel_bg },
@@ -343,11 +418,11 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         { "Identifiers",  &g_colors.ident },
         { "Literals",     &g_colors.special },
         { "SI Prefix",    &g_colors.si_pfx },
+        { "Error",        &g_colors.error },
         { "Paren 1",      &g_colors.paren[0] },
         { "Paren 2",      &g_colors.paren[1] },
         { "Paren 3",      &g_colors.paren[2] },
         { "Paren 4",      &g_colors.paren[3] },
-        { "Error",        &g_colors.error },
         { "Win BG",       &g_colors.ui_win_bg },
         { "Dlg BG",       &g_colors.ui_bg },
         { "UI Input",     &g_colors.ui_input },
@@ -363,35 +438,37 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         { "Popup DescBG", &g_colors.pop_desc_bg },
         { "Popup Border", &g_colors.pop_border },
     };
-
     const int n_entries = (int)(sizeof(entries) / sizeof(entries[0]));
     st.colors.count = n_entries;
-    const int cols = 3, rows = 10;
-    int col_w = (DW - 40) / cols;
-    int sy = ly;
-    for (int i = 0; i < n_entries; i++) {
-        int c = i / rows, r = i % rows;
-        int cx = lx + 10 + c * col_w;
-        int cy = sy + r * 24;
-        Fl_Box *lb = new Fl_Box(cx, cy, 70, 20, _(entries[i].label));
-        style_label(lb);
-        lb->labelsize(11);
-        lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
 
-        auto *btn = new Fl_Button(cx + 70, cy, 80, 20);
+    const int col_w = W_LABEL_SWATCH + SWATCH_BTN_W + SWATCH_COL_GAP;
+    const int grid_y0 = ly;
+    for (int i = 0; i < n_entries; i++) {
+        const int c = i / SWATCH_ROWS, r = i % SWATCH_ROWS;
+        const int cx = lx + CONTENT_INDENT + c * col_w;
+        const int cy = grid_y0 + r * SWATCH_ROW_H;
+
+        Fl_Box *lb = new Fl_Box(cx, cy, W_LABEL_SWATCH, SWATCH_BTN_H, _(entries[i].label));
+        style_label(lb);
+        lb->labelsize(SWATCH_LABEL_FONT_SZ);
+        lb->align(FL_ALIGN_RIGHT | FL_ALIGN_INSIDE);
+
+        auto *btn = new Fl_Button(cx + W_LABEL_SWATCH, cy, SWATCH_BTN_W, SWATCH_BTN_H);
         btn->box(FL_DOWN_BOX);
         btn->color(*entries[i].color);
-        btn->labelsize(10);
+        btn->labelsize(SWATCH_BTN_FONT_SZ);
         btn->align(FL_ALIGN_INSIDE);
         st.colors.swatch_data[i] = { entries[i].color, &st };
         btn->callback(swatch_cb, &st.colors.swatch_data[i]);
         st.colors.swatches[i] = btn;
         st.colors.entries[i] = { entries[i].label, entries[i].color };
     }
+    ly = grid_y0 + SWATCH_ROWS * SWATCH_ROW_H + SWATCH_AFTER_GAP;
 
-    ly = sy + rows * 24 + 4;
-
-    st.show_rowlines_chk = new Fl_Check_Button(lx + 10, ly, 300, 22, _("Show row separator lines"));
+    /* --- 罫線チェック --- */
+    st.show_rowlines_chk = new Fl_Check_Button(lx + CONTENT_INDENT, ly,
+                                                W_ROWLINES_CHK, H_ROWLINES_CHK,
+                                                _("Show row separator lines"));
     style_check(st.show_rowlines_chk);
     st.show_rowlines_chk->value(g_show_rowlines ? 1 : 0);
     st.show_rowlines_chk->callback([](Fl_Widget *, void *data) {
@@ -399,15 +476,14 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         g_show_rowlines = st->show_rowlines_chk->value() != 0;
         refresh_previews(st);
     }, &st);
-    ly += 26;
+    ly += H_ROWLINES_CHK + H_ROWLINES_AFTER;
 
     // --- Preview ---
-    // 上: 直前のウィジェットとの間に小さな余白 / 下: タブ枠との間に同じ余白
-    const int PREVIEW_MARGIN = 6;
-    ly += PREVIEW_MARGIN;
-    int preview_h = tab_h - 25 - (ly - 30) - PREVIEW_MARGIN;
+    // 上: 直前のウィジェットとの間に余白 / 下: グループ下端との間にも同じ余白
+    ly += H_PREVIEW_MARGIN;
+    const int preview_h = group_bottom - ly - H_PREVIEW_MARGIN;
     st.font_preview_sv = nullptr;
-    st.color_preview_sv = new SheetView(lx, ly, DW - 50, preview_h, true);
+    st.color_preview_sv = new SheetView(lx, ly, DW - W_PREVIEW_RPAD, preview_h, true);
     st.font.preview = nullptr;
 
     g->end();
