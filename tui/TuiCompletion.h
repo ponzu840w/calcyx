@@ -42,6 +42,11 @@ public:
 
     int filtered_count() const { return (int)filtered_.size(); }
 
+    /* 現在の候補と選択中 description が収まる適切な popup 幅 (cells)。
+     * 結果は [min_w, max_w] にクリップ。 候補数の変動で popup の縦サイズは
+     * 変えない (固定高) が、 横は動的に伸ばすほうが見切れないので有用。 */
+    int preferred_width(int min_w, int max_w) const;
+
     /* マウス対応: render() 中に各項目の Box が item_boxes_ に格納される。 *
      * (x,y) を含む項目の絶対インデックスを返す。なければ -1。 */
     int  item_at(int x, int y) const;

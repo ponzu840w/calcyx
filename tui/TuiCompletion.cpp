@@ -85,8 +85,11 @@ Element TuiCompletion::render(int max_rows) const {
     std::string desc = cur ? cur->description : "";
     Element desc_el = text(desc) | dim;
 
+    /* 候補数が変動しても popup の高さが変わらないよう rows 部分を
+     * max_rows に固定。 候補が少ないときは frame 内に空行が出るが、
+     * 描画位置のぴょこぴょこを抑える方が UX 上重要。 */
     return vbox({
-        vbox(std::move(rows)) | frame,
+        vbox(std::move(rows)) | frame | size(HEIGHT, EQUAL, max_rows),
         desc_el,
     }) | border | color(Color::CyanLight);
 }
@@ -101,6 +104,20 @@ int TuiCompletion::item_at(int x, int y) const {
 void TuiCompletion::set_selected(int idx) {
     if (idx < 0 || idx >= (int)filtered_.size()) return;
     selected_ = idx;
+}
+
+int TuiCompletion::preferred_width(int min_w, int max_w) const {
+    int w = min_w;
+    for (const auto &it : filtered_) {
+        const std::string &label = it.label.empty() ? it.id : it.label;
+        w = std::max(w, (int)label.size());
+    }
+    if (auto *cur = selected()) {
+        w = std::max(w, (int)cur->description.size());
+    }
+    /* border (左右 1 cell) ぶん +2。 */
+    w += 2;
+    return std::min(w, max_w);
 }
 
 } // namespace calcyx::tui

@@ -91,8 +91,13 @@ public:
 
     /* ステータスバー表示用 */
     int   focused_row() const { return focused_row_; }
+    /* editor_buf_ が直近の commit 値 (original_expr_) と異なるか。
+     * commit 判定とテスト用。 GUI と同様、 表示色を変えるためには使わない
+     * (確定/未確定はユーザに見せない内部概念)。 */
     bool  editor_dirty() const;
-    const std::string& live_preview() const { return live_preview_; }
+    /* テスト互換のための live preview アクセサ。 内部実装は sheet_model の
+     * 現在の result を返すだけ (= live_evaluate で raw set されている)。 */
+    std::string live_preview() const;
     const std::string& file_path()    const { return file_path_; }
     void  set_file_path(std::string p) { file_path_ = std::move(p); }
 
@@ -199,7 +204,6 @@ private:
     std::string    editor_buf_;
     std::string    original_expr_;
     size_t         cursor_pos_ = 0;
-    std::string    live_preview_;  /* 編集中の仮評価結果 */
     std::string    file_path_;     /* 保存先 (未保存なら空) */
 
     std::function<void()>               quit_cb_;
@@ -225,6 +229,7 @@ private:
     /* マウス: 各行と編集領域の Box (Render() で再構築)。 */
     mutable std::vector<ftxui::Box> row_boxes_;
     mutable ftxui::Box              editor_box_;
+    mutable ftxui::Box              popup_box_;  /* 補完 popup 領域 (ホイールで選択移動) */
 };
 
 std::shared_ptr<TuiSheet> MakeTuiSheet(sheet_model_t *model);

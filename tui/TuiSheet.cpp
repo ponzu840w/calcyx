@@ -205,7 +205,6 @@ void TuiSheet::load_editor_from_row() {
     editor_buf_     = e ? e : "";
     original_expr_  = editor_buf_;
     cursor_pos_     = editor_buf_.size();
-    live_preview_.clear();
 }
 
 void TuiSheet::reload_focused_row() {
@@ -293,6 +292,13 @@ bool TuiSheet::editor_dirty() const {
     return editor_buf_ != original_expr_;
 }
 
+std::string TuiSheet::live_preview() const {
+    if (focused_row_ < 0 || focused_row_ >= sheet_model_row_count(model_))
+        return "";
+    const char *r = sheet_model_row_result(model_, focused_row_);
+    return r ? r : "";
+}
+
 void TuiSheet::commit_if_changed() {
     if (!editor_dirty()) return;
 
@@ -305,22 +311,15 @@ void TuiSheet::commit_if_changed() {
     sheet_model_commit(model_, &undo_op, 1, &redo_op, 1, vs);
 
     original_expr_ = new_expr;
-    live_preview_.clear();
 }
 
+/* GUI の SheetView::live_eval と同じスキーム: sheet_model に raw set して
+ * そのまま eval_all。 戻さない。 確定/未確定の区別は表示で行わず、 result は
+ * 常に sheet_model.result から読む。 commit は undo stack を作るためだけに
+ * 走り、 sheet_model 側の値はすでに最新なので redo は実質 no-op になる。 */
 void TuiSheet::live_evaluate() {
-    if (!editor_dirty()) {
-        live_preview_.clear();
-        return;
-    }
-    /* sheet_model には set_row_expr_raw しかないので、
-     * 一時的に focused 行を編集バッファに差し替えて eval_all → 戻す */
-    std::string backup = original_expr_;
+    if (focused_row_ < 0 || focused_row_ >= sheet_model_row_count(model_)) return;
     sheet_model_set_row_expr_raw(model_, focused_row_, editor_buf_.c_str());
-    sheet_model_eval_all(model_);
-    const char *res = sheet_model_row_result(model_, focused_row_);
-    live_preview_ = res ? res : "";
-    sheet_model_set_row_expr_raw(model_, focused_row_, backup.c_str());
     sheet_model_eval_all(model_);
 }
 
@@ -853,32 +852,16 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
         expr_el = render_highlighted(expr, SIZE_MAX, /*dim_style=*/true);
     }
 
-    /* 中央 "=": 結果がある行のみ表示。 */
-    bool has_result = false;
-    std::string res_text;
-    if (is_focused && editor_dirty()) {
-        if (!live_preview_.empty()) { has_result = true; res_text = live_preview_; }
-    } else if (sheet_model_row_visible(model_, idx)) {
-        has_result = true; res_text = result;
-    }
+    /* 中央 "=": 結果がある行のみ表示。 編集中も sheet_model.result を直接読む
+     * (live_evaluate が既に sheet_model に raw set 済みなので最新)。 確定/未確定
+     * の区別は表示しない (= GUI と同じ思想)。 */
+    bool has_result = sheet_model_row_visible(model_, idx);
+    std::string res_text = has_result ? result : "";
 
-    /* 結果ハイライト: error → 赤 / dirty preview → 黄 / 他 → トークン色。
-     * mirror_gui では Red / YellowLight を GUI パレットの error / si_pfx に。 */
     Element right;
     if (sheet_model_row_error(model_, idx)) {
         Color err_c = palette_.active ? rgb_to_ftxui(palette_.error) : Color::Red;
         right = text(res_text) | color(err_c);
-    } else if (is_focused && editor_dirty()) {
-        /* "in-flight preview" を端末既定 fg に依存せずに目立たせる:
-         * 黄色背景 + 黒前景の "蛍光ペン" スタイル。bgcolor は親の Blue を
-         * この要素だけ上書きするので、白背景テーマでも視認できる。 */
-        if (palette_.active) {
-            right = text(res_text)
-                  | color(rgb_to_ftxui(palette_.bg))
-                  | bgcolor(rgb_to_ftxui(palette_.si_pfx));
-        } else {
-            right = text(res_text) | color(Color::Black) | bgcolor(Color::YellowLight);
-        }
     } else if (has_result) {
         right = render_highlighted(res_text, SIZE_MAX, /*dim_style=*/false);
     } else {
@@ -933,8 +916,11 @@ Element TuiSheet::Render() {
     Elements rows;
     rows.reserve(n + 2);
 
-    /* マウス対応: 行ごとの Box をリセット。reflect で埋まる。 */
-    row_boxes_.assign(n, Box{});
+    /* 行ごとの Box は前回フレームの reflect を保持したまま resize する。
+     * popup_top の計算は同じフレーム内で row_boxes_[focused_row_].y_min を
+     * 読むので、 assign で 0 リセットすると焦点行の y を取り逃がす (前回値が
+     * 1 フレーム遅れで使われるが、 移動が緩やかなら無問題)。 */
+    row_boxes_.resize(n);
     editor_box_ = Box{};
 
     /* eq_col 算出 (GUI layout_eq_pos と同じ):
@@ -960,9 +946,7 @@ Element TuiSheet::Render() {
         if (ew > max_expr_w) max_expr_w = ew;
 
         std::string rs;
-        if (i == focused_row_ && editor_dirty()) {
-            rs = live_preview_;
-        } else if (sheet_model_row_visible(model_, i)) {
+        if (sheet_model_row_visible(model_, i)) {
             const char *r = sheet_model_row_result(model_, i);
             rs = r ? r : "";
         }
@@ -980,24 +964,82 @@ Element TuiSheet::Render() {
 
     /* 2 列レイアウト: 左 = expr (eq_col 幅に padding)、右 = result。
      * カーソル行が画面外に出ないよう yframe + focus でスクロール。
-     * 補完ポップアップは焦点行の直下に挟み込む。 */
+     * 補完ポップアップはシート本文に重ねる overlay 描画 (下記 dbox)。 */
     for (int i = 0; i < n; ++i) {
         Element row = render_row(i, i == focused_row_, eq_col);
         if (i == focused_row_) row = row | focus;
         row = row | reflect(row_boxes_[i]);
         rows.push_back(row);
-        if (i == focused_row_ && completion_visible()) {
-            Element popup = hbox({
-                text("  "),
-                completion_.render(8) | size(WIDTH, LESS_THAN, 40),
-            });
-            rows.push_back(popup);
-        }
     }
+
+    /* 補完 popup を sheet 本文の上に dbox で重ねる。
+     * 候補数の変動で popup の高さは変わらない (TuiCompletion::render が固定高)
+     * ので、 シート行の y 位置はぴょこぴょこしない。
+     * 焦点行が画面下端に近く下に余白が無い場合は焦点行の上に出す
+     * (GUI SheetView の completion_show と同じ流儀)。
+     * dbox 自身に flex を付け、 popup の必要高さで sheet 領域が縮まないように
+     * する (= status bar が追従して上に来てしまうのを防ぐ)。 */
+    constexpr int kPopupRowsMax = 8;
+    constexpr int kPopupExtra   = 3;   /* border 2 + desc 1 */
+    constexpr int kPopupHMax    = kPopupRowsMax + kPopupExtra;  /* 11 */
+    constexpr int kPopupHMin    = kPopupExtra + 1;              /* 4: rows 1 行を確保 */
+    constexpr int kPopupWMin    = 24;
+    constexpr int kPopupWMax    = 60;
+    /* popup 幅は候補 / desc の最大長に合わせて動的に決める。 縦のぴょこぴょこ
+     * は致命的 UX なので固定だが、 横の変動は無害なので desc 見切れを防ぐ
+     * ほうを優先する。 */
+    int popup_w = completion_.preferred_width(kPopupWMin, kPopupWMax);
+    /* row_boxes_ の reflect は画面絶対 y。 popup_layer は dbox 内の相対 y で
+     * 配置するので、 sheet area 上端 (compact 時 0、 通常時はメニューバーの
+     * 下 = 画面 y=1) を引いて dbox 内相対 y に変換する必要がある。 */
+    int sheet_top_y = compact_mode_ ? 0 : 1;
+    auto build_sheet_with_overlay = [&](int sheet_h) {
+        Element sheet_body = vbox(std::move(rows)) | yframe | flex;
+        if (!completion_visible() || focused_row_ < 0
+                || focused_row_ >= (int)row_boxes_.size()) {
+            return sheet_body;
+        }
+        int focus_y_abs = row_boxes_[focused_row_].y_min;
+        int focus_y     = std::max(0, focus_y_abs - sheet_top_y);  /* dbox 内相対 */
+        int popup_h, popup_top;
+        int below = sheet_h - focus_y - 1;  /* 焦点行の下に取れる行数 */
+        int above = focus_y;                /* 焦点行の上に取れる行数 */
+        if (below >= kPopupHMax) {
+            popup_top = focus_y + 1;        /* 下に余裕あり → 下に出す */
+            popup_h   = kPopupHMax;
+        } else if (above >= kPopupHMax) {
+            popup_top = focus_y - kPopupHMax;  /* 上に余裕あり → 上に出す */
+            popup_h   = kPopupHMax;
+        } else if (below >= above) {
+            /* どちらにも余裕無い: 大きい方に圧縮表示 */
+            popup_top = focus_y + 1;
+            popup_h   = std::max(kPopupHMin, below);
+        } else {
+            popup_top = std::max(0, focus_y - above);
+            popup_h   = std::max(kPopupHMin, above);
+        }
+        int popup_rows = std::max(1, popup_h - kPopupExtra);
+        /* clear_under で popup 領域の下層 (シート行の文字 / 反転) を完全に消す。
+         * bgcolor だけだと文字が ANSI として透ける (FTXUI の dbox は char セル
+         * 単位で上書き判定するため)。 メニューバーのドロップダウンと同じ流儀。 */
+        Element popup = completion_.render(popup_rows)
+                            | size(WIDTH, EQUAL, popup_w)
+                            | size(HEIGHT, EQUAL, popup_h)
+                            | clear_under
+                            | reflect(popup_box_);
+        Element popup_layer = vbox({
+            filler() | size(HEIGHT, EQUAL, popup_top),
+            hbox({ text("  "), popup, filler() }),
+            filler(),
+        });
+        return dbox({ sheet_body, popup_layer }) | flex;
+    };
 
     /* compact_mode_ ではシート行のみ表示。status/help/separator は省略。 */
     if (compact_mode_) {
-        Element body = vbox({ vbox(std::move(rows)) | yframe | flex });
+        int sheet_h = ftxui::Terminal::Size().dimy;
+        if (sheet_h <= 0) sheet_h = 24;
+        Element body = build_sheet_with_overlay(sheet_h);
         if (palette_.active) {
             body = body | color(rgb_to_ftxui(palette_.text))
                         | bgcolor(rgb_to_ftxui(palette_.bg));
@@ -1011,16 +1053,19 @@ Element TuiSheet::Render() {
         "]<" + fmt_label(cur_fmt) + ">";
     if (!file_path_.empty()) status += " file: " + file_path_;
     if (read_only_)          status += " [ro]";
-    if (editor_dirty())      status += " *";
     if (completion_visible()) {
         status += "  (" + std::to_string(completion_.filtered_count()) +
                    " candidates)";
     }
 
     /* ホットキー / プロンプト / flash は TuiApp 側の最下行にまとめて表示する。
-     * ここではステータス行までで止める (separator の上はシート本文)。 */
+     * ここではステータス行までで止める (separator の上はシート本文)。
+     * シート部の高さ = 端末高 - separator(1) - status(1) - TuiApp の最下 2 行。 */
+    int term_h = ftxui::Terminal::Size().dimy;
+    if (term_h <= 0) term_h = 24;
+    int sheet_area_h = std::max(1, term_h - 4);
     Element body = vbox({
-        vbox(std::move(rows)) | yframe | flex,
+        build_sheet_with_overlay(sheet_area_h),
         separator(),
         hbox({
             text(status) | flex,
@@ -1062,13 +1107,22 @@ int TuiSheet::display_cells(const std::string &s) {
 }
 
 bool TuiSheet::handle_mouse(const Mouse &m) {
-    /* ホイール: 行単位スクロール。常に処理。 */
+    /* ホイール: popup 領域内なら選択移動 (popup は開いたまま)、 外なら
+     * popup を閉じてシートを行スクロール。 */
     if (m.button == Mouse::WheelUp) {
+        if (completion_visible() && popup_box_.Contain(m.x, m.y)) {
+            completion_.move_selection(-1);
+            return true;
+        }
         action_row_up();
         completion_.hide();
         return true;
     }
     if (m.button == Mouse::WheelDown) {
+        if (completion_visible() && popup_box_.Contain(m.x, m.y)) {
+            completion_.move_selection(+1);
+            return true;
+        }
         action_row_down();
         completion_.hide();
         return true;
