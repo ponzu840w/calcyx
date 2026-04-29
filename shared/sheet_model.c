@@ -5,6 +5,7 @@
 #include "sheet_model.h"
 #include "builtin_docs.h"
 #include "completion_match.h"
+#include "i18n.h"
 
 #include "eval/eval.h"
 #include "eval/builtin.h"
@@ -475,6 +476,30 @@ static int cand_cmp(const void *a, const void *b) {
     return strcmp(ca->id, cb->id);
 }
 
+/* 組み込み定数の説明 (移植元: Calctus EvalContext() AddConstantReal/Hex)。
+ * sheet_model_build_candidates でこのテーブルから description を引く。 */
+static const struct { const char *name; const char *desc; } CONST_DOCS[] = {
+    { "PI",          "circle ratio" },
+    { "E",           "base of natural logarithm" },
+    { "INT_MIN",     "minimum value of 32 bit signed integer" },
+    { "INT_MAX",     "maximum value of 32 bit signed integer" },
+    { "UINT_MIN",    "minimum value of 32 bit unsigned integer" },
+    { "UINT_MAX",    "maximum value of 32 bit unsigned integer" },
+    { "LONG_MIN",    "minimum value of 64 bit signed integer" },
+    { "LONG_MAX",    "maximum value of 64 bit signed integer" },
+    { "ULONG_MIN",   "minimum value of 64 bit unsigned integer" },
+    { "ULONG_MAX",   "maximum value of 64 bit unsigned integer" },
+    { "DECIMAL_MIN", "minimum value of Decimal" },
+    { "DECIMAL_MAX", "maximum value of Decimal" },
+};
+
+static const char *var_doc(const char *name) {
+    for (size_t i = 0; i < sizeof(CONST_DOCS) / sizeof(CONST_DOCS[0]); i++)
+        if (strcmp(CONST_DOCS[i].name, name) == 0)
+            return calcyx_tr(CONST_DOCS[i].desc);
+    return calcyx_tr("user-defined variable");
+}
+
 int sheet_model_build_candidates(sheet_model_t *m,
                                   const sheet_candidate_t **out_arr) {
     cands_free(m);
@@ -492,15 +517,23 @@ int sheet_model_build_candidates(sheet_model_t *m,
         bool is_func = (v->value->type == VAL_FUNC);
         if (is_func && v->value->func_v) {
             make_label(label, sizeof(label), v->name, v->value->func_v->n_params);
+            /* ユーザ定義関数: 移植元では Description プロパティを表示するが、
+             * calcyx は def 行のコメントから抽出していないので空のまま。 */
             cands_push(m, v->name, label, NULL, true);
         } else {
-            cands_push(m, v->name, v->name, NULL, false);
+            cands_push(m, v->name, v->name, var_doc(v->name), false);
         }
     }
 
-    static const char *const KEYWORDS[] = { "ans", "true", "false", "def" };
+    static const struct { const char *kw; const char *doc; } KEYWORDS[] = {
+        { "ans",   "last answer" },
+        { "true",  "true value" },
+        { "false", "false value" },
+        { "def",   "user function definition" },
+    };
     for (size_t i = 0; i < sizeof(KEYWORDS) / sizeof(KEYWORDS[0]); i++)
-        cands_push(m, KEYWORDS[i], KEYWORDS[i], NULL, false);
+        cands_push(m, KEYWORDS[i].kw, KEYWORDS[i].kw,
+                   calcyx_tr(KEYWORDS[i].doc), false);
 
     qsort(m->cands, m->n_cands, sizeof(sheet_candidate_t), cand_cmp);
 

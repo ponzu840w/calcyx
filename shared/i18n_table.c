@@ -204,6 +204,25 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
       "プロポーショナルフォントを表示 (非推奨)" },
     { "Color",              "色" },
 
+    /* === 補完ポップアップ: 組み込み定数 / キーワードの説明 (= calctus の Description) === */
+    { "circle ratio",                                  "円周率" },
+    { "base of natural logarithm",                     "自然対数の底" },
+    { "minimum value of 32 bit signed integer",        "32 bit 符号付き整数の最小値" },
+    { "maximum value of 32 bit signed integer",        "32 bit 符号付き整数の最大値" },
+    { "minimum value of 32 bit unsigned integer",      "32 bit 符号なし整数の最小値" },
+    { "maximum value of 32 bit unsigned integer",      "32 bit 符号なし整数の最大値" },
+    { "minimum value of 64 bit signed integer",        "64 bit 符号付き整数の最小値" },
+    { "maximum value of 64 bit signed integer",        "64 bit 符号付き整数の最大値" },
+    { "minimum value of 64 bit unsigned integer",      "64 bit 符号なし整数の最小値" },
+    { "maximum value of 64 bit unsigned integer",      "64 bit 符号なし整数の最大値" },
+    { "minimum value of Decimal",                      "Decimal の最小値" },
+    { "maximum value of Decimal",                      "Decimal の最大値" },
+    { "user-defined variable",                         "ユーザー定義変数" },
+    { "last answer",                                   "直前の評価結果" },
+    { "true value",                                    "真値" },
+    { "false value",                                   "偽値" },
+    { "user function definition",                      "ユーザー関数の定義" },
+
     /* === GUI: PasteOptionForm (複数行ペーストダイアログ) ===
      * "Paste Options" / "Cancel" / "OK" は他で定義済みなので再掲しない。 */
     { "Clipboard Text:",       "クリップボード:" },
