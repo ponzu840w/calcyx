@@ -27,7 +27,7 @@ namespace calcyx::tui {
 struct TuiPalette {
     bool active = false;
     /* シート描画用 */
-    calcyx_rgb_t bg{}, sel_bg{}, text{}, cursor{};
+    calcyx_rgb_t bg{}, sel_bg{}, text{}, accent{};
     calcyx_rgb_t symbol{}, ident{}, special{}, si_pfx{}, error{};
     calcyx_rgb_t paren[4]{};
     /* UI クローム用. GUI の calcyx_color_palette_t.ui_* に対応:

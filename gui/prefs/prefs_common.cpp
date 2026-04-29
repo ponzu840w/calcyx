@@ -8,6 +8,7 @@
 // ・OK / Apply / Reset 動作 (apply_settings / reset_to_defaults)
 
 #include "prefs_common.h"
+#include "i18n.h"
 #include "SheetView.h"
 #include "settings_globals.h"
 #include "platform_tray.h"
@@ -54,7 +55,7 @@ void style_check(Fl_Check_Button *chk) {
     chk->color(DLG_BG);
     chk->labelcolor(DLG_TEXT);
     chk->labelsize(12);
-    chk->selection_color(g_colors.cursor);
+    chk->selection_color(g_colors.accent);
 }
 
 void style_spinner(Fl_Spinner *sp) {
@@ -63,7 +64,7 @@ void style_spinner(Fl_Spinner *sp) {
     sp->labelcolor(DLG_LABEL);
     sp->labelsize(12);
     sp->textsize(12);
-    sp->selection_color(g_colors.cursor);
+    sp->selection_color(g_colors.accent);
 }
 
 // セクション枠を作る: 太字タイトル + 枠付き Fl_Group。呼び出し側で end() すること。
@@ -177,7 +178,7 @@ static void refresh_dlg_colors_recurse(Fl_Group *grp, DlgState *st) {
             cho->color(DLG_INPUT);
             cho->textcolor(DLG_TEXT);
             cho->labelcolor(DLG_LABEL);
-            cho->selection_color(g_colors.cursor);
+            cho->selection_color(g_colors.accent);
         } else if (auto *btn = dynamic_cast<Fl_Button *>(w)) {
             if (btn->box() == FL_DOWN_BOX) {
                 btn->color(DLG_INPUT);
@@ -240,6 +241,14 @@ void apply_settings(DlgState *st) {
             g_hotkey_keycode = plat_keyname_to_flkey(names[ki]);
     }
 
+    /* Language: 起動時のみ反映されるので, 変更を保存だけする (リスタート要). */
+    {
+        static const char *kLangIds[] = {"auto", "en", "ja"};
+        int li = st->language_choice->value();
+        if (li >= 0 && li < (int)(sizeof(kLangIds) / sizeof(kLangIds[0])))
+            g_language = kLangIds[li];
+    }
+
     /* user_colors は g_user_colors (グローバル) に一本化されたので
      * st->user_colors への同期は不要. */
 
@@ -279,6 +288,9 @@ void apply_settings(DlgState *st) {
 
 // ---- Reset to defaults ----
 void reset_to_defaults(DlgState *st) {
+    // Language
+    st->language_choice->value(0);  /* auto */
+
     // Font
     st->font.selected_id = DEFAULT_FONT_ID;
     st->font.selected_name = font_id_to_display_name(DEFAULT_FONT_ID);

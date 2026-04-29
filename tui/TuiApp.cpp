@@ -17,6 +17,7 @@
 #include "color_presets.h"
 #include "settings_io.h"
 #include "settings_writer.h"
+#include "i18n.h"
 
 #if defined(_WIN32)
 #  include <direct.h>  /* _mkdir */
@@ -90,9 +91,9 @@ void TuiApp::prompt_begin(PromptMode mode, const std::string &initial) {
     prompt_buf_    = initial;
     prompt_cursor_ = prompt_buf_.size();
     switch (mode) {
-        case PromptMode::Open: prompt_label_ = "Open file: "; break;
-        case PromptMode::Save: prompt_label_ = "Save as:   "; break;
-        default:               prompt_label_.clear();         break;
+        case PromptMode::Open: prompt_label_ = _("Open file: "); break;
+        case PromptMode::Save: prompt_label_ = _("Save as:   "); break;
+        default:               prompt_label_.clear();            break;
     }
 }
 
@@ -101,7 +102,7 @@ void TuiApp::prompt_cancel() {
     prompt_buf_.clear();
     prompt_cursor_ = 0;
     prompt_label_.clear();
-    flash_message("Cancelled");
+    flash_message(_("Cancelled"));
 }
 
 void TuiApp::prompt_submit() {
@@ -115,7 +116,7 @@ void TuiApp::prompt_submit() {
     prompt_label_.clear();
 
     if (path.empty()) {
-        flash_message("Path is empty");
+        flash_message(_("Path is empty"));
         return;
     }
 
@@ -125,9 +126,9 @@ void TuiApp::prompt_submit() {
             /* 明示的に書き込んだ瞬間にユーザーの作業ファイルへ昇格する。
              * 以後の Ctrl+S は同じパスへ直書きでよい。 */
             sheet_->set_read_only(false);
-            flash_message("Saved: " + path);
+            flash_message(std::string(_("Saved: ")) + path);
         } else {
-            flash_message("Save failed: " + path);
+            flash_message(std::string(_("Save failed: ")) + path);
         }
     } else { /* Open */
         if (sheet_model_load_file(model_, path.c_str())) {
@@ -135,9 +136,9 @@ void TuiApp::prompt_submit() {
             /* Ctrl+O で開いたファイルは編集対象。read_only は解除。 */
             sheet_->set_read_only(false);
             sheet_->reload_focused_row();
-            flash_message("Loaded: " + path);
+            flash_message(std::string(_("Loaded: ")) + path);
         } else {
-            flash_message("Load failed: " + path);
+            flash_message(std::string(_("Load failed: ")) + path);
         }
     }
 }
@@ -203,9 +204,9 @@ void TuiApp::do_file_save() {
         return;
     }
     if (sheet_model_save_file(model_, path.c_str())) {
-        flash_message("Saved: " + path);
+        flash_message(std::string(_("Saved: ")) + path);
     } else {
-        flash_message("Save failed: " + path);
+        flash_message(std::string(_("Save failed: ")) + path);
     }
 }
 
@@ -325,7 +326,7 @@ void TuiApp::do_preferences() {
     /* 関連付けされたエディタ (テキスト) で開く。ShellExecute は非同期だが
      * TUI からの "編集中ロック" は必須ではないので、起動だけして戻る。 */
     ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-    flash_message("Opened: " + path);
+    flash_message(std::string(_("Opened: ")) + path);
 #else
     /* $VISUAL → $EDITOR → vi の順で探す。FTXUI の端末モードは
      * WithRestoredIO 経由で一時退避し、エディタが終了したら自動復帰。 */
@@ -340,7 +341,7 @@ void TuiApp::do_preferences() {
         int rc = std::system(cmd.c_str());
         (void)rc;
     })();
-    flash_message("Edited: " + path);
+    flash_message(std::string(_("Edited: ")) + path);
 #endif
     /* エディタ終了直後に再読み込みして即時反映 (GUI 側との一貫性)。 */
     apply_settings_from_conf();
@@ -364,6 +365,13 @@ void TuiApp::apply_settings_from_conf() {
 
     auto kv = conf_read(path);
     if (kv.empty()) return;
+
+    /* 言語: 起動時 1 回だけ反映. ホットリロードはしない.
+     * 既に i18n_init 済み (テストや上位レイヤで先行設定された場合) はスキップ. */
+    if (!calcyx_i18n_is_initialized()) {
+        auto it = kv.find("language");
+        calcyx_i18n_init(it != kv.end() ? it->second.c_str() : "auto");
+    }
 
     /* TUI 側で受け取った値は最後にまとめて反映 (clamp はキーごとに) */
     int  decimal_len    = g_fmt_settings.decimal_len;
@@ -453,7 +461,7 @@ void TuiApp::apply_settings_from_conf() {
                     { "color_bg",       &pal.bg },
                     { "color_sel_bg",   &pal.sel_bg },
                     { "color_text",     &pal.text },
-                    { "color_cursor",   &pal.cursor },
+                    { "color_accent",   &pal.accent },
                     { "color_symbol",   &pal.symbol },
                     { "color_ident",    &pal.ident },
                     { "color_special",  &pal.special },
@@ -482,7 +490,7 @@ void TuiApp::apply_settings_from_conf() {
             tp.bg       = pal.bg;
             tp.sel_bg   = pal.sel_bg;
             tp.text     = pal.text;
-            tp.cursor   = pal.cursor;
+            tp.accent   = pal.accent;
             tp.symbol   = pal.symbol;
             tp.ident    = pal.ident;
             tp.special  = pal.special;
@@ -596,7 +604,7 @@ Element TuiApp::about_overlay() const {
     header.push_back(text("calcyx " CALCYX_VERSION_FULL) | bold | center);
     header.push_back(text(CALCYX_EDITION) | dim | center);
     header.push_back(text(""));
-    header.push_back(text("A programmable calculator based on Calctus") | center);
+    header.push_back(text(_("An engineering calculator based on Calctus.")) | center);
     header.push_back(text("https://github.com/ponzu840w/calcyx") |
                       color(Color::CyanLight) | center);
     header.push_back(text(""));
@@ -612,9 +620,9 @@ Element TuiApp::about_overlay() const {
     };
     header.push_back(hbox({
         text(" "),
-        tab_label("Shortcuts", AboutTab::Shortcuts),
+        tab_label(_("Shortcuts"), AboutTab::Shortcuts),
         text(" "),
-        tab_label("License",   AboutTab::License),
+        tab_label(_("License"),   AboutTab::License),
     }));
     header.push_back(separator());
 
@@ -627,7 +635,7 @@ Element TuiApp::about_overlay() const {
             all_rows.push_back(hbox({
                 text(kShortcuts[i].key) | bold | size(WIDTH, EQUAL, 22),
                 text(" "),
-                text(kShortcuts[i].desc),
+                text(_(kShortcuts[i].desc)),
             }));
         }
     } else {
@@ -655,13 +663,13 @@ Element TuiApp::about_overlay() const {
     }
 
     /* スクロール / 操作ヒント */
-    std::string hint = "Tab: switch   ↑↓: scroll  (";
+    std::string hint = _("Tab: switch   ↑↓: scroll  (");
     hint += std::to_string(std::min(scroll + 1, std::max(total, 1)));
     hint += "-";
     hint += std::to_string(std::min(scroll + kAboutVisibleRows, total));
     hint += "/";
     hint += std::to_string(total);
-    hint += ")   Esc / Enter / q: close";
+    hint += _(")   Esc / Enter / q: close");
 
     Elements body;
     for (auto &e : header) body.push_back(std::move(e));
@@ -744,7 +752,7 @@ bool TuiApp::paste_modal_handle_event(Event ev) {
     if (ev == Event::Escape) {
         paste_modal_visible_ = false;
         paste_modal_text_.clear();
-        flash_message("Paste cancelled");
+        flash_message(_("Paste cancelled"));
         return true;
     }
     if (ev == Event::ArrowUp) {
@@ -784,7 +792,7 @@ void TuiApp::paste_modal_confirm() {
     switch (choice) {
         case kPasteChoiceMultiRows:  sheet_->paste_multiline_as_rows(text);   break;
         case kPasteChoiceSingleLine: sheet_->paste_multiline_as_single(text); break;
-        default: flash_message("Paste cancelled"); break;
+        default: flash_message(_("Paste cancelled")); break;
     }
 }
 
@@ -837,20 +845,21 @@ Element TuiApp::paste_modal_overlay() const {
     };
 
     Elements body;
-    body.push_back(text("Paste Options") | bold | center);
+    body.push_back(text(_("Paste Options")) | bold | center);
     body.push_back(separator());
-    body.push_back(text("Clipboard contains " + std::to_string(total) +
-                        " line(s):") | dim);
+    body.push_back(text(std::string(_("Clipboard contains ")) +
+                        std::to_string(total) +
+                        _(" line(s):")) | dim);
     for (auto &p : preview) body.push_back(std::move(p));
     body.push_back(separator());
-    body.push_back(choice_row("Insert each line as a new row", "(M)",
+    body.push_back(choice_row(_("Insert each line as a new row"), "(M)",
                               kPasteChoiceMultiRows));
-    body.push_back(choice_row("Join into single line at cursor", "(S)",
+    body.push_back(choice_row(_("Join into single line at cursor"), "(S)",
                               kPasteChoiceSingleLine));
-    body.push_back(choice_row("Cancel", "(C / Esc)",
+    body.push_back(choice_row(_("Cancel"), "(C / Esc)",
                               kPasteChoiceCancel));
     body.push_back(separator());
-    body.push_back(text("↑↓ select   Enter confirm   Esc cancel") | dim | center);
+    body.push_back(text(_("↑↓ select   Enter confirm   Esc cancel")) | dim | center);
 
     Element dlg = vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
                   size(HEIGHT, LESS_THAN, 22);
@@ -906,7 +915,8 @@ int context_menu_width() {
     int w = 0;
     for (const auto &it : kContextMenu) {
         if (it.cmd == ContextCmd::Separator) continue;
-        int line = (int)std::strlen(it.label);
+        /* 翻訳後のバイト数 (UTF-8 ベースで多めに見積もる) */
+        int line = (int)std::strlen(_(it.label));
         if (it.shortcut[0]) line += 2 + (int)std::strlen(it.shortcut);
         if (line > w) w = line;
     }
@@ -993,7 +1003,7 @@ Element TuiApp::context_menu_overlay() const {
         bool selected = (i == context_menu_item_);
         Element row = hbox({
             text(" "),
-            text(it.label),
+            text(_(it.label)),
             filler(),
             text(it.shortcut[0] ? std::string("  ") + it.shortcut
                                 : std::string(" ")) | dim,
@@ -1149,7 +1159,7 @@ Element TuiApp::menu_bar_render() const {
     for (int i = 0; i < kMenuCount; ++i) {
         Element cell = hbox({
             text("["),
-            label_elements(kMenus[i].title, /*disabled=*/false),
+            label_elements(_(kMenus[i].title), /*disabled=*/false),
             text("]"),
         });
         if (kMenus[i].id == menu_active_) cell = cell | inverted;
@@ -1177,7 +1187,7 @@ Element TuiApp::menu_overlay() const {
      * 先頭スペース 1 + 各メニューの [space title space] + 区切りスペース 1。 */
     int col = 1;
     for (int i = 0; i < idx; ++i) {
-        col += 1 + label_display_len(kMenus[i].title) + 1 + 1;
+        col += 1 + label_display_len(_(kMenus[i].title)) + 1 + 1;
     }
 
     /* ショートカット列幅 */
@@ -1185,7 +1195,7 @@ Element TuiApp::menu_overlay() const {
     int label_max = 0;
     for (int i = 0; i < def.count; ++i) {
         if (def.items[i].separator) continue;
-        int sl = label_display_len(def.items[i].label);
+        int sl = label_display_len(_(def.items[i].label));
         if (def.items[i].submenu) sl += 2; /* " ▶" 分 */
         if (sl > label_max) label_max = sl;
         int sc = (int)std::strlen(def.items[i].shortcut);
@@ -1203,7 +1213,7 @@ Element TuiApp::menu_overlay() const {
             rows.push_back(separator());
             continue;
         }
-        Element lab = label_elements(it.label, it.disabled);
+        Element lab = label_elements(_(it.label), it.disabled);
         if (it.submenu) lab = hbox({ lab, text(" ▶") });
         Element sc = text(it.shortcut ? it.shortcut : "");
         Element row = hbox({
@@ -1397,7 +1407,7 @@ void TuiApp::menu_invoke_cmd(MenuCmd cmd) {
         case MenuCmd::OpenSample: {
             if (sub_idx < 0 || sub_idx >= (int)samples_files_.size()) break;
             std::string dir = samples_dir();
-            if (dir.empty()) { flash_message("samples directory not found"); break; }
+            if (dir.empty()) { flash_message(_("samples directory not found")); break; }
             std::string path = dir + "/" + samples_files_[sub_idx];
             if (sheet_model_load_file(model_, path.c_str())) {
                 sheet_->set_file_path(path);
@@ -1405,9 +1415,9 @@ void TuiApp::menu_invoke_cmd(MenuCmd cmd) {
                  * 配布版サンプルの上書きを防ぐ。 */
                 sheet_->set_read_only(true);
                 sheet_->reload_focused_row();
-                flash_message("Loaded sample: " + samples_files_[sub_idx]);
+                flash_message(std::string(_("Loaded sample: ")) + samples_files_[sub_idx]);
             } else {
-                flash_message("Load failed: " + path);
+                flash_message(std::string(_("Load failed: ")) + path);
             }
             break;
         }
@@ -1537,7 +1547,8 @@ bool TuiApp::menu_handle_event(Event ev) {
                 const MenuDef &def = kMenus[idx];
                 for (int i = 0; i < def.count; ++i) {
                     if (def.items[i].separator || def.items[i].disabled) continue;
-                    if (hot_letter_of(def.items[i].label) == c) {
+                    /* ホット文字判定は翻訳後の label に基づく */
+                    if (hot_letter_of(_(def.items[i].label)) == c) {
                         menu_item_ = i;
                         menu_activate_current();
                         return true;
@@ -1731,10 +1742,10 @@ int TuiApp::run(const std::string &initial_file) {
         if (sheet_model_load_file(model_, initial_file.c_str())) {
             sheet_->set_file_path(initial_file);
             sheet_->reload_focused_row();
-            flash_message("Loaded: " + initial_file);
+            flash_message(std::string(_("Loaded: ")) + initial_file);
         } else {
             sheet_->set_file_path(initial_file);
-            flash_message("New file: " + initial_file);
+            flash_message(std::string(_("New file: ")) + initial_file);
         }
     }
 
@@ -1774,8 +1785,8 @@ int TuiApp::run(const std::string &initial_file) {
         } else if (sheet_->compact_mode()) {
             bottom_visible = false;
         } else {
-            bottom_slot = text(" F1 help  Alt+F menu  ^Q quit  "
-                               "^Z/^Y undo/redo  F8-F12 fmt ") | dim;
+            bottom_slot = text(_(" F1 help  Alt+F menu  ^Q quit  "
+                                 "^Z/^Y undo/redo  F8-F12 fmt ")) | dim;
         }
         /* mirror_gui のときは最下行も ui_menu 背景 + ui_text 文字色で塗る.
          * 行末まで背景が広がるよう filler を足してから bgcolor を当てる. */

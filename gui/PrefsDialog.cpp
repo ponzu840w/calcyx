@@ -5,6 +5,7 @@
 #include "PrefsDialog.h"
 #include "SheetView.h"
 #include "prefs/prefs_common.h"
+#include "i18n.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Double_Window.H>
 #include <FL/Fl_Tabs.H>
@@ -20,7 +21,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     st.saved_preset      = g_color_preset;
     st.saved_user_colors = g_user_colors;
 
-    Fl_Double_Window dlg(DW, DH, "Preferences");
+    Fl_Double_Window dlg(DW, DH, _("Preferences"));
     dlg.set_modal();
     dlg.color(DLG_BG);
     st.dlg_win = &dlg;
@@ -65,27 +66,28 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     int by = DH - 38;
     int bw = 80, bh = 28;
 
-    Fl_Button reset_btn(8, by, 60, bh, "Reset");
+    Fl_Button reset_btn(8, by, 60, bh, _("Reset"));
     reset_btn.color(DLG_BTN);
     reset_btn.labelcolor(DLG_TEXT);
     reset_btn.labelsize(12);
-    reset_btn.tooltip("Reset all settings to defaults");
+    reset_btn.tooltip(_("Reset all settings to defaults"));
     reset_btn.callback([](Fl_Widget *, void *data) {
-        if (fl_choice("Reset all settings to defaults?", "Cancel", "Reset", nullptr) == 1)
+        if (fl_choice("%s", _("Cancel"), _("Reset"), nullptr,
+                      _("Reset all settings to defaults?")) == 1)
             reset_to_defaults(static_cast<DlgState *>(data));
     }, &st);
 
-    Fl_Button ok_btn(DW - 3 * (bw + 8), by, bw, bh, "OK");
+    Fl_Button ok_btn(DW - 3 * (bw + 8), by, bw, bh, _("OK"));
     ok_btn.color(DLG_BTN);
     ok_btn.labelcolor(DLG_TEXT);
     ok_btn.labelsize(12);
 
-    Fl_Button cancel_btn(DW - 2 * (bw + 8), by, bw, bh, "Cancel");
+    Fl_Button cancel_btn(DW - 2 * (bw + 8), by, bw, bh, _("Cancel"));
     cancel_btn.color(DLG_BTN);
     cancel_btn.labelcolor(DLG_TEXT);
     cancel_btn.labelsize(12);
 
-    Fl_Button apply_btn(DW - (bw + 8), by, bw, bh, "Apply");
+    Fl_Button apply_btn(DW - (bw + 8), by, bw, bh, _("Apply"));
     apply_btn.color(DLG_BTN);
     apply_btn.labelcolor(DLG_TEXT);
     apply_btn.labelsize(12);

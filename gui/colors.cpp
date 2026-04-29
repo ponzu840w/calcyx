@@ -37,9 +37,8 @@ void colors_init_preset(CalcyxColors *c, int preset) {
     c->bg          = rgb_to_fl(pal.bg);
     c->sel_bg      = rgb_to_fl(pal.sel_bg);
     c->rowline     = rgb_to_fl(pal.rowline);
-    c->sep         = rgb_to_fl(pal.sep);
     c->text        = rgb_to_fl(pal.text);
-    c->cursor      = rgb_to_fl(pal.cursor);
+    c->accent      = rgb_to_fl(pal.accent);
     c->symbol      = rgb_to_fl(pal.symbol);
     c->ident       = rgb_to_fl(pal.ident);
     c->special     = rgb_to_fl(pal.special);
@@ -101,5 +100,5 @@ void colors_apply_fl_scheme() {
     Fl::get_color(g_colors.ui_input, r, g, b);
     Fl::background2(r, g, b);
     // 選択色
-    Fl::set_color(FL_SELECTION_COLOR, g_colors.cursor);
+    Fl::set_color(FL_SELECTION_COLOR, g_colors.accent);
 }

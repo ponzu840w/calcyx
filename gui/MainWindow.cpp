@@ -3,6 +3,7 @@
 #include "MainWindow.h"
 #include "PrefsDialog.h"
 #include "settings_globals.h"
+#include "i18n.h"
 #include "platform_tray.h"
 #include "colors.h"
 #include <FL/Fl.H>
@@ -202,24 +203,24 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->color(C_MENU_BG);
     menu_->textcolor(C_MENU_FG);
     menu_->box(FL_FLAT_BOX);
-    menu_->add("&File/All &Clear",    FL_COMMAND | FL_SHIFT | FL_Delete, menu_cb, (void*)"clear_all", FL_MENU_DIVIDER);
-    menu_->add("&File/&Open...",     FL_COMMAND + 'o', menu_cb, (void*)"open");
-    menu_->add("&File/&Save As...",  FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
-    menu_->add("&Edit/&Undo",       FL_COMMAND + 'z', menu_cb, (void*)"undo");
-    menu_->add("&Edit/&Redo",       FL_COMMAND + 'y', menu_cb, (void*)"redo", FL_MENU_DIVIDER);
-    menu_->add("&Edit/Copy &All",   (FL_COMMAND | FL_SHIFT) + 'c', menu_cb, (void*)"copy_all", FL_MENU_DIVIDER);
-    menu_->add("&Edit/&Insert Row Below", FL_Enter,            menu_cb, (void*)"insert_below");
-    menu_->add("&Edit/Insert Row A&bove", FL_SHIFT | FL_Enter, menu_cb, (void*)"insert_above");
-    menu_->add("&Edit/&Delete Row",       FL_COMMAND | FL_Delete,          menu_cb, (void*)"delete_row");
-    menu_->add("&Edit/Move Row &Up",      FL_COMMAND | FL_SHIFT | FL_Up,   menu_cb, (void*)"move_up");
-    menu_->add("&Edit/Move Row Do&wn",    FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
-    menu_->add("&Edit/&Recalculate", FL_F + 5, menu_cb, (void*)"recalc");
-    menu_->add("&View/Always on &Top", FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
+    menu_->add(_("&File/All &Clear"),     FL_COMMAND | FL_SHIFT | FL_Delete, menu_cb, (void*)"clear_all", FL_MENU_DIVIDER);
+    menu_->add(_("&File/&Open..."),       FL_COMMAND + 'o', menu_cb, (void*)"open");
+    menu_->add(_("&File/&Save As..."),    FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
+    menu_->add(_("&Edit/&Undo"),          FL_COMMAND + 'z', menu_cb, (void*)"undo");
+    menu_->add(_("&Edit/&Redo"),          FL_COMMAND + 'y', menu_cb, (void*)"redo", FL_MENU_DIVIDER);
+    menu_->add(_("&Edit/Copy &All"),      (FL_COMMAND | FL_SHIFT) + 'c', menu_cb, (void*)"copy_all", FL_MENU_DIVIDER);
+    menu_->add(_("&Edit/&Insert Row Below"), FL_Enter,            menu_cb, (void*)"insert_below");
+    menu_->add(_("&Edit/Insert Row A&bove"), FL_SHIFT | FL_Enter, menu_cb, (void*)"insert_above");
+    menu_->add(_("&Edit/&Delete Row"),    FL_COMMAND | FL_Delete,          menu_cb, (void*)"delete_row");
+    menu_->add(_("&Edit/Move Row &Up"),   FL_COMMAND | FL_SHIFT | FL_Up,   menu_cb, (void*)"move_up");
+    menu_->add(_("&Edit/Move Row Do&wn"), FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
+    menu_->add(_("&Edit/&Recalculate"),   FL_F + 5, menu_cb, (void*)"recalc");
+    menu_->add(_("&View/Always on &Top"), FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
     // Ctrl+: (JIS では Zoom Out の Ctrl+- と同じキー列。
     // OEM キー → FLTK keysym 化の配列ずれは
     // cmake/patch-fltk.py の Fl_win32.cxx パッチで根本対応済み)。
-    menu_->add("&View/&Compact Mode", FL_COMMAND | ':', menu_cb, (void*)"toggle_compact", FL_MENU_TOGGLE);
-    menu_->add("&View/Sys&tem Tray",              0, menu_cb, (void*)"toggle_tray",
+    menu_->add(_("&View/&Compact Mode"),  FL_COMMAND | ':', menu_cb, (void*)"toggle_compact", FL_MENU_TOGGLE);
+    menu_->add(_("&View/Sys&tem Tray"),   0, menu_cb, (void*)"toggle_tray",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
     // Color Scheme サブメニュー (FL_MENU_RADIO)
     // USER_DEFINED は Prefs で編集する扱い。メニューには名前付きプリセットのみ出す。
@@ -228,25 +229,25 @@ MainWindow::MainWindow(int w, int h, const char *title)
         char buf[24]; snprintf(buf, sizeof(buf), "scheme_%d", i);
         scheme_cmds_.push_back(buf);
         if (i == COLOR_PRESET_USER_DEFINED) continue;
-        char path[128];
-        snprintf(path, sizeof(path), "&View/Color &Scheme/%s", COLOR_PRESET_INFO[i].label);
-        menu_->add(path, 0, menu_cb, (void*)scheme_cmds_[i].c_str(), FL_MENU_RADIO);
+        /* parent path だけ翻訳. preset 名 (otaku-black 等) は固定. */
+        std::string path = std::string(_("&View/Color &Scheme")) + "/" + COLOR_PRESET_INFO[i].label;
+        menu_->add(path.c_str(), 0, menu_cb, (void*)scheme_cmds_[i].c_str(), FL_MENU_RADIO);
     }
-    menu_->add("&View/Show &Row Lines",           0, menu_cb, (void*)"toggle_rowlines",
+    menu_->add(_("&View/Show &Row Lines"),           0, menu_cb, (void*)"toggle_rowlines",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
-    menu_->add("&View/Zoom &In",       FL_COMMAND | FL_SHIFT | '-', menu_cb, (void*)"zoom_in");
-    menu_->add("&View/Zoom &Out",      FL_COMMAND | '-',             menu_cb, (void*)"zoom_out");
-    menu_->add("&View/Reset &Zoom",    FL_COMMAND + '0', menu_cb, (void*)"zoom_reset", FL_MENU_DIVIDER);
-    menu_->add("&View/Scientific Notation (&E)",  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
-    menu_->add("&View/Show Thousands &Separator", 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
-    menu_->add("&View/Show &Hex Separator",       0, menu_cb, (void*)"toggle_hexsep", FL_MENU_TOGGLE);
-    menu_->add("&View/Decimals &+",    (FL_COMMAND | FL_SHIFT) + '.', menu_cb, (void*)"dec_inc");
-    menu_->add("&View/Decimals &\xe2\x88\x92", (FL_COMMAND | FL_SHIFT) + ',', menu_cb, (void*)"dec_dec", FL_MENU_DIVIDER);
-    menu_->add("&View/&Auto Completion",          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
+    menu_->add(_("&View/Zoom &In"),       FL_COMMAND | FL_SHIFT | '-', menu_cb, (void*)"zoom_in");
+    menu_->add(_("&View/Zoom &Out"),      FL_COMMAND | '-',             menu_cb, (void*)"zoom_out");
+    menu_->add(_("&View/Reset &Zoom"),    FL_COMMAND + '0', menu_cb, (void*)"zoom_reset", FL_MENU_DIVIDER);
+    menu_->add(_("&View/Scientific Notation (&E)"),  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
+    menu_->add(_("&View/Show Thousands &Separator"), 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
+    menu_->add(_("&View/Show &Hex Separator"),       0, menu_cb, (void*)"toggle_hexsep", FL_MENU_TOGGLE);
+    menu_->add(_("&View/Decimals &+"),    (FL_COMMAND | FL_SHIFT) + '.', menu_cb, (void*)"dec_inc");
+    menu_->add(_("&View/Decimals &\xe2\x88\x92"), (FL_COMMAND | FL_SHIFT) + ',', menu_cb, (void*)"dec_dec", FL_MENU_DIVIDER);
+    menu_->add(_("&View/&Auto Completion"),          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
     populate_samples_menu();
-    menu_->add("&File/&Preferences...", FL_COMMAND + ',', menu_cb, (void*)"prefs");
-    menu_->add("&File/&About calcyx",   FL_F + 1,         menu_cb, (void*)"about", FL_MENU_DIVIDER);
-    menu_->add("&File/E&xit",         0,                menu_cb, (void*)"exit");
+    menu_->add(_("&File/&Preferences..."), FL_COMMAND + ',', menu_cb, (void*)"prefs");
+    menu_->add(_("&File/&About calcyx"),   FL_F + 1,         menu_cb, (void*)"about", FL_MENU_DIVIDER);
+    menu_->add(_("&File/E&xit"),         0,                menu_cb, (void*)"exit");
 
     // 全メニュー追加後にインデックスを取得
     // find_index(path) はショートカット付きラベルで失敗するので手動検索
@@ -536,7 +537,7 @@ int MainWindow::handle(int event) {
 
 void MainWindow::open_file(const char *path) {
     if (!sheet_->load_file(path))
-        fl_alert("Cannot open file:\n%s", path);
+        fl_alert("%s\n%s", _("Cannot open file:"), path);
 }
 
 void MainWindow::update_fmt_choice() {
@@ -590,7 +591,7 @@ static void show_about(MainWindow *win) {
     }
 
     const int DW = 420, DH = 380;
-    Fl_Double_Window dlg(DW, DH, "About calcyx");
+    Fl_Double_Window dlg(DW, DH, _("About calcyx"));
     dlg.set_modal();
     dlg.color(g_colors.ui_bg);
 
@@ -608,11 +609,12 @@ static void show_about(MainWindow *win) {
     hv.link(about_link_cb);
     hv.scrollbar_size(0);  // スクロールバーを隠す
 
+    /* 著作権・ライセンス表記は英語固定 (国際慣例). キャッチコピーだけ翻訳. */
     std::string html =
-        "<center>"
-        "<b>calcyx " CALCYX_VERSION_FULL "</b><br>"
-        CALCYX_EDITION
-        "<p>A programmable calculator based on Calctus.</p>"
+        std::string("<center>"
+                    "<b>calcyx " CALCYX_VERSION_FULL "</b><br>") +
+        CALCYX_EDITION +
+        "<p>" + _("An engineering calculator based on Calctus.") + "</p>" +
         "<a href='https://github.com/ponzu840w/calcyx'>https://github.com/ponzu840w/calcyx</a>"
         "</center>"
         "<font size=2>"
@@ -631,7 +633,7 @@ static void show_about(MainWindow *win) {
     hv.value(html.c_str());
 
     // OK ボタン
-    Fl_Button ok_btn(DW / 2 - 40, DH - 35, 80, 25, "OK");
+    Fl_Button ok_btn(DW / 2 - 40, DH - 35, 80, 25, _("OK"));
     ok_btn.callback([](Fl_Widget *w, void *) { w->window()->hide(); });
 
     dlg.end();
@@ -650,20 +652,24 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
 
     if (strcmp(cmd, "open") == 0) {
         Fl_Native_File_Chooser fc;
-        fc.title("Open");
+        fc.title(_("Open"));
         fc.type(Fl_Native_File_Chooser::BROWSE_FILE);
-        fc.filter("Text files\t*.txt\nAll files\t*");
+        std::string filt = std::string(_("Text files")) + "\t*.txt\n" +
+                           std::string(_("All files")) + "\t*";
+        fc.filter(filt.c_str());
         if (fc.show() == 0) win->open_file(fc.filename());
 
     } else if (strcmp(cmd, "save") == 0) {
         Fl_Native_File_Chooser fc;
-        fc.title("Save As");
+        fc.title(_("Save As"));
         fc.type(Fl_Native_File_Chooser::BROWSE_SAVE_FILE);
-        fc.filter("Text files\t*.txt\nAll files\t*");
+        std::string filt = std::string(_("Text files")) + "\t*.txt\n" +
+                           std::string(_("All files")) + "\t*";
+        fc.filter(filt.c_str());
         fc.options(Fl_Native_File_Chooser::SAVEAS_CONFIRM);
         if (fc.show() == 0) {
             if (!win->sheet_->save_file(fc.filename()))
-                fl_alert("Cannot save file:\n%s", fc.filename());
+                fl_alert("%s\n%s", _("Cannot save file:"), fc.filename());
         }
 
     } else if (strcmp(cmd, "copy_all") == 0) {
@@ -855,13 +861,14 @@ void MainWindow::populate_samples_menu() {
     std::sort(files.begin(), files.end());
     sample_files_ = std::move(files);
 
+    std::string parent = _("&File/&Samples");
     for (const auto &f : sample_files_) {
-        std::string label = "&File/&Samples/" + f.substr(0, f.size() - 4);
+        std::string label = parent + "/" + f.substr(0, f.size() - 4);
         menu_->add(label.c_str(), 0, menu_cb, (void *)f.c_str());
     }
 
     // Samples サブメニューの後に区切り線を入れる
-    Fl_Menu_Item *it = (Fl_Menu_Item *)menu_->find_item("&File/&Samples");
+    Fl_Menu_Item *it = (Fl_Menu_Item *)menu_->find_item(parent.c_str());
     if (it) it->flags |= FL_MENU_DIVIDER;
 }
 
@@ -871,7 +878,7 @@ bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
         std::string path = dir + "/" + filename;
         if (win->sheet_->load_file(path.c_str())) return true;
     }
-    fl_alert("File not found:\n%s", filename);
+    fl_alert("%s\n%s", _("File not found:"), filename);
     return false;
 }
 

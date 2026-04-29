@@ -24,6 +24,7 @@
 extern "C" {
 #include "sheet_model.h"
 #include "types/val.h"
+#include "i18n.h"
 }
 
 #include <ftxui/component/event.hpp>
@@ -579,6 +580,9 @@ static void test_compact_mode() {
  * main
  * -------------------------------------------------------------------- */
 int main() {
+    /* テストは英語前提のアサートなので OS ロケールに関係なく en で固定. */
+    calcyx_i18n_init("en");
+
     test_input_and_enter();
     test_completion();
     test_undo_redo();

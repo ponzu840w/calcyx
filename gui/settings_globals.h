@@ -9,6 +9,7 @@
 #pragma once
 
 #include <FL/Fl.H>
+#include <string>
 
 extern "C" {
 #include "types/val.h"
@@ -41,6 +42,9 @@ constexpr bool DEFAULT_FMT_E_ALIGNMENT      = false;
 constexpr int  DEFAULT_COLOR_PRESET         = 0;  // COLOR_PRESET_OTAKU_BLACK
 
 // ---- グローバル変数 ----
+
+// UI 言語: "auto" / "en" / "ja". 起動時の calcyx_i18n_init() で実言語に解決される.
+extern std::string g_language;
 
 // フォント
 extern int g_font_id;

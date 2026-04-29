@@ -6,6 +6,7 @@
 //   - Preview (プレビュー SheetView)
 
 #include "prefs_common.h"
+#include "i18n.h"
 #include "SheetView.h"
 #include <FL/Fl_Box.H>
 
@@ -29,7 +30,7 @@ static void exp_toggle_cb(Fl_Widget *, void *data) {
 }
 
 void build_number_format_tab(DlgState &st, int tab_h) {
-    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, " Number Format ");
+    Fl_Group *g = new Fl_Group(5, 30, DW - 10, tab_h - 25, _(" Number Format "));
     g->color(DLG_BG);
     g->selection_color(DLG_BG);
     g->labelcolor(DLG_TEXT);
@@ -42,11 +43,11 @@ void build_number_format_tab(DlgState &st, int tab_h) {
     // ===== Decimal =====
     {
         int body_h = 40;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Decimal");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Decimal"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         Fl_Box *lb = new Fl_Box(lx + 10, inner_y, 300, 22,
-            "Max length of decimal places to display:");
+            _("Max length of decimal places to display:"));
         style_label(lb);
         lb->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
         st.fmt_decimal_spin = new Fl_Spinner(lx + 10 + 300, inner_y, 70, 22);
@@ -63,7 +64,7 @@ void build_number_format_tab(DlgState &st, int tab_h) {
     // 構成: enable チェック (セクション外) + 枠内に 2 つの log10 閾値 + Engineering Alignment
     {
         st.fmt_exp_chk = new Fl_Check_Button(lx + 4, ly, 220, 20,
-            "Scientific notation (E)");
+            _("Scientific notation (E)"));
         style_check(st.fmt_exp_chk);
         st.fmt_exp_chk->value(g_fmt_settings.e_notation ? 1 : 0);
         st.fmt_exp_chk->callback(exp_toggle_cb, &st);
@@ -99,7 +100,7 @@ void build_number_format_tab(DlgState &st, int tab_h) {
         inner_y += 26;
 
         st.fmt_align_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            "Engineering alignment");
+            _("Engineering alignment"));
         style_check(st.fmt_align_chk);
         st.fmt_align_chk->value(g_fmt_settings.e_alignment ? 1 : 0);
         st.fmt_align_chk->callback(fmt_change_cb, &st);
@@ -112,18 +113,18 @@ void build_number_format_tab(DlgState &st, int tab_h) {
     // ===== Numeric Separators =====
     {
         int body_h = 62;
-        Fl_Group *sec = begin_section(lx, ly, sw, body_h, "Numeric Separators");
+        Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Numeric Separators"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
 
         st.sep_thousands_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            "Separate decimal numbers every 3 digits");
+            _("Separate decimal numbers every 3 digits"));
         style_check(st.sep_thousands_chk);
         st.sep_thousands_chk->value(g_sep_thousands ? 1 : 0);
         st.sep_thousands_chk->callback(fmt_change_cb, &st);
         inner_y += 26;
 
         st.sep_hex_chk = new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
-            "Separate hex/bin/oct numbers every 4 digits");
+            _("Separate hex/bin/oct numbers every 4 digits"));
         style_check(st.sep_hex_chk);
         st.sep_hex_chk->value(g_sep_hex ? 1 : 0);
         st.sep_hex_chk->callback(fmt_change_cb, &st);

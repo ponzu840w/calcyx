@@ -12,11 +12,11 @@ typedef struct {
     Fl_Color bg;         /* シート背景                  (Appearance_Color_Background) */
     Fl_Color sel_bg;     /* 選択行背景                  (Appearance_Color_Active_Background 相当) */
     Fl_Color rowline;    /* 行区切り線 */
-    Fl_Color sep;        /* UI セパレータ */
 
-    /* テキスト / カーソル */
+    /* テキスト / アクセント */
     Fl_Color text;       /* デフォルトテキスト (白)     (Appearance_Color_Text) */
-    Fl_Color cursor;     /* 入力カーソル */
+    Fl_Color accent;     /* アクセント色: caret / 編集行文字色 / FL_SELECTION_COLOR
+                          * (ボタンホバー・Choice ポップアップ選択・チェックマーク) */
 
     /* シンタックスハイライト */
     Fl_Color symbol;     /* 演算子・記号・=             (Appearance_Color_Symbols) */

@@ -41,6 +41,10 @@
  * だけを短く書く. 冗長な "GUI ..." "(GUI sheet)" 等の scope 注釈も不要. */
 
 static const calcyx_setting_desc_t TABLE[] = {
+    SEC("# ---- Language ----\n"),
+    STR("language", CORE, "auto",
+        "UI language: 'auto' (follow OS locale) / 'en' / 'ja'."),
+
     SEC("# ---- Font ----\n"),
     FONT("font",       G, "Courier",
          "Font name (e.g. monospace, Courier, DejaVu Sans Mono)."),
@@ -117,9 +121,8 @@ static const calcyx_setting_desc_t TABLE[] = {
     COLOR("color_bg",          GT),
     COLOR("color_sel_bg",      GT),
     COLOR("color_rowline",     GT),
-    COLOR("color_sep",         GT),
     COLOR("color_text",        GT),
-    COLOR("color_cursor",      GT),
+    COLOR("color_accent",      GT),
     COLOR("color_symbol",      GT),
     COLOR("color_ident",       GT),
     COLOR("color_special",     GT),
@@ -176,9 +179,8 @@ static const struct {
     { "color_bg",          offsetof(calcyx_color_palette_t, bg) },
     { "color_sel_bg",      offsetof(calcyx_color_palette_t, sel_bg) },
     { "color_rowline",     offsetof(calcyx_color_palette_t, rowline) },
-    { "color_sep",         offsetof(calcyx_color_palette_t, sep) },
     { "color_text",        offsetof(calcyx_color_palette_t, text) },
-    { "color_cursor",      offsetof(calcyx_color_palette_t, cursor) },
+    { "color_accent",      offsetof(calcyx_color_palette_t, accent) },
     { "color_symbol",      offsetof(calcyx_color_palette_t, symbol) },
     { "color_ident",       offsetof(calcyx_color_palette_t, ident) },
     { "color_special",     offsetof(calcyx_color_palette_t, special) },
