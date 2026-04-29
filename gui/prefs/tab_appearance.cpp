@@ -27,6 +27,16 @@ static const int BUILTIN_COUNT = sizeof(BUILTIN_FONTS) / sizeof(BUILTIN_FONTS[0]
 static std::vector<SysFont> s_all_fonts;
 static bool s_fonts_loaded = false;
 
+namespace {
+struct FontPickerState {
+    Fl_Hold_Browser *browser;
+    Fl_Check_Button *sys_chk;
+    Fl_Check_Button *prop_chk;
+    std::vector<Fl_Font> ids;
+    Fl_Font cur_id;
+};
+}  // anonymous namespace
+
 static bool detect_monospace(Fl_Font id) {
     fl_font(id, 14);
     return fl_width("iiii", 4) == fl_width("MMMM", 4);
@@ -58,6 +68,39 @@ std::string font_id_to_display_name(Fl_Font id) {
     const char *n = Fl::get_font_name(id, &attr);
     if (n && n[0]) return n;
     return "Courier";
+}
+
+/* Browser を sys_chk / prop_chk の現在値で再構築する.
+ * 開いた直後と sys_chk/prop_chk の callback の両方から呼ばれる. */
+static void rebuild_font_picker_list(FontPickerState *ps) {
+    ps->browser->clear();
+    ps->ids.clear();
+    bool use_sys  = ps->sys_chk->value() != 0;
+    bool show_all = ps->prop_chk->value() != 0;
+    int select = 0;
+
+    if (!use_sys) {
+        for (int i = 0; i < BUILTIN_COUNT; i++) {
+            if (!show_all && !BUILTIN_FONTS[i].mono) continue;
+            if (BUILTIN_FONTS[i].id == ps->cur_id)
+                select = (int)ps->ids.size() + 1;
+            ps->ids.push_back(BUILTIN_FONTS[i].id);
+            ps->browser->add(BUILTIN_FONTS[i].label);
+        }
+    } else {
+        load_system_fonts();
+        for (int i = 0; i < (int)s_all_fonts.size(); i++) {
+            if (!show_all && !s_all_fonts[i].monospace) continue;
+            if (s_all_fonts[i].id == ps->cur_id)
+                select = (int)ps->ids.size() + 1;
+            ps->ids.push_back(s_all_fonts[i].id);
+            ps->browser->add(s_all_fonts[i].name.c_str());
+        }
+    }
+    if (select >= 1 && select <= (int)ps->ids.size()) {
+        ps->browser->value(select);
+        ps->browser->middleline(select);
+    }
 }
 
 void update_font_btn(FontTab *ft) {
@@ -99,75 +142,13 @@ static void open_font_picker(FontTab *ft, Fl_Window *parent) {
         if (BUILTIN_FONTS[i].id == ft->selected_id) { cur_builtin = true; break; }
     sys_chk.value(cur_builtin ? 0 : 1);
 
-    struct PickerState {
-        Fl_Hold_Browser *browser;
-        Fl_Check_Button *sys_chk;
-        Fl_Check_Button *prop_chk;
-        std::vector<Fl_Font> ids;
-        Fl_Font cur_id;
-    };
-    PickerState ps = { &browser, &sys_chk, &prop_chk, {}, ft->selected_id };
-
-    auto rebuild = [](PickerState *ps) {
-        ps->browser->clear();
-        ps->ids.clear();
-        bool use_sys  = ps->sys_chk->value() != 0;
-        bool show_all = ps->prop_chk->value() != 0;
-        int select = 0;
-
-        if (!use_sys) {
-            for (int i = 0; i < BUILTIN_COUNT; i++) {
-                if (!show_all && !BUILTIN_FONTS[i].mono) continue;
-                if (BUILTIN_FONTS[i].id == ps->cur_id)
-                    select = (int)ps->ids.size() + 1;
-                ps->ids.push_back(BUILTIN_FONTS[i].id);
-                ps->browser->add(BUILTIN_FONTS[i].label);
-            }
-        } else {
-            load_system_fonts();
-            for (int i = 0; i < (int)s_all_fonts.size(); i++) {
-                if (!show_all && !s_all_fonts[i].monospace) continue;
-                if (s_all_fonts[i].id == ps->cur_id)
-                    select = (int)ps->ids.size() + 1;
-                ps->ids.push_back(s_all_fonts[i].id);
-                ps->browser->add(s_all_fonts[i].name.c_str());
-            }
-        }
-        if (select >= 1 && select <= (int)ps->ids.size()) {
-            ps->browser->value(select);
-            ps->browser->middleline(select);
-        }
-    };
-    rebuild(&ps);
+    FontPickerState ps = { &browser, &sys_chk, &prop_chk, {}, ft->selected_id };
+    rebuild_font_picker_list(&ps);
 
     sys_chk.callback([](Fl_Widget *, void *d) {
-        auto *ps = static_cast<PickerState *>(d);
+        auto *ps = static_cast<FontPickerState *>(d);
         if (ps->sys_chk->value()) load_system_fonts();
-        auto rebuild = [](PickerState *ps) {
-            ps->browser->clear(); ps->ids.clear();
-            bool use_sys = ps->sys_chk->value() != 0;
-            bool show_all = ps->prop_chk->value() != 0;
-            int select = 0;
-            if (!use_sys) {
-                for (int i = 0; i < BUILTIN_COUNT; i++) {
-                    if (!show_all && !BUILTIN_FONTS[i].mono) continue;
-                    if (BUILTIN_FONTS[i].id == ps->cur_id) select = (int)ps->ids.size() + 1;
-                    ps->ids.push_back(BUILTIN_FONTS[i].id);
-                    ps->browser->add(BUILTIN_FONTS[i].label);
-                }
-            } else {
-                for (int i = 0; i < (int)s_all_fonts.size(); i++) {
-                    if (!show_all && !s_all_fonts[i].monospace) continue;
-                    if (s_all_fonts[i].id == ps->cur_id) select = (int)ps->ids.size() + 1;
-                    ps->ids.push_back(s_all_fonts[i].id);
-                    ps->browser->add(s_all_fonts[i].name.c_str());
-                }
-            }
-            if (select >= 1 && select <= (int)ps->ids.size()) {
-                ps->browser->value(select); ps->browser->middleline(select);
-            }
-        };
-        rebuild(ps);
+        rebuild_font_picker_list(ps);
     }, &ps);
     prop_chk.callback(sys_chk.callback(), &ps);
 
