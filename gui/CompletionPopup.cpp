@@ -72,14 +72,7 @@ const Candidate *CompletionPopupBase::selected() const {
 }
 
 void CompletionPopupBase::rebuild(const std::string &key) {
-    std::vector<Candidate> b1, b2;
-    for (auto &c : all_) {
-        if (key.empty() || completion_istartswith(c.id.c_str(), key.c_str())) b1.push_back(c);
-        else if (completion_icontains(c.id.c_str(), key.c_str()))             b2.push_back(c);
-    }
-    filtered_.clear();
-    for (auto &c : b1) filtered_.push_back(c);
-    for (auto &c : b2) filtered_.push_back(c);
+    filtered_ = calcyx::filter_completion(all_, key);
 
     list_->clear();
     for (auto &c : filtered_)

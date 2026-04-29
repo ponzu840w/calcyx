@@ -12,18 +12,10 @@ using namespace ftxui;
 namespace calcyx::tui {
 
 void TuiCompletion::reload(sheet_model_t *model) {
-    const sheet_candidate_t *arr = nullptr;
-    int n = sheet_model_build_candidates(model, &arr);
-    all_.clear();
-    all_.reserve(n);
-    for (int i = 0; i < n; ++i) {
-        Item it;
-        it.id          = arr[i].id          ? arr[i].id          : "";
-        it.label       = arr[i].label       ? arr[i].label       : it.id;
-        it.description = arr[i].description ? arr[i].description : "";
-        it.is_function = arr[i].is_function;
-        all_.push_back(std::move(it));
-    }
+    all_ = calcyx::build_candidates(model);
+    /* TUI 表示は label が空のとき id を表示する都合があるが、
+     * build_candidates は label が NULL のとき "" を入れる.
+     * 後段 render() 側で空 label を id にフォールバックする. */
 }
 
 void TuiCompletion::open(const std::string &key) {
@@ -60,19 +52,7 @@ const TuiCompletion::Item *TuiCompletion::selected() const {
 }
 
 void TuiCompletion::rebuild() {
-    std::vector<Item> prefix, substr;
-    const char *key_c = key_.c_str();
-    for (const auto &c : all_) {
-        if (key_.empty() || completion_istartswith(c.id.c_str(), key_c)) {
-            prefix.push_back(c);
-        } else if (completion_icontains(c.id.c_str(), key_c)) {
-            substr.push_back(c);
-        }
-    }
-    filtered_.clear();
-    filtered_.reserve(prefix.size() + substr.size());
-    for (auto &c : prefix) filtered_.push_back(std::move(c));
-    for (auto &c : substr) filtered_.push_back(std::move(c));
+    filtered_ = calcyx::filter_completion(all_, key_);
 }
 
 Element TuiCompletion::render(int max_rows) const {

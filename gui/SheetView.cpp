@@ -839,20 +839,7 @@ void SheetView::test_type_and_commit(const char *expr) {
 }
 
 // --- 入力補完 ---
-// sheet_model から C 形式の候補リストを取得し、C++ 側 Candidate に変換する。
-static std::vector<Candidate> build_candidates_from_model(sheet_model_t *model) {
-    const sheet_candidate_t *arr = nullptr;
-    int n = sheet_model_build_candidates(model, &arr);
-    std::vector<Candidate> out;
-    out.reserve(n);
-    for (int i = 0; i < n; i++) {
-        out.push_back({ arr[i].id ? arr[i].id : "",
-                        arr[i].label ? arr[i].label : "",
-                        arr[i].description ? arr[i].description : "",
-                        arr[i].is_function });
-    }
-    return out;
-}
+// sheet_model から候補を取得 (shared/completion_filter.hpp の helper).
 
 void SheetView::completion_update() {
     if (!editor_->visible()) return;
@@ -876,7 +863,7 @@ void SheetView::completion_update() {
     std::string key(text + start, pos - start);
 
     if (!popup_->is_shown()) {
-        popup_->set_all(build_candidates_from_model(model_));
+        popup_->set_all(calcyx::build_candidates(model_));
 
         fl_font(editor_->textfont(), editor_->textsize());
         int cur_pix  = (int)fl_width(text, pos);

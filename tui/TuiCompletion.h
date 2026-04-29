@@ -8,25 +8,18 @@
 #include <vector>
 
 #include "sheet_model.h"
+#include "completion_filter.hpp"
 
 namespace calcyx::tui {
 
 /* 補完ドロップダウン。sheet_model_build_candidates で取得した全候補を
  * 内部に保持し、キー (現在のカーソル位置の識別子) でフィルタ・ランキングする。
  *
- * ランキング順:
- *   1. prefix (istartswith) でマッチする候補 (アルファベット順)
- *   2. substring (icontains) でマッチする候補 (アルファベット順)
- *
- * GUI (ui/CompletionPopup.cpp) と同じルール。 */
+ * フィルタ・ランキングロジックは shared/completion_filter.hpp に GUI と
+ * 共通化されている. */
 class TuiCompletion {
 public:
-    struct Item {
-        std::string id;
-        std::string label;
-        std::string description;
-        bool        is_function;
-    };
+    using Item = calcyx::Candidate;
 
     /* sheet_model から候補を再構築。open() 前に毎回呼ぶ想定。 */
     void reload(sheet_model_t *model);

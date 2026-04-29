@@ -17,15 +17,12 @@
 #include <FL/Fl_Menu_Window.H>
 #include <FL/Fl_Select_Browser.H>
 #include <FL/Fl_Box.H>
+#include "completion_filter.hpp"
 #include <string>
 #include <vector>
 
-struct Candidate {
-    std::string id;          // 挿入されるテキスト
-    std::string label;       // 表示ラベル（引数情報付き）
-    std::string description; // 説明文（builtin_docs.cpp より）
-    bool        is_function; // 関数なら true
-};
+/* 共有実装に統合済み. 既存呼び出し側のため alias を残す. */
+using Candidate = calcyx::Candidate;
 
 // 抽象基底: widget 型を問わない共通 API + 内部状態。
 // Fl_Group / Fl_Menu_Window の派生が multiple inheritance で混ぜる。
