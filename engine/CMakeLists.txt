@@ -1,4 +1,5 @@
 add_library(calcyx_engine STATIC
+    utf8.c
     types/ufixed113.c
     types/real.c
     types/quad.c

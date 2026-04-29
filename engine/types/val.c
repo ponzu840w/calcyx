@@ -2,6 +2,7 @@
  *          BoolVal.cs, StrVal.cs, NullVal.cs, ArrayVal.cs */
 
 #include "val.h"
+#include "utf8.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -683,13 +684,12 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
         case FMT_CHAR:
             if (real_is_integer(r) && real_fits_i64(r)) {
                 iv = real_to_i64(r);
-                /* UTF-8 エンコード */
-                size_t p = 0;
-                if      (iv < 0x80)   { buf[p++] = (char)iv; }
-                else if (iv < 0x800)  { buf[p++] = (char)(0xC0|(iv>>6)); buf[p++] = (char)(0x80|(iv&0x3F)); }
-                else if (iv < 0x10000){ buf[p++] = (char)(0xE0|(iv>>12)); buf[p++] = (char)(0x80|((iv>>6)&0x3F)); buf[p++] = (char)(0x80|(iv&0x3F)); }
-                else                  { buf[p++] = (char)(0xF0|(iv>>18)); buf[p++] = (char)(0x80|((iv>>12)&0x3F)); buf[p++] = (char)(0x80|((iv>>6)&0x3F)); buf[p++] = (char)(0x80|(iv&0x3F)); }
-                buf[p] = '\0';
+                char tmp[4];
+                int n = calcyx_utf8_encode((int32_t)iv, tmp);
+                if (n > 0 && (size_t)n < buflen) {
+                    memcpy(buf, tmp, (size_t)n);
+                    buf[n] = '\0';
+                } else { real_to_str(r, buf, buflen); }
             } else { real_to_str(r, buf, buflen); }
             break;
         case FMT_SI_PREFIX: {
@@ -799,14 +799,11 @@ static void val_format(const val_t *v, char *buf, size_t buflen, bool display) {
                 && real_fits_i64(&v->real_v)) {
                 /* 'a' 形式: UTF-8 エンコード済みの文字列を ' で囲みエスケープ */
                 int64_t iv = real_to_i64(&v->real_v);
-                char utf8[8]; size_t ulen = 0;
-                if      (iv < 0x80)    { utf8[ulen++] = (char)iv; }
-                else if (iv < 0x800)   { utf8[ulen++] = (char)(0xC0|(iv>>6)); utf8[ulen++] = (char)(0x80|(iv&0x3F)); }
-                else if (iv < 0x10000) { utf8[ulen++] = (char)(0xE0|(iv>>12)); utf8[ulen++] = (char)(0x80|((iv>>6)&0x3F)); utf8[ulen++] = (char)(0x80|(iv&0x3F)); }
-                else                   { utf8[ulen++] = (char)(0xF0|(iv>>18)); utf8[ulen++] = (char)(0x80|((iv>>12)&0x3F)); utf8[ulen++] = (char)(0x80|((iv>>6)&0x3F)); utf8[ulen++] = (char)(0x80|(iv&0x3F)); }
+                char utf8[4];
+                int ulen = calcyx_utf8_encode((int32_t)iv, utf8);
                 size_t pos = 0;
                 if (pos + 1 < buflen) buf[pos++] = '\'';
-                for (size_t i = 0; i < ulen; i++)
+                for (int i = 0; i < ulen; i++)
                     append_escaped_byte(buf, &pos, buflen, (unsigned char)utf8[i], false);
                 if (pos + 1 < buflen) buf[pos++] = '\'';
                 buf[pos] = '\0';
