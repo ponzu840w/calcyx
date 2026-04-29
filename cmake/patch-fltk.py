@@ -5,6 +5,14 @@
   - menuwindow::autoscroll() がメニューバーウィンドウ (itemheight==0) を
     誤ってリポジションするバグを修正。マルチモニタ環境でメニューがずれる
     原因だった。
+  - menuwindow の背景色が `Fl::scheme()` 有効時に常に FL_GRAY
+    (= FL_BACKGROUND_COLOR) で塗られ、Fl_Menu_Bar::color() が無視される
+    バグを修正。calcyx は scheme="gtk+" + ダーク配色を使うため、
+    ドロップダウンがシート背景と同色になり「透けて見える」ように
+    なっていた。 button->color() を常に優先する。
+  - macOS でメニューが意図的に setAlphaValue:0.97 で 3% 透過されている
+    のを完全 opaque に変更。 native menu 風の演出だが calcyx のダーク
+    配色ではシート内容が透けて見えてしまうため。
   - Windows の OEM キー (VK_OEM_1 / VK_OEM_PLUS など) の FLTK keysym 変換
     が US 配列固定のテーブル (vktab) を使っており、JIS キーボードだと物理
     キーと FLTK keysym がずれる (例: JIS `;` キーが FLTK keysym `=` で
@@ -82,6 +90,17 @@ src = src.replace(
     'void menuwindow::autoscroll(int n) {\n'
     '  if (itemheight == 0) return; // menubar has no scrollable items',
     1)
+
+# ---------------------------------------------------------------------------
+# 2b) menuwindow 背景色: scheme 有効時も button->color() を尊重する
+#     元: color(button && !Fl::scheme() ? button->color() : FL_GRAY);
+#     新: color(button ? button->color() : FL_GRAY);
+#     ctor 側 (1 箇所) と、後続で挿入する rebind() の中 (1 箇所) の両方が
+#     同じ判定をするので置換は count 制限なしで全置換する。
+# ---------------------------------------------------------------------------
+src = src.replace(
+    'color(button && !Fl::scheme() ? button->color() : FL_GRAY);',
+    'color(button ? button->color() : FL_GRAY);')
 
 # ---------------------------------------------------------------------------
 # 3) menuwindow / menutitle リサイクル機構 (Windows 向けパフォーマンス)
@@ -163,7 +182,7 @@ void menuwindow::rebind(const Fl_Menu_Item* m, int X, int Y, int Wp, int Hp,
   } else {
     box(FL_UP_BOX);
   }
-  color(button && !Fl::scheme() ? button->color() : FL_GRAY);
+  color(button ? button->color() : FL_GRAY);
   selected = -1;
   {
     int j = 0;
@@ -457,6 +476,41 @@ else:
         sys.stderr.write("patch-fltk.py: Fl_win32.cxx target line not found\n")
         sys.exit(1)
     src = src.replace(needle, OEM_OVERRIDE, 1)
+
+    with open(path, "w") as f:
+        f.write(src)
+
+    print("Patched successfully:", path)
+
+# ===========================================================================
+# 3) Fl_cocoa.mm — macOS メニューの 3% 透過を無効化
+# ===========================================================================
+# FLTK は macOS で menu_window() を 0.97 alpha にして native menu 風の
+# 透過感を出しているが、 calcyx のダーク配色 (otaku-black 等) ではシート
+# 行のテキストや色がはっきり透けて見えてしまう。 完全 opaque に倒す。
+path = os.path.join(sys.argv[1], "src", "Fl_cocoa.mm")
+with open(path, "r") as f:
+    src = f.read()
+
+if "calcyx: opaque menu windows" in src:
+    print("Already patched Fl_cocoa.mm, skipping")
+else:
+    needle = (
+        "  if(w->menu_window()) { // make menu windows slightly transparent\n"
+        "    [cw setAlphaValue:0.97];\n"
+        "  }\n"
+    )
+    replacement = (
+        "  // calcyx: opaque menu windows (FLTK 既定の 0.97 透過は\n"
+        "  // ダーク配色でシート内容が透けて見えるため無効化)\n"
+        "  if (false && w->menu_window()) {\n"
+        "    [cw setAlphaValue:0.97];\n"
+        "  }\n"
+    )
+    if needle not in src:
+        sys.stderr.write("patch-fltk.py: Fl_cocoa.mm target line not found\n")
+        sys.exit(1)
+    src = src.replace(needle, replacement, 1)
 
     with open(path, "w") as f:
         f.write(src)
