@@ -11,6 +11,7 @@
 #include "CompletionPopup.h"
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 class DragGrip;     // コンパクトモード用 (MainWindow.cpp で定義)
 class ResizeGrip;   // コンパクトモード用 (MainWindow.cpp で定義)
@@ -50,16 +51,16 @@ private:
     DragGrip        *drag_grip_    = nullptr;  // コンパクトモード: ドラッグハンドル
     Fl_Button       *compact_exit_ = nullptr;  // コンパクトモード: 解除ボタン (PiP アイコン)
     ResizeGrip      *resize_grip_  = nullptr;  // コンパクトモード: リサイズハンドル
-    int              mi_undo_;    // Edit/Undo メニュー項目インデックス
-    int              mi_redo_;    // Edit/Redo メニュー項目インデックス
-    // View メニューのトグル項目 (g_ 変数と同期)
-    int              mi_rowlines_  = -1;
-    int              mi_thousands_ = -1;
-    int              mi_hexsep_    = -1;
-    int              mi_e_notation_ = -1;
-    int              mi_auto_complete_ = -1;
-    int              mi_tray_      = -1;
-    int              mi_scheme_[5] = {-1,-1,-1,-1,-1};  // FL_MENU_RADIO, COLOR_PRESET_COUNT に対応
+    /* コマンド ID ("undo", "toggle_thousands", "scheme_0" 等) → メニュー項目インデックス.
+     * メニュー追加後に build_menu_index() で 1 度だけ走査して埋める.
+     * 既知のショートカット付きラベル ("&Edit/&Undo") の find_index() が
+     * 期待通りに動かないため、callback==menu_cb && user_data==cmd_id で同定. */
+    std::unordered_map<std::string, int> menu_indices_;
+    int menu_idx(const char *cmd) const {
+        auto it = menu_indices_.find(cmd);
+        return (it != menu_indices_.end()) ? it->second : -1;
+    }
+    void build_menu_index();
 
     static const int MENU_H    = 24;
     static const int CHOICE_W  = 76;
@@ -92,8 +93,6 @@ private:
 
     bool topmost_ = false;
     bool tray_active_ = false;
-    int  mi_topmost_ = -1;  // View/Always on Top メニュー項目インデックス
-    int  mi_compact_ = -1;  // View/Compact Mode メニュー項目インデックス
     std::vector<std::string> sample_files_;  // メニュー文字列の安定した記憶域
     std::vector<std::string> scheme_cmds_;   // "scheme_N" コマンドの安定した記憶域
 

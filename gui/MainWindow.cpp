@@ -249,30 +249,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->add(_("&File/&About calcyx"),   FL_F + 1,         menu_cb, (void*)"about", FL_MENU_DIVIDER);
     menu_->add(_("&File/E&xit"),         0,                menu_cb, (void*)"exit");
 
-    // 全メニュー追加後にインデックスを取得
-    // find_index(path) はショートカット付きラベルで失敗するので手動検索
-    mi_undo_ = mi_redo_ = mi_topmost_ = -1;
-    for (int i = 0; i < menu_->size(); i++) {
-        const Fl_Menu_Item &it = menu_->menu()[i];
-        if (!it.label()) continue;
-        if (it.callback() == menu_cb) {
-            const char *d = (const char *)it.user_data();
-            if (d && strcmp(d, "undo") == 0) mi_undo_ = i;
-            if (d && strcmp(d, "redo") == 0) mi_redo_ = i;
-            if (d && strcmp(d, "topmost") == 0) mi_topmost_ = i;
-            if (d && strcmp(d, "toggle_compact") == 0) mi_compact_ = i;
-            if (d && strcmp(d, "toggle_rowlines") == 0)  mi_rowlines_  = i;
-            if (d && strcmp(d, "toggle_thousands") == 0) mi_thousands_ = i;
-            if (d && strcmp(d, "toggle_hexsep") == 0)    mi_hexsep_    = i;
-            if (d && strcmp(d, "toggle_e_notation") == 0) mi_e_notation_ = i;
-            if (d && strcmp(d, "toggle_auto_complete") == 0) mi_auto_complete_ = i;
-            if (d && strcmp(d, "toggle_tray") == 0)      mi_tray_      = i;
-            if (d && strncmp(d, "scheme_", 7) == 0) {
-                int idx = atoi(d + 7);
-                if (idx >= 0 && idx < COLOR_PRESET_COUNT) mi_scheme_[idx] = i;
-            }
-        }
-    }
+    build_menu_index();
 
     // ---- ← → 📌 ? ツールバーボタン (右寄せ) ----
     auto make_btn = [&](int bx, int bw, const char *label, const char *cmd) {
@@ -463,8 +440,8 @@ void MainWindow::update_toolbar() {
         if (idx < 0) return;
         items[idx].labelcolor(active ? C_MENU_FG : C_DIM);
     };
-    set_menu(mi_undo_, u);
-    set_menu(mi_redo_, r);
+    set_menu(menu_idx("undo"), u);
+    set_menu(menu_idx("redo"), r);
 }
 
 int MainWindow::handle(int event) {
@@ -641,6 +618,23 @@ static void show_about(MainWindow *win) {
     while (dlg.shown()) Fl::wait();
 }
 
+/* メニューコマンドのディスパッチテーブル.
+ * 単純な 1〜2 行の操作はここで完結させる. ファイルダイアログを開くなど
+ * 複雑なものは下の static ヘルパーに切り出す.
+ *
+ * 注: ハンドラは captureless lambda なので関数ポインタに減衰する.
+ * MainWindow 内に書いてあるので private member への暗黙アクセスが効く. */
+
+static void cmd_open(MainWindow *win) {
+    Fl_Native_File_Chooser fc;
+    fc.title(_("Open"));
+    fc.type(Fl_Native_File_Chooser::BROWSE_FILE);
+    std::string filt = std::string(_("Text files")) + "\t*.txt\n" +
+                       std::string(_("All files")) + "\t*";
+    fc.filter(filt.c_str());
+    if (fc.show() == 0) win->open_file(fc.filename());
+}
+
 void MainWindow::menu_cb(Fl_Widget *w, void *data) {
     (void)w;
     const char *cmd = static_cast<const char *>(data);
@@ -650,124 +644,121 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         if ((win = dynamic_cast<MainWindow *>(fw))) break;
     if (!win) return;
 
-    if (strcmp(cmd, "open") == 0) {
-        Fl_Native_File_Chooser fc;
-        fc.title(_("Open"));
-        fc.type(Fl_Native_File_Chooser::BROWSE_FILE);
-        std::string filt = std::string(_("Text files")) + "\t*.txt\n" +
-                           std::string(_("All files")) + "\t*";
-        fc.filter(filt.c_str());
-        if (fc.show() == 0) win->open_file(fc.filename());
-
-    } else if (strcmp(cmd, "save") == 0) {
-        Fl_Native_File_Chooser fc;
-        fc.title(_("Save As"));
-        fc.type(Fl_Native_File_Chooser::BROWSE_SAVE_FILE);
-        std::string filt = std::string(_("Text files")) + "\t*.txt\n" +
-                           std::string(_("All files")) + "\t*";
-        fc.filter(filt.c_str());
-        fc.options(Fl_Native_File_Chooser::SAVEAS_CONFIRM);
-        if (fc.show() == 0) {
-            if (!win->sheet_->save_file(fc.filename()))
-                fl_alert("%s\n%s", _("Cannot save file:"), fc.filename());
-        }
-
-    } else if (strcmp(cmd, "copy_all") == 0) {
-        win->sheet_->copy_all_to_clipboard();
-    } else if (strcmp(cmd, "recalc") == 0) {
-        win->sheet_->live_eval();
-        win->sheet_->redraw();
-    } else if (strcmp(cmd, "insert_below") == 0) {
-        win->sheet_->insert_row_below();
-    } else if (strcmp(cmd, "insert_above") == 0) {
-        win->sheet_->insert_row_above();
-    } else if (strcmp(cmd, "delete_row") == 0) {
-        win->sheet_->delete_current_row();
-    } else if (strcmp(cmd, "move_up") == 0) {
-        win->sheet_->move_row_up();
-    } else if (strcmp(cmd, "move_down") == 0) {
-        win->sheet_->move_row_down();
-    } else if (strcmp(cmd, "clear_all") == 0) {
-        win->sheet_->clear_all();
-    } else if (strcmp(cmd, "undo") == 0) {
-        win->sheet_->undo();
-    } else if (strcmp(cmd, "redo") == 0) {
-        win->sheet_->redo();
-    } else if (strcmp(cmd, "exit") == 0) {
-        win->teardown_tray();
-        win->save_prefs();
-        exit(0);
-    } else if (strcmp(cmd, "prefs") == 0) {
-        PrefsDialog::run(win->sheet_, [](void *d) {
-            auto *mw = static_cast<MainWindow *>(d);
-            mw->apply_ui_colors();
-            mw->apply_tray_settings();
-            mw->sync_view_menu_toggles();
-            // 補完ポップアップ独立化設定が変わっていたら実装を差し替える
-            mw->recreate_popup_if_needed();
-        }, win);
-    } else if (strcmp(cmd, "topmost") == 0) {
-        win->toggle_always_on_top();
-    } else if (strcmp(cmd, "toggle_compact") == 0) {
-        win->toggle_compact_mode();
-    } else if (strcmp(cmd, "toggle_rowlines") == 0) {
-        g_show_rowlines = !g_show_rowlines;
-        win->sheet_->redraw();
-        win->sync_view_menu_toggles();
-    } else if (strcmp(cmd, "toggle_thousands") == 0) {
-        g_sep_thousands = !g_sep_thousands;
-        win->sheet_->live_eval();
-        win->sheet_->redraw();
-        win->sync_view_menu_toggles();
-    } else if (strcmp(cmd, "toggle_hexsep") == 0) {
-        g_sep_hex = !g_sep_hex;
-        win->sheet_->live_eval();
-        win->sheet_->redraw();
-        win->sync_view_menu_toggles();
-    } else if (strcmp(cmd, "toggle_e_notation") == 0) {
-        g_fmt_settings.e_notation = !g_fmt_settings.e_notation;
-        win->sheet_->live_eval();
-        win->sheet_->redraw();
-        win->sync_view_menu_toggles();
-    } else if (strcmp(cmd, "toggle_auto_complete") == 0) {
-        g_input_auto_completion = !g_input_auto_completion;
-        win->sync_view_menu_toggles();
-    } else if (strcmp(cmd, "dec_inc") == 0) {
-        if (g_fmt_settings.decimal_len < 34) {
-            g_fmt_settings.decimal_len++;
+    using Handler = void (*)(MainWindow *);
+    struct CmdEntry { const char *id; Handler fn; };
+    static const CmdEntry COMMANDS[] = {
+        {"open",      cmd_open},
+        {"prefs", [](MainWindow *win) {
+            PrefsDialog::run(win->sheet_, [](void *d) {
+                auto *mw = static_cast<MainWindow *>(d);
+                mw->apply_ui_colors();
+                mw->apply_tray_settings();
+                mw->sync_view_menu_toggles();
+                /* 補完ポップアップ独立化設定が変わっていたら実装を差し替える */
+                mw->recreate_popup_if_needed();
+            }, win);
+        }},
+        {"save", [](MainWindow *win) {
+            Fl_Native_File_Chooser fc;
+            fc.title(_("Save As"));
+            fc.type(Fl_Native_File_Chooser::BROWSE_SAVE_FILE);
+            std::string filt = std::string(_("Text files")) + "\t*.txt\n" +
+                               std::string(_("All files")) + "\t*";
+            fc.filter(filt.c_str());
+            fc.options(Fl_Native_File_Chooser::SAVEAS_CONFIRM);
+            if (fc.show() == 0) {
+                if (!win->sheet_->save_file(fc.filename()))
+                    fl_alert("%s\n%s", _("Cannot save file:"), fc.filename());
+            }
+        }},
+        {"copy_all",     [](MainWindow *win) { win->sheet_->copy_all_to_clipboard(); }},
+        {"recalc",       [](MainWindow *win) { win->sheet_->live_eval(); win->sheet_->redraw(); }},
+        {"insert_below", [](MainWindow *win) { win->sheet_->insert_row_below(); }},
+        {"insert_above", [](MainWindow *win) { win->sheet_->insert_row_above(); }},
+        {"delete_row",   [](MainWindow *win) { win->sheet_->delete_current_row(); }},
+        {"move_up",      [](MainWindow *win) { win->sheet_->move_row_up(); }},
+        {"move_down",    [](MainWindow *win) { win->sheet_->move_row_down(); }},
+        {"clear_all",    [](MainWindow *win) { win->sheet_->clear_all(); }},
+        {"undo",         [](MainWindow *win) { win->sheet_->undo(); }},
+        {"redo",         [](MainWindow *win) { win->sheet_->redo(); }},
+        {"exit", [](MainWindow *win) {
+            win->teardown_tray();
+            win->save_prefs();
+            exit(0);
+        }},
+        {"topmost",        [](MainWindow *win) { win->toggle_always_on_top(); }},
+        {"toggle_compact", [](MainWindow *win) { win->toggle_compact_mode(); }},
+        {"toggle_rowlines", [](MainWindow *win) {
+            g_show_rowlines = !g_show_rowlines;
+            win->sheet_->redraw();
+            win->sync_view_menu_toggles();
+        }},
+        {"toggle_thousands", [](MainWindow *win) {
+            g_sep_thousands = !g_sep_thousands;
             win->sheet_->live_eval();
             win->sheet_->redraw();
-        }
-    } else if (strcmp(cmd, "dec_dec") == 0) {
-        if (g_fmt_settings.decimal_len > 1) {
-            g_fmt_settings.decimal_len--;
+            win->sync_view_menu_toggles();
+        }},
+        {"toggle_hexsep", [](MainWindow *win) {
+            g_sep_hex = !g_sep_hex;
             win->sheet_->live_eval();
             win->sheet_->redraw();
-        }
-    } else if (strncmp(cmd, "scheme_", 7) == 0) {
+            win->sync_view_menu_toggles();
+        }},
+        {"toggle_e_notation", [](MainWindow *win) {
+            g_fmt_settings.e_notation = !g_fmt_settings.e_notation;
+            win->sheet_->live_eval();
+            win->sheet_->redraw();
+            win->sync_view_menu_toggles();
+        }},
+        {"toggle_auto_complete", [](MainWindow *win) {
+            g_input_auto_completion = !g_input_auto_completion;
+            win->sync_view_menu_toggles();
+        }},
+        {"toggle_tray", [](MainWindow *win) {
+            g_tray_icon = !g_tray_icon;
+            win->apply_tray_settings();
+            win->sync_view_menu_toggles();
+        }},
+        {"dec_inc", [](MainWindow *win) {
+            if (g_fmt_settings.decimal_len < 34) {
+                g_fmt_settings.decimal_len++;
+                win->sheet_->live_eval();
+                win->sheet_->redraw();
+            }
+        }},
+        {"dec_dec", [](MainWindow *win) {
+            if (g_fmt_settings.decimal_len > 1) {
+                g_fmt_settings.decimal_len--;
+                win->sheet_->live_eval();
+                win->sheet_->redraw();
+            }
+        }},
+        {"zoom_in",    [](MainWindow *win) { if (g_font_size < 36) { g_font_size++; win->apply_font_and_refresh(); } }},
+        {"zoom_out",   [](MainWindow *win) { if (g_font_size > 8)  { g_font_size--; win->apply_font_and_refresh(); } }},
+        {"zoom_reset", [](MainWindow *win) { g_font_size = DEFAULT_FONT_SIZE; win->apply_font_and_refresh(); }},
+        {"about",      [](MainWindow *win) { show_about(win); }},
+    };
+
+    for (const auto &c : COMMANDS) {
+        if (strcmp(cmd, c.id) == 0) { c.fn(win); return; }
+    }
+
+    /* 動的コマンド: scheme_N (N = 0..COLOR_PRESET_COUNT-1) */
+    if (strncmp(cmd, "scheme_", 7) == 0) {
         int idx = atoi(cmd + 7);
         if (idx >= 0 && idx < COLOR_PRESET_COUNT) {
             colors_apply_preset(idx);
             win->apply_ui_colors();
             win->sync_view_menu_toggles();
         }
-    } else if (strcmp(cmd, "toggle_tray") == 0) {
-        g_tray_icon = !g_tray_icon;
-        win->apply_tray_settings();
-        win->sync_view_menu_toggles();
-    } else if (strcmp(cmd, "zoom_in") == 0) {
-        if (g_font_size < 36) { g_font_size++; win->apply_font_and_refresh(); }
-    } else if (strcmp(cmd, "zoom_out") == 0) {
-        if (g_font_size > 8) { g_font_size--; win->apply_font_and_refresh(); }
-    } else if (strcmp(cmd, "zoom_reset") == 0) {
-        g_font_size = DEFAULT_FONT_SIZE;
-        win->apply_font_and_refresh();
-    } else if (strcmp(cmd, "about") == 0) {
-        show_about(win);
-    } else {
-        open_sample_file(win, cmd);
+        return;
     }
+
+    /* それ以外は samples メニューの動的エントリ. cmd はファイル名. */
+    open_sample_file(win, cmd);
 }
+
 
 // icon.svg のパスを返す。見つからなければ空文字列。
 static std::string find_icon_svg() {
@@ -1070,6 +1061,20 @@ void MainWindow::toggle_compact_mode() {
     redraw();
 }
 
+// メニュー追加完了後に menu_indices_ を構築する。
+// ショートカット付きラベル ("&Edit/&Undo") は FLTK の find_index() では
+// 引きにくいので、callback==menu_cb のエントリの user_data を ID として
+// 走査する。menu_idx() 経由で参照される。
+void MainWindow::build_menu_index() {
+    menu_indices_.clear();
+    for (int i = 0; i < menu_->size(); i++) {
+        const Fl_Menu_Item &it = menu_->menu()[i];
+        if (!it.label() || it.callback() != menu_cb) continue;
+        const char *cmd = (const char *)it.user_data();
+        if (cmd) menu_indices_.emplace(cmd, i);
+    }
+}
+
 // View メニューのトグル項目 (FL_MENU_TOGGLE) のチェック状態を
 // 現在の g_ 変数に合わせる。起動時・Prefs 適用後・プログラム的な
 // トグル時に呼ぶ。メニュー経由のクリックでは FLTK が自動で切替える
@@ -1080,16 +1085,16 @@ void MainWindow::sync_view_menu_toggles() {
         if (idx < 0) return;
         if (on) items[idx].set(); else items[idx].clear();
     };
-    set_check(mi_rowlines_,      g_show_rowlines);
-    set_check(mi_thousands_,     g_sep_thousands);
-    set_check(mi_hexsep_,        g_sep_hex);
-    set_check(mi_e_notation_,    g_fmt_settings.e_notation);
-    set_check(mi_auto_complete_, g_input_auto_completion);
-    set_check(mi_tray_,          g_tray_icon);
-    set_check(mi_topmost_,       topmost_);
-    set_check(mi_compact_,       compact_mode_);
+    set_check(menu_idx("toggle_rowlines"),      g_show_rowlines);
+    set_check(menu_idx("toggle_thousands"),     g_sep_thousands);
+    set_check(menu_idx("toggle_hexsep"),        g_sep_hex);
+    set_check(menu_idx("toggle_e_notation"),    g_fmt_settings.e_notation);
+    set_check(menu_idx("toggle_auto_complete"), g_input_auto_completion);
+    set_check(menu_idx("toggle_tray"),          g_tray_icon);
+    set_check(menu_idx("topmost"),              topmost_);
+    set_check(menu_idx("toggle_compact"),       compact_mode_);
     for (int i = 0; i < COLOR_PRESET_COUNT; i++)
-        set_check(mi_scheme_[i], i == g_color_preset);
+        set_check(menu_idx(scheme_cmds_[i].c_str()), i == g_color_preset);
     menu_->redraw();
 }
 
