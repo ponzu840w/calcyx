@@ -18,7 +18,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     st.ui_cb = ui_cb;
     st.ui_data = ui_data;
     /* Cancel 用に全設定をスナップショット (色 / フォント / 数値書式 / 制限 /
-     * トレイ・ホットキー / 表示) を 1 個の構造体にまとめて取得. */
+     * トレイ・ホットキー / 表示) を 1 個の構造体にまとめて取得。 */
     st.saved = AppSettings::capture();
 
     Fl_Double_Window dlg(DW, DH, _("Preferences"));

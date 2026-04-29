@@ -40,11 +40,7 @@ bool command_exists(const char *cmd) {
 }
 
 #if defined(_WIN32)
-/* Win32 Clipboard API を直接叩く。_popen 経由だと cmd.exe を起動するため、
- * UNC パス (\\wsl.localhost\... 等) から実行されたときに
- *   "CMD.EXE was started with the above path as the current directory."
- *   "UNC paths are not supported. Defaulting to Windows directory."
- * が表示されてしまう。Win32 API なら cmd を経由しないし瞬時で済む。 */
+/* Win32 Clipboard API を直接叩く (_popen 経由は UNC パスで警告が出る)。 */
 bool win32_clipboard_write(const std::string &utf8) {
     int wlen = ::MultiByteToWideChar(CP_UTF8, 0, utf8.data(), (int)utf8.size(),
                                      nullptr, 0);
@@ -135,11 +131,9 @@ std::string base64_encode(const std::string &data) {
 }
 
 bool write_via_osc52(const std::string &text) {
-    /* OSC 52: ESC ] 52 ; c ; <base64> ESC \
-     * stdout に直接書く。FTXUI の描画フレームの隙間で出力するため一瞬
-     * 画面が乱れる可能性があるが、次フレームで FTXUI が上書きするので
-     * 実害はない。端末がサポートしているか確認する手段がないので常に
-     * 真を返す (非対応端末では黙って失敗)。 */
+    /* OSC 52: ESC ] 52 ; c ; <base64> ESC \  をそのまま stdout に書く。
+     * 次フレームで FTXUI が上書きするので画面の一瞬の乱れは無害。
+     * 端末対応判定の手段がないので常に true (非対応端末では黙って失敗)。 */
     std::string seq = "\x1b]52;c;";
     seq += base64_encode(text);
     seq += "\x1b\\";

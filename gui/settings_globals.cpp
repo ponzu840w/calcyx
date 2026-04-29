@@ -1,11 +1,6 @@
-// settings_globals.cpp — ユーザー設定の定義と永続化 (GUI 側)
-//
-// calcyx.conf はコメント付きの key = value 形式。ユーザーがテキストエディタで
-// 直接編集できる。設定ダイアログは GUI ヘルパーとしてこのファイルを読み書きする。
-//
-// スキーマ (key 名・並び順・kind・デフォルト・範囲) は shared/settings_schema.c
-// に集約されている。本ファイルは GUI 側の「キー → グローバル変数ポインタ」
-// マッピングと、FLTK の Fl_Color / フォント ID 変換だけを担当する。
+// ユーザー設定の永続化 (GUI 側)。
+// スキーマは shared/settings_schema.c. ここはキー→g_* ポインタ対応表と
+// FLTK の Fl_Color / フォント ID 変換のみ担当する。
 
 #include "settings_globals.h"
 #include "AppSettings.h"
@@ -118,11 +113,7 @@ void settings_set_path_for_test(const char *path) {
     s_conf_path = path ? path : "";
 }
 
-// ---- スキーマキー → GUI グローバル変数 ポインタの対応表 ----
-//
-// shared/settings_schema.c の TABLE は pure data (target ポインタを持たない) ので、
-// GUI 側で「キー名 → 自分の変数ポインタ」を別途持つ。エントリ数は ~53 で
-// 線形検索で十分速い。
+// ---- スキーマキー → g_* ポインタの対応表 (~53 件、 線形検索で OK) ----
 
 namespace {
 
@@ -350,8 +341,8 @@ void settings_init_defaults() {
 
 // ---- load ----
 void settings_load() {
-    /* 初回起動時に conf が無ければ canonical な既定値テンプレートを書き出す.
-     * ユーザーが手編集の足がかりにできる. 既存ファイルには触らない. */
+    /* 初回起動時に conf が無ければ canonical な既定値テンプレートを書き出す。
+     * ユーザーが手編集の足がかりにできる。 既存ファイルには触らない。 */
     ensure_path();
     calcyx_settings_init_defaults(s_conf_path.c_str(),
         "# calcyx user settings — edit freely.\n");
@@ -406,10 +397,9 @@ void settings_load() {
         }
     }
 
-    /* 色: 全 color_* を g_user_colors に読み込む (preset によらず常に).
-     * conf の value が無いキー or 値が空のキーは otaku-black の default に
-     * フォールバック. settings_io reader は '#key=value' 形式 (commented)
-     * も値として返すため, preset != USER で commented 化された値も復元される. */
+    /* color_* は preset によらず常に g_user_colors に読み込む。
+     * '#key=value' (commented) 形式も settings_io が値として返すので、
+     * preset != USER のセッション越しの色設定が round-trip する。 */
     {
         CalcyxColors def;
         colors_init_defaults(&def);
@@ -426,28 +416,20 @@ void settings_load() {
             *user_target = hex_to_color(map_get(kv, d.key, ""), fallback);
         }
     }
-    /* g_colors は preset に応じて: USER_DEFINED なら g_user_colors のコピー,
-     * そうでなければ preset 由来の色値で上書き. */
+    /* g_colors は preset に応じて: USER_DEFINED なら g_user_colors のコピー、
+     * そうでなければ preset 由来の色値で上書き。 */
     colors_apply_preset(g_color_preset);
 
     update_crash_config_snapshot();
 }
 
-// ---- save ----
-//
-// shared/settings_writer.{h,c} の write_preserving に lookup を渡して
-// コメント・並び順・未知キーを保ったまま書き戻す。GUI 側の責務はキー名から
-// 現在値を文字列化することだけ。
+// ---- save: write_preserving に lookup を渡す。 キー → 値文字列化のみ責務。 ----
 
 namespace {
 
-// settings_writer に渡すコールバック: キー → 文字列値.
-// 戻り値:
-//   1  = 値を buf に書いた
-//   0  = DROP (color_* で preset != user-defined 時) — 既存行を commented 化して保持
-//   -1 = LEAVE (GUI 管轄外: TUI 専用キー, 未知キー) — 既存行をそのまま温存
-// 重要: TUI 専用キー (tui_color_source 等) は -1 を返す. GUI 保存で TUI 設定が
-// commented にされてしまわないようにするため.
+// settings_writer 用コールバック (キー → 文字列値)。
+//   1=PROVIDED, 0=DROP (color_* で preset != user-defined; commented 保持)、
+//   -1=LEAVE (GUI 管轄外; TUI 専用キーが GUI save で破壊されないように)。
 int gui_value_lookup(const char *key, char *buf, size_t buflen,
                      int *out_is_default, void *user) {
     (void)user;
@@ -500,16 +482,10 @@ int gui_value_lookup(const char *key, char *buf, size_t buflen,
         return 1;
     }
     case CALCYX_SETTING_KIND_COLOR: {
-        /* COLOR キーは g_user_colors (バックアップ) の値を返す. preset 切替
-         * で g_colors が上書きされても g_user_colors は温存されているので,
-         * 「ユーザー定義カラー」が conf に常に保存される.
-         *
-         * is_default の判定:
-         *   - preset = USER_DEFINED → 0 (ユーザー意思 → uncommented で書かれる)
-         *   - それ以外              → 1 (アクティブでない値 → commented で書かれる)
-         *
-         * これにより全 COLOR キーが常に conf に登場し, preset 切替を繰返す
-         * 度に値の round-trip (commented ⇔ uncommented) が成立する. */
+        /* COLOR キーは g_user_colors (preset 切替で温存される) の値を返す。
+         * is_default = (preset == USER_DEFINED ? 0 : 1).
+         * 全 COLOR キーが conf に常駐し preset 切替で commented⇔uncommented
+         * の round-trip が成立する。 */
         size_t offset = (char *)target - (char *)&g_colors;
         Fl_Color *user_target = (Fl_Color *)((char *)&g_user_colors + offset);
         std::string hex = color_to_hex(*user_target);
@@ -528,8 +504,8 @@ int gui_value_lookup(const char *key, char *buf, size_t buflen,
 
 void settings_save() {
     ensure_path();
-    /* 既存ファイルが空 / 不在のときだけヘッダを置く. 既存ファイルにある
-     * ユーザー編集のコメントは write_preserving が温存する. */
+    /* 既存ファイルが空 / 不在のときだけヘッダを置く。 既存ファイルにある
+     * ユーザー編集のコメントは write_preserving が温存する。 */
     const char *first_time_header = "# calcyx user settings — edit freely.\n";
     calcyx_settings_write_preserving(s_conf_path.c_str(),
                                      first_time_header,

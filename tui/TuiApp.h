@@ -48,10 +48,8 @@ struct MenuItem {
     bool        submenu;   /* 右に ▶、Enter / → で submenu へ */
 };
 
-/* ルートアプリケーション。sheet_model を所有し、
- *   - TuiSheet (メインビュー)
- *   - ファイルパスミニプロンプト (Ctrl+O / Ctrl+S で起動)
- * を束ねる。ScreenInteractive の Loop() を提供する。 */
+/* ルートアプリ。 sheet_model + TuiSheet + Ctrl+O/S プロンプトを束ね、
+ * ScreenInteractive::Loop() を提供する。 */
 class TuiApp {
 public:
     TuiApp();
@@ -98,10 +96,9 @@ private:
      * (Windows) で開く。FTXUI の端末ハンドリングを WithRestoredIO で一時退避。
      * エディタ終了後は apply_settings_from_conf() で即時再読込する。 */
     void do_preferences();
-    /* calcyx.conf からエンジン共通の設定を読み込んで反映する。
-     * GUI と共有する小数桁・E ノテーション・評価リミット・auto_completion
-     * を対象とする (フォント・色・ホットキーは GUI 専用のため無視)。
-     * 起動時とプリファレンス編集後に呼ぶ。 */
+    /* calcyx.conf を読み込んで GUI と共有する設定 (小数桁・E ノテーション・
+     * 評価リミット・auto_completion) に反映する。 起動時と prefs 編集後に呼ぶ。
+     * フォント・色・ホットキーは GUI 専用のため無視。 */
     void apply_settings_from_conf();
     void flash_message(std::string msg);
 
@@ -144,10 +141,8 @@ private:
     sheet_model_t            *model_ = nullptr;
     std::shared_ptr<TuiSheet> sheet_;
     std::string               status_message_;
-    /* 次のイベント先頭で status_message_ を消すフラグ。flash は「直後の
-     * 1 フレーム」だけ見せ、ユーザーが何かキーを押した瞬間に下段ヘルプへ
-     * 戻す。flash_message() 直後は false (=今回のフレームでは表示)、
-     * イベント末尾で flash があれば true に倒す。 */
+    /* flash は「直後の 1 フレームだけ表示」用。 次イベント末尾で立ち、
+     * 次々イベント先頭で status_message_ を消す。 */
     bool                      flash_pending_clear_ = false;
     ftxui::ScreenInteractive  screen_;
 
@@ -170,10 +165,8 @@ private:
     std::string paste_modal_text_;
     mutable ftxui::Box paste_modal_box_;
 
-    /* コンテキストメニュー状態。
-     * context_menu_item_: 現在の選択項目 (0..items.size-1)、separator はスキップ。
-     * 表示位置: 右クリック座標 (anchor) を起点に、画面右下にはみ出す場合だけ
-     * 上 / 左方向に倒す。 */
+    /* コンテキストメニュー状態。 context_menu_item_ は現在選択 (separator
+     * スキップ)。 位置は anchor 起点、画面右下はみ出し時のみ上/左に倒す。 */
     bool        context_menu_visible_ = false;
     int         context_menu_item_    = 0;
     int         context_menu_anchor_x_ = 0;

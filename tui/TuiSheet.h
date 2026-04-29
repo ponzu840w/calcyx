@@ -30,18 +30,14 @@ struct TuiPalette {
     calcyx_rgb_t bg{}, sel_bg{}, text{}, accent{};
     calcyx_rgb_t symbol{}, ident{}, special{}, si_pfx{}, error{};
     calcyx_rgb_t paren[4]{};
-    /* UI クローム用. GUI の calcyx_color_palette_t.ui_* に対応:
-     *   ui_menu  : メニューバー / ドロップダウン / コンテキストメニュー背景
-     *   ui_bg    : ダイアログ (About / Paste options 等) 背景
-     *   ui_text  : 上記の上に乗る文字色
-     *   ui_label : ラベル系のやや暗い文字色 */
+    /* UI クローム (GUI の calcyx_color_palette_t.ui_* に対応):
+     *   ui_menu=メニュー背景、 ui_bg=ダイアログ背景、
+     *   ui_text=本文色、 ui_label=ラベル色 */
     calcyx_rgb_t ui_menu{}, ui_bg{}, ui_text{}, ui_label{};
 };
 
-/* sheet_model をラップして、FTXUI の Component として振る舞う。
- * フォーカス行のみを編集対象とし、矢印上下で別の行へ移動すると
- * 現在の編集を flush → undo 登録する。編集中 (原文と一致しない) は
- * live preview を行って結果を右側に表示する。 */
+/* sheet_model を FTXUI Component としてラップ。 フォーカス行のみ編集、
+ * 行移動で flush + undo 登録、 編集中は live preview. */
 class TuiSheet : public ftxui::ComponentBase {
 public:
     explicit TuiSheet(sheet_model_t *model);
@@ -100,11 +96,9 @@ public:
     const std::string& file_path()    const { return file_path_; }
     void  set_file_path(std::string p) { file_path_ = std::move(p); }
 
-    /* サンプルファイルなどテンプレートとして開いたときに true。
-     * Ctrl+S は file_path_ を直書きせず、必ず Save-As プロンプトに
-     * 落とす (誤って配布版サンプルを上書きしないため)。
-     * read_only=true のまま新規入力で保存した場合、保存後は false に
-     * 戻す責務は呼び出し側 (TuiApp::prompt_submit) にある。 */
+    /* サンプル等テンプレートとして開いたとき true. Ctrl+S は直書きせず
+     * Save-As プロンプトに落ちる (誤って配布版を上書きしない)。
+     * 保存後の false 復帰は TuiApp::prompt_submit の責務。 */
     bool  read_only() const { return read_only_; }
     void  set_read_only(bool v) { read_only_ = v; }
 
@@ -118,7 +112,7 @@ public:
     void  set_auto_complete(bool v) { auto_complete_ = v; }
 
     /* tui_color_source = mirror_gui のときのパレット。active=true で描画が
-     * GUI と同じ RGB に切り替わる。デフォルトは inactive (= 従来挙動). */
+     * GUI と同じ RGB に切り替わる。デフォルトは inactive (= 従来挙動)。 */
     void set_palette(const TuiPalette &p) { palette_ = p; }
     const TuiPalette& palette() const { return palette_; }
 
@@ -222,10 +216,9 @@ private:
     bool          bs_delete_empty_row_ = true;
     TuiPalette    palette_;  /* active=false なら従来のセマンティック描画 */
 
-    /* 直近の Ctrl+C で書き込んだクリップボードテキストと、その行の式部分。
-     * Ctrl+V 時にクリップボードの内容と last_copied_text_ が完全一致なら、
-     * 「同一プロセスから直近にコピーした行の貼り付け」とみなして式部分のみ
-     * を挿入する (アプリ間のラウンドトリップではフル `expr = result` を貼る)。 */
+    /* 直近 Ctrl+C のクリップボード内容 + 行の式部分。
+     * Ctrl+V 時に完全一致なら同一プロセス由来とみなし式のみを挿入する
+     * (他アプリ経由のラウンドトリップではフル expr=result を貼る)。 */
     std::string   last_copied_text_;
     std::string   last_copied_expr_;
 

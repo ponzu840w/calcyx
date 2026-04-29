@@ -173,7 +173,7 @@ void real_divint(real_t *out, const real_t *a, const real_t *b) {
     mpd_divint(&out->mpd, (mpd_t *)&a->mpd, (mpd_t *)&b->mpd, &real_ctx);
 }
 
-/* 整数べき乗 (正確な反復乗算, 移植元: RMath.PowN) */
+/* 整数べき乗 (正確な反復乗算、 移植元: RMath.PowN) */
 void real_pown(real_t *out, const real_t *base, int64_t n) {
     real_t ret, x, tmp;
     real_init(&ret); real_init(&x); real_init(&tmp);
@@ -210,7 +210,7 @@ static void ensure_E_const(void) {
     }
 }
 
-/* exp(x): RMath.Exp と同じ方式 — s=round(x), t=x-s, E^s * exp_series(t)
+/* exp(x): RMath.Exp と同じ方式 — s=round(x)、 t=x-s, E^s * exp_series(t)
  * これにより exp(10) == E^10 (整数べき乗が一致) */
 void real_exp(real_t *out, const real_t *a) {
     ensure_E_const();

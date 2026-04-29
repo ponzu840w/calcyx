@@ -1,8 +1,4 @@
-/* settings_writer.c — コメント保持型 conf ライタ.
- *
- * ファイル操作は path_utf8 経由 (calcyx_fopen / calcyx_rename / calcyx_remove).
- * Windows で日本語ユーザー名等を含むパスでも文字化けしないよう UTF-8 を
- * UTF-16 に変換してから _wfopen 等を呼ぶ. */
+/* コメント保持型 conf ライタ。 ファイル I/O は path_utf8 経由。 */
 
 #include "settings_writer.h"
 #include "settings_schema.h"
@@ -45,7 +41,7 @@ static int buf_append_str(buf_t *b, const char *s) {
     return buf_append(b, s, strlen(s));
 }
 
-/* pos に n バイトを挿入. 成功 0, 失敗 -1. */
+/* pos に n バイトを挿入。 成功 0, 失敗 -1. */
 static int buf_insert(buf_t *b, size_t pos, const char *data, size_t n) {
     if (n == 0) return 0;
     if (pos > b->len) return -1;
@@ -56,8 +52,8 @@ static int buf_insert(buf_t *b, size_t pos, const char *data, size_t n) {
     return 0;
 }
 
-/* hay の中から needle を探す. 見つかれば hay 内のオフセット, 無ければ
- * (size_t)-1. needle_len = 0 のときは 0 を返す. */
+/* hay の中から needle を探す。 見つかれば hay 内のオフセット、 無ければ
+ * (size_t)-1. needle_len = 0 のときは 0 を返す。 */
 static size_t find_substring(const char *hay, size_t hay_len,
                              const char *needle, size_t needle_len) {
     size_t i;
@@ -76,14 +72,9 @@ static int buf_append_kv(buf_t *b, const char *key, const char *value) {
     return buf_append_str(b, "\n");
 }
 
-/* ---- 行解析: key = value の "key" 部分を抽出. なければ NULL. ----
- *
- * 'key = value'  → key を返し *out_commented = 0.
- * '#key = value' (# の直後がキー) → key を返し *out_commented = 1.
- *                                    (writer が出力する commented-default 形式)
- * '# free text' / 空行 / その他 → NULL.
- *
- * out_commented は NULL 可. 戻り値 key は呼び出し側で free すること. */
+/* 行から key を抽出。 'key=value' → key + commented=0,
+ * '#key=value' → key + commented=1, それ以外 → NULL.
+ * 戻り値 key は呼び出し側で free. out_commented は NULL 可。 */
 static char *line_extract_key(const char *line, int *out_commented) {
     const char *eq, *p, *ks, *ke;
     size_t klen;
@@ -94,8 +85,8 @@ static char *line_extract_key(const char *line, int *out_commented) {
     while (*p == ' ' || *p == '\t') p++;
     if (*p == '\0') return NULL;
     if (*p == '#') {
-        /* writer が出力する '#<key> = <value>' 形式を識別.
-         * '# 自由文', '## ', '#\0' 等は通常コメントとして扱い NULL を返す. */
+        /* writer が出力する '#<key> = <value>' 形式を識別。
+         * '# 自由文', '## ', '#\0' 等は通常コメントとして扱い NULL を返す。 */
         const char *q = p + 1;
         if (*q == '\0' || *q == ' ' || *q == '\t' || *q == '#') return NULL;
         if (out_commented) *out_commented = 1;
@@ -115,8 +106,8 @@ static char *line_extract_key(const char *line, int *out_commented) {
     return out;
 }
 
-/* "key = value\n" または "#key = value\n" を出力. is_commented は
- * デフォルト値のときコメントアウトするかどうか. */
+/* "key = value\n" または "#key = value\n" を出力。 is_commented は
+ * デフォルト値のときコメントアウトするかどうか。 */
 static int buf_append_kv_form(buf_t *b, const char *key, const char *value,
                               int is_commented) {
     if (is_commented) {
@@ -125,9 +116,9 @@ static int buf_append_kv_form(buf_t *b, const char *key, const char *value,
     return buf_append_kv(b, key, value);
 }
 
-/* width 桁を目安に word-wrap して各行を "# <text>\n" として buf に追記.
- * text 中の '\n' は段落区切りとして尊重する. width は "# " を除いた可視文字数.
- * 単語境界 (空白) で折り返し, 単語単独で width を超える場合は強制改行. */
+/* width 桁を目安に word-wrap して各行を "# <text>\n" として buf に追記。
+ * text 中の '\n' は段落区切りとして尊重する。 width は "# " を除いた可視文字数。
+ * 単語境界 (空白) で折り返し、 単語単独で width を超える場合は強制改行。 */
 static int buf_append_wrapped_comment(buf_t *b, const char *text, size_t width) {
     const char *p;
     if (!text || !*text) return 0;
@@ -149,7 +140,7 @@ static int buf_append_wrapped_comment(buf_t *b, const char *text, size_t width) 
             line_end = last_space;
             p = last_space + 1;
         } else {
-            /* 単語が width 超え or 行頭が空白なし → 強制改行. */
+            /* 単語が width 超え or 行頭が空白なし → 強制改行。 */
             line_end = p;
         }
         if (buf_append_str(b, "# ") != 0) return -1;
@@ -160,13 +151,10 @@ static int buf_append_wrapped_comment(buf_t *b, const char *text, size_t width) 
     return 0;
 }
 
-/* スキーマエントリ d のドキュメントコメントを出力する.
- * 形式:
- *   # <desc を 78 桁で word-wrap した複数行>
+/* スキーマエントリのドキュメントコメントを出力。 形式:
+ *   # <desc を 78 桁で word-wrap>
  *   # [SCOPE] default=<val> [range=lo..hi]
- *
- * desc が NULL のキーには doc を出さない (COLOR 系: 説明はセクション
- * ヘッダ側で十分で, ゴミコメントを撒かない). */
+ * desc が NULL なら何も出さない (COLOR 系の節約)。 */
 static int buf_append_doc(buf_t *b, const calcyx_setting_desc_t *d) {
     char meta[256];
     char scope_buf[32];
@@ -176,13 +164,10 @@ static int buf_append_doc(buf_t *b, const calcyx_setting_desc_t *d) {
 
     if (!d->desc) return 0;
 
-    /* 1. desc を word-wrap で書き出し. */
+    /* 1. desc を word-wrap で書き出し。 */
     if (buf_append_wrapped_comment(b, d->desc, 78) != 0) return -1;
 
-    /* 2. scope 文字列の生成.
-     *   CORE  (= GUI|TUI|CLI 全立ち) → [CORE]
-     *   単一 → [GUI] / [TUI] / [CLI]
-     *   複合 → スラッシュ区切り [GUI/TUI] / [GUI/CLI] / ... */
+    /* scope 文字列: CORE (全立ち)、 単一 [GUI/TUI/CLI], 複合 [GUI/TUI] etc. */
     if (d->scope == CALCYX_SETTING_SCOPE_CORE) {
         scope_str = "CORE";
     } else {
@@ -330,16 +315,14 @@ int calcyx_settings_write_preserving(const char            *path,
                                               &is_default, user);
                             seen[i] = 1;
                             if (ret > 0) {
-                                /* PROVIDED: 値で書き換え. is_default なら
-                                 * '#key = value' 形式 (commented) で書く. */
+                                /* PROVIDED: 値で書き換え。 is_default なら
+                                 * '#key = value' 形式 (commented) で書く。 */
                                 int comment_now = is_default;
                                 buf_append_kv_form(&out, key, val, comment_now);
                                 matched = 1;
                             }
-                            /* ret < 0 (LEAVE): matched=0 のまま. ループを抜けて
-                             * 元の行をそのまま転写経路に流す. seen[i]=1 を立てる
-                             * ことでセクションは既出扱いとなり Pass 2 で重複した
-                             * セクションヘッダや末尾追記が起きない. */
+                            /* LEAVE: matched=0 のままで元行を転写。 seen[i]=1
+                             * を立てると Pass 2 が重複追記しない。 */
                             break;
                         }
                     }
@@ -347,10 +330,10 @@ int calcyx_settings_write_preserving(const char            *path,
                 }
             }
             if (!matched) {
-                /* 元の行をそのまま転写. line_end は eol-1 (CR除去後) なので, content の
-                 * pos..eol を memcpy + 末尾 \n を付ける. */
+                /* 元の行をそのまま転写。 line_end は eol-1 (CR除去後) なので、 content の
+                 * pos..eol を memcpy + 末尾 \n を付ける。 */
                 buf_append(&out, content + pos, eol - pos);
-                /* 元の改行を維持 (\n が見つかれば付与, 末尾 EOF なら付けない) */
+                /* 元の改行を維持 (\n が見つかれば付与、 末尾 EOF なら付けない) */
                 if (eol < content_len) {
                     buf_append(&out, "\n", 1);
                 }
@@ -358,16 +341,13 @@ int calcyx_settings_write_preserving(const char            *path,
             pos = (eol < content_len) ? eol + 1 : eol;
         }
     } else if (first_time_header) {
-        /* ファイル新規作成時のみ短いヘッダを置く. */
+        /* ファイル新規作成時のみ短いヘッダを置く。 */
         buf_append_str(&out, first_time_header);
     }
 
-    /* --- Pass 2: 未出現の既知キーをセクション内の本来の位置に挿入 ---
-     *
-     * Pass 1 で out に書き込まれた既存セクションヘッダの位置を先に scan で求め,
-     * 各セクションの末尾 (= 次セクションのヘッダ直前) に挿入する. これにより
-     * 「Colors セクションのキーを追加したら Colors セクション内に入る」という
-     * 直感に沿った配置になる. */
+    /* Pass 2: 未出現の既知キーをセクション内の本来の位置に挿入する。
+     * 既存セクションヘッダ位置を Pass 1 後に scan で求めて、 各セクション末尾
+     * (= 次セクションヘッダ直前) に追記。 */
     {
         size_t *section_pos = (size_t *)malloc((size_t)n_table * sizeof(size_t));
         if (!section_pos) {
@@ -392,7 +372,7 @@ int calcyx_settings_write_preserving(const char            *path,
                 }
             }
 
-            /* 2. セクションごとにミッシングキーの挿入 buf を作り, 適切な位置へ. */
+            /* 2. セクションごとにミッシングキーの挿入 buf を作り、 適切な位置へ。 */
             k = 0;
             while (k < n_table && rc == 0) {
                 int next_section, j, has_missing, has_seen;
@@ -423,8 +403,8 @@ int calcyx_settings_write_preserving(const char            *path,
                 }
                 if (!has_missing) { k = next_section; continue; }
 
-                /* 挿入位置 = 次セクションヘッダの直前 (= 現セクションの末尾).
-                 * 次セクションが out に無いか, 自身が最後のセクションなら out.len. */
+                /* 挿入位置 = 次セクションヘッダの直前 (= 現セクションの末尾)。
+                 * 次セクションが out に無いか、 自身が最後のセクションなら out.len. */
                 insert_pos = out.len;
                 {
                     int m;
@@ -437,19 +417,19 @@ int calcyx_settings_write_preserving(const char            *path,
                     }
                 }
 
-                /* 挿入 buf を構築. */
+                /* 挿入 buf を構築。 */
                 add.data = NULL; add.len = 0; add.cap = 0;
 
-                /* セクションヘッダが out に無いなら, ここで前置. */
+                /* セクションヘッダが out に無いなら、 ここで前置。 */
                 if (!has_seen && section_pos[k] == (size_t)-1
                         && table[k].section) {
-                    /* 直前のバイトが \n でないなら改行付与. 視覚セパレータの空行を
-                     * 1 行追加してからヘッダ. */
+                    /* 直前のバイトが \n でないなら改行付与。 視覚セパレータの空行を
+                     * 1 行追加してからヘッダ。 */
                     if (insert_pos > 0 && out.data[insert_pos - 1] != '\n') {
                         buf_append(&add, "\n", 1);
                     }
-                    /* 末尾追記時のみ視覚的セパレータの空行を入れる. 中間挿入では
-                     * 既に直前に空行がある前提なので付けない. */
+                    /* 末尾追記時のみ視覚的セパレータの空行を入れる。 中間挿入では
+                     * 既に直前に空行がある前提なので付けない。 */
                     if (insert_pos == out.len) {
                         buf_append(&add, "\n", 1);
                     }
@@ -470,8 +450,8 @@ int calcyx_settings_write_preserving(const char            *path,
                     }
                 }
 
-                /* 中間挿入の場合, 直後にくる次セクションヘッダとの間に
-                 * 視覚的セパレータの空行を 1 行入れる. */
+                /* 中間挿入の場合、 直後にくる次セクションヘッダとの間に
+                 * 視覚的セパレータの空行を 1 行入れる。 */
                 if (add.len > 0 && insert_pos < out.len) {
                     buf_append(&add, "\n", 1);
                 }
@@ -480,7 +460,7 @@ int calcyx_settings_write_preserving(const char            *path,
                     if (buf_insert(&out, insert_pos, add.data, add.len) != 0) {
                         rc = -1;
                     } else {
-                        /* 挿入後, insert_pos 以降にあった section_pos を補正. */
+                        /* 挿入後、 insert_pos 以降にあった section_pos を補正。 */
                         int m;
                         for (m = 0; m < n_table; m++) {
                             if (section_pos[m] != (size_t)-1
@@ -512,7 +492,7 @@ int calcyx_settings_write_preserving(const char            *path,
     }
     if (rc == 0) {
 #ifdef _WIN32
-        /* Windows の rename は dest が存在すると失敗するので, 先に消す. */
+        /* Windows の rename は dest が存在すると失敗するので、 先に消す。 */
         calcyx_remove(path);
 #endif
         if (calcyx_rename(tmp_path, path) != 0) {
@@ -564,8 +544,8 @@ static int defaults_lookup(const char *key, char *buf, size_t buflen,
         snprintf(buf, buflen, "%s", d->s_def ? d->s_def : "");
         return 1;
     case CALCYX_SETTING_KIND_COLOR: {
-        /* 全キーが conf に書かれる前提のため, COLOR も初期 default として
-         * preset (otaku-black) 由来の色値を commented で書く. */
+        /* 全キーが conf に書かれる前提のため、 COLOR も初期 default として
+         * preset (otaku-black) 由来の色値を commented で書く。 */
         const char *def = calcyx_settings_color_default(key, "otaku-black");
         snprintf(buf, buflen, "%s", def ? def : "#000000");
         if (out_is_default) *out_is_default = 1;
@@ -581,7 +561,7 @@ int calcyx_settings_init_defaults(const char *path, const char *first_time_heade
     int   rc;
     if (!path) return -1;
     fp = calcyx_fopen(path, "rb");
-    if (fp) { fclose(fp); return 0; }  /* 既存. */
+    if (fp) { fclose(fp); return 0; }  /* 既存。 */
     rc = calcyx_settings_write_preserving(path, first_time_header,
                                           defaults_lookup, NULL);
     return (rc == 0) ? 1 : -1;

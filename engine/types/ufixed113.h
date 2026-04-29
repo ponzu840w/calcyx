@@ -4,10 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* Q1.112 固定小数点数
- * 5ワード x 28ビット = 140ビット内部表現（うち有効 113ビット）
- * w[0]=LSB (bits 0-27), w[1] (bits 28-55), w[2] (bits 56-83),
- * w[3] (bits 84-111), w[4]=MSB (bit 112, 1ビットのみ使用) */
+/* Q1.112 固定小数点 (5 word x 28 bit = 140 bit 内部、 有効 113 bit)。
+ * w[0..3]=fraction (bits 0..111)、 w[4]=integer (bit 112 のみ)。 */
 
 #define UFIXED113_N_WORDS  5
 #define UFIXED113_WORD_BITS 28

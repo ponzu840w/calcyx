@@ -1,7 +1,4 @@
-// sheet_highlight.cpp — see sheet_highlight.h
-//
-// 元々 SheetView.cpp 内の static 関数群だったものを切り出した.
-// SheetView と SheetLineInput の両方から呼ばれる.
+// see sheet_highlight.h. SheetView と SheetLineInput の両方から呼ばれる。
 
 #include "sheet_highlight.h"
 #include "colors.h"
@@ -44,7 +41,7 @@ void calc_separator_shifts(const char *text, int len, val_fmt_t fmt,
     else if (fmt == FMT_OCT && len >= 1 && text[0] == '0')
         start = 1;
 
-    // 整数部の終端を探す (小数点, 'e', 'E', 末尾)
+    // 整数部の終端を探す (小数点、 'e', 'E', 末尾)
     int int_end = len;
     int frac_start = -1;
     for (int i = start; i < len; i++) {
@@ -66,7 +63,7 @@ void calc_separator_shifts(const char *text, int len, val_fmt_t fmt,
         }
     }
 
-    // 整数部以降 (小数点, 小数部, 指数部) に整数部のシフトを伝搬
+    // 整数部以降 (小数点、 小数部、 指数部) に整数部のシフトを伝搬
     for (int i = int_end; i < len; i++)
         shifts[i] = acc;
 

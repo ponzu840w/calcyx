@@ -1,7 +1,5 @@
-// tab_appearance.cpp —" Appearance "タブ (Font + Colors)
-//
-// PrefsDialog.cpp から抜き出したタブ構築処理。フォント選択 Picker・
-// カラースウォッチ・プリセット選択とプレビュー SheetView を配置する。
+// "Appearance" タブ (Font + Colors): Picker / カラースウォッチ /
+// プリセット選択 / プレビュー SheetView.
 
 #include "prefs_common.h"
 #include "i18n.h"
@@ -70,8 +68,8 @@ std::string font_id_to_display_name(Fl_Font id) {
     return "Courier";
 }
 
-/* Browser を sys_chk / prop_chk の現在値で再構築する.
- * 開いた直後と sys_chk/prop_chk の callback の両方から呼ばれる. */
+/* Browser を sys_chk / prop_chk の現在値で再構築する。
+ * 開いた直後と sys_chk/prop_chk の callback の両方から呼ばれる。 */
 static void rebuild_font_picker_list(FontPickerState *ps) {
     ps->browser->clear();
     ps->ids.clear();
@@ -209,7 +207,7 @@ static void swatch_cb(Fl_Widget *, void *data) {
     Fl::get_color(*sd->target, r, g, b);
     if (fl_color_chooser("Color", r, g, b)) {
         *sd->target = fl_rgb_color(r, g, b);
-        /* g_colors と g_user_colors を同期 — グローバルバックアップを更新. */
+        /* g_colors と g_user_colors を同期 — グローバルバックアップを更新。 */
         g_user_colors = g_colors;
         update_swatch_labels(sd->dlg);
         refresh_previews(sd->dlg);
@@ -224,9 +222,9 @@ static void preset_change_cb(Fl_Widget *, void *data) {
     refresh_previews(st);
 }
 
-/* 現在のプリセット色を g_user_colors にコピーし, user-defined に切替えて
- * 編集可能状態に入る. ユーザーが「近いプリセットをベースに微調整したい」
- * というシナリオを 1 クリックで行えるようにする. */
+/* 現在のプリセット色を g_user_colors にコピーし、 user-defined に切替えて
+ * 編集可能状態に入る。 ユーザーが「近いプリセットをベースに微調整したい」
+ * というシナリオを 1 クリックで行えるようにする。 */
 static void copy_to_user_cb(Fl_Widget *, void *data) {
     auto *st = static_cast<DlgState *>(data);
     g_user_colors = g_colors;
@@ -237,10 +235,8 @@ static void copy_to_user_cb(Fl_Widget *, void *data) {
     refresh_previews(st);
 }
 
-/* ---- レイアウト定数 ----
- * このタブの寸法を変えるときに触る場所をここに集めている。
- * 色ボタンの厚みを縮めたいときは SWATCH_BTN_H と SWATCH_ROW_H、
- * セクション間隔は H_SECTION_HEAD / H_INPUT_ROW を調整する。 */
+/* レイアウト定数。 色ボタン厚みは SWATCH_BTN_H/SWATCH_ROW_H,
+ * セクション間隔は H_SECTION_HEAD / H_INPUT_ROW で調整。 */
 
 /* タブグループ全体 */
 constexpr int GROUP_X      = 5;
@@ -268,10 +264,8 @@ constexpr int W_COPY_BTN       = 150;
 constexpr int GAP_LABEL_INPUT  = 10;   // ラベルと入力欄の間 (Preset 行)
 constexpr int GAP_INPUT_INPUT  = 5;    // 隣り合う入力欄の間 (Choice → Copy ボタン)
 
-/* 色 swatch グリッド
- * カラム幅は W_LABEL_SWATCH + SWATCH_BTN_W + SWATCH_COL_GAP の累積で決まる.
- * ラベル領域を広げたいときは W_LABEL_SWATCH を, ボタンを縮めたいときは
- * SWATCH_BTN_W を, カラム間の余白を変えたいときは SWATCH_COL_GAP を調整する. */
+/* 色 swatch グリッド (col_w = W_LABEL_SWATCH + SWATCH_BTN_W + SWATCH_COL_GAP)。
+ * ラベル幅 / ボタン幅 / カラム余白を独立に調整可能。 */
 constexpr int SWATCH_COLS    = 3;
 constexpr int SWATCH_ROWS    = 10;
 constexpr int SWATCH_BTN_W   = 65;

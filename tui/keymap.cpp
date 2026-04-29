@@ -2,14 +2,8 @@
 
 namespace calcyx::tui {
 
-/* FTXUI v5.0.0 の Event は Ctrl+X を Special({X}) で表現する
- *   (0x01 = Ctrl+A, 0x04 = Ctrl+D, ..., 0x1a = Ctrl+Z)。
- * 矢印キーや修飾付き矢印は Xterm エスケープシーケンスが使われる:
- *   Shift+Arrow  = ESC [1;2<dir>
- *   Alt+Arrow    = ESC [1;3<dir>
- *   Ctrl+Arrow   = ESC [1;5<dir>
- *   Ctrl+Shift+Arrow = ESC [1;6<dir>
- */
+/* FTXUI v5: Ctrl+X = Special({X}) (0x01..0x1a)。 修飾矢印は Xterm:
+ *   Shift+Arrow=ESC[1;2<dir>, Alt=1;3, Ctrl=1;5, Ctrl+Shift=1;6 */
 Action map(const ftxui::Event &ev) {
     using E = ftxui::Event;
 
@@ -32,12 +26,9 @@ Action map(const ftxui::Event &ev) {
      || ev == E::Special("\x1b\x0a"))
         return Action::InsertAbove;
 
-    /* 履歴。GUI と同じ Ctrl+Z / Ctrl+Y を貫徹する。
-     * これを通すために以下の2点を仕込んである:
-     *   1. FTXUI のパーサで C0 0x18/0x1A を DROP しないパッチを当てている
-     *      (cmake/deps.cmake の PATCH_COMMAND)。
-     *   2. TuiApp::run() で termios の ISIG/IEXTEN を落とし、Ctrl+Z が SIGTSTP
-     *      に化けず生バイトで stdin に届くようにしている (ms-edit と同方針)。 */
+    /* 履歴: Ctrl+Z/Y. 通すための仕込み:
+     *   - FTXUI の C0 DROP パッチ (cmake/deps.cmake)
+     *   - termios ISIG/IEXTEN off (TuiApp::run; Ctrl+Z が SIGTSTP に化けない) */
     if (ev == E::Special("\x1a")) return Action::Undo;  /* Ctrl+Z */
     if (ev == E::Special("\x19")) return Action::Redo;  /* Ctrl+Y */
 
@@ -67,10 +58,8 @@ Action map(const ftxui::Event &ev) {
     if (ev == E::Special("\x17")) return Action::DeleteWord;    /* Ctrl+W */
     if (ev == E::Special("\x0b")) return Action::KillLineRight; /* Ctrl+K */
 
-    /* 行削除 (GUI の Ctrl+Del / Ctrl+BS に揃える)。
-     * Ctrl+Del = CSI 3;5~, Ctrl+BS = 0x08 (ASCII BS; xterm/modern 端末の既定)。
-     * 旧 Ctrl+D (0x04) のマッピングは廃止 — GUI に存在せず、端末の Ctrl+D =
-     * EOF 慣習と衝突するため通常文字入力に戻す。 */
+    /* 行削除: Ctrl+Del=CSI 3;5~, Ctrl+BS=0x08 (xterm 既定)。 GUI と同じ。
+     * 旧 Ctrl+D は廃止 (端末 EOF 慣習との衝突回避)。 */
     if (ev == E::Special("\x1b[3;5~")) return Action::DeleteRow;
     if (ev == E::Special("\x08"))      return Action::DeleteRow;
     /* delete_row_up: Shift+Del = CSI 3;2~。Shift+BS は端末では BS と区別不能 */
@@ -82,7 +71,7 @@ Action map(const ftxui::Event &ev) {
     if (ev == E::Special("\x1b" "c"))   return Action::CopyAll;    /* Alt+C (フォールバック) */
     if (ev == E::F5)                    return Action::Recalculate;
 
-    /* 小数桁. GUI の Ctrl+Shift+. / , は端末では拾えないため Alt+./, を使う。
+    /* 小数桁。 GUI の Ctrl+Shift+. / , は端末では拾えないため Alt+./, を使う。
      * 新しめの端末 (kitty/foot) で CSI-u が有効な場合の \x1b[46;6u / \x1b[44;6u
      * もサポートしておく。 */
     if (ev == E::Special("\x1b."))       return Action::DecimalsInc;
@@ -90,10 +79,8 @@ Action map(const ftxui::Event &ev) {
     if (ev == E::Special("\x1b[46;6u"))  return Action::DecimalsInc;
     if (ev == E::Special("\x1b[44;6u"))  return Action::DecimalsDec;
 
-    /* コンパクトモード切替. GUI と同じ Ctrl+: を第一候補に、
-     * CSI-u 非対応端末向けに F6 と Alt+z もフォールバックとして用意。
-     * Ctrl+: は端末によってシーケンス違い:
-     *   kitty/foot CSI-u : \x1b[58;5u (Ctrl+:) / \x1b[59;6u (Ctrl+Shift+;) */
+    /* コンパクトモード切替。 Ctrl+: が第一候補、 F6 と Alt+z は CSI-u 非対応
+     * 端末向けフォールバック。 Ctrl+: は kitty/foot CSI-u: \x1b[58;5u 等。 */
     if (ev == E::Special("\x1b[58;5u")) return Action::ToggleCompact;
     if (ev == E::Special("\x1b[59;6u")) return Action::ToggleCompact;
     if (ev == E::F6)                    return Action::ToggleCompact;

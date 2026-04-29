@@ -52,7 +52,7 @@ static bool s_popup_active = false;
 // ---- カスタムポップアップメニュー (Fl_Menu_Item::popup の座標問題を回避) ----
 
 static Fl_Window *s_popup_win = nullptr;
-static int s_popup_result = 0;  // 0=未選択, 1=Open, 2=Exit
+static int s_popup_result = 0;  // 0=未選択、 1=Open, 2=Exit
 
 // ホバー対応ボタン
 class HoverButton : public Fl_Button {

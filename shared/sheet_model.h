@@ -4,7 +4,7 @@
  *
  * UI 非依存 (FLTK / FTXUI / JS いずれにも依存しない C99)。
  * GUI の SheetView と TUI の TuiSheet が同じ model を共有して動作する。
- * 移植元: ui/SheetView.cpp (rows_ / ctx_ / undo_buf_ 回りを C へ抽出). */
+ * 移植元: ui/SheetView.cpp (rows_ / ctx_ / undo_buf_ 回りを C へ抽出)。 */
 
 #ifndef CALCYX_SHARED_SHEET_MODEL_H
 #define CALCYX_SHARED_SHEET_MODEL_H
@@ -16,10 +16,9 @@
 extern "C" {
 #endif
 
-/* engine ヘッダ群は素の C なので extern "C" ブロック内で取り込む。
- * 外側に出すと、eval_ctx.h → parser/expr.h → parser/token.h 経由で
- * tok_free 等が C++ リンケージで先取りされてしまい、C++ フロントエンド
- * から呼び出したときに undefined reference になる。 */
+/* engine ヘッダは extern "C" 内で取り込む。
+ * 外で取り込むと eval_ctx.h 経由で tok_free 等が C++ リンケージで先取り
+ * され undefined reference になる。 */
 #include "types/val.h"
 #include "eval/eval_ctx.h"
 
@@ -114,12 +113,9 @@ void sheet_model_eval_all(sheet_model_t *m);
 /* ================================================================== */
 /* undo 用コミット API                                                  */
 /* ================================================================== */
-/* 複合 undo エントリを push し、redo_ops を実際に適用して eval_all を呼ぶ。
- * - undo_ops: undo したとき適用する操作列 (先頭から順に)
- * - redo_ops: redo したとき適用する操作列 (先頭から順に)
- * - view_state: undo 時に復元する焦点行・カーソル
- * 呼び出し側で entry を完全に組み立てる責務がある (move/clear などで
- * 非対称な op 列になる)。 */
+/* 複合 undo エントリを push して redo_ops を適用し eval_all を呼ぶ。
+ * undo/redo は move/clear 等で非対称な op 列になるため呼び出し側で
+ * entry を完全に組み立てる責務がある。 */
 void sheet_model_commit(sheet_model_t *m,
                          const sheet_op_t *undo_ops, int undo_n,
                          const sheet_op_t *redo_ops, int redo_n,

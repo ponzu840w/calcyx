@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-/* 共有実装に統合済み. 既存呼び出し側のため alias を残す. */
+/* 共有実装に統合済み。 既存呼び出し側のため alias を残す。 */
 using Candidate = calcyx::Candidate;
 
 // 抽象基底: widget 型を問わない共通 API + 内部状態。

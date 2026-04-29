@@ -1,7 +1,6 @@
-// SheetLineInput — シンタックスハイライト付き Fl_Input.
-// SheetView のフォーカス行で使用する.
-//   editor_mode=true  → 左辺 (式編集, Up/Down/Enter を親に委譲, live_eval 呼び出し)
-//   editor_mode=false → 右辺 (読み取り専用, 同じ描画ルール)
+// シンタックスハイライト付き Fl_Input (SheetView のフォーカス行)。
+//   editor_mode=true  → 左辺 (編集、 矢印/Enter は親へ、 live_eval)
+//   editor_mode=false → 右辺 (read-only, 同じ描画ルール)
 
 #pragma once
 
@@ -14,7 +13,7 @@ extern "C" {
 class SheetLineInput : public Fl_Input {
     bool      editor_mode_;
     Fl_Color  override_color_;  // 0 以外: シンタックスハイライトを使わず単色描画
-    val_fmt_t result_fmt_ = FMT_REAL;  // 結果値のフォーマット (セパレータ用, 右辺のみ)
+    val_fmt_t result_fmt_ = FMT_REAL;  // 結果値のフォーマット (セパレータ用、 右辺のみ)
 
 public:
     SheetLineInput(int x, int y, int w, int h, bool editor_mode = true);

@@ -1,10 +1,5 @@
-// platform_tray.h — システムトレイ＋グローバルホットキー抽象レイヤー
-//
-// プラットフォーム別実装:
-//   platform_tray_win.cpp  (Windows: Shell_NotifyIcon, RegisterHotKey)
-//   platform_tray_x11.cpp  (Linux:   X11 System Tray, XQueryKeymap polling)
-//   platform_tray_mac.mm   (macOS:   NSStatusItem, Carbon hotkey)
-//   platform_tray_stub.cpp (Web/その他: すべて no-op)
+// システムトレイ + グローバルホットキー抽象レイヤー。
+// 実装: platform_tray_{win,x11,mac,stub}.cpp
 
 #pragma once
 

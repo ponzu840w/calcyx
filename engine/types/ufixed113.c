@@ -54,8 +54,8 @@ ufixed113_t ufixed113_ssr(ufixed113_t a, uint32_t carry) {
     return a;
 }
 
-/* word-level シフト (1bit ずつ ssl/ssr を呼ぶ実装より高速).
- * n を word 数 + bit 数に分け、word 単位の bulk move + bit 単位の合成で計算する. */
+/* word-level シフト (1bit ずつ ssl/ssr を呼ぶ実装より高速)。
+ * n を word 数 + bit 数に分け、word 単位の bulk move + bit 単位の合成で計算する。 */
 
 ufixed113_t ufixed113_lsl(ufixed113_t a, uint32_t n) {
     if (n == 0) return a;
@@ -119,7 +119,7 @@ ufixed113_t ufixed113_asr(ufixed113_t a, uint32_t n) {
     uint32_t bs = n % UFIXED113_WORD_BITS;
     uint32_t fill = sign ? UFIXED113_MASK : 0;
 
-    /* MSB ワードは bit 0 のみ有効. 上位 27bit を sign 拡張して一様に扱う. */
+    /* MSB ワードは bit 0 のみ有効。 上位 27bit を sign 拡張して一様に扱う。 */
     a.w[MSB_IDX] = fill;
 
     ufixed113_t r;

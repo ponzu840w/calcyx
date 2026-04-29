@@ -1,8 +1,5 @@
-/* i18n.c — see i18n.h
- *
- * 翻訳テーブルは shared/i18n_table.c で extern として定義される. 起動時に
- * 1 回 qsort して以降は bsearch で検索する. en モードまたはテーブルに
- * 該当エントリがなければ入力ポインタをそのまま返す. */
+/* see i18n.h. 起動時 1 回 qsort, 以降は bsearch.
+ * en モード / 未登録キーは入力ポインタを return. */
 
 #include "i18n.h"
 
@@ -14,11 +11,11 @@ typedef struct {
     const char *ja;
 } calcyx_tr_entry_t;
 
-/* shared/i18n_table.c で定義. 翻訳エントリ群. */
+/* shared/i18n_table.c で定義。 翻訳エントリ群。 */
 extern const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[];
 extern const int               CALCYX_TR_TABLE_JA_N;
 
-/* 状態. グローバルだが i18n_init を 1 回呼んだあとは const とみなして OK. */
+/* 状態。 グローバルだが i18n_init を 1 回呼んだあとは const とみなして OK. */
 static calcyx_lang_t  s_lang        = CALCYX_LANG_EN;
 static int            s_initialized = 0;
 static calcyx_tr_entry_t *s_sorted_ja = NULL;  /* sort 済みコピー (lazy) */

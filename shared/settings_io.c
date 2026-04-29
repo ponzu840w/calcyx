@@ -1,8 +1,4 @@
-/* settings_io.c — see settings_io.h
- *
- * パスは全プラットフォームで UTF-8 として扱う. Windows でユーザー名等に
- * 非 ASCII が含まれても文字化けしないよう, ファイル操作は path_utf8 経由
- * (内部で UTF-16 + _wfopen 等). 環境変数も calcyx_getenv_utf8 経由. */
+/* see settings_io.h. パスと環境変数は UTF-8 (path_utf8 / getenv_utf8 経由)。 */
 
 #include "settings_io.h"
 #include "path_utf8.h"
@@ -76,10 +72,8 @@ int calcyx_conf_each(const char *path, calcyx_conf_kv_fn cb, void *user) {
         while (*p == ' ' || *p == '\t') p++;
         if (*p == '\0') continue;
         if (*p == '#') {
-            /* '#<key> = <value>' 形式 (writer 自動生成 / 手書きの commented
-             * 値) は値として読む. '# 自由文', '##...' は通常コメントとして
-             * 無視. これにより color_* を commented で温存する仕組みが
-             * 起動セッション越しに有効になる. */
+            /* '#key=value' 形式 (writer 生成 / 手書き commented) は値として
+             * 読む。 '# 自由文' や '##...' は普通のコメントで無視。 */
             char *q = p + 1;
             if (*q == '\0' || *q == ' ' || *q == '\t' || *q == '#') continue;
             p = q;

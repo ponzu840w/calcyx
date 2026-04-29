@@ -63,16 +63,11 @@ struct ColorPresetInfo {
 
 extern const ColorPresetInfo COLOR_PRESET_INFO[COLOR_PRESET_COUNT];
 
-/* ---- グローバル設定 ----
- *
- * g_colors      : 描画に使う「現在の色」. preset 切替で上書きされる.
- * g_user_colors : ユーザー定義カラーのバックアップ. preset 切替では触らない.
- *                 起動時 otaku-black で初期化, 起動後 conf で上書き, ユーザー
- *                 が Preferences で色を編集すると g_colors と同時更新される.
- *                 preset = USER_DEFINED の瞬間 g_colors = g_user_colors. */
+/* g_colors      : 描画に使う現在色 (preset 切替で上書き)。
+ * g_user_colors : USER_DEFINED 用のバックアップ (preset 切替では触らない)。 */
 
-/* 実体は AppSettings (gui/AppSettings.h) の g_settings に統合済み.
- * 既存コードのため `g_<name>` の名前で参照を再公開している. */
+/* 実体は AppSettings (gui/AppSettings.h) の g_settings に統合済み。
+ * 既存コードのため `g_<name>` の名前で参照を再公開している。 */
 extern CalcyxColors &g_colors;
 extern CalcyxColors &g_user_colors;
 extern int          &g_color_preset;
@@ -81,7 +76,7 @@ void colors_init_defaults(CalcyxColors *c);
 void colors_init_preset(CalcyxColors *c, int preset);
 void colors_apply_fl_scheme();
 
-/* preset を g_color_preset に設定し, g_colors を更新する.
+/* preset を g_color_preset に設定し、 g_colors を更新する。
  *  - preset == USER_DEFINED → g_colors = g_user_colors (バックアップから復元)
- *  - それ以外               → g_colors を preset 値で上書き. g_user_colors は触らない. */
+ *  - それ以外               → g_colors を preset 値で上書き。 g_user_colors は触らない。 */
 void colors_apply_preset(int preset);

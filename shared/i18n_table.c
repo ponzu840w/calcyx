@@ -1,10 +1,5 @@
-/* i18n_table.c — English → Japanese 翻訳辞書.
- *
- * Phase ごとに各フロントエンド (GUI/TUI/CLI) や builtin_docs の翻訳を
- * 追記する. キーは英語そのまま (gettext 風). 同じ英語で文脈が違う場合は
- * 別途 prefix キーを用意する (まだ未発生).
- *
- * 起動時に i18n.c が qsort して bsearch するので, 並び順は気にしなくてよい. */
+/* English → Japanese 翻訳辞書。 キーは英語そのまま (gettext 風)。
+ * i18n.c が起動時に qsort + bsearch するので並び順は不問。 */
 
 #include <stddef.h>
 
@@ -22,8 +17,8 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Reset", "リセット" },
 
     /* === GUI: メニューバー (FLTK menu_->add の path) ===
-     * "&X" の & は次の文字をアクセラレータにする FLTK の慣例.
-     * 日本語ラベルでは末尾に "(&X)" を付ける Windows 風の流儀に合わせる. */
+     * "&X" の & は次の文字をアクセラレータにする FLTK の慣例。
+     * 日本語ラベルでは末尾に "(&X)" を付ける Windows 風の流儀に合わせる。 */
     { "&File/All &Clear",         "ファイル(&F)/全消去(&C)" },
     { "&File/&Open...",           "ファイル(&F)/開く(&O)..." },
     { "&File/&Save As...",        "ファイル(&F)/名前を付けて保存(&S)..." },
@@ -349,8 +344,8 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
       "終了コード: 0=正常, 1=評価エラー, 2=引数/ファイルエラー\n" },
 
     /* === builtin_docs (組み込み関数の説明) ===
-     * shared/builtin_docs.c の各 desc に対応する ja 翻訳.
-     * 関数名 (sin / cos 等) と引数名 (`x` / `array` 等) は英語固定. */
+     * shared/builtin_docs.c の各 desc に対応する ja 翻訳。
+     * 関数名 (sin / cos 等) と引数名 (`x` / `array` 等) は英語固定。 */
 
     /* 指数・対数 */
     { "`y` power of `x`",                                "`x` の `y` 乗" },

@@ -1,8 +1,5 @@
-// ui/test_settings.cpp — settings スキーマテーブル往復テスト
-//
-// settings_init_defaults / settings_save / settings_load が DEFAULT_* 定数と
-// SETTINGS_TABLE の整合性を保っているかを検証する。テスト専用 API
-// settings_set_path_for_test() で一時ファイルに誘導して副作用を隔離する。
+// settings スキーマの往復テスト (init_defaults / save / load の整合)。
+// settings_set_path_for_test() で一時ファイルに誘導。
 
 #include "settings_globals.h"
 #include <FL/Fl.H>

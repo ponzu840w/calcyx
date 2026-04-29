@@ -1,9 +1,4 @@
-// tab_number_format.cpp — Number Format タブ
-// セクション:
-//   - Decimal (小数桁)
-//   - Scientific Notation (E 表記 enable + 閾値 + Engineering alignment)
-//   - Numeric Separators (3/4 桁区切り)
-//   - Preview (プレビュー SheetView)
+// "Number Format" タブ: Decimal / Scientific Notation / Numeric Separators / Preview.
 
 #include "prefs_common.h"
 #include "i18n.h"

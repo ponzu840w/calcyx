@@ -57,11 +57,8 @@ static std::string find_icon_svg();
 #define C_MENU_BG  g_colors.ui_menu
 #define C_MENU_FG  g_colors.ui_text
 
-// コンパクトモードのアイコン色: labelcolor と直下のシート背景色の
-// 50:50 ブレンド。FLTK 1.x は widget 単位の α 合成を持たないので、
-// 真の半透明ではなく「薄めた色」で擬似的にシート数字が透けて見える
-// ように見せる。アイコンのフィルは極力使わず枠線だけに留めるので、
-// 数字のストロークは主にアイコンの隙間から視認できる。
+// コンパクトモードのアイコン色: labelcolor と背景の 50:50 ブレンド。
+// FLTK 1.x は widget α を持たないので「薄めた色」で擬似透過にする。
 static Fl_Color compact_overlay_color(Fl_Color fg) {
     return fl_color_average(fg, g_colors.bg, 0.5f);
 }
@@ -173,10 +170,8 @@ public:
     }
     void draw() override {
         Fl_Button::draw();
-        // 通常モードのツールバーに置かれる btn_compact_ はメニュー背景の
-        // 上に乗るので、半透明風の薄色ブレンドは適用しない。オーバーレイ
-        // (compact_exit_) だけがシートの上に出るので、シート色とのブレンド
-        // が意味を持つ。
+        // btn_compact_ はメニュー背景上なので薄色ブレンドはしない。
+        // シート上に出るオーバーレイ (compact_exit_) のみブレンドする。
         bool overlay = box() == FL_NO_BOX;
         fl_color(overlay ? compact_overlay_color(labelcolor()) : labelcolor());
         int cx = x() + w() / 2, cy = y() + h() / 2;
@@ -229,7 +224,7 @@ MainWindow::MainWindow(int w, int h, const char *title)
         char buf[24]; snprintf(buf, sizeof(buf), "scheme_%d", i);
         scheme_cmds_.push_back(buf);
         if (i == COLOR_PRESET_USER_DEFINED) continue;
-        /* parent path だけ翻訳. preset 名 (otaku-black 等) は固定. */
+        /* parent path だけ翻訳。 preset 名 (otaku-black 等) は固定。 */
         std::string path = std::string(_("&View/Color &Scheme")) + "/" + COLOR_PRESET_INFO[i].label;
         menu_->add(path.c_str(), 0, menu_cb, (void*)scheme_cmds_[i].c_str(), FL_MENU_RADIO);
     }
@@ -325,10 +320,8 @@ MainWindow::MainWindow(int w, int h, const char *title)
     // フォーカス行変更時に Fl_Choice を更新
     sheet_->set_row_change_cb(row_change_cb, this);
 
-    // コンパクトモード用のオーバーレイ (通常は hide)。右上にドラッグ
-    // グリップ、その下に解除ボタン、右下にリサイズグリップを配置する。
-    // sheet_ より後に追加することで sheet 上に描画される (popup_ より前
-    // なので popup が最前面)。
+    // コンパクトモード用オーバーレイ (通常は hide)。
+    // 右上=ドラッグ、 その下=解除、 右下=リサイズ。 sheet_ より後 / popup_ より前。
     drag_grip_ = new DragGrip(w - GRIP_SZ, 0, GRIP_SZ, GRIP_SZ);
     drag_grip_->color(C_MENU_BG);
     drag_grip_->labelcolor(C_MENU_FG);
@@ -586,7 +579,7 @@ static void show_about(MainWindow *win) {
     hv.link(about_link_cb);
     hv.scrollbar_size(0);  // スクロールバーを隠す
 
-    /* 著作権・ライセンス表記は英語固定 (国際慣例). キャッチコピーだけ翻訳. */
+    /* 著作権・ライセンス表記は英語固定 (国際慣例)。 キャッチコピーだけ翻訳。 */
     std::string html =
         std::string("<center>"
                     "<b>calcyx " CALCYX_VERSION_FULL "</b><br>") +
@@ -618,12 +611,8 @@ static void show_about(MainWindow *win) {
     while (dlg.shown()) Fl::wait();
 }
 
-/* メニューコマンドのディスパッチテーブル.
- * 単純な 1〜2 行の操作はここで完結させる. ファイルダイアログを開くなど
- * 複雑なものは下の static ヘルパーに切り出す.
- *
- * 注: ハンドラは captureless lambda なので関数ポインタに減衰する.
- * MainWindow 内に書いてあるので private member への暗黙アクセスが効く. */
+/* メニューコマンドのディスパッチテーブル。 ハンドラは captureless lambda
+ * (関数ポインタに減衰; MainWindow 内なので private member にアクセス可)。 */
 
 static void cmd_open(MainWindow *win) {
     Fl_Native_File_Chooser fc;
@@ -755,7 +744,7 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         return;
     }
 
-    /* それ以外は samples メニューの動的エントリ. cmd はファイル名. */
+    /* それ以外は samples メニューの動的エントリ。 cmd はファイル名。 */
     open_sample_file(win, cmd);
 }
 
@@ -898,7 +887,7 @@ void MainWindow::toggle_always_on_top() {
                SubstructureNotifyMask | SubstructureRedirectMask, &ev);
     XFlush(dpy);
 #endif
-    // ボタンの見た目を更新 (ON: 通常色, OFF: 薄色)
+    // ボタンの見た目を更新 (ON: 通常色、 OFF: 薄色)
     btn_topmost_->labelcolor(topmost_ ? C_MENU_FG : fl_inactive(C_MENU_FG));
     btn_topmost_->redraw();
     // メニュー側のチェックも同期 (ピンボタンから呼ばれた場合)

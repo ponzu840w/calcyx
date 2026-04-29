@@ -83,17 +83,15 @@ int main(int argc, char **argv) {
 
     colors_init_defaults(&g_colors);
     /* g_user_colors は preset = USER_DEFINED に切替えた瞬間に g_colors へコピー
-     * される. settings_load() が conf から値を読んで上書きするのでデフォルト
-     * 値は何でも良いが, 念のため otaku-black で初期化しておく. */
+     * される。 settings_load() が conf から値を読んで上書きするのでデフォルト
+     * 値は何でも良いが、 念のため otaku-black で初期化しておく。 */
     colors_init_defaults(&g_user_colors);
     settings_init_defaults();
 
     Fl::scheme("gtk+");
     Fl::visual(FL_DOUBLE | FL_INDEX);
-    // FLTK 1.4 組み込みの HiDPI スケーリング (Ctrl+= / Ctrl+- / Ctrl+0) を無効化。
-    // calcyx 側のメニューショートカット (Zoom In/Out など) と衝突して、特に
-    // コンパクトモードでメニューバーが hide されているときに組み込み側が
-    // 拾ってウィンドウ全体が縮小・拡大される現象が起きる。
+    // FLTK 組み込みの HiDPI スケーリング (Ctrl+=/-/0) を無効化。
+    // メニュー Zoom と衝突してコンパクトモードで誤発火する。
     Fl::keyboard_screen_scaling(0);
 
     // 前回クラッシュしていたらレポートダイアログを表示 (次回起動時のフォールバック)
@@ -105,7 +103,7 @@ int main(int argc, char **argv) {
     // ウィンドウジオメトリを前回終了時の設定から復元
     int wx = 0, wy = 0, ww = 520, wh = 600;
     settings_load();
-    /* 言語を確定. g_language は "auto"/"en"/"ja" のいずれか. */
+    /* 言語を確定。 g_language は "auto"/"en"/"ja" のいずれか。 */
     calcyx_i18n_init(g_language.c_str());
     colors_apply_fl_scheme();
 

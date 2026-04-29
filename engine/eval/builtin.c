@@ -334,7 +334,7 @@ typedef struct {
     const char   *name;
     int           n_params;  /* -1 = variadic */
     val_t       *(*fn)(val_t **args, int n, void *ctx);
-    int           vec_arg_idx; /* 配列ブロードキャスト対象引数 (-1=なし, 0=第1引数, ...) */
+    int           vec_arg_idx; /* 配列ブロードキャスト対象引数 (-1=なし、 0=第1引数、 ...) */
 } builtin_entry_t;
 
 static const builtin_entry_t BUILTIN_TABLE[] = {

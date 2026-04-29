@@ -1,7 +1,5 @@
-// crash_handler.cpp — クラッシュ時のレポート書き出し
-//
-// ハンドラ内ではヒープ確保・C++ 例外・stdio を避け、
-// 低レベル I/O のみでファイルに書き出す。
+// クラッシュ時のレポート書き出し。
+// ハンドラ内ではヒープ・C++ 例外・stdio を避け、低レベル I/O のみ。
 
 #include "crash_handler.h"
 #include "app_prefs.h"
@@ -19,7 +17,7 @@
 #  include <io.h>
 #  include <fcntl.h>
 /* Windows では UTF-8 → UTF-16 変換した s_crash_path_w を使って _wopen.
- * シグナルハンドラ内では malloc を避け, 起動時に変換して保持しておく. */
+ * シグナルハンドラ内では malloc を避け、 起動時に変換して保持しておく。 */
 #  define OPEN(p)  _wopen(s_crash_path_w, _O_WRONLY | _O_CREAT | _O_TRUNC, 0644)
 #  define WRITE(fd, buf, n) _write(fd, buf, (unsigned)(n))
 #  define CLOSE(fd) _close(fd)
@@ -47,7 +45,7 @@
 static char s_crash_path[1024];
 static char s_exe_path[1024];
 #if defined(_WIN32)
-/* シグナルハンドラ内 malloc を避けるため起動時に UTF-16 で保持. */
+/* シグナルハンドラ内 malloc を避けるため起動時に UTF-16 で保持。 */
 static wchar_t s_crash_path_w[1024];
 #endif
 
@@ -388,7 +386,7 @@ void crash_handler_install() {
 #if defined(_WIN32)
     snprintf(s_crash_path, sizeof(s_crash_path), "%s\\crash.log", dir.c_str());
     /* s_crash_path は UTF-8. シグナルハンドラ内で _wopen に渡せるよう
-     * UTF-16 版を起動時に作っておく. */
+     * UTF-16 版を起動時に作っておく。 */
     MultiByteToWideChar(CP_UTF8, 0, s_crash_path, -1, s_crash_path_w,
                         (int)(sizeof(s_crash_path_w) / sizeof(s_crash_path_w[0])));
     {

@@ -1,15 +1,6 @@
-// AppSettings — ユーザー編集可能な GUI 設定値の単一所有構造体.
-//
-// 元々 settings_globals.cpp に散在していた 22 個の g_* グローバル変数と
-// colors.cpp の g_colors / g_user_colors / g_color_preset を 1 個の
-// `g_settings` 構造体に集約する.
-//
-// settings_globals.h / colors.h で定義していた個別の `g_<name>` は
-// `g_settings.<name>` への参照として再公開する (後方互換). 段階的に
-// 直接アクセスへ移行する.
-//
-// 注: g_fmt_settings (engine/types/val.c) は engine から参照されるため
-// AppSettings には含めず、Snapshot だけが capture 対象として面倒を見る.
+// AppSettings — GUI 設定値の単一所有構造体 (旧 g_* 25 個を集約)。
+// settings_globals.h / colors.h の g_<name> は g_settings.<name> 参照として
+// 再公開 (後方互換)。 g_fmt_settings は engine 側に残し Snapshot だけが扱う。
 
 #pragma once
 
@@ -65,10 +56,9 @@ struct AppSettings {
     CalcyxColors colors;
     CalcyxColors user_colors;
 
-    /* PrefsDialog Cancel 等で使う完全スナップショット.
-     * g_settings + 別所有の g_fmt_settings をまとめて保存する.
-     * (前方宣言だけ持って外で定義する: nested struct の中で
-     * 自分自身を value member として持てないため) */
+    /* PrefsDialog Cancel 用スナップショット (g_settings + g_fmt_settings)。
+     * 前方宣言だけ持って外で定義する (nested struct は自分自身を value
+     * member に持てない)。 */
     struct Snapshot;
     static Snapshot capture();
     static void     restore(const Snapshot &snap);

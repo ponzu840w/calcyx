@@ -1,7 +1,4 @@
-// colors.cpp — CalcyxColors プリセットとデフォルト値
-//
-// プリセット定義は shared/color_presets.{h,c} に一本化されている (TUI と
-// 共有するため)。ここでは shared の RGB パレットを Fl_Color に変換するだけ。
+// CalcyxColors プリセット (shared/color_presets の RGB → Fl_Color 変換)。
 
 #include "colors.h"
 #include "AppSettings.h"
@@ -11,7 +8,7 @@ extern "C" {
 #include "color_presets.h"
 }
 
-/* 実体は g_settings 内. 既存コードのため参照で再公開している. */
+/* 実体は g_settings 内。 既存コードのため参照で再公開している。 */
 CalcyxColors &g_colors       = g_settings.colors;
 CalcyxColors &g_user_colors  = g_settings.user_colors;
 int          &g_color_preset = g_settings.color_preset;

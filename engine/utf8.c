@@ -29,7 +29,7 @@ int calcyx_utf8_decode(const char *s, int32_t *out_cp) {
     else if ((c0 & 0xF0) == 0xE0) { cp = c0 & 0x0F; need = 2; }
     else if ((c0 & 0xF8) == 0xF0) { cp = c0 & 0x07; need = 3; }
     else {
-        /* 不正な先頭バイト. 1 byte 進めて raw 値を返す. */
+        /* 不正な先頭バイト。 1 byte 進めて raw 値を返す。 */
         *out_cp = c0;
         return 1;
     }

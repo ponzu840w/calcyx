@@ -20,11 +20,8 @@ val_t *eval_str(const char *src, eval_ctx_t *ctx,
  * buf を直接書き換える。 */
 void eval_strip_comment(char *buf);
 
-/* 式文字列を解析し、結果を表示すべきか (= と右辺を見せるか) を返す。
- * 移植元: Calctus SheetViewItem の ansVisible 判定ロジック:
- *   - 代入/def/lambda は false (定義のみ → 非表示)
- *   - 構文エラーは true (エラーメッセージを表示するため)
- *   - それ以外は true */
+/* 結果を表示すべきか (= と右辺を見せるか)。 移植元: ansVisible.
+ * 代入/def/lambda → false, 構文エラー → true (メッセージ表示)、 他 → true. */
 bool eval_result_visible(const char *src);
 
 #endif /* EVAL_H */

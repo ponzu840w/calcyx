@@ -6,11 +6,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
-/* .NET decimal 相当の 10進浮動小数点数 (精度 29桁)
- *
- * 注意: real_t は mpd_t.data が embedded 配列を指す自己参照構造体のため、
- * 値渡しコピーは禁止。必ず real_t* を使うこと。
- * 関数はすべて output-pointer スタイル: 第1引数が出力先 real_t* */
+/* .NET decimal 相当の 10 進浮動小数点 (精度 29 桁)。
+ * 自己参照構造体 (mpd_t.data が embedded 配列) なので値渡し禁止。
+ * 全関数 output-pointer スタイル (第 1 引数 = real_t *)。 */
 
 #define REAL_PREC        29
 #define REAL_STATIC_ALLOC 4

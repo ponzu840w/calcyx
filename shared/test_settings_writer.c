@@ -1,22 +1,7 @@
-/* settings_writer の単体テスト. shared/ レイヤなので FLTK 非依存,
- * engine ラベル ctest として登録する.
- *
- * lookup の戻り値は 2 値: 1 = PROVIDED (値を提供), -1 = LEAVE (管轄外).
- * is_default = 1 なら writer は commented (#key = value) で書く.
- *
- * 検証項目:
- *  - 既存 conf にユーザーコメントを足してから save → コメントが残る
- *  - 未知キーは保持される
- *  - 既存行は元の場所で値だけ更新される (順序保持)
- *  - lookup が is_default=1 を返した行は commented になる
- *    (= ユーザーが値をデフォルトに戻した, あるいは color_* で
- *       preset != user-defined のシナリオ)
- *  - 既存 commented 行に対し lookup が is_default=0 を返したら uncomment される
- *    (= 再度 user-defined に切替え)
- *  - lookup が -1 を返したキーは行を転写し触らない (TUI 専用キー保護)
- *  - 初回生成 (空ファイル) で first_time_header が先頭に置かれる
- *  - スキーマに存在するが conf に未出現のキーが末尾追記される
- */
+/* settings_writer の単体テスト (FLTK 非依存、 engine ラベル ctest)。
+ * lookup 戻り値: 1=PROVIDED, -1=LEAVE. is_default=1 で commented (#key=val)。
+ * 検証: コメント保持 / 未知キー保持 / 順序保持 / commented↔uncommented
+ * のラウンドトリップ / -1 で行非破壊 / 初回 header / 末尾追記。 */
 
 #include "settings_writer.h"
 
@@ -58,14 +43,14 @@ static int contains(const char *hay, const char *needle) {
     return strstr(hay, needle) != NULL;
 }
 
-/* hay の中で needle1 が needle2 より前に現れるか. 両方が必須. */
+/* hay の中で needle1 が needle2 より前に現れるか。 両方が必須。 */
 static int order_ok(const char *hay, const char *needle1, const char *needle2) {
     const char *p1 = strstr(hay, needle1);
     const char *p2 = strstr(hay, needle2);
     return p1 && p2 && p1 < p2;
 }
 
-/* hay 中に「行頭」で needle が現れるか. needle は \n を含まないこと. */
+/* hay 中に「行頭」で needle が現れるか。 needle は \n を含まないこと。 */
 static int contains_at_line_start(const char *hay, const char *needle) {
     const char *p = hay;
     size_t nlen = strlen(needle);
@@ -78,8 +63,8 @@ static int contains_at_line_start(const char *hay, const char *needle) {
 
 /* ---- lookup callbacks ---- */
 
-/* シンプルな lookup: 主要キーに固定値を返す. その他は -1 (LEAVE).
- * is_default = 0 なので writer は素の "key = value" (uncommented) を出す. */
+/* シンプルな lookup: 主要キーに固定値を返す。 その他は -1 (LEAVE)。
+ * is_default = 0 なので writer は素の "key = value" (uncommented) を出す。 */
 static int lookup_basic(const char *key, char *buf, size_t buflen,
                         int *out_is_default, void *user) {
     (void)user;
@@ -95,7 +80,7 @@ static int lookup_basic(const char *key, char *buf, size_t buflen,
     return -1;
 }
 
-/* user-defined preset 想定: color_preset = user-defined, 一部 color_* を提供. */
+/* user-defined preset 想定: color_preset = user-defined, 一部 color_* を提供。 */
 static int lookup_user_colors(const char *key, char *buf, size_t buflen,
                               int *out_is_default, void *user) {
     (void)user;
@@ -106,7 +91,7 @@ static int lookup_user_colors(const char *key, char *buf, size_t buflen,
     return -1;
 }
 
-/* lookup が is_default=1 を返すケース: 値はデフォルト同等なので commented で書く. */
+/* lookup が is_default=1 を返すケース: 値はデフォルト同等なので commented で書く。 */
 static int lookup_default_marker(const char *key, char *buf, size_t buflen,
                                  int *out_is_default, void *user) {
     (void)user;
@@ -126,7 +111,7 @@ static void mkpath(char *out, size_t n, const char *name) {
     snprintf(out, n, "%s/%s", TMPDIR, name);
 }
 
-/* T1: 手書きコメント・未知キー・並び順が保持され, 既存値だけ in-place 更新される */
+/* T1: 手書きコメント・未知キー・並び順が保持され、 既存値だけ in-place 更新される */
 static void test_preserve_comments(void) {
     char path[256];
     mkpath(path, sizeof(path), "calcyx_test_writer_T1.conf");
@@ -175,9 +160,9 @@ static void test_first_time_header(void) {
     remove(path);
 }
 
-/* T3: lookup が is_default=1 を返したとき, 既存の uncommented 行は
- *     '#key = value' (commented) に変換される. (= ユーザーが値をデフォルトに
- *      戻した, あるいは preset 切替で color_* が default 同等になったケース) */
+/* T3: lookup が is_default=1 を返したとき、 既存の uncommented 行は
+ *     '#key = value' (commented) に変換される。 (= ユーザーが値をデフォルトに
+ *      戻した、 あるいは preset 切替で color_* が default 同等になったケース) */
 static void test_default_marker_comments_line(void) {
     char path[256];
     mkpath(path, sizeof(path), "calcyx_test_writer_T3.conf");
@@ -197,8 +182,8 @@ static void test_default_marker_comments_line(void) {
     remove(path);
 }
 
-/* T3b: 既に commented な行 (#color_bg = ...) で lookup が is_default=0 を返す場合,
- * uncomment されて key = value 形式になる (再度 user-defined に切替えるシナリオ). */
+/* T3b: 既に commented な行 (#color_bg = ...) で lookup が is_default=0 を返す場合、
+ * uncomment されて key = value 形式になる (再度 user-defined に切替えるシナリオ)。 */
 static void test_commented_uncomments_when_value_returned(void) {
     char path[256];
     mkpath(path, sizeof(path), "calcyx_test_writer_T3b.conf");
@@ -239,9 +224,9 @@ static void test_user_preset_emits_colors(void) {
     remove(path);
 }
 
-/* T4b: lookup が -1 (LEAVE) を返したキーは元の行をそのまま転写し,
- * 上書きも commenting も追記もされない. GUI 保存で TUI 専用キー
- * (tui_color_source 等) が破壊されないことを担保する重要なシナリオ. */
+/* T4b: lookup が -1 (LEAVE) を返したキーは元の行をそのまま転写し、
+ * 上書きも commenting も追記もされない。 GUI 保存で TUI 専用キー
+ * (tui_color_source 等) が破壊されないことを担保する重要なシナリオ。 */
 static int lookup_leave_decimal(const char *key, char *buf, size_t buflen,
                                  int *out_is_default, void *user) {
     (void)buf; (void)buflen; (void)user;
@@ -254,8 +239,8 @@ static int lookup_leave_decimal(const char *key, char *buf, size_t buflen,
 static void test_leave_preserves_line_verbatim(void) {
     char path[256];
     mkpath(path, sizeof(path), "calcyx_test_writer_T4b.conf");
-    /* 行頭の余分な空白も含めて完全に転写されるかは保証しないが, 値と
-     * commented/uncommented 状態は保持されるべき. */
+    /* 行頭の余分な空白も含めて完全に転写されるかは保証しないが、 値と
+     * commented/uncommented 状態は保持されるべき。 */
     const char *body =
         "decimal_digits = 6\n"
         "#auto_completion = false\n";

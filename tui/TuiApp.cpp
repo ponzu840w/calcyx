@@ -38,8 +38,8 @@
 
 #if defined(_WIN32)
 #  include <windows.h>
-   /* windows.h は RGB を 1 引数のマクロとして定義する. ftxui の
-    * Color::RGB(r, g, b) と衝突するので undef しておく. */
+   /* windows.h は RGB を 1 引数のマクロとして定義する。 ftxui の
+    * Color::RGB(r, g, b) と衝突するので undef しておく。 */
 #  undef RGB
 #endif
 
@@ -258,10 +258,8 @@ std::string preferences_conf_path() {
 #endif
 }
 
-/* calcyx.conf の最小パーサ。GUI 側 (settings_globals.cpp::read_conf) の
- * 仕様に合わせる: '#' で始まる行と空行はスキップ、key=value の
- * 前後空白を除去して std::map に積む。FLTK 依存を引き込まないために
- * 自前実装にしているが、フォーマットはバイト互換。 */
+/* calcyx.conf の最小パーサ (FLTK 非依存・GUI の read_conf とバイト互換)。
+ * '#' 行と空行をスキップ、 key=value の前後空白を除去して std::map に。 */
 std::map<std::string, std::string> conf_read(const std::string &path) {
     std::map<std::string, std::string> kv;
     FILE *fp = std::fopen(path.c_str(), "r");
@@ -317,8 +315,8 @@ std::string preferences_shell_quote(const std::string &s) {
 
 void TuiApp::do_preferences() {
     std::string path = preferences_conf_path();
-    /* 通常は apply_settings_from_conf で初期生成済み. 万一削除されていても
-     * テンプレで再生成してから開く. */
+    /* 通常は apply_settings_from_conf で初期生成済み。 万一削除されていても
+     * テンプレで再生成してから開く。 */
     calcyx_settings_init_defaults(path.c_str(),
         "# calcyx user settings — edit freely.\n");
 
@@ -347,27 +345,20 @@ void TuiApp::do_preferences() {
     apply_settings_from_conf();
 }
 
-/* GUI と共有する設定キーだけ取り込む。フォント・色・ホットキーなど GUI 専用の
- * キーはスキーマの scope フラグで自動的にフィルタされる (calcyx.conf 自体は
- * 両方が書き込みうる共有ファイル)。
- *
- * スキーマ駆動: shared/settings_schema.c の TABLE を 1 回走査して
- * scope に CALCYX_SETTING_SCOPE_TUI が立っているキーのみ処理する。
- * 各キーへの実際のバインドは下の dispatch 部 (strcmp 連鎖) で書く。
- * スキーマには出るが TUI が扱わない BOTH キーは下の連鎖でカバー漏れ
- * として認識できる (= スキーマ追加時に TUI 側でも反映を判断する強制点)。 */
+/* settings_schema の TABLE を走査し SCOPE_TUI のキーだけ取り込む。
+ * BOTH キーが下の dispatch (strcmp 連鎖) でカバー漏れになれば気付ける。 */
 void TuiApp::apply_settings_from_conf() {
     std::string path = preferences_conf_path();
-    /* 初回起動時に conf が無ければ canonical な既定値テンプレートを書き出す.
-     * 手編集の足がかり. 既存ファイルには触らない. */
+    /* 初回起動時に conf が無ければ canonical な既定値テンプレートを書き出す。
+     * 手編集の足がかり。 既存ファイルには触らない。 */
     calcyx_settings_init_defaults(path.c_str(),
         "# calcyx user settings — edit freely.\n");
 
     auto kv = conf_read(path);
     if (kv.empty()) return;
 
-    /* 言語: 起動時 1 回だけ反映. ホットリロードはしない.
-     * 既に i18n_init 済み (テストや上位レイヤで先行設定された場合) はスキップ. */
+    /* 言語: 起動時 1 回だけ反映。 ホットリロードはしない。
+     * 既に i18n_init 済み (テストや上位レイヤで先行設定された場合) はスキップ。 */
     if (!calcyx_i18n_is_initialized()) {
         auto it = kv.find("language");
         calcyx_i18n_init(it != kv.end() ? it->second.c_str() : "auto");
@@ -395,7 +386,7 @@ void TuiApp::apply_settings_from_conf() {
         if (!(d.scope & CALCYX_SETTING_SCOPE_TUI)) continue;
         if (!d.key) continue;
 
-        /* キー → TUI 側変数へ振り分け. スキーマに新しい BOTH キーが
+        /* キー → TUI 側変数へ振り分け。 スキーマに新しい BOTH キーが
          * 追加された際は ここに分岐を足すか、明示的に「無視」コメントで
          * 残す方針。 */
         if (strcmp(d.key, "decimal_digits") == 0) {
@@ -441,8 +432,8 @@ void TuiApp::apply_settings_from_conf() {
         sheet_->set_bs_delete_empty_row(bs_delete_empty_row);
 
         /* tui_color_source: semantic (default) | mirror_gui
-         * mirror_gui のとき color_preset を読み, user-defined なら
-         * 個別 color_* キーで上書きしてから TuiPalette を sheet に渡す. */
+         * mirror_gui のとき color_preset を読み、 user-defined なら
+         * 個別 color_* キーで上書きしてから TuiPalette を sheet に渡す。 */
         TuiPalette tp;
         auto src_it = kv.find("tui_color_source");
         std::string src = (src_it != kv.end()) ? src_it->second : "semantic";
@@ -455,7 +446,7 @@ void TuiApp::apply_settings_from_conf() {
             calcyx_color_palette_t pal;
             calcyx_color_preset_get(pid, &pal);
 
-            /* user-defined なら conf の color_* で個別上書き. */
+            /* user-defined なら conf の color_* で個別上書き。 */
             if (pid == CALCYX_COLOR_PRESET_USER_DEFINED) {
                 struct { const char *key; calcyx_rgb_t *dst; } overrides[] = {
                     { "color_bg",       &pal.bg },
@@ -552,7 +543,7 @@ constexpr int kAboutVisibleRows  = 10;
 constexpr int kAboutMaxScroll    =
     (kShortcutCount > kAboutVisibleRows) ? kShortcutCount - kAboutVisibleRows : 0;
 
-/* mirror_gui のとき overlay 全体に GUI 色を当てるヘルパー.
+/* mirror_gui のとき overlay 全体に GUI 色を当てるヘルパー。
  * which: ChromeColor::Menu (ドロップダウン / コンテキスト) → ui_menu
  *        ChromeColor::Dialog (About / Paste options 等)     → ui_bg */
 enum class ChromeColor { Menu, Dialog };
@@ -566,8 +557,8 @@ ftxui::Element apply_chrome_color(ftxui::Element e,
              | ftxui::bgcolor(Color::RGB(bg.r, bg.g, bg.b));
 }
 
-/* ライセンス情報 (GUI 版 gui/MainWindow.cpp の About と同じ構成).
- * TUI は FLTK を使わないので FLTK エントリは除外し, 代わりに FTXUI を載せる. */
+/* ライセンス情報 (GUI 版 gui/MainWindow.cpp の About と同じ構成)。
+ * TUI は FLTK を使わないので FLTK エントリは除外し、 代わりに FTXUI を載せる。 */
 struct LicenseEntry {
     const char *name;
     const char *copyright;
@@ -589,7 +580,7 @@ const LicenseEntry kLicenses[] = {
                    "https://www.bytereef.org/mpdecimal" },
 };
 constexpr int kLicenseCount = (int)(sizeof(kLicenses) / sizeof(kLicenses[0]));
-/* License 各エントリは 3 行 (name+copyright / license / url) + 区切り 1 行. */
+/* License 各エントリは 3 行 (name+copyright / license / url) + 区切り 1 行。 */
 constexpr int kLicenseRowsPerEntry = 4;
 constexpr int kLicenseTotalRows    = kLicenseCount * kLicenseRowsPerEntry;
 constexpr int kLicenseMaxScroll    =
@@ -609,9 +600,9 @@ Element TuiApp::about_overlay() const {
                       color(Color::CyanLight) | center);
     header.push_back(text(""));
 
-    /* タブ行: [Shortcuts] [License] — メニューバーと同じ括弧スタイルで揃える.
-     * アクティブタブは inverted で強調. クリック判定用に各タブを reflect で
-     * Box に記録しておく (handle_mouse から参照). */
+    /* タブ行: [Shortcuts] [License] — メニューバーと同じ括弧スタイルで揃える。
+     * アクティブタブは inverted で強調。 クリック判定用に各タブを reflect で
+     * Box に記録しておく (handle_mouse から参照)。 */
     about_tab_boxes_.assign((size_t)AboutTab::Count, Box{});
     auto tab_label = [&](const char *label, AboutTab id) {
         Element e = hbox({ text("["), text(label), text("]") });
@@ -626,7 +617,7 @@ Element TuiApp::about_overlay() const {
     }));
     header.push_back(separator());
 
-    /* タブ別の行を組み立て. 全行を一度作ってから about_scroll_ で窓を切る. */
+    /* タブ別の行を組み立て。 全行を一度作ってから about_scroll_ で窓を切る。 */
     Elements all_rows;
     int max_scroll = 0;
     if (about_tab_ == AboutTab::Shortcuts) {
@@ -692,7 +683,7 @@ bool TuiApp::about_handle_event(Event ev) {
         about_visible_ = false;
         return true;
     }
-    /* タブ切替: Tab / Shift+Tab / ←/→. 切替時はスクロール位置をリセット. */
+    /* タブ切替: Tab / Shift+Tab / ←/→. 切替時はスクロール位置をリセット。 */
     auto switch_tab = [&](AboutTab next) {
         if (about_tab_ != next) {
             about_tab_ = next;
@@ -719,12 +710,8 @@ bool TuiApp::about_handle_event(Event ev) {
     return true;
 }
 
-/* ----------------------------------------------------------------------
- * Paste Options モーダル (改行入りクリップボード貼り付け時)
- *
- * GUI の PasteOptionForm を簡素化したラジオ 3 択。テキストプレビューと
- * 選択肢を表示し、↑↓ で選択、Enter で確定、Esc でキャンセル。
- * -------------------------------------------------------------------- */
+/* Paste Options モーダル (改行入りクリップボード貼付時のラジオ 3 択)。
+ * GUI の PasteOptionForm の簡素版。 */
 
 namespace {
 constexpr int kPasteChoiceMultiRows  = 0;
@@ -867,14 +854,8 @@ Element TuiApp::paste_modal_overlay() const {
     return dlg | clear_under | reflect(paste_modal_box_) | center;
 }
 
-/* ----------------------------------------------------------------------
- * コンテキストメニュー (右クリック)
- *
- * ↑↓: 項目移動 (separator スキップ)
- * Enter / 左クリック項目: 実行
- * Esc / 外側クリック: 閉じる
- * 各項目はキーボードショートカットも併記 (実際の処理はメインで動く)。
- * -------------------------------------------------------------------- */
+/* コンテキストメニュー (右クリック): ↑↓ 移動 / Enter or 左クリック 実行 /
+ * Esc or 外側クリック 閉じる。 各項目にキーボードショートカット併記。 */
 namespace {
 
 enum class ContextCmd {
@@ -1167,7 +1148,7 @@ Element TuiApp::menu_bar_render() const {
         cells.push_back(std::move(cell));
         cells.push_back(text(" "));
     }
-    /* 行末まで背景を塗るための filler. mirror_gui のときは ui_menu 色を当てる. */
+    /* 行末まで背景を塗るための filler. mirror_gui のときは ui_menu 色を当てる。 */
     cells.push_back(filler());
     Element bar = hbox(std::move(cells));
     if (sheet_ && sheet_->palette().active) {
@@ -1700,17 +1681,10 @@ void TuiApp::test_dispatch(Event ev) {
  * -------------------------------------------------------------------- */
 
 #if !defined(_WIN32)
-/* Ctrl+Z (0x1A) / Ctrl+C (0x03) / Ctrl+S (0x13) / Ctrl+Q (0x11) を
- * シグナルやフロー制御としてではなく生バイトとして受け取るため、
- * ISIG / IEXTEN / IXON を落とす (microsoft/edit と同方針)。
- *
- * IXON を残すと kernel の tty 層が Ctrl+S を XOFF として吸収して出力を
- * 凍結してしまい、アプリが復帰できなくなる (Ctrl+Q も XON として吸収
- * されるので Quit が効かない)。
- *
- * FTXUI の Install/Uninstall が我々の改変済み termios を保存・復元する
- * ので、最終的に元の (我々が起動前に保存した) termios に戻す必要がある。
- * RAII で保証する。 */
+/* Ctrl+Z/C/S/Q を生バイトで受けるため ISIG/IEXTEN/IXON を落とす
+ * (microsoft/edit 方針)。 IXON を残すと Ctrl+S が XOFF で吸収され凍結。
+ * FTXUI の Install/Uninstall が改変後の termios を保存・復元するので、
+ * 元の termios への復帰を RAII で保証する。 */
 class TermiosIsigGuard {
     int            fd_;
     bool           ok_ = false;
@@ -1754,11 +1728,8 @@ int TuiApp::run(const std::string &initial_file) {
         Element body = sheet_->Render();
 
         Element base;
-        /* 最下行は単一スロット。優先度: prompt > flash > help。
-         *   - prompt: Ctrl+O/S 入力中
-         *   - flash:  status_message_ あり (次イベントで消える)
-         *   - help:   ホットキーヒント (compact 時は何も出さない)
-         * compact 時は flash と help を隠し、prompt のみ表示する。 */
+        /* 最下行: prompt > flash > help の優先で 1 スロット。
+         * compact 時は prompt のみ。 */
         Element bottom_slot;
         bool bottom_visible = true;
         if (prompt_mode_ != PromptMode::None) {
@@ -1788,8 +1759,8 @@ int TuiApp::run(const std::string &initial_file) {
             bottom_slot = text(_(" F1 help  Alt+F menu  ^Q quit  "
                                  "^Z/^Y undo/redo  F8-F12 fmt ")) | dim;
         }
-        /* mirror_gui のときは最下行も ui_menu 背景 + ui_text 文字色で塗る.
-         * 行末まで背景が広がるよう filler を足してから bgcolor を当てる. */
+        /* mirror_gui のときは最下行も ui_menu 背景 + ui_text 文字色で塗る。
+         * 行末まで背景が広がるよう filler を足してから bgcolor を当てる。 */
         if (bottom_visible && sheet_->palette().active) {
             const auto &p = sheet_->palette();
             bottom_slot = hbox({ bottom_slot, filler() })

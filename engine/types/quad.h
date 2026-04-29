@@ -6,12 +6,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* 128ビット浮動小数点数 (IEEE 754 quad 相当)
- * neg: 符号
- * exp: 指数（バイアス = 0x3fff）
- * coe: 仮数（ufixed113, Q1.112）
- *
- * 移植元: Calctus/Model/Types/quad.cs */
+/* 128 bit 浮動小数点 (IEEE 754 quad 相当、 移植元: quad.cs)。
+ * neg=符号、 exp=指数 (bias 0x3fff)、 coe=仮数 (ufixed113 Q1.112)。 */
 
 #define QUAD_EXP_BIAS 0x3fff
 

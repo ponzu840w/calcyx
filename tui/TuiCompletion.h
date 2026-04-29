@@ -16,7 +16,7 @@ namespace calcyx::tui {
  * 内部に保持し、キー (現在のカーソル位置の識別子) でフィルタ・ランキングする。
  *
  * フィルタ・ランキングロジックは shared/completion_filter.hpp に GUI と
- * 共通化されている. */
+ * 共通化されている。 */
 class TuiCompletion {
 public:
     using Item = calcyx::Candidate;

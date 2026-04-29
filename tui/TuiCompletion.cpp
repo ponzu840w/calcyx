@@ -14,8 +14,8 @@ namespace calcyx::tui {
 void TuiCompletion::reload(sheet_model_t *model) {
     all_ = calcyx::build_candidates(model);
     /* TUI 表示は label が空のとき id を表示する都合があるが、
-     * build_candidates は label が NULL のとき "" を入れる.
-     * 後段 render() 側で空 label を id にフォールバックする. */
+     * build_candidates は label が NULL のとき "" を入れる。
+     * 後段 render() 側で空 label を id にフォールバックする。 */
 }
 
 void TuiCompletion::open(const std::string &key) {

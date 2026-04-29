@@ -237,7 +237,7 @@ val_t *bi_solve1(val_t **a, int n, void *ctx) {
     /* 対数スケールで x を生成 (移植元: generateInitCandidates(center=0)) */
     const int SCALE_FINE  = 4;
     const int SCALE_RANGE = 18 * SCALE_FINE; /* 72 */
-    /* 負側: 2*SCALE_RANGE 個, 中心: 1, 正側: 2*SCALE_RANGE 個 = 4*SCALE_RANGE+1 = 289 */
+    /* 負側: 2*SCALE_RANGE 個、 中心: 1, 正側: 2*SCALE_RANGE 個 = 4*SCALE_RANGE+1 = 289 */
     double cands_x[300];
     double cands_y[300];
     int nc = 0;

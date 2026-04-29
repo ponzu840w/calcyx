@@ -1,10 +1,6 @@
-// settings_globals.h — ユーザー設定 (calcyx.conf)
-// アプリ状態 (state.ini) とは分離されたユーザー編集可能な設定ファイル。
-// ダイアログからも手動テキスト編集からも変更できる。
-//
-// デフォルト値は DEFAULT_* 定数で一元管理する。
-// settings_init_defaults(), settings_load(), PrefsDialog の reset は
-// すべてここの定数を参照する。
+// ユーザー設定 calcyx.conf (state.ini とは別)。
+// デフォルト値は DEFAULT_* 定数で一元管理 (init_defaults / load / reset
+// が参照)。
 
 #pragma once
 
@@ -41,11 +37,7 @@ constexpr int  DEFAULT_FMT_E_NEGATIVE_MAX   = -5;
 constexpr bool DEFAULT_FMT_E_ALIGNMENT      = false;
 constexpr int  DEFAULT_COLOR_PRESET         = 0;  // COLOR_PRESET_OTAKU_BLACK
 
-// ---- グローバル変数 ----
-// 実体は AppSettings (gui/AppSettings.h) に一元化されている.
-// 既存コードのために `g_<name>` の名前で参照を再公開している.
-//
-// 新規コードは可能なら g_settings.<name> 直接参照を推奨.
+// 実体は g_settings (AppSettings.h)。 後方互換で g_<name> を参照公開。
 
 extern std::string &g_language;
 

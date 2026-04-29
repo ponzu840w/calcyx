@@ -192,13 +192,9 @@ CompletionPopupWindow::CompletionPopupWindow(MainWindow *main)
     : Fl_Menu_Window(POP_W, DESC_H)
     , main_(main)
 {
-    // set_override() は NOBORDER + OVERRIDE フラグを立てる。X11 では
-    // override_redirect ウィンドウとして生成され WM が管理しないので、
-    // show() しても親ウィンドウから入力フォーカスが奪われない。
-    // Windows / macOS でも borderless + 非アクティブ化挙動になるため
-    // クロスプラットフォームで安全。Fl_Menu_Window は既定では override
-    // を立てないので明示的に呼ぶ必要がある (tooltip/menu の _NET_WM_TYPE
-    // だけでは WM に焦点移動を止めさせられない)。
+    // set_override(): NOBORDER + OVERRIDE で X11 override_redirect 化。
+    // 親ウィンドウから入力フォーカスを奪わない (Win/Mac でも borderless +
+    // 非アクティブ化)。 Fl_Menu_Window 既定ではこのフラグが立たない。
     set_override();
     init_widgets(POP_W);
     end();
@@ -224,10 +220,8 @@ void CompletionPopupWindow::show_at(int wx, int wy_below, int editor_top,
     int sy_below = main_->y_root() + wy_below;
     int sy_top   = main_->y_root() + editor_top;
 
-    // 主ウィンドウがあるスクリーンの作業領域を取得。
-    // Fl::w()/Fl::h() はプライマリモニタ固定なので、主ウィンドウが
-    // サブモニタにある場合にポップアップがプライマリに吸い寄せられる
-    // (画面半分より右に出られないように見える) 挙動になる。
+    // 主ウィンドウのあるスクリーンの作業領域を取得 (Fl::w/h はプライマリ
+    // 固定でサブモニタ側のポップアップが吸い寄せられる)。
     int scr_x, scr_y, scr_w, scr_h;
     Fl::screen_work_area(scr_x, scr_y, scr_w, scr_h, main_->screen_num());
 
@@ -235,10 +229,7 @@ void CompletionPopupWindow::show_at(int wx, int wy_below, int editor_top,
     if (sx + POP_W > scr_x + scr_w) sx = scr_x + scr_w - POP_W;
     if (sx < scr_x) sx = scr_x;
 
-    // Y: 原則として下に表示。独立ウィンドウはメインウィンドウ外にも
-    // 出せるので、下の空間は画面下端まで使える = ほとんどの場合は
-    // 下に表示できる。下の余白が最小サイズに満たないときだけ上に
-    // 回す。
+    // Y: 原則下表示。 下の余白が最小サイズに満たないときだけ上に回す。
     int sy          = sy_below;
     int h           = cur_h_;
     int scr_bottom  = scr_y + scr_h;

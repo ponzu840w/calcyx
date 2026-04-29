@@ -1,7 +1,4 @@
-/* color_presets — calcyx カラープリセットの RGB 表 (FLTK 非依存).
- *
- * GUI (ui/colors.cpp) は FLTK の Fl_Color に変換して使う. TUI は ftxui の
- * Color::RGB として使う. プリセット定義はここを正本とする. */
+/* カラープリセットの RGB 表 (FLTK 非依存、 GUI/TUI 共有の正本)。 */
 
 #ifndef CALCYX_SHARED_COLOR_PRESETS_H
 #define CALCYX_SHARED_COLOR_PRESETS_H
@@ -12,7 +9,7 @@ extern "C" {
 
 typedef struct { unsigned char r, g, b; } calcyx_rgb_t;
 
-/* CalcyxColors と 1:1 対応する RGB パレット. ui/colors.h と同じフィールド順. */
+/* CalcyxColors と 1:1 対応する RGB パレット。 ui/colors.h と同じフィールド順。 */
 typedef struct {
     /* 背景 / フレーム */
     calcyx_rgb_t bg;
@@ -49,7 +46,7 @@ typedef struct {
     calcyx_rgb_t pop_border;
 } calcyx_color_palette_t;
 
-/* enum 値は ui/colors.h の ColorPreset と一致させる. */
+/* enum 値は ui/colors.h の ColorPreset と一致させる。 */
 enum {
     CALCYX_COLOR_PRESET_OTAKU_BLACK     = 0,
     CALCYX_COLOR_PRESET_GYAKUBARI_WHITE = 1,
@@ -62,11 +59,11 @@ enum {
 /* preset id 文字列 → enum. 未知なら -1. */
 int calcyx_color_preset_lookup(const char *id);
 
-/* enum → id 文字列. 範囲外なら NULL. */
+/* enum → id 文字列。 範囲外なら NULL. */
 const char *calcyx_color_preset_id(int preset);
 
-/* preset の RGB パレットを out に書く. preset が user-defined / 範囲外なら
- * otaku-black を書く (UI 側で個別キーを上書きする想定). */
+/* preset の RGB パレットを out に書く。 preset が user-defined / 範囲外なら
+ * otaku-black を書く (UI 側で個別キーを上書きする想定)。 */
 void calcyx_color_preset_get(int preset, calcyx_color_palette_t *out);
 
 #ifdef __cplusplus

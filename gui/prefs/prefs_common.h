@@ -1,8 +1,5 @@
-// prefs_common.h — PrefsDialog タブ間で共有される状態と補助関数
-//
-// 元々 PrefsDialog.cpp (1244 行) に集約されていた DlgState・スタイル
-// 補助関数・プレビュー更新・swatch ハンドラをここに集約し、各タブは
-// tab_*.cpp の build_<tab>_tab() として独立させた。
+// PrefsDialog タブ間で共有する DlgState とスタイル/プレビュー/swatch 補助。
+// 各タブは tab_*.cpp の build_<tab>_tab() として独立。
 
 #pragma once
 

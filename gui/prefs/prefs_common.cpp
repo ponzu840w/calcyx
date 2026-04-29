@@ -1,11 +1,5 @@
-// prefs_common.cpp — PrefsDialog タブ間で共有されるロジック
-//
-// ・style_* ヘルパー
-// ・DlgState → globals 反映 (write_dlg_to_globals)
-// ・プレビュー更新 (refresh_previews)
-// ・ダイアログ色の反映 (refresh_dlg_colors)
-// ・swatch 表示更新 (update_swatch_labels / update_swatch_state)
-// ・OK / Apply / Reset 動作 (apply_settings / reset_to_defaults)
+// PrefsDialog タブ間で共有されるロジック (style_* / write_dlg_to_globals /
+// refresh_previews / refresh_dlg_colors / swatch / apply_settings / reset).
 
 #include "prefs_common.h"
 #include "i18n.h"
@@ -241,7 +235,7 @@ void apply_settings(DlgState *st) {
             g_hotkey_keycode = plat_keyname_to_flkey(names[ki]);
     }
 
-    /* Language: 起動時のみ反映されるので, 変更を保存だけする (リスタート要). */
+    /* Language: 起動時のみ反映されるので、 変更を保存だけする (リスタート要)。 */
     {
         static const char *kLangIds[] = {"auto", "en", "ja"};
         int li = st->language_choice->value();
@@ -250,10 +244,10 @@ void apply_settings(DlgState *st) {
     }
 
     /* user_colors は g_user_colors (グローバル) に一本化されたので
-     * st->user_colors への同期は不要. */
+     * st->user_colors への同期は不要。 */
 
-    /* Apply 後の状態を新たなスナップショットに. これ以降 Cancel すれば
-     * Apply 直後の値に戻る. */
+    /* Apply 後の状態を新たなスナップショットに。 これ以降 Cancel すれば
+     * Apply 直後の値に戻る。 */
     st->saved = AppSettings::capture();
 
     st->sheet->apply_font();

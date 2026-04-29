@@ -1,7 +1,5 @@
-/* builtin_array_internal.h
- * builtin_array.c をカテゴリ別 (ops/stats/string/bits/color/encode) に
- * 分割する際の内部ヘッダ。共通ヘルパー (bia_*) と各 bi_* の extern
- * 宣言をまとめる。本ヘッダは engine 内部専用で、外部公開しない。 */
+/* builtin_array_*.c の内部ヘッダ (engine 内部専用)。
+ * 共通ヘルパ bia_* と各 bi_* の extern 宣言。 */
 
 #ifndef CALCYX_BUILTIN_ARRAY_INTERNAL_H
 #define CALCYX_BUILTIN_ARRAY_INTERNAL_H

@@ -1,7 +1,4 @@
-/* settings_schema.c — calcyx.conf の設定項目スキーマ実装。
- *
- * 各エントリの定義順がそのまま conf の出力順 (canonical 形式) になる。
- * GUI / TUI / CLI が同じテーブルを参照する。 */
+/* 設定項目スキーマ実装。 エントリ定義順 = conf の canonical 出力順。 */
 
 #include "settings_schema.h"
 #include "color_presets.h"
@@ -10,10 +7,8 @@
 #include <stdio.h>
 #include <string.h>
 
-/* ---- ヘルパマクロ ----
- * desc は writer がドキュメントコメントとして書き出す 1 行説明.
- * INT の range / BOOL の true|false / kind ごとのデフォルト値は writer が
- * 自動付与するので desc には書かない. NULL なら追加情報なし. */
+/* ヘルパマクロ。 desc は writer のドキュメントコメント (1 行)。
+ * range / bool / default は writer が自動付与するので desc に書かない。 */
 #define SEC(hdr) \
     { CALCYX_SETTING_KIND_SECTION, NULL, 0, 0,0,0, 0, NULL, hdr, NULL }
 #define BOOLE(k, scope, dv, ds) \
@@ -37,8 +32,8 @@
 #define CORE CALCYX_SETTING_SCOPE_CORE
 
 /* desc 文字列の方針: scope / range / values / default はメタ行 (writer が
- * 自動付与) で示されるので desc 側からは省く. desc は「何のための設定か」
- * だけを短く書く. 冗長な "GUI ..." "(GUI sheet)" 等の scope 注釈も不要. */
+ * 自動付与) で示されるので desc 側からは省く。 desc は「何のための設定か」
+ * だけを短く書く。 冗長な "GUI ..." "(GUI sheet)" 等の scope 注釈も不要。 */
 
 static const calcyx_setting_desc_t TABLE[] = {
     SEC("# ---- Language ----\n"),
@@ -89,7 +84,7 @@ static const calcyx_setting_desc_t TABLE[] = {
     BOOLE("e_alignment",         CORE,   0,
           "Right-align the mantissa width across results in E notation."),
     /* thousands_separator / hex_separator は GUI のシート描画時の桁区切り
-     * 挿入フラグ. TUI は独自の描画なので参照しない (scope=GUI). */
+     * 挿入フラグ。 TUI は独自の描画なので参照しない (scope=GUI)。 */
     BOOLE("thousands_separator", G,   1,
           "Insert '_' as a thousands separator in decimal display."),
     BOOLE("hex_separator",       G,   1,
@@ -113,11 +108,11 @@ static const calcyx_setting_desc_t TABLE[] = {
 
     SEC("# ---- Colors ----\n"),
     /* color_preset / color_* は Phase C で TUI も読むようになるので scope=GT.
-     * TUI 側は tui_color_source=mirror_gui のときだけ参照する条件付きアクセス. */
+     * TUI 側は tui_color_source=mirror_gui のときだけ参照する条件付きアクセス。 */
     PRESET("color_preset", GT, 0, "otaku-black",
            "Color theme preset. color_* keys below take effect only when set to user-defined."),
 
-    /* color_* は preset != user-defined のとき commented で書かれる. */
+    /* color_* は preset != user-defined のとき commented で書かれる。 */
     COLOR("color_bg",          GT),
     COLOR("color_sel_bg",      GT),
     COLOR("color_rowline",     GT),
@@ -170,8 +165,8 @@ const calcyx_setting_desc_t *calcyx_settings_find(const char *key) {
     return NULL;
 }
 
-/* COLOR キー名と calcyx_color_palette_t のフィールドオフセットの対応表.
- * シンプルに strcmp で線形検索する (件数 28). */
+/* COLOR キー名と calcyx_color_palette_t のフィールドオフセットの対応表。
+ * シンプルに strcmp で線形検索する (件数 28)。 */
 static const struct {
     const char *key;
     size_t      offset;

@@ -100,7 +100,7 @@ void   val_free (val_t *v);
 val_t *val_reformat(const val_t *v, val_fmt_t fmt);
 
 /* --- 型変換 --- */
-/* AsReal: VAL_REAL → そのまま, VAL_FRAC → 実数に, その他 → 失敗 */
+/* AsReal: VAL_REAL → そのまま、 VAL_FRAC → 実数に、 その他 → 失敗 */
 void val_as_real  (real_t *out, const val_t *v);
 void val_as_frac  (frac_t *out, const val_t *v);
 bool val_as_bool  (const val_t *v);

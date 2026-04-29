@@ -75,10 +75,7 @@ func_def_t *bia_get_fd(val_t *v) {
     return NULL;
 }
 
-/* --- 追加の builtin_find / builtin_register_all 対応テーブル ---
- * builtin.c の BUILTIN_TABLE を拡張するため別のテーブルを用意し、
- * builtin_find_extra / builtin_register_extra として公開する
- */
+/* builtin.c の BUILTIN_TABLE 拡張用 (find_extra / register_extra で公開)。 */
 
 typedef struct {
     const char   *name;

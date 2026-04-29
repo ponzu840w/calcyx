@@ -17,7 +17,7 @@
 #include <cctype>
 #include <vector>
 
-// 行全体の左パディング. sheet_highlight.h の SHEET_ROW_PAD と一致させている.
+// 行全体の左パディング。 sheet_highlight.h の SHEET_ROW_PAD と一致させている。
 static const int PAD = SHEET_ROW_PAD;
 
 
@@ -840,7 +840,7 @@ void SheetView::test_type_and_commit(const char *expr) {
 }
 
 // --- 入力補完 ---
-// sheet_model から候補を取得 (shared/completion_filter.hpp の helper).
+// sheet_model から候補を取得 (shared/completion_filter.hpp の helper)。
 
 void SheetView::completion_update() {
     if (!editor_->visible()) return;
@@ -1038,7 +1038,7 @@ void SheetView::multiline_paste(const std::string &text) {
 }
 
 void SheetView::copy_all_to_clipboard() const {
-    /* with_visibility=false: GUI 側はもともと visible 判定なしで全行コピーしていた. */
+    /* with_visibility=false: GUI 側はもともと visible 判定なしで全行コピーしていた。 */
     std::string text = calcyx::format_all_rows_for_copy(model_, /*with_visibility=*/false);
     Fl::copy(text.c_str(), (int)text.size(), 1);
 }

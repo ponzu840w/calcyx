@@ -1,8 +1,5 @@
-// completion_filter — 補完候補フィルタの GUI/TUI 共通実装.
-//
-// shared/sheet_model.h の sheet_candidate_t (C) を C++ の Candidate に
-// 載せ替えて、prefix-then-substring のランキングルールでフィルタする.
-// 元々 gui/CompletionPopup.cpp と tui/TuiCompletion.cpp に重複していた.
+// 補完候補フィルタ (GUI/TUI 共通)。 sheet_candidate_t → C++ Candidate に
+// 載せ替えて prefix-then-substring でランキング。
 
 #pragma once
 
@@ -23,9 +20,9 @@ struct Candidate {
     bool        is_function = false;
 };
 
-/* sheet_model から候補を全件取得して Candidate ベクタを返す.
+/* sheet_model から候補を全件取得して Candidate ベクタを返す。
  * sheet_model_build_candidates は内部 strdup 済みの const char * を返すので
- * std::string にコピーして所有権を切り離す. */
+ * std::string にコピーして所有権を切り離す。 */
 inline std::vector<Candidate> build_candidates(sheet_model_t *m) {
     const sheet_candidate_t *arr = nullptr;
     int n = sheet_model_build_candidates(m, &arr);
@@ -42,10 +39,9 @@ inline std::vector<Candidate> build_candidates(sheet_model_t *m) {
     return out;
 }
 
-/* prefix-then-substring ランキング:
- *   1. key 空 or completion_istartswith でマッチ -> 上位グループ
- *   2. completion_icontains でマッチ            -> 下位グループ
- *   両グループとも入力順 (アルファベット順を仮定) を維持. */
+/* prefix-then-substring ランキング (input 順 = α 順を維持)。
+ *   1. key 空 / istartswith → 上位
+ *   2. icontains            → 下位 */
 inline std::vector<Candidate> filter_completion(
     const std::vector<Candidate> &all, const std::string &key)
 {

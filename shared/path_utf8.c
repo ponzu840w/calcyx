@@ -12,7 +12,7 @@
 #include <direct.h>
 #include <io.h>
 
-/* UTF-8 -> UTF-16 (動的確保, 呼び出し側で free). */
+/* UTF-8 -> UTF-16 (動的確保、 呼び出し側で free)。 */
 static wchar_t *u8_to_w(const char *s) {
     int n;
     wchar_t *w;
@@ -28,7 +28,7 @@ static wchar_t *u8_to_w(const char *s) {
     return w;
 }
 
-/* UTF-16 -> UTF-8. 成功:書き込んだバイト数 (NUL 含む), 失敗:0. */
+/* UTF-16 -> UTF-8. 成功:書き込んだバイト数 (NUL 含む)、 失敗:0. */
 static int w_to_u8(const wchar_t *w, char *buf, size_t buflen) {
     int n;
     if (!w || !buf || buflen == 0) return 0;

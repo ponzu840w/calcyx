@@ -1,7 +1,4 @@
-/* calcyx_wasm.c
- * JavaScript (Emscripten) 向けエンジン glue レイヤー。
- * eval_ctx_t をモジュール内に保持し、JS から ccall() で呼び出す。
- */
+/* Emscripten 向けエンジン glue (eval_ctx_t を保持し JS から ccall で呼ぶ)。 */
 
 #include <stdio.h>
 #include <string.h>
@@ -45,7 +42,7 @@ void wasm_reset(void) {
 }
 
 /* ---- 1行評価 ----
- * 戻り値: 1=成功, 0=エラー
+ * 戻り値: 1=成功、 0=エラー
  * 結果は wasm_get_result() / wasm_get_error() で取得する。 */
 WASM_EXPORT
 int wasm_eval_line(const char *expr) {

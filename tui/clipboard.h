@@ -2,16 +2,10 @@
 
 #include <string>
 
-/* クロスプラットフォームのクリップボード I/O。
- *
- * 書き込みは外部コマンド (pbcopy / wl-copy / xclip / clip.exe) を優先し、
- * フォールバックで OSC 52 escape sequence を stdout に直接書き込む。
- * 読み込みは外部コマンドのみ (OSC 52 read はサポートが薄く、応答待ちで
- * ブロックする端末があるため使わない)。
- *
- * テスト用にモックバッファ機構を備える: set_mock_for_test(true) を有効化
- * すると以下プロセス内のコピー/ペーストが in-memory バッファに対して
- * 行われ、外部 I/O は発生しない。 */
+/* クロスプラットフォームのクリップボード I/O.
+ * write: 外部コマンド (pbcopy/wl-copy/xclip/clip.exe) → OSC 52 fallback.
+ * read : 外部コマンドのみ (OSC 52 read は端末ブロックリスクで非採用)。
+ * テスト用 set_mock_for_test() で in-memory バッファに切替可能。 */
 
 namespace calcyx::tui::clipboard {
 

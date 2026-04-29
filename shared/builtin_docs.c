@@ -1,7 +1,7 @@
 /* 組み込み関数の説明文テーブル (UI 非依存)。
  * GUI の補完ポップアップと TUI から共有される。
  * 移植元: Calctus/Model/Functions/BuiltIns/ 各ファイルの Description 文字列
- * ja 翻訳は shared/i18n_table.c に英語キーで登録 (Phase L5). */
+ * ja 翻訳は shared/i18n_table.c に英語キーで登録 (Phase L5)。 */
 
 #include "builtin_docs.h"
 #include "i18n.h"

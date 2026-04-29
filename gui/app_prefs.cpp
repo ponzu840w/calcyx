@@ -1,7 +1,4 @@
-// アプリ設定の読み書き
-//
-// パスは UTF-8 で扱い, ファイル操作は path_utf8 経由 (Windows で日本語
-// ユーザー名等を含むパスでも文字化けしないよう内部で UTF-16 変換).
+// state.ini の読み書き。 パスは UTF-8 (path_utf8 経由)。
 
 #include "app_prefs.h"
 #include "path_utf8.h"

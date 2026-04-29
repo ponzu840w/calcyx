@@ -1,8 +1,4 @@
-// ui/test_completion.cpp — CompletionPopup のマッチ関数 unit テスト
-//
-// CompletionPopup は補完候補を「前方一致 (istartswith)」優先、次に
-// 「部分一致 (icontains)」でランキングする。どちらも大小を区別しない。
-// これら 2 関数の回帰を検知するための pure function テスト。
+// CompletionPopup のマッチ関数 unit テスト (istartswith / icontains, 大小区別なし)。
 
 #include "completion_match.h"
 #include <cstdio>

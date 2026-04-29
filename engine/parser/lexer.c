@@ -73,10 +73,7 @@ static int bin_prefix_index(char c) {
     return (int)(p - BIN_PREFIXES);
 }
 
-/* --- 数値フォーマット試行関数 ---
- * 戻り値: マッチした文字数 (0 = マッチなし)
- * out_val: 成功時に値をセット
- */
+/* 数値フォーマット試行: 戻り値=マッチ文字数 (0=マッチなし)、 成功時 *out にセット。 */
 
 /* CStyleHex: 0[xX][0-9a-fA-F]+ */
 static int try_hex(const char *s, val_t **out) {

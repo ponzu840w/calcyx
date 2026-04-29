@@ -1,4 +1,4 @@
-/* 移植元: Calctus/Model/Expressions/ (各 OnEval メソッド),
+/* 移植元: Calctus/Model/Expressions/ (各 OnEval メソッド)、
  *          Calctus/Model/Evaluations/EvalContext.cs */
 
 #include "eval.h"
@@ -115,7 +115,7 @@ static val_t *broadcast_op(op_id_t op, const val_t *a, const val_t *b,
     return wrap_and_free_array(res, len, fmt);
 }
 
-/* 2項演算 (配列ブロードキャスト付き, 移植元: BinaryOp.scalarOperation + 配列分岐) */
+/* 2項演算 (配列ブロードキャスト付き、 移植元: BinaryOp.scalarOperation + 配列分岐) */
 static val_t *apply_binop(op_id_t op, val_t *a, val_t *b, eval_ctx_t *ctx) {
     bool a_arr = (a->type == VAL_ARRAY);
     bool b_arr = (b->type == VAL_ARRAY);

@@ -1,8 +1,5 @@
-/* i18n_locale.c — OS ロケール検出.
- *
- * POSIX (Linux/macOS): LC_ALL → LC_MESSAGES → LANG の順で env を見る.
- * Windows: GetUserDefaultLocaleName() で "ja-JP" 等を取る. UTF-16 → UTF-8
- *          変換し, 先頭 2 文字を normalize に渡す. */
+/* OS ロケール検出。 POSIX: LC_ALL → LC_MESSAGES → LANG.
+ * Windows: GetUserDefaultLocaleName, UTF-16 → UTF-8 → 先頭 2 文字。 */
 
 #include "i18n.h"
 #include "path_utf8.h"

@@ -1,8 +1,4 @@
-// platform_tray_win.cpp — Windows システムトレイ＋ホットキー実装
-//
-// トレイ: Shell_NotifyIconW
-// ホットキー: RegisterHotKey + WM_HOTKEY
-// メッセージ処理: SetWindowSubclass (comctl32)
+// Windows システムトレイ + ホットキー (Shell_NotifyIconW / RegisterHotKey)。
 
 #include "platform_tray.h"
 #include <FL/Fl.H>

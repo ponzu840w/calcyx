@@ -1,9 +1,6 @@
-/* tui/test_tui_app.cpp — TuiApp プロンプトモードのシナリオテスト
- *
- * run() は ScreenInteractive::Loop() をブロッキング呼び出しするため、
- * test_dispatch() を使って CatchEvent → prompt_handle_event → sheet OnEvent
- * の経路を直接叩く。Ctrl+O / Ctrl+S でプロンプトが開き、Esc で閉じることを
- * 検証する。 */
+/* TuiApp プロンプトモードのシナリオテスト。
+ * run() Loop はブロッキングなので test_dispatch() で
+ * CatchEvent → prompt_handle_event → sheet OnEvent を直接叩く。 */
 
 #include "TuiApp.h"
 #include "TuiSheet.h"
@@ -45,7 +42,7 @@ static void type_str(TuiApp &app, const std::string &str) {
 
 static void dump_render(const char *scenario, TuiApp &app) {
     /* Sheet を直接 Render してダンプ — TuiApp 自体は Renderer() ラッパなので
-     * 描画入口は sheet->Render(). プロンプト行は TuiApp::run 内の Renderer
+     * 描画入口は sheet->Render()。 プロンプト行は TuiApp::run 内の Renderer
      * でしか生成されないため、このテストでは省略 (状態で確認済み)。 */
     TuiSheet *sheet = app.test_sheet();
     auto screen = Screen::Create(Dimensions{80, 14});
@@ -196,12 +193,10 @@ static void test_about_dialog() {
     dump_render("6c. about dialog closed", app);
 }
 
-/* ----------------------------------------------------------------------
- * シナリオ 6d: メニューバー基本動作
- *   - Alt+F で File 展開、→ で次へ、Esc で閉じる
- *   - Alt+E → 'u' (Undo のホット文字) で sheet に undo が届くこと
- *   - Alt+R → Enter (先頭の Auto) で FormatAuto が呼ばれること
- * -------------------------------------------------------------------- */
+/* シナリオ 6d: メニューバー基本動作。
+ *   Alt+F で File 展開、 → で次、 Esc で閉じる。
+ *   Alt+E → 'u' (Undo) で sheet に undo が届く。
+ *   Alt+R → Enter (先頭の Auto) で FormatAuto. */
 static void test_menu_bar() {
     TuiApp app;
 
@@ -273,19 +268,9 @@ static void test_menu_bar() {
     dump_render("6d. menu bar", app);
 }
 
-/* ----------------------------------------------------------------------
- * シナリオ 6e: マルチライン Ctrl+V で "Paste Options" モーダルが開く
- *
- * clipboard をモック化して "a\nb\nc" をクリップボードに置き、Ctrl+V を
- * 投げる。TuiSheet::action_paste が改行を検出して TuiApp の
- * paste_modal_open を呼ぶ → モーダル可視。
- *
- *   - 'm' で各行を別行 → 行数が増える
- *   - 'c' でキャンセル → 行数据变わらず
- *   - 's' で 1 行結合 → エディタに空白区切りで挿入
- *
- * モーダル表示中は Sheet にイベントが届かないことも併せて確認する。
- * -------------------------------------------------------------------- */
+/* シナリオ 6e: マルチライン Ctrl+V で Paste Options モーダル。
+ *   m=各行を別行、 c=キャンセル、 s=空白区切りで 1 行結合。
+ * モーダル表示中は Sheet にイベントが届かないことも確認。 */
 static void test_paste_modal_multiline() {
     clipboard::set_mock_for_test(true);
 
@@ -343,17 +328,9 @@ static void test_paste_modal_multiline() {
     clipboard::set_mock_for_test(false);
 }
 
-/* ----------------------------------------------------------------------
- * シナリオ 6f: 行右クリックコンテキストメニュー
- *
- * TuiSheet の Mouse::Right コールバック → TuiApp::context_menu_open()
- * を直接呼んでメニューを開き、↑↓ で項目移動・Enter / Esc で確定 / 取消。
- *
- *   - ↑↓: 項目移動、separator はスキップ
- *   - Enter で "Insert row below" → 行が追加される
- *   - Esc で閉じる、状態变わらず
- *   - 開いている間は Sheet にキーが届かない
- * -------------------------------------------------------------------- */
+/* シナリオ 6f: 行右クリックのコンテキストメニュー。
+ *   ↑↓ で項目移動 (separator スキップ)、 Enter で実行、 Esc で取消。
+ * 開いている間は Sheet にキーが届かない。 */
 static void test_context_menu() {
     /* --- 6f.1: open / move / cancel --- */
     {
@@ -399,12 +376,10 @@ static void test_context_menu() {
         clipboard::set_mock_for_test(false);
     }
 
-    /* --- 6f.3: Insert row below を選択して実行 ---
-     *
-     * kContextMenu の順番:
-     *   0 CopyRow, 1 CopyExpr, 2 CopyResult, 3 Cut, 4 Paste,
-     *   5 Sep, 6 InsertAbove, 7 InsertBelow, 8 DeleteRow
-     * 0 → 7 は ArrowDown を 6 回 (separator 自動スキップ)。 */
+    /* 6f.3: Insert row below 実行。 kContextMenu 順:
+     * 0 CopyRow, 1 CopyExpr, 2 CopyResult, 3 Cut, 4 Paste,
+     * 5 Sep, 6 InsertAbove, 7 InsertBelow, 8 DeleteRow.
+     * 0→7 は ArrowDown 6 回 (separator 自動スキップ)。 */
     {
         TuiApp app;
         sheet_model_t *m = app.test_model();
@@ -428,7 +403,7 @@ static void test_context_menu() {
 }
 
 int main() {
-    /* テストは英語前提のアサートなので OS ロケールに関係なく en で固定. */
+    /* テストは英語前提のアサートなので OS ロケールに関係なく en で固定。 */
     calcyx_i18n_init("en");
 
     test_prompt_open_cancel();

@@ -1,22 +1,6 @@
-/* tui/test_tui_sheet.cpp — TuiSheet end-to-end シナリオテスト
- *
- * TUI は入力も出力もテキストなので、ScreenInteractive ループを回さずに
- *   1. sheet_model を作る
- *   2. TuiSheet にイベントを直接投げる
- *   3. sheet_model / TuiSheet の状態をアサート
- * というフローで end-to-end 検証できる。描画の最終形は Screen に Render して
- * stderr にダンプ (比較はしない)、CI ログで目視確認できるようにする。
- *
- * カバーするシナリオ (tui スモークテスト):
- *   1. 式入力 + Enter
- *   2. Tab 補完
- *   3. Undo / Redo (Ctrl+Z / Ctrl+Y)
- *   4. Ctrl+Shift+Down で行移動
- *   5. F10 で Hex フォーマット切替
- *   6. 行削除: Ctrl+Del, Shift+Del, 空行での BS
- *   7. 全消去 (Ctrl+Shift+Del) と再計算 (F5) と小数桁± (Alt+./Alt+,)
- *   8. コンパクトモード (F6)
- */
+/* TuiSheet end-to-end シナリオテスト。
+ * ScreenInteractive を回さず TuiSheet にイベントを直接投げて、
+ * sheet_model / TuiSheet の状態をアサートする。 描画は stderr ダンプのみ。 */
 
 #include "TuiSheet.h"
 #include "clipboard.h"
@@ -110,12 +94,8 @@ static void test_input_and_enter() {
     sheet_model_free(model);
 }
 
-/* ----------------------------------------------------------------------
- * シナリオ 2: 自動補完 (GUI 互換)
- *
- * auto_complete_ が既定 on なので、"si" と入力しただけでポップアップが開く。
- * Tab でも Enter でも確定できる。非識別子文字を打つと閉じる。
- * -------------------------------------------------------------------- */
+/* シナリオ 2: 自動補完 (GUI 互換)。 auto_complete_ が on なので "si" 入力で
+ * ポップアップが開き、Tab/Enter で確定、非識別子文字で閉じる。 */
 static void test_completion() {
     sheet_model_t *model = nullptr;
     auto sheet = make_sheet(&model);
@@ -182,14 +162,9 @@ static void test_undo_redo() {
     sheet_model_free(model);
 }
 
-/* ----------------------------------------------------------------------
- * シナリオ 3b: 未コミット編集の Undo / Redo (リグレッション防止)
- *
- * "行に typing → Ctrl+Z で取り消し → Ctrl+Y で復元" が成立することを保証する。
- * 修正前は dirty な editor を Ctrl+Z で復元したときに undo スタックを消費せず
- * editor バッファだけを戻していたため、typing が redo スタックに乗らず
- * Ctrl+Y で復元できなかった。
- * -------------------------------------------------------------------- */
+/* シナリオ 3b: 未コミット編集の Undo/Redo (回帰防止)。
+ * 修正前は dirty editor の Ctrl+Z が undo スタックを消費せず、Ctrl+Y で
+ * 復元できなかった。 */
 static void test_undo_redo_dirty() {
     /* 1. 空シートで typing → Ctrl+Z → editor が空に戻る → Ctrl+Y で typing 復元 */
     {
@@ -344,15 +319,9 @@ static void test_format_hex() {
     sheet_model_free(model);
 }
 
-/* ----------------------------------------------------------------------
- * シナリオ 6: 行削除 (Ctrl+Del, Shift+Del, 空行での BS)
- *
- * GUI の ui/SheetView.cpp:1210/1250/1253 で規定されたバインド:
- *   - Ctrl+Del / Ctrl+BS : delete_row (下に詰める)
- *   - Shift+Del / Shift+BS : delete_row_up (上に詰める)
- *   - 空行で BS : delete_row_up
- * これに TUI も揃える。Ctrl+D は無マップ (廃止)。
- * -------------------------------------------------------------------- */
+/* シナリオ 6: 行削除。 GUI 互換のバインド:
+ *   Ctrl+Del/BS = delete_row (下詰め)、 Shift+Del/BS = delete_row_up (上詰め)、
+ *   空行で BS  = delete_row_up. */
 static void test_delete_row_variants() {
     sheet_model_t *model = nullptr;
     auto sheet = make_sheet(&model);
@@ -458,19 +427,10 @@ static void test_clear_recalc_decimals() {
     }
 }
 
-/* ----------------------------------------------------------------------
- * シナリオ 8: コンパクトモード
- *
- * F6 で compact_mode が toggle され、Render() 出力からステータス/ヘルプ行が
- * 消える (代わりにシート行だけになる)。もう一度押せば元に戻る。
- * -------------------------------------------------------------------- */
-/* ----------------------------------------------------------------------
- * シナリオ 9: クリップボード (Ctrl+C / Ctrl+X / Ctrl+V)
- *
- * clipboard モジュールをモックバッファに切り替え、外部 I/O を発生させずに
- * Ctrl+C/X/V のロジック (式 = 結果 形式 / アプリ内メタデータによる式のみ
- * ペースト / 別ソースからのフルペースト / マルチライン拒否) を確認する。
- * -------------------------------------------------------------------- */
+/* シナリオ 8: コンパクトモード。 F6 で toggle, ステータス/ヘルプ行が消える。 */
+/* シナリオ 9: クリップボード Ctrl+C/X/V. clipboard モジュールをモックに
+ * 切り替えて、式=結果形式 / 自分発式のみペースト / 他源フルペースト /
+ * マルチライン拒否を確認。 */
 static void test_clipboard_copy_paste() {
     clipboard::set_mock_for_test(true);
 
@@ -580,7 +540,7 @@ static void test_compact_mode() {
  * main
  * -------------------------------------------------------------------- */
 int main() {
-    /* テストは英語前提のアサートなので OS ロケールに関係なく en で固定. */
+    /* テストは英語前提のアサートなので OS ロケールに関係なく en で固定。 */
     calcyx_i18n_init("en");
 
     test_input_and_enter();

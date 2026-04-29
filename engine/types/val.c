@@ -326,11 +326,7 @@ val_t *val_bit_not(const val_t *a) {
     return val_new_i64(n, a->fmt);
 }
 
-/* --- 2項演算の共通パターン ---
- * 1. UpConvert a を b に合わせる
- * 2. 演算実行
- * 3. フォーマット選択
- */
+/* 2 項演算: UpConvert → 演算 → fmt 選択。 */
 
 /* REAL 同士の算術演算ヘルパー */
 #define REAL_BINOP(name, op_fn)                                 \
@@ -363,8 +359,8 @@ val_t *val_bit_not(const val_t *a) {
 val_t *val_add(const val_t *a, const val_t *b) {
     /* 文字列連結 */
     if (a->type == VAL_STR || b->type == VAL_STR) {
-        /* 文字列側は str_v を直接使い、非文字列側のみ val_to_str する.
-         * 非文字列の表現は real/frac/array いずれも 1KB に収まる. */
+        /* 文字列側は str_v を直接使い、非文字列側のみ val_to_str する。
+         * 非文字列の表現は real/frac/array いずれも 1KB に収まる。 */
         char nbuf_a[1024], nbuf_b[1024];
         const char *sa = (a->type == VAL_STR) ? a->str_v : nbuf_a;
         const char *sb = (b->type == VAL_STR) ? b->str_v : nbuf_b;
@@ -755,10 +751,8 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
     }
 }
 
-/* 1 文字をエスケープして buf[*pos..cap) に書き込む。cap は終端用の 1 バイトを含む。
- * string_mode=true  → 文字列リテラル内（" を \" にエスケープ、' はそのまま）
- * string_mode=false → 文字リテラル内（' を \' にエスケープ、" はそのまま）
- * 移植元: Calctus/Model/Formats/CharFormatter.cs - Escape() */
+/* 1 文字をエスケープして buf に書く (移植元: CharFormatter.cs::Escape)。
+ * string_mode=true: " を \", false: ' を \'. */
 static void append_escaped_byte(char *buf, size_t *pos, size_t cap,
                                  unsigned char c, bool string_mode) {
     const char *esc = NULL;

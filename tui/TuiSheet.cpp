@@ -54,11 +54,8 @@ ftxui::Color rgb_to_ftxui(const calcyx_rgb_t &c) {
     return ftxui::Color::RGB(c.r, c.g, c.b);
 }
 
-/* 1 文字ごとのハイライト色を組み立てる。範囲外 (TOK_EMPTY 等) は
- * Color::Default を残す → 端末デフォルト前景でそのまま描画される。
- * palette.active が true の場合は GUI 色 (calcyx_color_palette_t) を
- * RGB で再現する (mirror_gui モード)。
- * 移植元: ui/SheetView.cpp:220 draw_expr_highlighted。 */
+/* 1 文字ごとのハイライト色配列を組み立てる (移植元: draw_expr_highlighted)。
+ * 範囲外は Color::Default. palette.active なら GUI 色を RGB で再現。 */
 std::vector<ftxui::Color> build_char_colors(const std::string &expr,
                                              const TuiPalette &palette) {
     using ftxui::Color;
@@ -255,13 +252,7 @@ void TuiSheet::completion_update_key() {
     completion_.update_key(key);
 }
 
-/* GUI の SheetView::completion_update (ui/SheetView.cpp:1396) と同じ挙動。
- * auto_complete_ が on の場合、毎キー入力後に呼んで
- *   - カーソル左が識別子の続き (id_follow) でなければ閉じる
- *   - 識別子の先頭が id_start でなければ閉じる
- *   - 未表示なら候補をリロードして開く
- *   - 表示中ならキーを更新
- * という形で自動的に追従させる。 */
+/* GUI の SheetView::completion_update と同じ (auto-completion 中の追従)。 */
 void TuiSheet::completion_auto_update() {
     if (cursor_pos_ == 0 || !lexer_is_id_follow(editor_buf_[cursor_pos_ - 1])) {
         completion_.hide();
@@ -517,11 +508,7 @@ void TuiSheet::action_move_row(int dir) {
  * undo / redo
  * -------------------------------------------------------------------- */
 void TuiSheet::action_undo() {
-    /* 未コミット編集があれば先に commit してから undo を呼ぶ。
-     * これで「行に typing → Ctrl+Z で取り消し → Ctrl+Y で復元」が成立する:
-     *   1) commit_if_changed() が [original→typed] を undo スタックに積む
-     *   2) sheet_model_undo() がそれを pop して typed を redo スタックに残す
-     *   3) restore_view_state() で editor バッファが original に戻る */
+    /* 未コミット編集を先に commit (typing → Ctrl+Z → Ctrl+Y で復元できるように)。 */
     commit_if_changed();
     sheet_view_state_t vs{};
     if (sheet_model_undo(model_, &vs)) {
@@ -679,7 +666,7 @@ void TuiSheet::action_paste() {
 }
 
 namespace {
-/* shared/sheet_text.hpp::split_lines の末尾空行ドロップ版エイリアス. */
+/* shared/sheet_text.hpp::split_lines の末尾空行ドロップ版エイリアス。 */
 std::vector<std::string> split_lines(const std::string &text) {
     return calcyx::split_lines(text, /*drop_trailing_empty=*/true);
 }
@@ -849,17 +836,10 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
     std::string expr    = expr_c   ? expr_c   : "";
     std::string result  = result_c ? result_c : "";
 
-    /* 左カラム: "> editor" or "  expr" を eq_col セル幅に揃える。
-     *   content_w: 純粋な式の表示幅 (折り返し判定に使う)。
-     *   left_w   : フォーカス行でカーソル末尾の反転スペース 1 セルを足したもの
-     *              (" = " を eq_col 列に揃える padding に使う)。
-     * 折り返し判定にカーソル分の +1 を含めると、たまたま eq_col に収まる行が
-     * フォーカスした瞬間だけ折り返される (= ぴったり eq_col の式が +1 で
-     * 弾かれる) のでカーソル分は除外する。
-     * その代わり、フォーカス行が一番幅広でカーソル末尾のときは " = " が
-     * 1 セル右にずれる場合がある — この場合に限り、他行の " = " 列との
-     * 不一致は局所的なズレに留め、画面全体のレイアウト破綻 (誤った折返し)
-     * を優先して避ける。 */
+    /* 左カラム ("> editor" / "  expr") を eq_col 幅に揃える。
+     * content_w = 式の純表示幅 (折り返し判定用。 カーソル分は含めない —
+     * フォーカス時だけ余計な折り返しが起きる脆さを避ける)。
+     * left_w    = content_w + カーソル末尾セル (" = " 揃え padding 用)。 */
     const std::string &left_src = is_focused ? editor_buf_ : expr;
     int content_w = display_cells(left_src);
     int left_w    = content_w;
@@ -882,12 +862,8 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
         has_result = true; res_text = result;
     }
 
-    /* 結果のシンタックスハイライト:
-     *   - error 行: 赤一色 (per-token 色は無視)
-     *   - dirty (preview): 黄色一色 (未コミットを示す)
-     *   - それ以外: render_highlighted で式と同じトークンベース色付け
-     * mirror_gui (palette_.active) では Color::Red / YellowLight を
-     * GUI パレット (error / si_pfx + bg) で置換する。 */
+    /* 結果ハイライト: error → 赤 / dirty preview → 黄 / 他 → トークン色。
+     * mirror_gui では Red / YellowLight を GUI パレットの error / si_pfx に。 */
     Element right;
     if (sheet_model_row_error(model_, idx)) {
         Color err_c = palette_.active ? rgb_to_ftxui(palette_.error) : Color::Red;
@@ -909,10 +885,8 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
         right = text("");
     }
 
-    /* GUI 準拠の 2 行レイアウト: 式が "=" カラムを超え、かつ結果がある場合は
-     * 式を 1 行目フル幅で出し、結果を次の視覚行で同じ "=" カラムに揃える。
-     * 結果のない行 (visible=false) は常に 1 行レイアウト。
-     * カーソルの反転スペースは折り返しの判断材料にしない (content_w で判定)。 */
+    /* 式が eq_col 超 + 結果あり → 2 行レイアウト (GUI 準拠)。
+     * 結果なしは常に 1 行。 折り返し判定にカーソル分は含めない。 */
     bool wrapped = has_result && content_w > eq_col;
 
     Element row;
@@ -944,14 +918,9 @@ Element TuiSheet::render_row(int idx, bool is_focused, int eq_col) const {
         });
     }
 
-    /* フォーカス行のハイライトは bold + underlined。bgcolor(Blue)+color(White)
-     * などの「色」指定は単色テーマや低色数端末では塗り潰しになって読めなく
-     * なるし、inverted (fg/bg 反転) は 1 行まるごと帯状になって編集中の文字
-     * とカーソル反転が同居しづらかった。bold + underline なら本文は素のまま
-     * 残り、カーソル位置の inverted との視覚的衝突もない。先頭の "> " マーカー
-     * と合わせて 2 重に見分けがつく。
-     * mirror_gui ではセマンティック underline を維持しつつ sel_bg を載せる
-     * (GUI と同じ「選択行のハイライト」が出る)。 */
+    /* フォーカス行は bold+underline で示す。 色塗りは低色数端末で潰れ、
+     * inverted はカーソル反転と衝突するため避ける。
+     * mirror_gui は underline + sel_bg. */
     if (is_focused) {
         row = row | bold | underlined;
         if (palette_.active) row = row | bgcolor(rgb_to_ftxui(palette_.sel_bg));
@@ -968,18 +937,9 @@ Element TuiSheet::Render() {
     row_boxes_.assign(n, Box{});
     editor_box_ = Box{};
 
-    /* eq_col: "=" カラムの位置を全行で揃える。GUI の SheetView::layout_eq_pos
-     * (ui/SheetView.cpp:855) と同じロジック:
-     *   全式幅 + 全結果幅 + " = "(3) + "> "(2) が端末幅に収まる場合は
-     *     eq_col = max(min, max_expr_w)        — 結果は右側に余白を持って続く
-     *   そうでない場合は
-     *     eq_col = max(min, avail - max_result_w)  — 結果が端末右端に張り付く
-     *
-     * 端末幅が取れない場合は 80 をフォールバックに使う。
-     * カーソル末尾の反転スペース 1 セルは eq_col 計算に含めない (含めると
-     * フォーカス時にだけ余計な折り返しが起きる)。代わりに render_row 側で
-     * pad を吸収させる — フォーカス行が一番幅広で末尾カーソルのときに限り
-     * " = " が 1 セル右にずれるが、それは局所的なズレに留まる。 */
+    /* eq_col 算出 (GUI layout_eq_pos と同じ):
+     *   収まる:    max(min, max_expr_w)
+     *   収まらない: max(min, avail - max_result_w) */
     constexpr int kMinEqCol = 8;
     int term_w = ftxui::Terminal::Size().dimx;
     if (term_w <= 0) term_w = 80;
@@ -1232,10 +1192,8 @@ bool TuiSheet::OnEvent(Event ev) {
             needs_key_update = true;
             break;
         case Action::Backspace:
-            /* GUI 互換: 編集中の行が空で BS → delete_row_up。
-             * 行を跨いだ編集継続ができるので "改行キー" の逆操作になる。
-             * Prefs (bs_delete_empty_row_) で off にされている場合はこの
-             * 「自動行削除」を無効化し、空行 BS は何もしない (誤削除防止)。 */
+            /* 空行で BS → delete_row_up ("改行" の逆操作、 GUI 互換)。
+             * bs_delete_empty_row_ が off なら何もしない (誤削除防止)。 */
             if (editor_buf_.empty()) {
                 if (bs_delete_empty_row_) {
                     action_delete_row_up();
@@ -1321,11 +1279,7 @@ bool TuiSheet::OnEvent(Event ev) {
     return true;
 }
 
-/* ----------------------------------------------------------------------
- * コンテキストメニュー用のパブリック API。
- * 既存の private アクションを薄くラップしただけで、キーボード経路と
- * メニュー経路で同じ実装を共有する。
- * -------------------------------------------------------------------- */
+/* コンテキストメニュー用 public API (既存 private アクションの薄いラッパ)。 */
 void TuiSheet::copy_focused_row()    { action_copy(); }
 void TuiSheet::cut_focused_row()     { action_cut(); }
 void TuiSheet::paste_at_cursor()     { action_paste(); }

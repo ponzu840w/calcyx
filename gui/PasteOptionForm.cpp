@@ -18,7 +18,7 @@ static const Fl_Color PF_TEXT     = fl_rgb_color(215, 215, 225);
 // ---- テキストユーティリティ ----
 
 // 改行で分割 (\r\n / \n / \r すべて対応)
-/* shared/sheet_text.hpp::split_lines のエイリアス (drop_trailing_empty=false). */
+/* shared/sheet_text.hpp::split_lines のエイリアス (drop_trailing_empty=false)。 */
 static std::vector<std::string> split_lines(const std::string &text) {
     return calcyx::split_lines(text);
 }
@@ -154,14 +154,9 @@ PasteOptionForm::PasteOptionForm(const std::string &clipboard_text)
     // テキストエリアの右端 x 座標
     const int right_x = MX + half_w + GAP;
 
-    // ---- 行1 (y):
-    //   左: "Column Delimiter:" [input]
-    //   右: [Remove Commas] [Remove Right Hands]
-    //
-    // ---- 行2 (y + C_H + gap):
-    //   左: "Column Index:" [input] /N [Select Column]
-    //
-    // ---- 行3 (右下): [OK] [Cancel]
+    // 行1: "Column Delimiter:" [input]   [Remove Commas] [Remove Right Hands]
+    // 行2: "Column Index:"     [input] /N [Select Column]
+    // 行3: 右下に [OK] [Cancel]
 
     // 左: Column Delimiter
     make_small_label(MX, 110, "Column Delimiter:");

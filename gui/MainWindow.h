@@ -51,10 +51,8 @@ private:
     DragGrip        *drag_grip_    = nullptr;  // コンパクトモード: ドラッグハンドル
     Fl_Button       *compact_exit_ = nullptr;  // コンパクトモード: 解除ボタン (PiP アイコン)
     ResizeGrip      *resize_grip_  = nullptr;  // コンパクトモード: リサイズハンドル
-    /* コマンド ID ("undo", "toggle_thousands", "scheme_0" 等) → メニュー項目インデックス.
-     * メニュー追加後に build_menu_index() で 1 度だけ走査して埋める.
-     * 既知のショートカット付きラベル ("&Edit/&Undo") の find_index() が
-     * 期待通りに動かないため、callback==menu_cb && user_data==cmd_id で同定. */
+    /* コマンド ID → メニュー項目インデックス。 build_menu_index() が 1 度埋める。
+     * find_index() がショートカット付きラベルで動かないため自前で走査。 */
     std::unordered_map<std::string, int> menu_indices_;
     int menu_idx(const char *cmd) const {
         auto it = menu_indices_.find(cmd);

@@ -1,31 +1,11 @@
-/* calcyx — 統合バイナリエントリ
- *
- * 単一バイナリで CLI / TUI 両モードを提供する。以下のルールで分岐する:
- *
- *   1. -h / --help / -V / --version           → 情報表示して終了
- *   2. -r / --repl                             → 旧 CLI REPL (fgets ループ)
- *   3. -e EXPR があれば                        → CLI -e モード
- *   4. stdin が TTY でない (pipe / リダイレクト) →
- *        ファイルが指定されていれば CLI ファイルモード
- *        なければ CLI ストリームモード (stdin を評価)
- *   5. -b / --batch                            → CLI ファイル/ストリームモード (強制)
- *   6. それ以外 (TTY 上で引数なし or 位置引数のみ) → TUI モード
- *        位置引数のファイルがあれば TUI 起動時にロード
- *
- * Usage:
- *   calcyx                    TUI を起動
- *   calcyx file.txt           TUI でファイルを開く
- *   calcyx -e '1+1'           CLI 一発評価
- *   calcyx -o both file.txt   CLI バッチ (出力書式指定)
- *   calcyx --batch file.txt   CLI バッチ (強制)
- *   calcyx --repl             旧 CLI REPL
- *   echo 'hex(255)' | calcyx  CLI ストリーム (パイプ)
- *
- * 終了コード:
- *   0  正常
- *   1  評価エラーあり
- *   2  引数エラー / ファイルオープン失敗
- */
+/* calcyx 統合エントリ (CLI / TUI)。 モード分岐:
+ *   -h/-V                       → 情報表示
+ *   -r/--repl                   → 旧 CLI REPL
+ *   -e EXPR                     → CLI -e
+ *   stdin が non-TTY            → CLI ファイル/ストリーム
+ *   -b/--batch                  → CLI 強制
+ *   それ以外 (TTY)              → TUI (位置引数のファイルをロード)
+ * 終了コード: 0=正常 / 1=評価エラー / 2=引数 or ファイルエラー。 */
 
 #include <cstdio>
 #include <cstdlib>
@@ -167,7 +147,7 @@ bool is_known_preset(const char *id) {
     return false;
 }
 
-/* conf を std::map<key, value> で読む (settings_io 経由). */
+/* conf を std::map<key, value> で読む (settings_io 経由)。 */
 struct ConfMap {
     std::map<std::string, std::string> kv;
     static void cb(const char *key, const char *value, int /*line_no*/, void *user) {
@@ -176,7 +156,7 @@ struct ConfMap {
     }
 };
 
-/* effective preset: conf にあればそれ, なければ schema の s_def. */
+/* effective preset: conf にあればそれ、 なければ schema の s_def. */
 std::string effective_preset(const std::map<std::string, std::string> &kv) {
     auto it = kv.find("color_preset");
     if (it != kv.end()) return it->second;
@@ -227,7 +207,7 @@ int run_print_config(const char *path) {
             break;
         }
         case CALCYX_SETTING_KIND_COLOR: {
-            /* preset != user-defined のときは color_* を出力しない (settings_save の挙動と一致). */
+            /* preset != user-defined のときは color_* を出力しない (settings_save の挙動と一致)。 */
             if (!user_colors) break;
             const char *v = raw ? raw : "#000000";
             std::printf("%s = %s\n", d.key, v);
@@ -242,7 +222,7 @@ int run_print_config(const char *path) {
 
 struct CheckCtx {
     int   warnings;
-    /* 同じキーが複数回現れた場合の検出用. キー名 → 最初の行番号. */
+    /* 同じキーが複数回現れた場合の検出用。 キー名 → 最初の行番号。 */
     std::map<std::string, int> seen;
 };
 
@@ -423,9 +403,9 @@ int main(int argc, char *argv[]) {
     SetConsoleCP(CP_UTF8);
 #endif
 
-    /* 早期 i18n_init: conf を読む前に OS ロケールで仮決定しておくことで,
-     * --help / --version の出力も翻訳される. conf の language キーで明示
-     * 指定があれば argv 解析後に再 init する. */
+    /* 早期 i18n_init: conf を読む前に OS ロケールで仮決定しておくことで、
+     * --help / --version の出力も翻訳される。 conf の language キーで明示
+     * 指定があれば argv 解析後に再 init する。 */
     calcyx_i18n_init("auto");
 
     output_mode_t            out = OUT_RESULT;
@@ -505,8 +485,8 @@ int main(int argc, char *argv[]) {
         files.push_back(a);
     }
 
-    /* 言語を conf から確定して i18n を初期化. config_override 反映後の
-     * パスから language キーを読む. 取れなければ "auto" → OS 検出. */
+    /* 言語を conf から確定して i18n を初期化。 config_override 反映後の
+     * パスから language キーを読む。 取れなければ "auto" → OS 検出。 */
     {
         char path_buf[1024];
         const char *path = config_override

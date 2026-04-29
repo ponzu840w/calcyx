@@ -47,13 +47,9 @@ static int non_eos_count(const tok_queue_t *q) {
     return n;
 }
 
-/* ---- Lexer: 空白スキップ回帰テスト (2026-04-21 バグ関連) ----
- *
- * 修正前: lexer_eos は c == 0x80 || c == 0xE3 という条件で単独バイトを
- * 空白扱いしていたため、U+3000 の継続バイト 0x80 だけで空白スキップが
- * 発火してしまっていた。現行: E3 80 80 の 3 バイト列のみを U+3000 として
- * スキップする。以下は同種のリグレッションを防ぐための入力。
- */
+/* Lexer 空白スキップ回帰テスト (2026-04-21)。
+ * 修正前は単独 0x80 / 0xE3 で空白扱いしてしまい、U+3000 の継続バイトで
+ * 誤発火していた。 現行は E3 80 80 の 3 byte 列のみ U+3000 とする。 */
 
 static void test_ws_u3000_alone(void) {
     /* U+3000 だけの入力: トークン化結果は EOS のみ */
@@ -72,10 +68,7 @@ static void test_ws_u3000_prefix(void) {
 }
 
 static void test_ws_bare_0x80_not_ws(void) {
-    /* 単独の 0x80 は空白扱いしない (UTF-8 継続バイトは単独で現れない)。
-     * 修正前はここで 0x80 が空白スキップされ "1" だけが TOK_NUM_LIT に
-     * なってしまっていた。現行は 0x80 が TOK_EMPTY で残り、"1" が後続
-     * トークンになる。 */
+    /* 単独 0x80 は空白扱いしない (現行: TOK_EMPTY 後 "1" が続く)。 */
     tok_queue_t q;
     lexer_tokenize("\x80""1", &q);
     const token_t *t = first_token(&q);
@@ -196,12 +189,8 @@ static void test_unclosed_char(void) {
     tok_queue_free(&q);
 }
 
-/* ---- Parser: エラーケース ----
- *
- * parse() はエラー時に NULL を返し errmsg を埋める契約。
- * 各ケースで NULL が返ることを検証する (詳細な errmsg 文字列は
- * 実装都合で変わる可能性があるため内容は確認しない)。
- */
+/* Parser エラーケース。 parse() がエラー時に NULL を返す契約を検証。
+ * errmsg 文字列の内容は不問 (実装都合で変わる)。 */
 
 static void expect_parse_error(const char *label, const char *src) {
     char errmsg[128] = {0};
@@ -229,13 +218,8 @@ static void test_parse_ok(void) {
     if (e) expr_free(e);
 }
 
-/* ---- Parser: スタック上限の境界 (右結合 = チェイン) ----
- *
- * EXPR_STACK_MAX = 128 (parser.c). 右結合演算子は op_stk が
- * 演算子の数だけ積み上がる。ネイティブで右結合なのは = のみ。
- * a0=a1=a2=...=aN のチェインを N >= EXPR_STACK_MAX で組み、
- * クラッシュではなく parse エラーで安全に拒否されることを確認。
- */
+/* Parser スタック上限の境界。 右結合 = は op_stk が積み上がる。
+ * a0=a1=...=aN を N >= EXPR_STACK_MAX で組み、 parse エラーで拒否されること。 */
 static void test_parse_deep_right_assoc(void) {
     /* "a0=a1=a2=...=aN" を N+1 個並べる: 演算子 N 個 (右結合 =) */
     const int N = 200;

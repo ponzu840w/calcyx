@@ -2,7 +2,7 @@
 #include "settings_globals.h"
 
 /* 全 GUI 設定の単一所有 instance. デフォルト値は settings_globals.h の
- * DEFAULT_* 定数. 色は colors_init_preset(otaku-black) で起動時に上書き. */
+ * DEFAULT_* 定数。 色は colors_init_preset(otaku-black) で起動時に上書き。 */
 AppSettings g_settings = {
     /* language */                   "auto",
     /* font_id */                    DEFAULT_FONT_ID,
