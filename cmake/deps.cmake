@@ -105,9 +105,13 @@ endif()
 # (1) 0x18 (CAN) / 0x1A (SUB) を DROP せず SPECIAL として通す (Ctrl+Z/X 用)。
 # (2) X10 マウス形式 (\e[M + 3 生バイト) を ParseCSI で消費する
 #     (SGR モードを無視する端末でマウス移動が text 入力として漏れるバグ修正)。
-# パッチを更新したらサフィックスをインクリメントしてリビルドを誘発する。
+# パッチ内容のハッシュを PREFIX / stamp に含めて、 patch 変更時には別 src
+# 展開で確実に最新パッチ状態でビルドさせる (FLTK と同じパターン)。
 set(_ftxui_patch  "${CMAKE_CURRENT_SOURCE_DIR}/tui/ftxui_calcyx_input.patch")
-set(_ftxui_stamp  "${DEPS_DIR}/lib/libftxui-${FTXUI_VERSION}-p2.a.stamp")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${_ftxui_patch}")
+file(SHA256 "${_ftxui_patch}" _ftxui_patch_hash)
+string(SUBSTRING "${_ftxui_patch_hash}" 0 12 _ftxui_patch_tag)
+set(_ftxui_stamp  "${DEPS_DIR}/lib/libftxui-${FTXUI_VERSION}-${_ftxui_patch_tag}.a.stamp")
 if(NOT EXISTS "${_ftxui_stamp}")
     if(WIN32 AND CMAKE_CROSSCOMPILING)
         set(_ftxui_toolchain -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE})
@@ -122,6 +126,7 @@ if(NOT EXISTS "${_ftxui_stamp}")
     endif()
 
     ExternalProject_Add(dep_ftxui
+        PREFIX "dep_ftxui-${_ftxui_patch_tag}"
         URL      https://github.com/ArthurSonzogni/FTXUI/archive/refs/tags/v${FTXUI_VERSION}.tar.gz
         URL_HASH SHA256=a2991cb222c944aee14397965d9f6b050245da849d8c5da7c72d112de2786b5b
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
