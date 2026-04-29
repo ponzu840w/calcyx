@@ -379,6 +379,13 @@ void TuiApp::apply_settings_from_conf() {
     bool auto_completion     = true;
     bool bs_delete_empty_row = true;
 
+    /* clear_after_overlay の "auto" 解釈: macOS のみ true、 他 false。 */
+#ifdef __APPLE__
+    bool clear_after_overlay = true;
+#else
+    bool clear_after_overlay = false;
+#endif
+
     int n = 0;
     const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
     for (int i = 0; i < n; i++) {
@@ -415,6 +422,14 @@ void TuiApp::apply_settings_from_conf() {
             auto_completion = conf_get_bool(kv, d.key, auto_completion);
         } else if (strcmp(d.key, "bs_delete_empty_row") == 0) {
             bs_delete_empty_row = conf_get_bool(kv, d.key, bs_delete_empty_row);
+        } else if (strcmp(d.key, "tui_clear_after_overlay") == 0) {
+            auto it = kv.find(d.key);
+            if (it != kv.end()) {
+                const std::string &v = it->second;
+                if      (v == "true"  || v == "1" || v == "on")  clear_after_overlay = true;
+                else if (v == "false" || v == "0" || v == "off") clear_after_overlay = false;
+                /* "auto" or 不明値は OS デフォルトのまま。 */
+            }
         }
         /* color_preset / color_* は tui_color_source=mirror_gui のときだけ
          * 下のパレット構築フェーズで読む。 */
@@ -426,6 +441,8 @@ void TuiApp::apply_settings_from_conf() {
     g_fmt_settings.e_negative_max = e_negative_max;
     g_fmt_settings.e_alignment    = e_alignment;
     sheet_model_set_limits(model_, lim);
+
+    clear_after_overlay_ = clear_after_overlay;
 
     if (sheet_) {
         sheet_->set_auto_complete(auto_completion);
@@ -681,6 +698,7 @@ bool TuiApp::about_handle_event(Event ev) {
     if (ev == Event::Escape || ev == Event::Return || ev == Event::F1 ||
         ev == Event::Character("q") || ev == Event::Character("Q")) {
         about_visible_ = false;
+        overlay_closed();
         return true;
     }
     /* タブ切替: Tab / Shift+Tab / ←/→. 切替時はスクロール位置をリセット。 */
@@ -739,6 +757,7 @@ bool TuiApp::paste_modal_handle_event(Event ev) {
     if (ev == Event::Escape) {
         paste_modal_visible_ = false;
         paste_modal_text_.clear();
+        overlay_closed();
         flash_message(_("Paste cancelled"));
         return true;
     }
@@ -774,6 +793,7 @@ void TuiApp::paste_modal_confirm() {
     std::string text  = std::move(paste_modal_text_);
     paste_modal_visible_ = false;
     paste_modal_text_.clear();
+    overlay_closed();
 
     if (!sheet_) return;
     switch (choice) {
@@ -920,6 +940,16 @@ void TuiApp::context_menu_open(int x, int y) {
 
 void TuiApp::context_menu_close() {
     context_menu_visible_ = false;
+    overlay_closed();
+}
+
+/* overlay (menu / about / paste / context) を閉じた時に呼ぶ。
+ * macOS Terminal + tmux + CJK 環境で overlay 領域に黒背景の縞模様ゴミが
+ * 残るため、 \x1B[2J で画面全体を一度クリアする。 cursor 位置は移動させ
+ * ない (= ftxui の reset_cursor_position キャッシュとの整合を保つ)。 */
+void TuiApp::overlay_closed() {
+    if (!clear_after_overlay_) return;
+    std::cout << "\x1B[2J" << std::flush;
 }
 
 void TuiApp::context_menu_move(int dir) {
@@ -1268,6 +1298,7 @@ void TuiApp::menu_close() {
     menu_item_      = 0;
     submenu_active_ = false;
     submenu_item_   = 0;
+    overlay_closed();
 }
 
 void TuiApp::menu_move_item(int dir) {
@@ -1582,7 +1613,10 @@ bool TuiApp::handle_mouse(const Mouse &m) {
                 }
                 return true;
             }
-            if (!about_box_.Contain(m.x, m.y)) about_visible_ = false;
+            if (!about_box_.Contain(m.x, m.y)) {
+                about_visible_ = false;
+                overlay_closed();
+            }
             return true;
         }
         return true;  /* About 中は他のマウスも吸収 */

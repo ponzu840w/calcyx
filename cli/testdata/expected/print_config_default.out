@@ -43,3 +43,4 @@ color_preset = otaku-black
 
 # ---- TUI ----
 tui_color_source = semantic
+tui_clear_after_overlay = auto

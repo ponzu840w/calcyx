@@ -174,6 +174,13 @@ private:
     mutable ftxui::Box              context_menu_box_;
     mutable std::vector<ftxui::Box> context_menu_item_boxes_;
 
+    /* macOS Terminal + tmux + CJK で overlay (menu / about / paste / context)
+     * を閉じた後に黒背景の縞模様ゴミが残るバグへの対策フラグ。 close 時に
+     * \x1B[2J を発行して画面全体をクリアする。 default は OS で分岐 (mac=true、
+     * 他 false)、 conf の "tui_clear_after_overlay" で auto/true/false 上書き可。 */
+    bool   clear_after_overlay_ = false;
+    void   overlay_closed();
+
     /* メニュー状態 */
     MenuId menu_active_     = MenuId::None;
     int    menu_item_       = 0;

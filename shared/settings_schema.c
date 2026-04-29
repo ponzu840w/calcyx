@@ -144,7 +144,9 @@ static const calcyx_setting_desc_t TABLE[] = {
 
     SEC("# ---- TUI ----\n"),
     STR("tui_color_source", T, "semantic",
-        "Color rendering mode: 'semantic' (terminal palette + accent) or 'mirror_gui' (use color_*).")
+        "Color rendering mode: 'semantic' (terminal palette + accent) or 'mirror_gui' (use color_*)."),
+    STR("tui_clear_after_overlay", T, "auto",
+        "Force full screen clear after closing overlays (workaround for macOS Terminal + tmux + CJK ghosting). 'auto' = on for macOS, off elsewhere; 'true' / 'false' force the choice.")
 };
 
 static const int TABLE_N = (int)(sizeof(TABLE) / sizeof(TABLE[0]));
