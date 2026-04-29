@@ -13,6 +13,11 @@
   - macOS でメニューが意図的に setAlphaValue:0.97 で 3% 透過されている
     のを完全 opaque に変更。 native menu 風の演出だが calcyx のダーク
     配色ではシート内容が透けて見えてしまうため。
+  - FLTK の modal_window_level() が NSStatusWindowLevel (25) を返す
+    のを NSModalPanelWindowLevel (8) に変更。 macOS 26 (Tahoe) では
+    NSStatusWindowLevel に上げたウィンドウに Liquid Glass 系の合成
+    エフェクトが自動付加され、 外部 (1x) ディスプレイで文字が滲む。
+    通常の modal dialog なら NSModalPanelWindowLevel が本来適切。
   - Windows の OEM キー (VK_OEM_1 / VK_OEM_PLUS など) の FLTK keysym 変換
     が US 配列固定のテーブル (vktab) を使っており、JIS キーボードだと物理
     キーと FLTK keysym がずれる (例: JIS `;` キーが FLTK keysym `=` で
@@ -493,7 +498,7 @@ with open(path, "r") as f:
     src = f.read()
 
 if "calcyx: opaque menu windows" in src:
-    print("Already patched Fl_cocoa.mm, skipping")
+    print("Already patched Fl_cocoa.mm (opaque), skipping")
 else:
     needle = (
         "  if(w->menu_window()) { // make menu windows slightly transparent\n"
@@ -512,7 +517,39 @@ else:
         sys.exit(1)
     src = src.replace(needle, replacement, 1)
 
-    with open(path, "w") as f:
-        f.write(src)
+# 2) FLView に viewDidChangeBackingProperties を追加。
+#    macOS は backing scale 変更時にこのメソッドを呼ぶが、 FLTK は
+#    windowDidMove 経由でしか検知しておらず、 マルチディスプレイ跨ぎで
+#    ダイアログがぼやけたまま残留するバグの原因。
+# 2c) modal_window_level の NSStatusWindowLevel を NSModalPanelWindowLevel に
+#     差し替える。 NSStatusWindowLevel は status bar アプリ用の特殊レベル
+#     (= 25) で、 macOS 26 (Tahoe) ではこのレベルのウィンドウに Liquid
+#     Glass 系の合成エフェクトが自動付加され、 外部 1x ディスプレイで
+#     文字が滲む。 通常の modal dialog は NSModalPanelWindowLevel (= 8)
+#     が本来適切。
+if "calcyx: modal level fix" in src:
+    print("Already patched Fl_cocoa.mm (modal level), skipping")
+else:
+    LEVEL_NEEDLE = (
+        "  level = max_normal_window_level();\n"
+        "  if (level < NSStatusWindowLevel)\n"
+        "    return NSStatusWindowLevel;\n"
+    )
+    LEVEL_REPLACE = (
+        "  // ---- calcyx: modal level fix ----\n"
+        "  // NSStatusWindowLevel は macOS 26 で Liquid Glass 効果を誘発し、\n"
+        "  // 外部 1x ディスプレイで modal dialog の文字が滲む。\n"
+        "  // 通常 modal は NSModalPanelWindowLevel が適切。\n"
+        "  level = max_normal_window_level();\n"
+        "  if (level < NSModalPanelWindowLevel)\n"
+        "    return NSModalPanelWindowLevel;\n"
+    )
+    if LEVEL_NEEDLE not in src:
+        sys.stderr.write("patch-fltk.py: Fl_cocoa.mm modal_window_level not found\n")
+        sys.exit(1)
+    src = src.replace(LEVEL_NEEDLE, LEVEL_REPLACE, 1)
 
-    print("Patched successfully:", path)
+with open(path, "w") as f:
+    f.write(src)
+
+print("Patched successfully:", path)

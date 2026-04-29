@@ -122,6 +122,10 @@ if(APPLE)
         MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
         MACOSX_BUNDLE_ICON_FILE            "icon.icns"
         MACOSX_BUNDLE_GUI_IDENTIFIER       "com.ponzu840w.calcyx"
+        # CMake 既定テンプレートには NSHighResolutionCapable が含まれず、
+        # Retina で legacy 互換モード (2 倍引き伸ばし) になり全体ぼやけ
+        # の原因となるため独自テンプレートに差し替え。
+        MACOSX_BUNDLE_INFO_PLIST           "${CMAKE_CURRENT_SOURCE_DIR}/Info.plist.in"
         OUTPUT_NAME                        "calcyx"
     )
 elseif(WIN32)
