@@ -661,9 +661,11 @@ bool PrefsScreen::handle_mouse(const ftxui::Mouse &m) {
         return true;
     }
 
-    /* 左クリック (Pressed → Released で確定) のみ反応。 */
+    /* 左クリック (Pressed) のみ反応。 X10 モードの端末 (roxterm 等) は
+     * Released イベントを送らないので menu / context menu と同じく Pressed
+     * で確定する。 (FTXUI パッチで motion ビット付きイベントは drop 済み) */
     if (m.button != Mouse::Left) return true;  /* 他ボタンは吸収のみ */
-    if (m.motion != Mouse::Released) return true;
+    if (m.motion != Mouse::Pressed) return true;
 
     /* 編集中: 外側クリックで cancel、 中ではノーオペ。 */
     if (editing_) {
