@@ -21,7 +21,14 @@ extern "C" {
 #include <cstdlib>
 #include <cstring>
 #include <string>
-#include <unistd.h>
+
+#ifdef _WIN32
+#  include <windows.h>
+#  include <direct.h>  /* _mkdir */
+#  include <io.h>
+#else
+#  include <unistd.h>
+#endif
 
 using namespace ftxui;
 using namespace calcyx::tui;
@@ -412,9 +419,23 @@ static void test_context_menu() {
 static std::string g_prefs_test_dir;
 
 static std::string make_prefs_temp_dir() {
+#ifdef _WIN32
+    /* mingw には mkdtemp がない. GetTempPath + PID で一意名を作って _mkdir.
+     * 衝突したら数回リトライする. */
+    char base[MAX_PATH];
+    if (GetTempPathA(MAX_PATH, base) == 0) return {};
+    char name[MAX_PATH + 64];
+    for (int i = 0; i < 16; ++i) {
+        std::snprintf(name, sizeof(name), "%scalcyx_test_prefs_%lu_%d",
+                      base, (unsigned long)GetCurrentProcessId(), i);
+        if (_mkdir(name) == 0) return std::string(name);
+    }
+    return {};
+#else
     char tmpl[] = "/tmp/calcyx_test_prefs_XXXXXX";
     char *p = mkdtemp(tmpl);
     return p ? std::string(p) : std::string();
+#endif
 }
 
 static void write_text_file(const std::string &path, const std::string &content) {
