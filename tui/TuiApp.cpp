@@ -344,8 +344,17 @@ void TuiApp::do_preferences() {
 
 #if defined(_WIN32)
     /* 関連付けされたエディタ (テキスト) で開く。ShellExecute は非同期だが
-     * TUI からの "編集中ロック" は必須ではないので、起動だけして戻る。 */
-    ShellExecuteA(nullptr, "open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+     * TUI からの "編集中ロック" は必須ではないので、起動だけして戻る。
+     * path は UTF-8 なので ShellExecuteA に直渡しすると CP932 解釈で
+     * 日本語ユーザ名等が文字化けする。 UTF-16 化して ShellExecuteW を呼ぶ. */
+    {
+        wchar_t wpath[MAX_PATH];
+        int n = MultiByteToWideChar(CP_UTF8, 0, path.c_str(), -1, wpath,
+                                    (int)(sizeof(wpath) / sizeof(wpath[0])));
+        if (n > 0) {
+            ShellExecuteW(nullptr, L"open", wpath, nullptr, nullptr, SW_SHOWNORMAL);
+        }
+    }
     flash_message(std::string(_("Opened: ")) + path);
 #else
     /* $VISUAL → $EDITOR → vi の順で探す。FTXUI の端末モードは

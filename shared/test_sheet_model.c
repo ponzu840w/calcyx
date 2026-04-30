@@ -3,10 +3,19 @@
  * FLTK 非依存のため engine テスト (CTest ラベル "engine") として登録。 */
 
 #include "sheet_model.h"
+#include "path_utf8.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef _WIN32
+#  include <process.h>  /* _getpid */
+#  define get_pid _getpid
+#else
+#  include <unistd.h>   /* getpid */
+#  define get_pid getpid
+#endif
 
 static int g_pass = 0;
 static int g_fail = 0;
@@ -377,6 +386,66 @@ static void test_fmt_helpers(void) {
     sheet_model_free(m);
 }
 
+/* 日本語ディレクトリ + 日本語ファイル名で sheet_model_save_file /
+ * sheet_model_load_file が round-trip するか検証する。
+ *
+ * Windows での "ポン酢" 等の日本語ユーザ名 / パスで calcyx_fopen が
+ * 正しく _wfopen に橋渡しできているかを保証する回帰テスト。 Linux でも
+ * UTF-8 path はそのまま動くので両プラットフォーム共通で実行される。
+ *
+ * 一時ディレクトリは:
+ *   POSIX: $TMPDIR か /tmp
+ *   Win  : %TEMP% か カレント
+ * の下に "calcyx_jp_日本語_<pid>" を作成。 ファイル名は "テスト.txt".
+ * テスト後はファイルだけ削除 (ディレクトリは OS の TMP 掃除に任せる)。 */
+static void test_load_save_utf8_path(void) {
+    printf("[test_load_save_utf8_path]\n");
+
+    /* 一時ディレクトリの親 */
+    char base[512] = "";
+#ifdef _WIN32
+    if (!calcyx_getenv_utf8("TEMP", base, sizeof(base)) &&
+        !calcyx_getenv_utf8("TMP",  base, sizeof(base)))
+        snprintf(base, sizeof(base), ".");
+    const char *sep = "\\";
+#else
+    if (!calcyx_getenv_utf8("TMPDIR", base, sizeof(base)))
+        snprintf(base, sizeof(base), "/tmp");
+    const char *sep = "/";
+#endif
+
+    /* 日本語ディレクトリ "calcyx_jp_日本語_<pid>" */
+    char dir[1024];
+    snprintf(dir, sizeof(dir),
+             "%s%scalcyx_jp_\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e_%d",
+             base, sep, (int)get_pid());
+    int rc = calcyx_mkdir(dir);
+    /* mkdir は既存だと失敗するが round-trip 自体は通せばよいので無視. */
+    (void)rc;
+
+    /* "テスト.txt" */
+    char path[1024];
+    snprintf(path, sizeof(path),
+             "%s%s\xe3\x83\x86\xe3\x82\xb9\xe3\x83\x88.txt", dir, sep);
+
+    /* 1 行コミットしてから save → load round-trip. */
+    sheet_model_t *m = sheet_model_new();
+    commit_change(m, 0, "", "12*34");
+
+    int saved = sheet_model_save_file(m, path);
+    check("utf8 path: save_file ok", saved);
+
+    sheet_model_t *m2 = sheet_model_new();
+    int loaded = sheet_model_load_file(m2, path);
+    check("utf8 path: load_file ok", loaded);
+    check("utf8 path: round-trip row 0",
+          eq(sheet_model_row_expr(m2, 0), "12*34"));
+
+    sheet_model_free(m);
+    sheet_model_free(m2);
+    calcyx_remove(path);
+}
+
 int main(void) {
     test_basic_commit_undo_redo();
     test_multiple_commits();
@@ -389,6 +458,7 @@ int main(void) {
     test_eval_all();
     test_build_candidates();
     test_fmt_helpers();
+    test_load_save_utf8_path();
 
     printf("\n=== %d passed, %d failed ===\n", g_pass, g_fail);
     return g_fail > 0 ? 1 : 0;

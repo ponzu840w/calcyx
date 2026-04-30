@@ -26,6 +26,7 @@ extern "C" {
 #include "eval/eval.h"
 #include "eval/eval_ctx.h"
 #include "i18n.h"
+#include "path_utf8.h"
 #include "settings_io.h"
 #include "settings_schema.h"
 #include "settings_writer.h"
@@ -551,7 +552,7 @@ int main(int argc, char *argv[]) {
             eval_line(e, &ctx, out, &exit_code);
     } else if (!files.empty()) {
         for (const char *f : files) {
-            FILE *fp = std::fopen(f, "r");
+            FILE *fp = calcyx_fopen(f, "r");
             if (!fp) {
                 std::fprintf(stderr, "error: cannot open '%s'\n", f);
                 exit_code = 2;

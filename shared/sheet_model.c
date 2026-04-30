@@ -6,6 +6,7 @@
 #include "builtin_docs.h"
 #include "completion_match.h"
 #include "i18n.h"
+#include "path_utf8.h"
 
 #include "eval/eval.h"
 #include "eval/builtin.h"
@@ -545,7 +546,7 @@ int sheet_model_build_candidates(sheet_model_t *m,
 /* ファイル I/O                                                         */
 /* ------------------------------------------------------------------ */
 bool sheet_model_load_file(sheet_model_t *m, const char *path) {
-    FILE *fp = fopen(path, "r");
+    FILE *fp = calcyx_fopen(path, "r");
     if (!fp) return false;
 
     rows_clear_all(m);
@@ -566,7 +567,7 @@ bool sheet_model_load_file(sheet_model_t *m, const char *path) {
 }
 
 bool sheet_model_save_file(const sheet_model_t *m, const char *path) {
-    FILE *fp = fopen(path, "w");
+    FILE *fp = calcyx_fopen(path, "w");
     if (!fp) return false;
     for (int i = 0; i < m->n_rows; i++)
         fprintf(fp, "%s\n", m->rows[i].expr ? m->rows[i].expr : "");
