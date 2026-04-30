@@ -22,7 +22,7 @@ class SheetView;
 
 // ---- ダイアログ全体のサイズ / スタイル定数 ----
 inline constexpr int DW = 580;
-inline constexpr int DH = 630;
+inline constexpr int DH = 680;
 
 #define DLG_BG     g_colors.ui_bg
 #define DLG_INPUT  g_colors.ui_input
