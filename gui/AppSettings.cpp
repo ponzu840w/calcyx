@@ -18,6 +18,7 @@ AppSettings g_settings = {
     /* limit_max_string_length */    DEFAULT_MAX_STRING_LENGTH,
     /* limit_max_call_depth */       DEFAULT_MAX_CALL_DEPTH,
     /* show_rowlines */              DEFAULT_SHOW_ROWLINES,
+    /* gui_menubar_in_window */      DEFAULT_GUI_MENUBAR_IN_WINDOW,
     /* remember_position */          DEFAULT_REMEMBER_POSITION,
     /* start_topmost */              DEFAULT_START_TOPMOST,
     /* tray_icon */                  DEFAULT_TRAY_ICON,

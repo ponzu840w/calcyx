@@ -198,24 +198,43 @@ MainWindow::MainWindow(int w, int h, const char *title)
     menu_->color(C_MENU_BG);
     menu_->textcolor(C_MENU_FG);
     menu_->box(FL_FLAT_BOX);
-    menu_->add(_("&File/All &Clear"),     FL_COMMAND | FL_SHIFT | FL_Delete, menu_cb, (void*)"clear_all", FL_MENU_DIVIDER);
-    menu_->add(_("&File/&Open..."),       FL_COMMAND + 'o', menu_cb, (void*)"open");
-    menu_->add(_("&File/&Save As..."),    FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
-    menu_->add(_("&Edit/&Undo"),          FL_COMMAND + 'z', menu_cb, (void*)"undo");
-    menu_->add(_("&Edit/&Redo"),          FL_COMMAND + 'y', menu_cb, (void*)"redo", FL_MENU_DIVIDER);
-    menu_->add(_("&Edit/Copy &All"),      (FL_COMMAND | FL_SHIFT) + 'c', menu_cb, (void*)"copy_all", FL_MENU_DIVIDER);
-    menu_->add(_("&Edit/&Insert Row Below"), FL_Enter,            menu_cb, (void*)"insert_below");
-    menu_->add(_("&Edit/Insert Row A&bove"), FL_SHIFT | FL_Enter, menu_cb, (void*)"insert_above");
-    menu_->add(_("&Edit/&Delete Row"),    FL_COMMAND | FL_Delete,          menu_cb, (void*)"delete_row");
-    menu_->add(_("&Edit/Move Row &Up"),   FL_COMMAND | FL_SHIFT | FL_Up,   menu_cb, (void*)"move_up");
-    menu_->add(_("&Edit/Move Row Do&wn"), FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
-    menu_->add(_("&Edit/&Recalculate"),   FL_F + 5, menu_cb, (void*)"recalc");
-    menu_->add(_("&View/Always on &Top"), FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
+#ifdef __APPLE__
+    /* グローバルメニューバー (画面上端)。 size 0 で構わない (= macOS では
+     * ウィンドウ widget としては描画されず、 OS のメニューバーへ反映)。 */
+    sys_menu_ = new Fl_Sys_Menu_Bar(0, 0, 0, 0);
+    bool window_menu = g_gui_menubar_in_window;
+#endif
+    /* in-window と global の両方に同じ項目を add するヘルパ。
+     * macOS では shortcut は global 側だけに登録 (= 二重発火回避)、
+     * window_menu==false なら window 側には何も入れない。
+     * 非 macOS では従来通り window 側だけに add。 */
+    auto add_menu = [&](const char *label, int sc, Fl_Callback *cb,
+                        void *user, int flags = 0) {
+#ifdef __APPLE__
+        sys_menu_->add(label, sc, cb, user, flags);
+        if (window_menu) menu_->add(label, 0, cb, user, flags);
+#else
+        menu_->add(label, sc, cb, user, flags);
+#endif
+    };
+    add_menu(_("&File/All &Clear"),     FL_COMMAND | FL_SHIFT | FL_Delete, menu_cb, (void*)"clear_all", FL_MENU_DIVIDER);
+    add_menu(_("&File/&Open..."),       FL_COMMAND + 'o', menu_cb, (void*)"open");
+    add_menu(_("&File/&Save As..."),    FL_COMMAND + 's', menu_cb, (void*)"save", FL_MENU_DIVIDER);
+    add_menu(_("&Edit/&Undo"),          FL_COMMAND + 'z', menu_cb, (void*)"undo");
+    add_menu(_("&Edit/&Redo"),          FL_COMMAND + 'y', menu_cb, (void*)"redo", FL_MENU_DIVIDER);
+    add_menu(_("&Edit/Copy &All"),      (FL_COMMAND | FL_SHIFT) + 'c', menu_cb, (void*)"copy_all", FL_MENU_DIVIDER);
+    add_menu(_("&Edit/&Insert Row Below"), FL_Enter,            menu_cb, (void*)"insert_below");
+    add_menu(_("&Edit/Insert Row A&bove"), FL_SHIFT | FL_Enter, menu_cb, (void*)"insert_above");
+    add_menu(_("&Edit/&Delete Row"),    FL_COMMAND | FL_Delete,          menu_cb, (void*)"delete_row");
+    add_menu(_("&Edit/Move Row &Up"),   FL_COMMAND | FL_SHIFT | FL_Up,   menu_cb, (void*)"move_up");
+    add_menu(_("&Edit/Move Row Do&wn"), FL_COMMAND | FL_SHIFT | FL_Down, menu_cb, (void*)"move_down", FL_MENU_DIVIDER);
+    add_menu(_("&Edit/&Recalculate"),   FL_F + 5, menu_cb, (void*)"recalc");
+    add_menu(_("&View/Always on &Top"), FL_COMMAND + 't', menu_cb, (void*)"topmost", FL_MENU_TOGGLE);
     // Ctrl+: (JIS では Zoom Out の Ctrl+- と同じキー列。
     // OEM キー → FLTK keysym 化の配列ずれは
     // cmake/patch-fltk.py の Fl_win32.cxx パッチで根本対応済み)。
-    menu_->add(_("&View/&Compact Mode"),  FL_COMMAND | ':', menu_cb, (void*)"toggle_compact", FL_MENU_TOGGLE);
-    menu_->add(_("&View/Sys&tem Tray"),   0, menu_cb, (void*)"toggle_tray",
+    add_menu(_("&View/&Compact Mode"),  FL_COMMAND | ':', menu_cb, (void*)"toggle_compact", FL_MENU_TOGGLE);
+    add_menu(_("&View/Sys&tem Tray"),   0, menu_cb, (void*)"toggle_tray",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
     // Color Scheme サブメニュー (FL_MENU_RADIO)
     // USER_DEFINED は Prefs で編集する扱い。メニューには名前付きプリセットのみ出す。
@@ -226,23 +245,23 @@ MainWindow::MainWindow(int w, int h, const char *title)
         if (i == COLOR_PRESET_USER_DEFINED) continue;
         /* parent path だけ翻訳。 preset 名 (otaku-black 等) は固定。 */
         std::string path = std::string(_("&View/Color &Scheme")) + "/" + COLOR_PRESET_INFO[i].label;
-        menu_->add(path.c_str(), 0, menu_cb, (void*)scheme_cmds_[i].c_str(), FL_MENU_RADIO);
+        add_menu(path.c_str(), 0, menu_cb, (void*)scheme_cmds_[i].c_str(), FL_MENU_RADIO);
     }
-    menu_->add(_("&View/Show &Row Lines"),           0, menu_cb, (void*)"toggle_rowlines",
+    add_menu(_("&View/Show &Row Lines"),           0, menu_cb, (void*)"toggle_rowlines",
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
-    menu_->add(_("&View/Zoom &In"),       FL_COMMAND | FL_SHIFT | '-', menu_cb, (void*)"zoom_in");
-    menu_->add(_("&View/Zoom &Out"),      FL_COMMAND | '-',             menu_cb, (void*)"zoom_out");
-    menu_->add(_("&View/Reset &Zoom"),    FL_COMMAND + '0', menu_cb, (void*)"zoom_reset", FL_MENU_DIVIDER);
-    menu_->add(_("&View/Scientific Notation (&E)"),  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
-    menu_->add(_("&View/Show Thousands &Separator"), 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
-    menu_->add(_("&View/Show &Hex Separator"),       0, menu_cb, (void*)"toggle_hexsep", FL_MENU_TOGGLE);
-    menu_->add(_("&View/Decimals &+"),    (FL_COMMAND | FL_SHIFT) + '.', menu_cb, (void*)"dec_inc");
-    menu_->add(_("&View/Decimals &\xe2\x88\x92"), (FL_COMMAND | FL_SHIFT) + ',', menu_cb, (void*)"dec_dec", FL_MENU_DIVIDER);
-    menu_->add(_("&View/&Auto Completion"),          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
+    add_menu(_("&View/Zoom &In"),       FL_COMMAND | FL_SHIFT | '-', menu_cb, (void*)"zoom_in");
+    add_menu(_("&View/Zoom &Out"),      FL_COMMAND | '-',             menu_cb, (void*)"zoom_out");
+    add_menu(_("&View/Reset &Zoom"),    FL_COMMAND + '0', menu_cb, (void*)"zoom_reset", FL_MENU_DIVIDER);
+    add_menu(_("&View/Scientific Notation (&E)"),  0, menu_cb, (void*)"toggle_e_notation", FL_MENU_TOGGLE);
+    add_menu(_("&View/Show Thousands &Separator"), 0, menu_cb, (void*)"toggle_thousands", FL_MENU_TOGGLE);
+    add_menu(_("&View/Show &Hex Separator"),       0, menu_cb, (void*)"toggle_hexsep", FL_MENU_TOGGLE);
+    add_menu(_("&View/Decimals &+"),    (FL_COMMAND | FL_SHIFT) + '.', menu_cb, (void*)"dec_inc");
+    add_menu(_("&View/Decimals &\xe2\x88\x92"), (FL_COMMAND | FL_SHIFT) + ',', menu_cb, (void*)"dec_dec", FL_MENU_DIVIDER);
+    add_menu(_("&View/&Auto Completion"),          0, menu_cb, (void*)"toggle_auto_complete", FL_MENU_TOGGLE);
     populate_samples_menu();
-    menu_->add(_("&File/&Preferences..."), FL_COMMAND + ',', menu_cb, (void*)"prefs");
-    menu_->add(_("&File/&About calcyx"),   FL_F + 1,         menu_cb, (void*)"about", FL_MENU_DIVIDER);
-    menu_->add(_("&File/E&xit"),         0,                menu_cb, (void*)"exit");
+    add_menu(_("&File/&Preferences..."), FL_COMMAND + ',', menu_cb, (void*)"prefs");
+    add_menu(_("&File/&About calcyx"),   FL_F + 1,         menu_cb, (void*)"about", FL_MENU_DIVIDER);
+    add_menu(_("&File/E&xit"),         0,                menu_cb, (void*)"exit");
 
     build_menu_index();
 
@@ -428,13 +447,24 @@ void MainWindow::update_toolbar() {
     // Edit メニュー項目: deactivate() すると FLTK が fl_inactive() で更に
     // 背景色にブレンドしてしまい C_DIM が潰れるので、labelcolor のみ変更。
     // sheet_->undo()/redo() 側で can_undo()/can_redo() を見た no-op ガードがあるため安全。
-    Fl_Menu_Item *items = (Fl_Menu_Item *)menu_->menu();
-    auto set_menu = [&](int idx, bool active) {
-        if (idx < 0) return;
-        items[idx].labelcolor(active ? C_MENU_FG : C_DIM);
+    auto set_menu = [&](const char *cmd, bool active) {
+        auto apply = [&](Fl_Menu_ *m,
+                         const std::unordered_map<std::string, int> &idxmap) {
+            if (!m) return;
+            auto it = idxmap.find(cmd);
+            if (it == idxmap.end()) return;
+            int i = it->second;
+            if (i < 0 || i >= m->size()) return;
+            Fl_Menu_Item *items = (Fl_Menu_Item *)m->menu();
+            items[i].labelcolor(active ? C_MENU_FG : C_DIM);
+        };
+        apply(menu_, menu_indices_);
+#ifdef __APPLE__
+        apply(sys_menu_, sys_menu_indices_);
+#endif
     };
-    set_menu(menu_idx("undo"), u);
-    set_menu(menu_idx("redo"), r);
+    set_menu("undo", u);
+    set_menu("redo", r);
 }
 
 int MainWindow::handle(int event) {
@@ -842,14 +872,29 @@ void MainWindow::populate_samples_menu() {
     sample_files_ = std::move(files);
 
     std::string parent = _("&File/&Samples");
+#ifdef __APPLE__
+    bool window_menu = g_gui_menubar_in_window;
+#endif
     for (const auto &f : sample_files_) {
         std::string label = parent + "/" + f.substr(0, f.size() - 4);
+#ifdef __APPLE__
+        if (sys_menu_) sys_menu_->add(label.c_str(), 0, menu_cb, (void *)f.c_str());
+        if (window_menu) menu_->add(label.c_str(), 0, menu_cb, (void *)f.c_str());
+#else
         menu_->add(label.c_str(), 0, menu_cb, (void *)f.c_str());
+#endif
     }
 
-    // Samples サブメニューの後に区切り線を入れる
-    Fl_Menu_Item *it = (Fl_Menu_Item *)menu_->find_item(parent.c_str());
-    if (it) it->flags |= FL_MENU_DIVIDER;
+    // Samples サブメニューの後に区切り線を入れる (両方反映)
+    auto add_divider = [&](Fl_Menu_ *m) {
+        if (!m) return;
+        Fl_Menu_Item *it = (Fl_Menu_Item *)m->find_item(parent.c_str());
+        if (it) it->flags |= FL_MENU_DIVIDER;
+    };
+    add_divider(menu_);
+#ifdef __APPLE__
+    add_divider(sys_menu_);
+#endif
 }
 
 bool MainWindow::open_sample_file(MainWindow *win, const char *filename) {
@@ -1055,13 +1100,20 @@ void MainWindow::toggle_compact_mode() {
 // 引きにくいので、callback==menu_cb のエントリの user_data を ID として
 // 走査する。menu_idx() 経由で参照される。
 void MainWindow::build_menu_index() {
-    menu_indices_.clear();
-    for (int i = 0; i < menu_->size(); i++) {
-        const Fl_Menu_Item &it = menu_->menu()[i];
-        if (!it.label() || it.callback() != menu_cb) continue;
-        const char *cmd = (const char *)it.user_data();
-        if (cmd) menu_indices_.emplace(cmd, i);
-    }
+    auto build = [](Fl_Menu_ *m, std::unordered_map<std::string, int> &out) {
+        out.clear();
+        if (!m) return;
+        for (int i = 0; i < m->size(); i++) {
+            const Fl_Menu_Item &it = m->menu()[i];
+            if (!it.label() || it.callback() != menu_cb) continue;
+            const char *cmd = (const char *)it.user_data();
+            if (cmd) out.emplace(cmd, i);
+        }
+    };
+    build(menu_, menu_indices_);
+#ifdef __APPLE__
+    build(sys_menu_, sys_menu_indices_);
+#endif
 }
 
 // View メニューのトグル項目 (FL_MENU_TOGGLE) のチェック状態を
@@ -1069,22 +1121,36 @@ void MainWindow::build_menu_index() {
 // トグル時に呼ぶ。メニュー経由のクリックでは FLTK が自動で切替える
 // ので呼ばなくてよいが、呼んでも冪等。
 void MainWindow::sync_view_menu_toggles() {
-    Fl_Menu_Item *items = (Fl_Menu_Item *)menu_->menu();
-    auto set_check = [&](int idx, bool on) {
-        if (idx < 0) return;
-        if (on) items[idx].set(); else items[idx].clear();
+    auto set_check = [&](const char *cmd, bool on) {
+        auto apply = [&](Fl_Menu_ *m,
+                         const std::unordered_map<std::string, int> &idxmap) {
+            if (!m) return;
+            auto it = idxmap.find(cmd);
+            if (it == idxmap.end()) return;
+            int i = it->second;
+            if (i < 0 || i >= m->size()) return;
+            Fl_Menu_Item *items = (Fl_Menu_Item *)m->menu();
+            if (on) items[i].set(); else items[i].clear();
+        };
+        apply(menu_, menu_indices_);
+#ifdef __APPLE__
+        apply(sys_menu_, sys_menu_indices_);
+#endif
     };
-    set_check(menu_idx("toggle_rowlines"),      g_show_rowlines);
-    set_check(menu_idx("toggle_thousands"),     g_sep_thousands);
-    set_check(menu_idx("toggle_hexsep"),        g_sep_hex);
-    set_check(menu_idx("toggle_e_notation"),    g_fmt_settings.e_notation);
-    set_check(menu_idx("toggle_auto_complete"), g_input_auto_completion);
-    set_check(menu_idx("toggle_tray"),          g_tray_icon);
-    set_check(menu_idx("topmost"),              topmost_);
-    set_check(menu_idx("toggle_compact"),       compact_mode_);
+    set_check("toggle_rowlines",      g_show_rowlines);
+    set_check("toggle_thousands",     g_sep_thousands);
+    set_check("toggle_hexsep",        g_sep_hex);
+    set_check("toggle_e_notation",    g_fmt_settings.e_notation);
+    set_check("toggle_auto_complete", g_input_auto_completion);
+    set_check("toggle_tray",          g_tray_icon);
+    set_check("topmost",              topmost_);
+    set_check("toggle_compact",       compact_mode_);
     for (int i = 0; i < COLOR_PRESET_COUNT; i++)
-        set_check(menu_idx(scheme_cmds_[i].c_str()), i == g_color_preset);
+        set_check(scheme_cmds_[i].c_str(), i == g_color_preset);
     menu_->redraw();
+#ifdef __APPLE__
+    if (sys_menu_) sys_menu_->redraw();
+#endif
 }
 
 // Zoom 用: フォント再適用 + レイアウト更新

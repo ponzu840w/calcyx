@@ -38,6 +38,7 @@ int         &g_limit_max_array_length     = g_settings.limit_max_array_length;
 int         &g_limit_max_string_length    = g_settings.limit_max_string_length;
 int         &g_limit_max_call_depth       = g_settings.limit_max_call_depth;
 bool        &g_show_rowlines              = g_settings.show_rowlines;
+bool        &g_gui_menubar_in_window      = g_settings.gui_menubar_in_window;
 bool        &g_remember_position          = g_settings.remember_position;
 bool        &g_start_topmost              = g_settings.start_topmost;
 bool        &g_tray_icon                  = g_settings.tray_icon;
@@ -143,6 +144,7 @@ const GuiTarget GUI_TARGETS[] = {
     {"remember_position", &g_remember_position},
     {"start_topmost",     &g_start_topmost},
     {"show_rowlines",     &g_show_rowlines},
+    {"gui_menubar_in_window", &g_gui_menubar_in_window},
     {"max_array_length",  &g_limit_max_array_length},
     {"max_string_length", &g_limit_max_string_length},
     {"max_call_depth",    &g_limit_max_call_depth},

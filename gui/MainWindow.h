@@ -7,6 +7,9 @@
 #include <FL/Fl_Choice.H>
 #include <FL/Fl_Menu_Bar.H>
 #include <FL/Fl_Button.H>
+#ifdef __APPLE__
+#include <FL/Fl_Sys_Menu_Bar.H>
+#endif
 #include "SheetView.h"
 #include "CompletionPopup.h"
 #include <string>
@@ -38,6 +41,14 @@ public:
 private:
     void save_prefs();
     Fl_Menu_Bar     *menu_;
+#ifdef __APPLE__
+    /* macOS グローバルメニューバー (画面上端)。 menu_ と並行して持ち、
+     * 各 add は両方に対して行う。 ただしショートカットは sys_menu_ 側
+     * だけに登録 (= 二重発火回避)。 g_gui_menubar_in_window=false の
+     * とき menu_ には項目を入れず sys_menu_ にだけ入れる。 */
+    Fl_Sys_Menu_Bar *sys_menu_ = nullptr;
+    std::unordered_map<std::string, int> sys_menu_indices_;
+#endif
     Fl_Button       *btn_undo_;   // ← ツールバー Undo
     Fl_Button       *btn_redo_;   // → ツールバー Redo
     Fl_Button       *btn_compact_; // ▣ コンパクトモード開始トグル

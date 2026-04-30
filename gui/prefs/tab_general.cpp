@@ -83,6 +83,9 @@ void build_general_tab(DlgState &st, int tab_h) {
     // ===== Window =====
     {
         int body_h = 90;
+#ifdef __APPLE__
+        body_h += 44;  /* macOS: グローバルメニュー併用トグル + note 1 行ぶん */
+#endif
         Fl_Group *sec = begin_section(lx, ly, sw, body_h, _("Window"));
         int inner_y = ly + SECTION_TITLE_H + SECTION_PAD_TOP;
         st.remember_pos_chk = make_lockable(
@@ -107,6 +110,26 @@ void build_general_tab(DlgState &st, int tab_h) {
         note->labelcolor(DLG_LABEL);
         note->labelsize(11);
         note->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+        inner_y += 18;
+
+#ifdef __APPLE__
+        st.menubar_in_window_chk = make_lockable(
+            new Fl_Check_Button(lx + 10, inner_y, sw - 20, 22,
+                _("Show menu items in window menu bar")),
+            "gui_menubar_in_window");
+        style_check(st.menubar_in_window_chk);
+        st.menubar_in_window_chk->value(g_gui_menubar_in_window ? 1 : 0);
+        inner_y += 22;
+
+        Fl_Box *note2 = new Fl_Box(lx + 30, inner_y, sw - 40, 16,
+            _("Items always appear in the global menu bar. Restart to apply."));
+        note2->box(FL_NO_BOX);
+        note2->labelcolor(DLG_LABEL);
+        note2->labelsize(11);
+        note2->align(FL_ALIGN_LEFT | FL_ALIGN_INSIDE);
+#else
+        st.menubar_in_window_chk = nullptr;
+#endif
 
         sec->end();
         ly += SECTION_TITLE_H + body_h + SECTION_GAP;

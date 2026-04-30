@@ -9,6 +9,7 @@ font_size = 15
 remember_position = true
 start_topmost = false
 show_rowlines = true
+gui_menubar_in_window = true
 max_array_length = 256
 max_string_length = 256
 max_call_depth = 64

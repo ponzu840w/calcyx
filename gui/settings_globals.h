@@ -28,6 +28,7 @@ constexpr int  DEFAULT_MAX_ARRAY_LENGTH     = 256;
 constexpr int  DEFAULT_MAX_STRING_LENGTH    = 256;
 constexpr int  DEFAULT_MAX_CALL_DEPTH       = 64;
 constexpr bool DEFAULT_SHOW_ROWLINES        = true;
+constexpr bool DEFAULT_GUI_MENUBAR_IN_WINDOW = true;
 constexpr bool DEFAULT_REMEMBER_POSITION    = true;
 constexpr bool DEFAULT_START_TOPMOST        = false;
 constexpr int  DEFAULT_FMT_DECIMAL_LEN      = 9;
@@ -60,6 +61,10 @@ extern int &g_limit_max_string_length;
 extern int &g_limit_max_call_depth;
 
 extern bool &g_show_rowlines;
+
+/* macOS のみ意味あり: false なら in-window メニューバーに項目を載せない
+ * (右側のツールボタンだけ残る)。 グローバルメニューバーには常に出る。 */
+extern bool &g_gui_menubar_in_window;
 
 extern bool &g_remember_position;
 extern bool &g_start_topmost;

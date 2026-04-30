@@ -53,6 +53,8 @@ static const calcyx_setting_desc_t TABLE[] = {
           "Pin the window on top of other windows at startup."),
     BOOLE("show_rowlines",     G, 1,
           "Draw thin separator lines between rows in the sheet."),
+    BOOLE("gui_menubar_in_window", G, 1,
+          "(macOS only) Show menu items in the in-window menu bar in addition to the global menu bar. The in-window bar is always kept for the toolbar buttons; this only controls whether menu items are populated. Restart to apply."),
     INTC("max_array_length",   CORE, 256, 1, 1000000,
          "Maximum elements in arrays and strings (memory guard)."),
     INTC("max_string_length",  CORE, 256, 1, 1000000,

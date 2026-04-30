@@ -43,6 +43,8 @@ static void test_defaults() {
     EXPECT("defaults: max_string",       g_limit_max_string_length == DEFAULT_MAX_STRING_LENGTH);
     EXPECT("defaults: max_call_depth",   g_limit_max_call_depth == DEFAULT_MAX_CALL_DEPTH);
     EXPECT("defaults: show_rowlines",    g_show_rowlines == DEFAULT_SHOW_ROWLINES);
+    EXPECT("defaults: gui_menubar_in_window",
+                                         g_gui_menubar_in_window == DEFAULT_GUI_MENUBAR_IN_WINDOW);
     EXPECT("defaults: remember_position",g_remember_position == DEFAULT_REMEMBER_POSITION);
     EXPECT("defaults: hotkey_alt",       g_hotkey_alt == DEFAULT_HOTKEY_ALT);
     unlink(path.c_str());
@@ -73,14 +75,18 @@ static void test_bool_roundtrip() {
     g_input_auto_completion = false;
     g_sep_thousands         = false;
     g_show_rowlines         = false;
+    g_gui_menubar_in_window = false;
     settings_save();
     g_input_auto_completion = true;
     g_sep_thousands         = true;
     g_show_rowlines         = true;
+    g_gui_menubar_in_window = true;
     settings_load();
     EXPECT("bool roundtrip: auto_completion==false", g_input_auto_completion == false);
     EXPECT("bool roundtrip: sep_thousands==false",   g_sep_thousands == false);
     EXPECT("bool roundtrip: show_rowlines==false",   g_show_rowlines == false);
+    EXPECT("bool roundtrip: gui_menubar_in_window==false",
+                                                     g_gui_menubar_in_window == false);
     unlink(path.c_str());
 }
 

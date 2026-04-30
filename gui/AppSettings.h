@@ -37,6 +37,10 @@ struct AppSettings {
 
     /* 表示 */
     bool show_rowlines;
+    /* macOS のみ意味あり: グローバルメニューに加えて window 内のメニュー
+     * バーにも項目を出すか。 false でも右側のツールボタンのために bar
+     * widget は残る。 */
+    bool gui_menubar_in_window;
 
     /* ウィンドウ */
     bool remember_position;

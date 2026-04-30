@@ -95,6 +95,8 @@ void write_dlg_to_globals(DlgState *st) {
     g_show_rowlines           = st->show_rowlines_chk->value() != 0;
     g_remember_position       = st->remember_pos_chk->value() != 0;
     g_start_topmost           = st->start_topmost_chk->value() != 0;
+    if (st->menubar_in_window_chk)
+        g_gui_menubar_in_window = st->menubar_in_window_chk->value() != 0;
     g_color_preset = st->preset_choice->value();
 }
 
@@ -323,6 +325,8 @@ void reset_to_defaults(DlgState *st) {
     st->show_rowlines_chk->value(DEFAULT_SHOW_ROWLINES ? 1 : 0);
     st->remember_pos_chk->value(DEFAULT_REMEMBER_POSITION ? 1 : 0);
     st->start_topmost_chk->value(DEFAULT_START_TOPMOST ? 1 : 0);
+    if (st->menubar_in_window_chk)
+        st->menubar_in_window_chk->value(DEFAULT_GUI_MENUBAR_IN_WINDOW ? 1 : 0);
     st->limit_array_spin->value(DEFAULT_MAX_ARRAY_LENGTH);
     st->limit_string_spin->value(DEFAULT_MAX_STRING_LENGTH);
     st->limit_depth_spin->value(DEFAULT_MAX_CALL_DEPTH);

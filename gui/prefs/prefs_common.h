@@ -88,6 +88,7 @@ struct DlgState {
     Fl_Check_Button *show_rowlines_chk;
     Fl_Check_Button *remember_pos_chk;
     Fl_Check_Button *start_topmost_chk;
+    Fl_Check_Button *menubar_in_window_chk;  // macOS のみ作成・表示
     // System tab
     Fl_Check_Button *tray_chk;
     Fl_Check_Button *hotkey_chk;
