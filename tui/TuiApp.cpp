@@ -252,17 +252,31 @@ std::string preferences_local_path() {
     return preferences_conf_path() + ".override";
 }
 
-/* calcyx.conf の最小パーサ。 std::fopen を直接使うと Windows で UTF-8 path
- * が開けない (= mirror_gui 等の TUI 設定が反映されない症状)。 settings_io の
- * calcyx_conf_each に統一し, '#key=value' (writer 自動生成形式) も値として
- * 読むようにする (PrefsScreen の load_conf_kv とバイト互換)。 */
+/* calcyx.conf の最小パーサ。 '#' 始まり (commented = デフォルトのまま) と
+ * 空行はスキップし, uncomment された "key = value" だけを map に入れる。
+ *
+ * std::fopen は Windows で UTF-8 path のファイルを開けない (= 日本語ユーザ
+ * 名等で conf 反映が壊れる) ので path_utf8::calcyx_fopen を経由する。 */
 std::map<std::string, std::string> conf_read(const std::string &path) {
     std::map<std::string, std::string> kv;
-    auto cb = +[](const char *k, const char *v, int /*line*/, void *user) {
-        auto *m = static_cast<std::map<std::string, std::string> *>(user);
-        if (k && v) (*m)[k] = v;
-    };
-    calcyx_conf_each(path.c_str(), cb, &kv);
+    FILE *fp = calcyx_fopen(path.c_str(), "r");
+    if (!fp) return kv;
+    char line[512];
+    while (std::fgets(line, sizeof(line), fp)) {
+        size_t len = std::strlen(line);
+        while (len > 0 && (line[len-1] == '\n' || line[len-1] == '\r'))
+            line[--len] = '\0';
+        if (line[0] == '#' || line[0] == '\0') continue;
+        char *eq = std::strchr(line, '=');
+        if (!eq) continue;
+        char *ke = eq - 1;
+        while (ke >= line && (*ke == ' ' || *ke == '\t')) --ke;
+        std::string key(line, ke - line + 1);
+        const char *vs = eq + 1;
+        while (*vs == ' ' || *vs == '\t') ++vs;
+        kv[key] = vs;
+    }
+    std::fclose(fp);
     return kv;
 }
 
