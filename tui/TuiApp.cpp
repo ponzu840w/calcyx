@@ -224,31 +224,16 @@ namespace {
  * パス決定ロジックを TUI 側で再実装。FLTK 依存を持ち込まないため、
  * ヘッダ共通化は今回見送る。 */
 std::string preferences_config_dir() {
+    /* shared/settings_io の calcyx_default_conf_path は UTF-8 path を返す
+     * (Windows でも _wgetenv → UTF-8 経由)。 ANSI getenv("APPDATA") 直渡しだと
+     * 日本語ユーザ名の APPDATA が CP932 のまま得られ, path_utf8 の _wfopen
+     * 経路で UTF-8 として再解釈されて壊れる。 */
     char buf[1024];
-#if defined(_WIN32)
-    /* %APPDATA%\calcyx — UTF-8 化は GUI 側ほど厳密にやらない (TUI なら
-     * パスに非 ASCII が混じってもエディタが解釈する想定)。 */
-    const char *appdata = std::getenv("APPDATA");
-    if (!appdata || !*appdata) appdata = ".";
-    std::snprintf(buf, sizeof(buf), "%s\\calcyx", appdata);
-    _mkdir(buf);
-#elif defined(__APPLE__)
-    const char *home = std::getenv("HOME");
-    if (!home) home = ".";
-    std::snprintf(buf, sizeof(buf), "%s/Library/Application Support/calcyx", home);
-    mkdir(buf, 0755);
-#else
-    const char *xdg = std::getenv("XDG_CONFIG_HOME");
-    if (xdg && xdg[0]) {
-        std::snprintf(buf, sizeof(buf), "%s/calcyx", xdg);
-    } else {
-        const char *home = std::getenv("HOME");
-        if (!home) home = ".";
-        std::snprintf(buf, sizeof(buf), "%s/.config/calcyx", home);
-    }
-    mkdir(buf, 0755);
-#endif
-    return buf;
+    if (!calcyx_default_conf_path(buf, sizeof(buf))) return std::string();
+    /* calcyx_default_conf_path は ".../calcyx.conf" を返すので末尾を削って dir に。 */
+    std::string s = buf;
+    size_t pos = s.find_last_of("/\\");
+    return (pos != std::string::npos) ? s.substr(0, pos) : s;
 }
 
 /* テスト用 conf path 上書き。 通常は空で、 OS 既定の場所が使われる。 */
@@ -256,12 +241,10 @@ std::string g_test_conf_path;
 
 std::string preferences_conf_path() {
     if (!g_test_conf_path.empty()) return g_test_conf_path;
-    std::string dir = preferences_config_dir();
-#if defined(_WIN32)
-    return dir + "\\calcyx.conf";
-#else
-    return dir + "/calcyx.conf";
-#endif
+    /* settings_io の calcyx_default_conf_path に一本化 (UTF-8 / Windows 対応)。 */
+    char buf[1024];
+    if (!calcyx_default_conf_path(buf, sizeof(buf))) return std::string();
+    return buf;
 }
 
 std::string preferences_local_path() {
