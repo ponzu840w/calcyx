@@ -251,7 +251,11 @@ std::string preferences_config_dir() {
     return buf;
 }
 
+/* テスト用 conf path 上書き。 通常は空で、 OS 既定の場所が使われる。 */
+std::string g_test_conf_path;
+
 std::string preferences_conf_path() {
+    if (!g_test_conf_path.empty()) return g_test_conf_path;
     std::string dir = preferences_config_dir();
 #if defined(_WIN32)
     return dir + "\\calcyx.conf";
@@ -324,6 +328,12 @@ std::string preferences_shell_quote(const std::string &s) {
  * -------------------------------------------------------------------- */
 std::string TuiApp::preferences_conf_path_str() const {
     return preferences_conf_path();  /* anonymous namespace の OS 別パス計算 */
+}
+
+/* テスト専用: conf 読み書き先を一時ファイルに切替える。
+ * 空文字を渡すと OS 既定パスに戻る。 本番コードからは呼ばない。 */
+void TuiApp::test_set_conf_path(const std::string &p) {
+    g_test_conf_path = p;
 }
 
 void TuiApp::prefs_open() {

@@ -2,6 +2,7 @@
  * run() Loop はブロッキングなので test_dispatch() で
  * CatchEvent → prompt_handle_event → sheet OnEvent を直接叩く。 */
 
+#include "PrefsScreen.h"
 #include "TuiApp.h"
 #include "TuiSheet.h"
 #include "clipboard.h"
@@ -402,6 +403,163 @@ static void test_context_menu() {
     }
 }
 
+/* ----------------------------------------------------------------------
+ * シナリオ 7: Preferences 画面
+ * --- 一時 conf dir を共通で用意し、 各テスト先頭で test_set_conf_path する。
+ * 端末への \x1B[2J 流出を避けるため tui_clear_after_overlay=false で
+ * 初期化済みにする。 -------------------------------------------------- */
+
+static std::string g_prefs_test_dir;
+
+static std::string make_prefs_temp_dir() {
+    char tmpl[] = "/tmp/calcyx_test_prefs_XXXXXX";
+    char *p = mkdtemp(tmpl);
+    return p ? std::string(p) : std::string();
+}
+
+static void write_text_file(const std::string &path, const std::string &content) {
+    FILE *f = fopen(path.c_str(), "w");
+    if (!f) return;
+    fputs(content.c_str(), f);
+    fclose(f);
+}
+
+/* 一時 conf を更地から作る。 既存を消して overlay clear を抑止する設定だけ
+ * 入れた最小ファイルを置き、 TuiApp 起動時に schema sync で必要な行が補われる。 */
+static void prefs_reset_temp_conf() {
+    if (g_prefs_test_dir.empty()) g_prefs_test_dir = make_prefs_temp_dir();
+    std::string conf = g_prefs_test_dir + "/calcyx.conf";
+    std::string ovr  = conf + ".override";
+    /* override は使わないテストでは empty。 */
+    write_text_file(conf, "tui_clear_after_overlay = false\n");
+    write_text_file(ovr,  "");
+    TuiApp::test_set_conf_path(conf);
+}
+
+static void test_prefs_open_close() {
+    prefs_reset_temp_conf();
+    TuiApp app;
+    EXPECT("7a.0 hidden", !app.test_prefs_visible());
+    app.test_open_prefs();
+    EXPECT("7a.1 visible", app.test_prefs_visible());
+    EXPECT("7a.2 prefs ptr", app.test_prefs() != nullptr);
+    EXPECT("7a.3 default tab", app.test_prefs()->test_tab() == 0);
+    app.test_dispatch(Event::Escape);
+    EXPECT("7a.4 closed", !app.test_prefs_visible());
+}
+
+static void test_prefs_tab_cycle() {
+    prefs_reset_temp_conf();
+    TuiApp app;
+    app.test_open_prefs();
+    auto *prefs = app.test_prefs();
+    EXPECT("7b.0", prefs->test_tab() == 0);
+    app.test_dispatch(Event::Tab);
+    EXPECT("7b.1 → Number", prefs->test_tab() == 1);
+    app.test_dispatch(Event::Tab);
+    EXPECT("7b.2 → Input", prefs->test_tab() == 2);
+    app.test_dispatch(Event::Tab);
+    EXPECT("7b.3 → Colors", prefs->test_tab() == 3);
+    app.test_dispatch(Event::Tab);
+    EXPECT("7b.4 wrap → General", prefs->test_tab() == 0);
+    app.test_dispatch(Event::TabReverse);
+    EXPECT("7b.5 ← Colors", prefs->test_tab() == 3);
+    app.test_dispatch(Event::Escape);
+}
+
+static void test_prefs_bool_toggle() {
+    prefs_reset_temp_conf();
+    TuiApp app;
+    app.test_open_prefs();
+    auto *prefs = app.test_prefs();
+    /* Input タブの先頭 = auto_completion (BOOL, default true)。 */
+    app.test_dispatch(Event::Tab);
+    app.test_dispatch(Event::Tab);
+    EXPECT("7c.0 tab=Input", prefs->test_tab() == 2);
+    EXPECT("7c.1 default", prefs->test_value("auto_completion") == "true");
+    app.test_dispatch(Event::Character(" "));
+    EXPECT("7c.2 toggled", prefs->test_value("auto_completion") == "false");
+    EXPECT("7c.3 sheet sync", !app.test_sheet()->auto_complete());
+    app.test_dispatch(Event::Escape);
+}
+
+static void test_prefs_color_source_visibility() {
+    prefs_reset_temp_conf();
+    TuiApp app;
+    app.test_open_prefs();
+    auto *prefs = app.test_prefs();
+    /* Tab to Colors */
+    app.test_dispatch(Event::Tab);
+    app.test_dispatch(Event::Tab);
+    app.test_dispatch(Event::Tab);
+    EXPECT("7d.0 tab=Colors", prefs->test_tab() == 3);
+    EXPECT("7d.1 default semantic",
+           prefs->test_value("tui_color_source") == "semantic");
+    int semantic_count = prefs->test_visible_count();
+    /* tui_color_source は最上段 (item 0)。 → で mirror_gui へ循環。 */
+    app.test_dispatch(Event::ArrowRight);
+    EXPECT("7d.2 switched",
+           prefs->test_value("tui_color_source") == "mirror_gui");
+    int mirror_count = prefs->test_visible_count();
+    /* mirror_gui は color_* 28 項目 + preset で semantic 8 項目より多い。 */
+    EXPECT("7d.3 mirror has more items", mirror_count > semantic_count);
+    app.test_dispatch(Event::Escape);
+}
+
+static void test_prefs_reset_all() {
+    prefs_reset_temp_conf();
+    TuiApp app;
+    app.test_open_prefs();
+    auto *prefs = app.test_prefs();
+    /* Number-Format タブの decimal_digits を ← で 9 → 8 に変える。 */
+    app.test_dispatch(Event::Tab);
+    EXPECT("7e.0 tab=Number", prefs->test_tab() == 1);
+    EXPECT("7e.1 default", prefs->test_value("decimal_digits") == "9");
+    app.test_dispatch(Event::ArrowLeft);
+    EXPECT("7e.2 decremented", prefs->test_value("decimal_digits") == "8");
+
+    /* General タブに戻って Reset 行 (= item 6) へ ↓ 6 回。 */
+    app.test_dispatch(Event::TabReverse);
+    EXPECT("7e.3 tab=General", prefs->test_tab() == 0);
+    for (int i = 0; i < 6; i++) app.test_dispatch(Event::ArrowDown);
+    EXPECT("7e.4 at reset row", prefs->test_item() == 6);
+
+    /* Enter で confirm モード突入 → Y で実行。 */
+    app.test_dispatch(Event::Return);
+    EXPECT("7e.5 confirming", prefs->test_confirming_reset());
+    app.test_dispatch(Event::Character("y"));
+    EXPECT("7e.6 left confirm", !prefs->test_confirming_reset());
+    EXPECT("7e.7 reset to default",
+           prefs->test_value("decimal_digits") == "9");
+    app.test_dispatch(Event::Escape);
+}
+
+static void test_prefs_override_locked() {
+    prefs_reset_temp_conf();
+    /* override に max_array_length=999 を強制書き込み。 */
+    std::string conf = g_prefs_test_dir + "/calcyx.conf";
+    write_text_file(conf + ".override", "max_array_length = 999\n");
+    TuiApp app;
+    app.test_open_prefs();
+    auto *prefs = app.test_prefs();
+
+    EXPECT("7f.0 locked",  prefs->test_locked("max_array_length"));
+    EXPECT("7f.1 override value",
+           prefs->test_value("max_array_length") == "999");
+
+    /* ↓ 1 回で max_array_length 行 (item 1)、 Enter で edit 試行。 */
+    app.test_dispatch(Event::ArrowDown);
+    EXPECT("7f.2 item=1", prefs->test_item() == 1);
+    app.test_dispatch(Event::Return);
+    EXPECT("7f.3 still 999",
+           prefs->test_value("max_array_length") == "999");
+    EXPECT("7f.4 not editing", !prefs->test_editing());
+    /* flash に "Locked" を含むメッセージが出ているはず (i18n_init=en)。 */
+    EXPECT("7f.5 flash",
+           app.test_status_msg().find("Locked") != std::string::npos);
+    app.test_dispatch(Event::Escape);
+}
+
 int main() {
     /* テストは英語前提のアサートなので OS ロケールに関係なく en で固定。 */
     calcyx_i18n_init("en");
@@ -412,6 +570,15 @@ int main() {
     test_menu_bar();
     test_paste_modal_multiline();
     test_context_menu();
+
+    test_prefs_open_close();
+    test_prefs_tab_cycle();
+    test_prefs_bool_toggle();
+    test_prefs_color_source_visibility();
+    test_prefs_reset_all();
+    test_prefs_override_locked();
+    /* テスト終わりに conf path フックを戻す (= 後続テストで OS 既定に戻る)。 */
+    TuiApp::test_set_conf_path("");
 
     if (g_failures > 0) {
         fprintf(stderr, "\n%d failure(s)\n", g_failures);

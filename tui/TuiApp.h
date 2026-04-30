@@ -78,6 +78,10 @@ public:
     int    test_context_menu_item()    const { return context_menu_item_; }
     void   test_open_context_menu(int x, int y) { context_menu_open(x, y); }
     bool   test_prefs_visible() const { return prefs_visible_; }
+    class PrefsScreen *test_prefs() const { return prefs_.get(); }
+    void   test_open_prefs() { prefs_open(); }
+    /* テスト中だけ conf path を一時ディレクトリに振り替える。 */
+    static void test_set_conf_path(const std::string &p);
 
     /* PrefsScreen から使う public アクセサ。 */
     std::string preferences_conf_path_str() const;

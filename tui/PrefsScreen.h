@@ -35,6 +35,21 @@ public:
     /* 全画面を埋める Element を返す。 TuiApp::run() の Renderer から呼ぶ。 */
     ftxui::Element Render() const;
 
+    /* --- テスト用アクセサ (本番コードからは使わない) --- */
+    int  test_tab()             const { return tab_; }
+    int  test_item()            const { return item_; }
+    bool test_editing()         const { return editing_; }
+    bool test_confirming_reset() const { return confirming_reset_; }
+    int  test_visible_count()   const { return (int)visible_items_.size(); }
+    bool test_locked(const char *key) const {
+        return key && locked_.count(key) > 0;
+    }
+    std::string test_value(const char *key) const {
+        if (!key) return "";
+        auto it = values_.find(key);
+        return (it != values_.end()) ? it->second : std::string();
+    }
+
 private:
     TuiApp *app_;
     bool    visible_ = false;
