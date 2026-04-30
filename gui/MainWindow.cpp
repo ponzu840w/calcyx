@@ -14,6 +14,7 @@
 #include <FL/Fl_Help_View.H>
 #include <FL/fl_utf8.h>
 #include <FL/Fl_Box.H>
+#include <FL/Fl_Tooltip.H>
 #include <FL/fl_draw.H>
 #include <cstdio>
 #include <cstring>
@@ -202,6 +203,35 @@ public:
 private:
     bool pinned_;
 };
+
+// AoT 中は tooltip ウィンドウも OS レベルで topmost にする。
+// FLTK の tooltip は Fl_Menu_Window で main window と同じ z 階層に置かれ、
+// main が WS_EX_TOPMOST / NSFloatingWindowLevel になるとその下に潜って
+// しまう。 Fl::add_check で tooltip 表示を検知し、 出現時に OS API で
+// 持ち上げる。 X11 では override-redirect で WM 階層と独立なため不要。
+static void tooltip_topmost_check(void *data) {
+    auto *win = static_cast<MainWindow *>(data);
+    static Fl_Window *last_seen = nullptr;
+    static bool last_aot = false;
+    Fl_Window *tt = Fl_Tooltip::current_window();
+    if (!tt || !tt->shown()) {
+        last_seen = nullptr;
+        return;
+    }
+    bool aot = win->is_topmost();
+    if (tt == last_seen && aot == last_aot) return;
+#if defined(_WIN32)
+    HWND h = fl_xid(tt);
+    if (h) SetWindowPos(h, aot ? HWND_TOPMOST : HWND_NOTOPMOST,
+                        0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+#elif defined(__APPLE__)
+    mac_set_window_level(tt, aot ? 1 : 0);
+#else
+    (void)aot;  /* X11: WM 階層外なので何もしない */
+#endif
+    last_seen = tt;
+    last_aot = aot;
+}
 
 // コンパクトモード開始/解除ボタン用のアイコン描画 (PiP 風)。
 // Fl_Button を継承して、ラベル代わりに外枠 + 右下インナー矩形を描く。
@@ -432,6 +462,9 @@ MainWindow::MainWindow(int w, int h, const char *title)
 
     // WM close を横取りしてトレイ最小化に対応
     callback(close_cb, this);
+
+    // AoT 中の tooltip 重なり対策 (定義は MainWindow.cpp 上部 tooltip_topmost_check)
+    Fl::add_check(tooltip_topmost_check, this);
 
     // setup_tray() はウィンドウが shown() になってから実行する
     // (fl_xid が有効になるタイミング = handle(FL_SHOW) 初回)

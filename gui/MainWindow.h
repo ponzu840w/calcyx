@@ -31,6 +31,7 @@ public:
     void apply_tray_settings();  // PrefsDialog 変更後にトレイ再構築
     bool should_keep_running();  // トレイ常駐中は true、トレイ消失時は復帰
     void toggle_always_on_top(); // 起動時適用 + メニュー/ボタンから呼ばれる
+    bool is_topmost() const { return topmost_; }
     void toggle_compact_mode();  // コンパクトモードの切替
 
     int  handle(int event) override;
