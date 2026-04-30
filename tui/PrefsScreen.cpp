@@ -7,6 +7,7 @@
 extern "C" {
 #include "settings_schema.h"
 #include "settings_io.h"
+#include "settings_writer.h"
 }
 
 #include <ftxui/dom/elements.hpp>
@@ -22,67 +23,89 @@ namespace {
 
 enum Tab { TAB_GENERAL = 0, TAB_NUMBER = 1, TAB_INPUT = 2, TAB_COLORS = 3 };
 
+/* schema 値の編集ではなく専用アクション行を表現するための識別子。 */
+enum PrefsAction {
+    ACT_NONE = 0,
+    ACT_EXTERNAL_EDITOR,
+    ACT_PREV_PAGE,
+    ACT_NEXT_PAGE,
+};
+
 struct PrefsItem {
     int   tab;
-    const char *key;    /* schema_key */
-    const char *label;  /* i18n raw key (fallback: schema_key) */
+    const char *section; /* GUI Preferences のサブヘッダ相当 (NULL で省略)。
+                          * 直前項目と異なるとき Render でヘッダ行を挿入。 */
+    const char *key;     /* schema_key (= action 行なら NULL) */
+    const char *label;   /* i18n raw key */
+    PrefsAction action;  /* ACT_NONE で schema 値編集 */
 };
 
 constexpr PrefsItem kItems[] = {
     /* General */
-    { TAB_GENERAL, "language",                 "Language" },
-    { TAB_GENERAL, "max_array_length",         "Max array length" },
-    { TAB_GENERAL, "max_string_length",        "Max string length" },
-    { TAB_GENERAL, "max_call_depth",           "Max call depth" },
-    { TAB_GENERAL, "tui_color_source",         "Color source" },
-    { TAB_GENERAL, "tui_clear_after_overlay",  "Clear after overlay" },
+    { TAB_GENERAL, "Shared with GUI", "language",                "Language",            ACT_NONE },
+    { TAB_GENERAL, "Shared with GUI", "max_array_length",        "Max array length",    ACT_NONE },
+    { TAB_GENERAL, "Shared with GUI", "max_string_length",       "Max string length",   ACT_NONE },
+    { TAB_GENERAL, "Shared with GUI", "max_call_depth",          "Max call depth",      ACT_NONE },
+    { TAB_GENERAL, "TUI only",        "tui_clear_after_overlay", "Clear after overlay", ACT_NONE },
+    { TAB_GENERAL, nullptr,           nullptr,                   "Edit preferences in text editor",
+                                                                                        ACT_EXTERNAL_EDITOR },
+    { TAB_GENERAL, nullptr,           nullptr,                   "<- Prev page",        ACT_PREV_PAGE },
+    { TAB_GENERAL, nullptr,           nullptr,                   "Next page ->",        ACT_NEXT_PAGE },
 
     /* Number Format */
-    { TAB_NUMBER,  "decimal_digits",           "Decimal digits" },
-    { TAB_NUMBER,  "e_notation",               "E notation" },
-    { TAB_NUMBER,  "e_positive_min",           "E positive min" },
-    { TAB_NUMBER,  "e_negative_max",           "E negative max" },
-    { TAB_NUMBER,  "e_alignment",              "E alignment" },
+    { TAB_NUMBER,  nullptr,           "decimal_digits",          "Decimal digits",      ACT_NONE },
+    { TAB_NUMBER,  "Scientific",      "e_notation",              "E notation",          ACT_NONE },
+    { TAB_NUMBER,  "Scientific",      "e_positive_min",          "E positive min",      ACT_NONE },
+    { TAB_NUMBER,  "Scientific",      "e_negative_max",          "E negative max",      ACT_NONE },
+    { TAB_NUMBER,  "Scientific",      "e_alignment",             "E alignment",         ACT_NONE },
+    { TAB_NUMBER,  nullptr,           nullptr,                   "<- Prev page",        ACT_PREV_PAGE },
+    { TAB_NUMBER,  nullptr,           nullptr,                   "Next page ->",        ACT_NEXT_PAGE },
 
     /* Input */
-    { TAB_INPUT,   "auto_completion",          "Auto completion" },
-    { TAB_INPUT,   "bs_delete_empty_row",      "BS deletes empty row" },
+    { TAB_INPUT,   nullptr,           "auto_completion",         "Auto completion",     ACT_NONE },
+    { TAB_INPUT,   nullptr,           "bs_delete_empty_row",     "BS deletes empty row",ACT_NONE },
+    { TAB_INPUT,   nullptr,           nullptr,                   "<- Prev page",        ACT_PREV_PAGE },
+    { TAB_INPUT,   nullptr,           nullptr,                   "Next page ->",        ACT_NEXT_PAGE },
 
-    /* Colors */
-    { TAB_COLORS,  "color_preset",             "Color preset" },
-    { TAB_COLORS,  "color_bg",                 "Background" },
-    { TAB_COLORS,  "color_sel_bg",             "Selection" },
-    { TAB_COLORS,  "color_rowline",            "Row line" },
-    { TAB_COLORS,  "color_text",               "Text" },
-    { TAB_COLORS,  "color_accent",             "Accent" },
-    { TAB_COLORS,  "color_symbol",             "Symbols" },
-    { TAB_COLORS,  "color_ident",              "Identifiers" },
-    { TAB_COLORS,  "color_special",            "Literals" },
-    { TAB_COLORS,  "color_si_pfx",             "SI prefix" },
-    { TAB_COLORS,  "color_paren0",             "Paren 1" },
-    { TAB_COLORS,  "color_paren1",             "Paren 2" },
-    { TAB_COLORS,  "color_paren2",             "Paren 3" },
-    { TAB_COLORS,  "color_paren3",             "Paren 4" },
-    { TAB_COLORS,  "color_error",              "Error" },
-    { TAB_COLORS,  "color_ui_win_bg",          "Window BG" },
-    { TAB_COLORS,  "color_ui_bg",              "Dialog BG" },
-    { TAB_COLORS,  "color_ui_input",           "UI input" },
-    { TAB_COLORS,  "color_ui_btn",             "UI button" },
-    { TAB_COLORS,  "color_ui_menu",            "Menu BG" },
-    { TAB_COLORS,  "color_ui_text",            "UI text" },
-    { TAB_COLORS,  "color_ui_label",           "UI label" },
-    { TAB_COLORS,  "color_ui_dim",             "UI dim" },
-    { TAB_COLORS,  "color_pop_bg",             "Popup BG" },
-    { TAB_COLORS,  "color_pop_sel",            "Popup sel" },
-    { TAB_COLORS,  "color_pop_text",           "Popup text" },
-    { TAB_COLORS,  "color_pop_desc",           "Popup desc" },
-    { TAB_COLORS,  "color_pop_desc_bg",        "Popup desc BG" },
-    { TAB_COLORS,  "color_pop_border",         "Popup border" },
+    /* Colors (= label は GUI Preferences と共通の翻訳キーに揃える) */
+    /* 色の参照元は TUI 専用。 セクション先頭に置いて TUI 限定であることを示す。 */
+    { TAB_COLORS,  "TUI only",        "tui_color_source",        "Color source",        ACT_NONE },
+    { TAB_COLORS,  "Preset",          "color_preset",            "Color preset",        ACT_NONE },
+    { TAB_COLORS,  "Sheet",           "color_bg",                "Background",          ACT_NONE },
+    { TAB_COLORS,  "Sheet",           "color_sel_bg",            "Selection",           ACT_NONE },
+    { TAB_COLORS,  "Sheet",           "color_rowline",           "Row Line",            ACT_NONE },
+    { TAB_COLORS,  "Sheet",           "color_text",              "Text",                ACT_NONE },
+    { TAB_COLORS,  "Sheet",           "color_accent",            "Accent",              ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_symbol",            "Symbols",             ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_ident",             "Identifiers",         ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_special",           "Literals",            ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_si_pfx",            "SI Prefix",           ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_paren0",            "Paren 1",             ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_paren1",            "Paren 2",             ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_paren2",            "Paren 3",             ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_paren3",            "Paren 4",             ACT_NONE },
+    { TAB_COLORS,  "Syntax",          "color_error",             "Error",               ACT_NONE },
+    { TAB_COLORS,  "UI Chrome",       "color_ui_win_bg",         "Win BG",              ACT_NONE },
+    { TAB_COLORS,  "UI Chrome",       "color_ui_bg",             "Dlg BG",              ACT_NONE },
+    { TAB_COLORS,  "UI Chrome",       "color_ui_input",          "UI Input",            ACT_NONE },
+    { TAB_COLORS,  "UI Chrome",       "color_ui_btn",            "UI Button",           ACT_NONE },
+    { TAB_COLORS,  "UI Chrome",       "color_ui_menu",           "Menu BG",             ACT_NONE },
+    { TAB_COLORS,  "UI Chrome",       "color_ui_text",           "UI Text",             ACT_NONE },
+    { TAB_COLORS,  "UI Chrome",       "color_ui_label",          "UI Label",            ACT_NONE },
+    { TAB_COLORS,  "UI Chrome",       "color_ui_dim",            "UI Dim",              ACT_NONE },
+    { TAB_COLORS,  "Popup",           "color_pop_bg",            "Popup BG",            ACT_NONE },
+    { TAB_COLORS,  "Popup",           "color_pop_sel",           "Popup Sel",           ACT_NONE },
+    { TAB_COLORS,  "Popup",           "color_pop_text",          "Popup Text",          ACT_NONE },
+    { TAB_COLORS,  "Popup",           "color_pop_desc",          "Popup Desc",          ACT_NONE },
+    { TAB_COLORS,  "Popup",           "color_pop_desc_bg",       "Popup DescBG",        ACT_NONE },
+    { TAB_COLORS,  "Popup",           "color_pop_border",        "Popup Border",        ACT_NONE },
+    { TAB_COLORS,  nullptr,           nullptr,                   "<- Prev page",        ACT_PREV_PAGE },
+    { TAB_COLORS,  nullptr,           nullptr,                   "Next page ->",        ACT_NEXT_PAGE },
 };
 constexpr int kItemsCount = (int)(sizeof(kItems) / sizeof(kItems[0]));
 
 constexpr const char *kTabLabels[] = {
-    "General", "Number Format", "Input", "Colors"
+    "General", "Number-Format", "Input", "Colors"
 };
 constexpr int kTabCount = 4;
 
@@ -107,6 +130,79 @@ std::string schema_default_string(const char *key) {
     default:
         return "";
     }
+}
+
+/* schema KIND_STRING (列挙) / KIND_COLOR_PRESET の選択肢テーブル。
+ * 「←/→ で循環」 を実現するため、 各 key に対して候補リストを持つ。 */
+struct ChoiceList {
+    const char *const *items;
+    int                count;
+};
+static const char *const kLanguageChoices[]      = { "auto", "en", "ja" };
+static const char *const kColorSourceChoices[]   = { "semantic", "mirror_gui" };
+static const char *const kClearOverlayChoices[]  = { "auto", "true", "false" };
+static const char *const kColorPresetChoices[]   = {
+    "otaku-black", "gyakubari-white", "saboten-grey", "saboten-white", "user-defined"
+};
+
+ChoiceList choices_for(const char *key) {
+    if (!key) return { nullptr, 0 };
+    if (strcmp(key, "language") == 0)
+        return { kLanguageChoices, 3 };
+    if (strcmp(key, "tui_color_source") == 0)
+        return { kColorSourceChoices, 2 };
+    if (strcmp(key, "tui_clear_after_overlay") == 0)
+        return { kClearOverlayChoices, 3 };
+    if (strcmp(key, "color_preset") == 0)
+        return { kColorPresetChoices, 5 };
+    return { nullptr, 0 };
+}
+
+bool parse_bool(const std::string &s) {
+    return s == "true" || s == "1" || s == "on" || s == "yes";
+}
+
+/* UTF-8 文字列の表示 cell width。 ASCII / Latin は 1 cell、 CJK 漢字・かな・
+ * ハングル・全角形式は 2 cell。 ftxui の string_width との完全一致は保証されない
+ * が、 「日本語ラベルを pad してから ftxui に渡せば、 ftxui も pad 済み ASCII
+ * 空白を 1 cell ずつ加算するため、 端末描画と揃う」 が狙い。 */
+int display_width_utf8(const std::string &s) {
+    int w = 0;
+    size_t i = 0;
+    while (i < s.size()) {
+        unsigned char c = (unsigned char)s[i];
+        unsigned int cp = 0;
+        int len = 1;
+        if (c < 0x80) { cp = c; len = 1; }
+        else if ((c & 0xE0) == 0xC0) { cp = c & 0x1F; len = 2; }
+        else if ((c & 0xF0) == 0xE0) { cp = c & 0x0F; len = 3; }
+        else if ((c & 0xF8) == 0xF0) { cp = c & 0x07; len = 4; }
+        else { i++; continue; }
+        for (int k = 1; k < len; k++) {
+            if (i + (size_t)k >= s.size()) break;
+            cp = (cp << 6) | ((unsigned char)s[i + k] & 0x3F);
+        }
+        bool wide =
+               (cp >= 0x1100 && cp <= 0x115F)
+            || (cp >= 0x2E80 && cp <= 0xA4CF && cp != 0x303F)
+            || (cp >= 0xAC00 && cp <= 0xD7A3)
+            || (cp >= 0xF900 && cp <= 0xFAFF)
+            || (cp >= 0xFE30 && cp <= 0xFE4F)
+            || (cp >= 0xFF00 && cp <= 0xFF60)
+            || (cp >= 0xFFE0 && cp <= 0xFFE6);
+        w += wide ? 2 : 1;
+        i += len;
+    }
+    return w;
+}
+
+/* label 文字列を 半角空白で kLabelWidth まで pad する。 trunc は行わない
+ * (= 翻訳が長すぎて溢れたら value 列にめり込むが、 そのときは kLabelWidth 拡大で
+ * 対応)。 */
+std::string pad_to_width(const std::string &s, int target_cells) {
+    int dw = display_width_utf8(s);
+    if (dw >= target_cells) return s;
+    return s + std::string(target_cells - dw, ' ');
 }
 
 /* override 含む現在の conf 読み込み。 PrefsScreen::open() から呼ぶ。 */
@@ -144,9 +240,12 @@ void PrefsScreen::open() {
     std::string override_path = conf_path + ".override";
     load_conf_kv(&values_, &locked_, conf_path, override_path);
 
-    /* schema で定義されているが conf に未出現の key には既定値を流し込む。 */
+    /* schema で定義されているが conf に未出現の key には既定値を流し込む。
+     * action 行 (key=NULL) はスキップ — values_.find(nullptr) で
+     * std::string(nullptr) → strlen(nullptr) → SEGV になる。 */
     for (int i = 0; i < kItemsCount; i++) {
         const char *k = kItems[i].key;
+        if (!k) continue;
         if (values_.find(k) == values_.end())
             values_[k] = schema_default_string(k);
     }
@@ -172,50 +271,387 @@ void PrefsScreen::refresh_visible_items() const {
     }
 }
 
+/* 現在選択中の項目の schema 情報。 */
+const calcyx_setting_desc_t *PrefsScreen_current_desc(
+        const std::vector<int> &visible, int item) {
+    if (item < 0 || item >= (int)visible.size()) return nullptr;
+    return calcyx_settings_find(kItems[visible[item]].key);
+}
+
+/* 1 項目の値を conf に書き戻す + apply_settings_from_conf 再呼び出し。 */
+void PrefsScreen::commit_current(const std::string &new_val) {
+    if (visible_items_.empty()) return;
+    int idx = visible_items_[item_];
+    const PrefsItem &it = kItems[idx];
+    values_[it.key] = new_val;
+
+    /* lookup: values_ に該当 key だけ書き戻し、 他は LEAVE。 */
+    struct Ctx {
+        const std::map<std::string, std::string> *values;
+        const char *target_key;
+    } ctx { &values_, it.key };
+    auto cb = +[](const char *key, char *buf, size_t buflen,
+                  int *out_is_default, void *user) -> int {
+        Ctx *c = (Ctx *)user;
+        if (strcmp(key, c->target_key) != 0) return -1;  /* LEAVE */
+        auto vit = c->values->find(key);
+        if (vit == c->values->end()) return -1;
+        snprintf(buf, buflen, "%s", vit->second.c_str());
+        if (out_is_default) *out_is_default = 0;
+        return 1;
+    };
+    std::string path = app_->preferences_conf_path_str();
+    calcyx_settings_write_preserving(path.c_str(), nullptr, cb, &ctx);
+    /* メモリ反映: 全 schema 項目を再読込 (= 桁数 / パレット / 制限すべて反映)。 */
+    app_->apply_settings_public();
+}
+
 bool PrefsScreen::OnEvent(Event ev) {
     if (!visible_) return false;
 
+    /* --- 編集モード中 --- */
     if (editing_) {
-        /* phase 2 で実装。 とりあえず Esc だけ受ける。 */
-        if (ev == Event::Escape) { editing_ = false; return true; }
-        return true;  /* 他キーは吸収 */
+        const calcyx_setting_desc_t *d =
+            PrefsScreen_current_desc(visible_items_, item_);
+        if (!d) { editing_ = false; return true; }
+
+        if (ev == Event::Escape) { editing_ = false; edit_buf_.clear(); return true; }
+
+        /* INT spinner: ←→ で増減、 数字直入力、 Enter で commit + clamp。 */
+        if (d->kind == CALCYX_SETTING_KIND_INT) {
+            auto bump = [&](int delta) {
+                int v = std::atoi(edit_buf_.c_str()) + delta;
+                v = std::clamp(v, d->i_lo, d->i_hi);
+                edit_buf_ = std::to_string(v);
+            };
+            if (ev == Event::ArrowLeft)  { bump(-1); return true; }
+            if (ev == Event::ArrowRight) { bump(+1); return true; }
+            if (ev == Event::Backspace) {
+                if (!edit_buf_.empty()) edit_buf_.pop_back();
+                return true;
+            }
+            if (ev.is_character()) {
+                const std::string &c = ev.character();
+                if (c.size() == 1 && ((c[0] >= '0' && c[0] <= '9') ||
+                                       (c[0] == '-' && edit_buf_.empty()))) {
+                    edit_buf_ += c;
+                }
+                return true;
+            }
+            if (ev == Event::Return) {
+                int v = std::atoi(edit_buf_.c_str());
+                v = std::clamp(v, d->i_lo, d->i_hi);
+                commit_current(std::to_string(v));
+                editing_ = false;
+                return true;
+            }
+            return true;
+        }
+
+        /* COLOR (`#RRGGBB`) / 自由 STRING: テキスト編集。 */
+        if (d->kind == CALCYX_SETTING_KIND_COLOR ||
+            d->kind == CALCYX_SETTING_KIND_FONT  ||
+            d->kind == CALCYX_SETTING_KIND_HOTKEY||
+            d->kind == CALCYX_SETTING_KIND_STRING) {
+            if (ev == Event::Backspace) {
+                if (!edit_buf_.empty()) edit_buf_.pop_back();
+                return true;
+            }
+            if (ev.is_character()) {
+                edit_buf_ += ev.character();
+                return true;
+            }
+            if (ev == Event::Return) {
+                if (d->kind == CALCYX_SETTING_KIND_COLOR) {
+                    unsigned char rgb[3];
+                    if (!calcyx_conf_parse_hex_color(edit_buf_.c_str(), rgb)) {
+                        app_->flash_message_public("Invalid color (expected #RRGGBB)");
+                        return true;
+                    }
+                }
+                commit_current(edit_buf_);
+                editing_ = false;
+                return true;
+            }
+            return true;
+        }
+        editing_ = false;
+        return true;
     }
 
+    /* --- 通常モード (BIOS 風) --- */
+    /* マウスは別 dispatch。 */
+    if (ev.is_mouse()) {
+        return handle_mouse(ev.mouse());
+    }
     if (ev == Event::Escape || ev == Event::Special("\x11") /* Ctrl+Q */) {
         close();
         return true;
     }
-    if (ev == Event::ArrowLeft)  { tab_ = (tab_ + kTabCount - 1) % kTabCount;
-                                    item_ = 0; refresh_visible_items();
-                                    app_->overlay_closed_public(); return true; }
-    if (ev == Event::ArrowRight) { tab_ = (tab_ + 1) % kTabCount;
-                                    item_ = 0; refresh_visible_items();
-                                    app_->overlay_closed_public(); return true; }
-    if (ev == Event::ArrowUp || ev == Event::TabReverse) {
+    /* Ctrl+E で外部エディタ起動 (= do_preferences)。 */
+    if (ev == Event::Special("\x05")) {
+        close();
+        app_->do_preferences_public();
+        return true;
+    }
+    /* タブ切替は Tab / Shift+Tab。 ↑↓ は項目移動専用。 */
+    if (ev == Event::Tab) { set_tab((tab_ + 1) % kTabCount); return true; }
+    if (ev == Event::TabReverse) { set_tab((tab_ + kTabCount - 1) % kTabCount); return true; }
+    if (ev == Event::ArrowUp) {
         if (visible_items_.empty()) return true;
         item_ = (item_ + (int)visible_items_.size() - 1) % (int)visible_items_.size();
         return true;
     }
-    if (ev == Event::ArrowDown || ev == Event::Tab) {
+    if (ev == Event::ArrowDown) {
         if (visible_items_.empty()) return true;
         item_ = (item_ + 1) % (int)visible_items_.size();
         return true;
     }
-    /* phase 2: Enter/Space で編集モード突入。 */
-    return true;  /* prefs 中は他のキーを sheet に流さない */
+
+    /* ←/→ は値の循環 (Bool / Choice / COLOR_PRESET) または ±1 (INT)。
+     * 編集モードに入らずその場で commit。 BIOS 風。 */
+    if (ev == Event::ArrowLeft)  { shift_current(-1); return true; }
+    if (ev == Event::ArrowRight) { shift_current(+1); return true; }
+
+    /* Enter / Space: 列挙値 (Bool / Choice / COLOR_PRESET) は循環、 INT /
+     * COLOR / 自由 STRING は edit_buf_ に値を移して編集モード突入。 アクション
+     * 行は実行。 */
+    if (ev == Event::Return || ev == Event::Character(' ')) {
+        activate_current();
+        return true;
+    }
+    return true;
+}
+
+/* ←/→ で値を変える共通動作。 dir=+1/-1。 マウスからも呼ぶ予定。 */
+void PrefsScreen::shift_current(int dir) {
+    if (visible_items_.empty()) return;
+    const PrefsItem &it = kItems[visible_items_[item_]];
+    if (!it.key) return;  /* action 行 */
+    if (locked_.count(it.key)) {
+        app_->flash_message_public(
+            std::string(_("Locked by calcyx.conf.override")));
+        return;
+    }
+    const calcyx_setting_desc_t *d = calcyx_settings_find(it.key);
+    if (!d) return;
+    if (d->kind == CALCYX_SETTING_KIND_BOOL) {
+        bool cur = parse_bool(values_[it.key]);
+        commit_current(cur ? "false" : "true");
+        return;
+    }
+    ChoiceList ch = (d->kind == CALCYX_SETTING_KIND_STRING ||
+                     d->kind == CALCYX_SETTING_KIND_COLOR_PRESET)
+                    ? choices_for(it.key) : ChoiceList{ nullptr, 0 };
+    if (ch.items) {
+        int cur = 0;
+        for (int i = 0; i < ch.count; i++)
+            if (values_[it.key] == ch.items[i]) { cur = i; break; }
+        cur = (cur + ch.count + dir) % ch.count;
+        commit_current(ch.items[cur]);
+        return;
+    }
+    if (d->kind == CALCYX_SETTING_KIND_INT) {
+        int v = std::atoi(values_[it.key].c_str()) + dir;
+        v = std::clamp(v, d->i_lo, d->i_hi);
+        commit_current(std::to_string(v));
+        return;
+    }
+}
+
+/* Enter/Space または行ダブルクリックで発火する共通動作。 */
+void PrefsScreen::activate_current() {
+    if (visible_items_.empty()) return;
+    const PrefsItem &it = kItems[visible_items_[item_]];
+
+    /* 専用アクション行 (= schema 値ではない)。 */
+    if (it.action != ACT_NONE) {
+        switch (it.action) {
+        case ACT_EXTERNAL_EDITOR:
+            close();
+            app_->do_preferences_public();
+            break;
+        case ACT_PREV_PAGE:
+            set_tab((tab_ + kTabCount - 1) % kTabCount);
+            break;
+        case ACT_NEXT_PAGE:
+            set_tab((tab_ + 1) % kTabCount);
+            break;
+        default:
+            break;
+        }
+        return;
+    }
+
+    const calcyx_setting_desc_t *d = calcyx_settings_find(it.key);
+    if (!d) return;
+    if (locked_.count(it.key)) {
+        app_->flash_message_public(
+            std::string(_("Locked by calcyx.conf.override")));
+        return;
+    }
+    if (d->kind == CALCYX_SETTING_KIND_BOOL) {
+        bool cur = parse_bool(values_[it.key]);
+        commit_current(cur ? "false" : "true");
+        return;
+    }
+    ChoiceList ch = (d->kind == CALCYX_SETTING_KIND_STRING ||
+                     d->kind == CALCYX_SETTING_KIND_COLOR_PRESET)
+                    ? choices_for(it.key) : ChoiceList{ nullptr, 0 };
+    if (ch.items) {
+        int cur = 0;
+        for (int i = 0; i < ch.count; i++)
+            if (values_[it.key] == ch.items[i]) { cur = i; break; }
+        cur = (cur + 1) % ch.count;
+        commit_current(ch.items[cur]);
+        return;
+    }
+    /* INT / COLOR / 自由 STRING は編集モードでテキスト入力。 */
+    edit_buf_ = values_[it.key];
+    edit_cur_ = edit_buf_.size();
+    editing_  = true;
+}
+
+void PrefsScreen::set_tab(int new_tab) {
+    tab_  = new_tab;
+    item_ = 0;
+    refresh_visible_items();
+    app_->overlay_closed_public();
+}
+
+/* マウス処理: タブヘッダクリックで切替、 行クリックで選択 (再クリックで
+ * activate)、 ホイールで項目移動。 編集中はホイールと Esc 相当のみ反応。 */
+bool PrefsScreen::handle_mouse(const ftxui::Mouse &m) {
+    auto inside = [&](const Box &b) {
+        return m.x >= b.x_min && m.x <= b.x_max
+            && m.y >= b.y_min && m.y <= b.y_max;
+    };
+
+    /* ホイールスクロール (= 項目移動)。 編集中も項目移動はせず無視。 */
+    if (!editing_ && (m.button == Mouse::WheelUp || m.button == Mouse::WheelDown)) {
+        if (visible_items_.empty()) return true;
+        if (m.button == Mouse::WheelUp)
+            item_ = (item_ + (int)visible_items_.size() - 1) % (int)visible_items_.size();
+        else
+            item_ = (item_ + 1) % (int)visible_items_.size();
+        return true;
+    }
+
+    /* 左クリック (Pressed → Released で確定) のみ反応。 */
+    if (m.button != Mouse::Left) return true;  /* 他ボタンは吸収のみ */
+    if (m.motion != Mouse::Released) return true;
+
+    /* 編集中: 外側クリックで cancel、 中ではノーオペ。 */
+    if (editing_) {
+        editing_ = false;
+        edit_buf_.clear();
+        return true;
+    }
+
+    /* タブヘッダクリック → タブ切替。 */
+    for (int t = 0; t < (int)tab_boxes_.size() && t < kTabCount; t++) {
+        if (inside(tab_boxes_[t])) {
+            if (t != tab_) set_tab(t);
+            return true;
+        }
+    }
+
+    /* 行クリック → 選択 (= 既選択なら activate)。 */
+    for (int r = 0; r < (int)row_boxes_.size() && r < (int)visible_items_.size(); r++) {
+        if (inside(row_boxes_[r])) {
+            if (r == item_) {
+                activate_current();
+            } else {
+                item_ = r;
+            }
+            return true;
+        }
+    }
+    return true;
 }
 
 Element PrefsScreen::render_value(int item_idx) const {
     const PrefsItem &it = kItems[item_idx];
+    if (!it.key) return text("");  /* action 行は値表示なし */
+
+    const calcyx_setting_desc_t *d = calcyx_settings_find(it.key);
     auto vit = values_.find(it.key);
     std::string val = (vit != values_.end()) ? vit->second : "";
-    /* phase 1 では生文字列をそのまま表示。 phase 2 で kind 別装飾 (Bool→[*]/[ ]
-     * 等) を入れる。 */
-    return text(val);
+
+    bool is_current = (!visible_items_.empty()
+                       && item_idx == visible_items_[item_]);
+
+    /* 行の左右に必ず 2 文字を確保することで、 全行の中央 (= val 表示位置) と
+     * 右側の色サンプル位置を揃える。 prefix/suffix は以下のいずれか:
+     *  - 通常 (非選択 or 矢印不可 kind): "  " / "  "
+     *  - 通常 (選択 + 矢印可): "← " / " →"
+     *  - 編集中 (必ず選択):     "[ " / " ]"
+     * カーソルは val 末尾に空白の inverted ブロックを 1 文字。 これだけは
+     * 編集中のみ +1 文字伸びるが、 サンプル位置への影響を抑えるため val は
+     * (右伸縮) 領域内に留める。 */
+
+    bool show_arrows = is_current
+                       && d
+                       && !locked_.count(it.key)
+                       && (d->kind == CALCYX_SETTING_KIND_BOOL
+                           || d->kind == CALCYX_SETTING_KIND_INT
+                           || d->kind == CALCYX_SETTING_KIND_COLOR_PRESET
+                           || (d->kind == CALCYX_SETTING_KIND_STRING
+                               && choices_for(it.key).items));
+
+    /* 端末によって ←(U+2190)/→(U+2192) は ambiguous で 1 or 2 cell に変動し、
+     * 行間で値の x 座標がブレる。 ASCII '<' '>' で 1 cell 確定にして揃える。 */
+    std::string prefix = "  ";
+    std::string suffix = "  ";
+    if (editing_ && is_current) {
+        prefix = "[ ";
+        suffix = " ]";
+    } else if (show_arrows) {
+        prefix = "< ";
+        suffix = " >";
+    }
+
+    /* 中央 val: 編集中なら edit_buf_ + 反転カーソル、 それ以外は値そのまま。
+     * BOOL は [x]/[ ] 表記。 */
+    Element center;
+    if (editing_ && is_current) {
+        center = hbox({ text(edit_buf_), text(" ") | inverted });
+    } else if (d && d->kind == CALCYX_SETTING_KIND_BOOL) {
+        center = text(parse_bool(val) ? "[x]" : "[ ]");
+    } else {
+        center = text(val);
+    }
+
+    return hbox({ text(prefix), center, text(suffix) });
+}
+
+/* COLOR の色サンプル (= "    " を bgcolor)。 選択行の inverted から外して
+ * 表示するため、 値テキストとは別 Element で返す。 */
+Element PrefsScreen::render_color_sample(int item_idx) const {
+    const PrefsItem &it = kItems[item_idx];
+    if (!it.key) return text("");
+    const calcyx_setting_desc_t *d = calcyx_settings_find(it.key);
+    if (!d || d->kind != CALCYX_SETTING_KIND_COLOR) return text("");
+
+    /* 編集中なら edit_buf_、 通常なら values_ の値で preview。 */
+    bool is_current = (!visible_items_.empty()
+                       && item_idx == visible_items_[item_]);
+    std::string hex;
+    if (editing_ && is_current) {
+        hex = edit_buf_;
+    } else {
+        auto vit = values_.find(it.key);
+        hex = (vit != values_.end()) ? vit->second : "";
+    }
+    unsigned char rgb[3];
+    if (!calcyx_conf_parse_hex_color(hex.c_str(), rgb)) return text("");
+    return text("    ") | bgcolor(Color::RGB(rgb[0], rgb[1], rgb[2]));
 }
 
 Element PrefsScreen::Render() const {
     refresh_visible_items();
+    tab_boxes_.assign(kTabCount, Box{});
+    row_boxes_.assign(visible_items_.size(), Box{});
 
     /* タブヘッダ */
     Elements tabs;
@@ -223,31 +659,96 @@ Element PrefsScreen::Render() const {
         std::string lbl = std::string(" ") + _(kTabLabels[t]) + " ";
         Element e = text(lbl);
         if (t == tab_) e = e | inverted | bold;
-        tabs.push_back(e);
+        tabs.push_back(e | reflect(tab_boxes_[t]));
     }
     Element tab_row = hbox(std::move(tabs));
 
-    /* 項目リスト */
+    /* 項目リスト。 行の構成は「label + value | inverted (選択行)」 + 「色
+     * サンプル」 の二段組。 inverted は色サンプルを潰すため外に置く。
+     * value 列は固定幅にし、 サンプル位置を全行で揃える。 */
+    constexpr int kLabelWidth = 32;
+    constexpr int kValueWidth = 24;
+
+    /* 行グループ: schema / 個別 action (= EXTERNAL_EDITOR) / ページ移動 nav。
+     * 切り替わりと、 schema 内の section 変化で空行を挟む。 schema の
+     * section 切替時のみセクションヘッダ行を挿入。 */
+    auto group_of = [](const PrefsItem &it) -> int {
+        if (it.action == ACT_NONE) return 0;
+        if (it.action == ACT_PREV_PAGE || it.action == ACT_NEXT_PAGE) return 2;
+        return 1;
+    };
+    auto section_eq = [](const char *a, const char *b) {
+        if (a == b) return true;
+        if (!a || !b) return false;
+        return strcmp(a, b) == 0;
+    };
+
     Elements rows;
+    const PrefsItem *prev = nullptr;
     for (size_t row_idx = 0; row_idx < visible_items_.size(); row_idx++) {
         int idx = visible_items_[row_idx];
         const PrefsItem &it = kItems[idx];
-        bool is_locked = locked_.count(it.key) > 0;
-        Element label = text(std::string("  ") + _(it.label));
+        bool is_locked  = it.key && locked_.count(it.key) > 0;
+        bool is_selected = ((int)row_idx == item_);
+
+        bool insert_blank  = false;
+        bool insert_header = false;
+        if (!prev) {
+            insert_header = (it.section != nullptr);
+        } else {
+            int gp = group_of(*prev), gc = group_of(it);
+            if (gp != gc) insert_blank = true;
+            if (gc == 0 && !section_eq(prev->section, it.section)) {
+                insert_blank = true;
+                insert_header = (it.section != nullptr);
+            }
+        }
+        if (insert_blank)  rows.push_back(text(" "));
+        if (insert_header) rows.push_back(hbox({
+            text("-- "),
+            text(_(it.section)),
+            text(" --"),
+        }) | bold | dim);
+        prev = &it;
+
+        /* ftxui の cell width 計算と端末 (例: macOS Terminal) の表示幅が
+         * 日本語混じりラベルで一致しないことがあり、 size(WIDTH, EQUAL) の
+         * trunc/pad だけでは右側の value の x 座標が行ごとにブレる。
+         * 自前で UTF-8 cell width を計算し、 ASCII 空白で pad して text() に
+         * 渡すことで、 ftxui と端末の両方が「同じ cell 数」 と認識する。 */
+        std::string label_str = pad_to_width(std::string("  ") + _(it.label),
+                                             kLabelWidth);
+        Element label = text(label_str);
         Element value = render_value(idx);
-        Element row = hbox({
-            label | size(WIDTH, EQUAL, 30),
-            value | flex,
-            text("  "),
+        Element body = hbox({
+            label,
+            value | size(WIDTH, EQUAL, kValueWidth),
         });
-        if (is_locked)            row = row | dim;
-        if ((int)row_idx == item_) row = row | inverted;
+        if (is_locked)   body = body | dim;
+        if (is_selected) body = body | inverted;
+        /* 色サンプルは inverted の外に置く (反転で潰れるのを避けるため)。 */
+        Element sample = render_color_sample(idx);
+        Element row = hbox({ body, text("  "), sample });
+        /* 選択行に focus を当てると yframe が画面内に収まるようスクロールする。 */
+        if (is_selected) row = row | focus;
+        row = row | reflect(row_boxes_[row_idx]);
         rows.push_back(row);
     }
 
-    /* status hint */
-    Element hint = text(_(" ←→ tab  ↑↓ item  Enter edit  "
-                          "Ctrl+E external  Esc close ")) | dim;
+    /* status hint: モードに応じて切替 */
+    std::string hint_text;
+    if (editing_) {
+        const calcyx_setting_desc_t *d =
+            PrefsScreen_current_desc(visible_items_, item_);
+        if (d && d->kind == CALCYX_SETTING_KIND_INT)
+            hint_text = _(" ←→ ±1  0-9 type  Bksp  Enter ok  Esc cancel ");
+        else
+            hint_text = _(" type chars  Bksp  Enter ok  Esc cancel ");
+    } else {
+        hint_text = _(" Tab/Shift+Tab tab  ↑↓ item  ←→ change  "
+                      "Enter edit/run  Ctrl+E ext-editor  Esc close ");
+    }
+    Element hint = text(hint_text) | dim;
 
     Element body = vbox({
         hbox({ text(_(" Preferences ")) | bold, filler() }),

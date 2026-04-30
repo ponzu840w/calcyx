@@ -7,10 +7,13 @@
 #define CALCYX_TUI_PREFS_SCREEN_H
 
 #include <ftxui/component/event.hpp>
+#include <ftxui/component/mouse.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/box.hpp>
 #include <map>
 #include <set>
 #include <string>
+#include <vector>
 
 #include "TuiSheet.h"  // TuiPalette
 
@@ -51,8 +54,29 @@ private:
     void refresh_visible_items() const;
     mutable std::vector<int> visible_items_;
 
-    /* per-kind 1 行レンダリング。 */
+    /* per-kind 1 行レンダリング。 値のテキスト部分と色サンプル部分は
+     * 別 Element として返す。 これは選択行に inverted を当てるとき色
+     * サンプルまで反転して潰れるのを避けるため (Render 側で色サンプルを
+     * 反転外に置く)。 */
     ftxui::Element render_value(int item_idx) const;
+    ftxui::Element render_color_sample(int item_idx) const;
+
+    /* 現項目に値を確定 + conf 書き戻し + apply_settings_from_conf 再呼出し。 */
+    void commit_current(const std::string &new_val);
+
+    /* Enter/Space で発火する選択項目の動作。 マウスクリックからも呼ぶ。 */
+    void activate_current();
+    /* ←/→ で値を ±1 ステップ進める動作 (BOOL toggle / Choice 循環 / INT ±1)。 */
+    void shift_current(int dir);
+    /* タブ切替 (= reset item_, refresh visible, overlay_closed)。 */
+    void set_tab(int new_tab);
+
+    /* マウスイベント処理。 OnEvent から ev.is_mouse() のとき呼ぶ。 */
+    bool handle_mouse(const ftxui::Mouse &m);
+
+    /* マウス hit-test 用 Box (= Render で reflect で更新)。 */
+    mutable std::vector<ftxui::Box> tab_boxes_;
+    mutable std::vector<ftxui::Box> row_boxes_;     /* visible_items_ と同 index */
 };
 
 } // namespace calcyx::tui

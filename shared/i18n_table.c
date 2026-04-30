@@ -587,7 +587,62 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
 
     /* キャスト */
     { "Rational fraction approximation of `x`.", "`x` の有理分数近似" },
-    { "Converts `x` to a real number.",          "`x` を実数に変換" }
+    { "Converts `x` to a real number.",          "`x` を実数に変換" },
+
+    /* === TUI: Preferences 画面 ===
+     * 色項目ラベル (Background, Selection, Row Line, ...) と
+     * Number Format / Input カテゴリ名は GUI Preferences と共通の翻訳エントリを
+     * 再利用する。 ここでは TUI 固有のものだけ追加。 */
+    /* タブ名 (前後スペースなし; render 側で " " を付加してから訳す) */
+    { "General",                "一般" },
+    { "Number-Format",          "数値書式" },
+    { "Input",                  "入力" },
+    /* General タブ */
+    { "Max array length",       "配列の最大長" },
+    { "Max string length",      "文字列の最大長" },
+    { "Max call depth",         "関数呼び出しの最大ネスト数" },
+    { "Color source",           "色設定の参照元" },
+    { "Clear after overlay",    "画面切替時に画面消去" },
+    { "Edit preferences in text editor", "設定をテキストエディタで編集" },
+    { "<- Prev page",           "<- 前のページ" },
+    { "Next page ->",           "次のページ ->" },
+    /* Number Format タブ */
+    { "Decimal digits",         "小数桁数" },
+    { "E notation",             "E 指数表記" },
+    { "E positive min",         "E 表記に切替する正の指数下限" },
+    { "E negative max",         "E 表記に切替する負の指数上限" },
+    { "E alignment",            "エンジニアリング桁揃え" },
+    /* Input タブ */
+    { "Auto completion",        "自動入力補完" },
+    { "BS deletes empty row",   "空行で BackSpace で行削除" },
+    /* Colors タブ */
+    { "Color preset",           "カラープリセット" },
+    /* セクションヘッダ (各タブ内のサブジャンル名) */
+    { "Shared with GUI",        "GUI と共通" },
+    { "TUI only",               "TUI 専用" },
+    { "Scientific",             "科学的記数法" },
+    { "Preset",                 "プリセット" },
+    { "Sheet",                  "シート" },
+    { "Syntax",                 "構文ハイライト" },
+    { "UI Chrome",              "UI 部品" },
+    { "Popup",                  "ポップアップ" },
+    /* ステータスヒント (前後スペース込みでキー一致させる) */
+    { " Tab/Shift+Tab tab  \xe2\x86\x91\xe2\x86\x93 item  "
+      "\xe2\x86\x90\xe2\x86\x92 change  Enter edit/run  "
+      "Ctrl+E ext-editor  Esc close ",
+      " Tab/Shift+Tab タブ切替  \xe2\x86\x91\xe2\x86\x93 項目移動  "
+      "\xe2\x86\x90\xe2\x86\x92 値変更  Enter 編集/実行  "
+      "Ctrl+E 外部エディタ  Esc 閉じる " },
+    { " \xe2\x86\x90\xe2\x86\x92 \xc2\xb1" "1  0-9 type  Bksp  Enter ok  Esc cancel ",
+      " \xe2\x86\x90\xe2\x86\x92 \xc2\xb1" "1  0-9 入力  Bksp  Enter 確定  Esc 取消 " },
+    { " type chars  Bksp  Enter ok  Esc cancel ",
+      " 入力  Bksp  Enter 確定  Esc 取消 " },
+    /* タブ末尾の next-page ヒント */
+    { "Tab: next page  /  Shift+Tab: prev page",
+      "Tab: 次のページ  /  Shift+Tab: 前のページ" },
+    /* タイトル / バリデーションエラー */
+    { " Preferences ",          " 設定 " },
+    { "Invalid color (expected #RRGGBB)", "色指定が不正です (#RRGGBB 形式)" }
 };
 
 const int CALCYX_TR_TABLE_JA_N =
