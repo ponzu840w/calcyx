@@ -14,6 +14,22 @@
 #  include <shellapi.h>
 #endif
 
+#if !defined(_WIN32)
+/* shell に渡す引数を single-quote で安全に包む。 中身の ' は '\\'' に置換。
+ * AppData 配下の path に通常は記号は混じらないが, ホームディレクトリに
+ * "$" や "'" が含まれる稀環境でも壊れないようにする (シェルインジェクション
+ * 対策の規格化)。 */
+static std::string shell_quote(const std::string &s) {
+    std::string out = "'";
+    for (char c : s) {
+        if (c == '\'') out += "'\\''";
+        else           out += c;
+    }
+    out += "'";
+    return out;
+}
+#endif
+
 static void open_config_dir_cb(Fl_Widget *, void *) {
     std::string dir = AppPrefs::config_dir();  /* UTF-8 */
 #if defined(_WIN32)
@@ -26,10 +42,10 @@ static void open_config_dir_cb(Fl_Widget *, void *) {
         ShellExecuteW(NULL, L"open", wpath, NULL, NULL, SW_SHOWNORMAL);
     }
 #elif defined(__APPLE__)
-    std::string cmd = "open \"" + dir + "\"";
+    std::string cmd = "open " + shell_quote(dir);
     if (system(cmd.c_str())) {}
 #else
-    std::string cmd = "xdg-open \"" + dir + "\" 2>/dev/null &";
+    std::string cmd = "xdg-open " + shell_quote(dir) + " 2>/dev/null &";
     if (system(cmd.c_str())) {}
 #endif
 }
