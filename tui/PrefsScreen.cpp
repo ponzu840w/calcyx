@@ -749,9 +749,10 @@ Element PrefsScreen::render_value(int item_idx) const {
     } else if (d && d->kind == CALCYX_SETTING_KIND_BOOL) {
         center = text(parse_bool(val) ? "[x]" : "[ ]");
     } else {
-        bool is_choice = d && (d->kind == CALCYX_SETTING_KIND_COLOR_PRESET
-                            || (d->kind == CALCYX_SETTING_KIND_STRING
-                                && choices_for(it.key).items));
+        /* COLOR_PRESET の値 (otaku-black 等) は固有名詞なので翻訳しない.
+         * STRING の enum 系 (semantic / mirror_gui 等) のみ choice 翻訳する. */
+        bool is_choice = d && d->kind == CALCYX_SETTING_KIND_STRING
+                            && choices_for(it.key).items;
         if (is_choice && !val.empty()) {
             center = text(_(val.c_str()));
         } else {

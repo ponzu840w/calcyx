@@ -640,12 +640,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "false",                  "無効" },
     { "en",                     "英語" },
     { "ja",                     "日本語" },
-    /* color_preset の値 */
-    { "otaku-black",            "オタクブラック" },
-    { "gyakubari-white",        "逆張りホワイト" },
-    { "saboten-grey",           "サボテングレー" },
-    { "saboten-white",          "サボテンホワイト" },
-    { "user-defined",           "ユーザー定義" },
+    /* color_preset の値 (otaku-black 等) は固有名詞なので翻訳しない. */
     /* semantic 色名 (= ANSI 17 色) */
     { "default",                "既定" },
     { "black",                  "黒" },
