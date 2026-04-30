@@ -152,6 +152,8 @@ static const calcyx_setting_desc_t TABLE[] = {
      * 端末 ANSI 17 色 (default + 通常 8 + light 8) から選んで描画する。
      * 値は 'cyan-light' / 'red' などのキー名 (PrefsScreen / TuiSheet 側の
      * kSemanticColors テーブルで FTXUI Color enum に変換)。 */
+    BOOLE("tui_sem_color_literal", T, 1,
+          "Render `#RRGGBB` literals with their actual color (background = literal, foreground = white/black by luminance). When false, fall back to the literal/string color."),
     STR("tui_sem_ident",   T, "cyan-light",    "Semantic color: identifiers."),
     STR("tui_sem_special", T, "magenta-light", "Semantic color: literals."),
     STR("tui_sem_si_pfx",  T, "yellow-light",  "Semantic color: SI prefix / exponent."),

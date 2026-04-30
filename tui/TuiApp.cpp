@@ -498,34 +498,43 @@ void TuiApp::apply_settings_from_conf() {
             calcyx_color_palette_t pal;
             calcyx_color_preset_get(pid, &pal);
 
-            /* user-defined なら conf の color_* で個別上書き。 */
-            if (pid == CALCYX_COLOR_PRESET_USER_DEFINED) {
-                struct { const char *key; calcyx_rgb_t *dst; } overrides[] = {
-                    { "color_bg",       &pal.bg },
-                    { "color_sel_bg",   &pal.sel_bg },
-                    { "color_text",     &pal.text },
-                    { "color_accent",   &pal.accent },
-                    { "color_symbol",   &pal.symbol },
-                    { "color_ident",    &pal.ident },
-                    { "color_special",  &pal.special },
-                    { "color_si_pfx",   &pal.si_pfx },
-                    { "color_error",    &pal.error },
-                    { "color_paren0",   &pal.paren[0] },
-                    { "color_paren1",   &pal.paren[1] },
-                    { "color_paren2",   &pal.paren[2] },
-                    { "color_paren3",   &pal.paren[3] },
-                    { "color_ui_menu",  &pal.ui_menu },
-                    { "color_ui_bg",    &pal.ui_bg },
-                    { "color_ui_text",  &pal.ui_text },
-                    { "color_ui_label", &pal.ui_label },
-                };
-                for (const auto &o : overrides) {
+            /* color_* の上書き規則:
+             *  - preset == user-defined: conf の color_* (= 通常ユーザ編集) を反映
+             *  - preset != user-defined: override_kv (= 強行規定) のキーのみ反映
+             * これで「preset を otaku-black にしたまま、 calcyx.conf.override で
+             * 個別色だけ強制差替え」 が可能になる。 */
+            struct { const char *key; calcyx_rgb_t *dst; } color_keys[] = {
+                { "color_bg",       &pal.bg },
+                { "color_sel_bg",   &pal.sel_bg },
+                { "color_text",     &pal.text },
+                { "color_accent",   &pal.accent },
+                { "color_symbol",   &pal.symbol },
+                { "color_ident",    &pal.ident },
+                { "color_special",  &pal.special },
+                { "color_si_pfx",   &pal.si_pfx },
+                { "color_error",    &pal.error },
+                { "color_paren0",   &pal.paren[0] },
+                { "color_paren1",   &pal.paren[1] },
+                { "color_paren2",   &pal.paren[2] },
+                { "color_paren3",   &pal.paren[3] },
+                { "color_ui_menu",  &pal.ui_menu },
+                { "color_ui_bg",    &pal.ui_bg },
+                { "color_ui_text",  &pal.ui_text },
+                { "color_ui_label", &pal.ui_label },
+            };
+            for (const auto &o : color_keys) {
+                const std::string *val = nullptr;
+                auto oit = override_kv.find(o.key);
+                if (oit != override_kv.end()) {
+                    val = &oit->second;
+                } else if (pid == CALCYX_COLOR_PRESET_USER_DEFINED) {
                     auto it = kv.find(o.key);
-                    if (it == kv.end()) continue;
-                    unsigned char rgb[3];
-                    if (calcyx_conf_parse_hex_color(it->second.c_str(), rgb)) {
-                        o.dst->r = rgb[0]; o.dst->g = rgb[1]; o.dst->b = rgb[2];
-                    }
+                    if (it != kv.end()) val = &it->second;
+                }
+                if (!val) continue;
+                unsigned char rgb[3];
+                if (calcyx_conf_parse_hex_color(val->c_str(), rgb)) {
+                    o.dst->r = rgb[0]; o.dst->g = rgb[1]; o.dst->b = rgb[2];
                 }
             }
 
@@ -561,6 +570,14 @@ void TuiApp::apply_settings_from_conf() {
             resolve("tui_sem_paren1",  tp.sem_paren[1]);
             resolve("tui_sem_paren2",  tp.sem_paren[2]);
             resolve("tui_sem_paren3",  tp.sem_paren[3]);
+
+            /* 色リテラル実色描画のトグル (= デフォルト ON)。 */
+            auto lit_it = kv.find("tui_sem_color_literal");
+            if (lit_it != kv.end()) {
+                const std::string &v = lit_it->second;
+                tp.sem_color_literal_enabled =
+                    !(v == "false" || v == "0" || v == "off" || v == "no");
+            }
         }
         sheet_->set_palette(tp);
     }
@@ -995,13 +1012,16 @@ void TuiApp::context_menu_close() {
     overlay_closed();
 }
 
-/* overlay (menu / about / paste / context) を閉じた時に呼ぶ。
- * macOS Terminal + tmux + CJK 環境で overlay 領域に黒背景の縞模様ゴミが
- * 残るため、 \x1B[2J で画面全体を一度クリアする。 cursor 位置は移動させ
- * ない (= ftxui の reset_cursor_position キャッシュとの整合を保つ)。 */
+/* overlay (menu / about / paste / context / prefs) を閉じた、 もしくは
+ * prefs のタブ・参照元切替で表示要素が大きく入れ替わった時に呼ぶ。
+ * macOS Terminal + tmux + CJK 環境で残る黒背景の縞模様ゴミ対策で、
+ * 端末側を \x1B[2J で消去 + ftxui の前フレーム buffer も Clear() する。
+ * ftxui の差分描画は前フレームと同値のセルをスキップするため、 端末を
+ * 消しただけだと「変わっていないセル」 のゴミが残ってしまう。 */
 void TuiApp::overlay_closed() {
     if (!clear_after_overlay_) return;
     std::cout << "\x1B[2J" << std::flush;
+    screen_.Clear();
 }
 
 void TuiApp::context_menu_move(int dir) {

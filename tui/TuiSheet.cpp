@@ -54,12 +54,55 @@ ftxui::Color rgb_to_ftxui(const calcyx_rgb_t &c) {
     return ftxui::Color::RGB(c.r, c.g, c.b);
 }
 
+/* 1 文字ごとに前景 / 背景色を保持。 デフォルト = 端末既定。 */
+struct TokenStyle {
+    ftxui::Color fg = ftxui::Color::Default;
+    ftxui::Color bg = ftxui::Color::Default;
+    bool operator==(const TokenStyle &o) const { return fg == o.fg && bg == o.bg; }
+    bool operator!=(const TokenStyle &o) const { return !(*this == o); }
+};
+
+/* web color リテラル (`#RRGGBB` / `#RGB`) を parse。 settings_io の
+ * calcyx_conf_parse_hex_color は 7 文字固定で 3 桁形式を弾くため、 lexer が
+ * 通す `#FF8` のような短縮表記もここで扱う (= GUI sheet_highlight 互換)。 */
+bool parse_web_color_literal(const char *s, unsigned char rgb[3]) {
+    if (!s || s[0] != '#') return false;
+    auto hex = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    size_t len = std::strlen(s);
+    if (len == 7) {
+        for (int i = 0; i < 3; i++) {
+            int hi = hex(s[1 + i*2]);
+            int lo = hex(s[2 + i*2]);
+            if (hi < 0 || lo < 0) return false;
+            rgb[i] = (unsigned char)((hi << 4) | lo);
+        }
+        return true;
+    }
+    if (len == 4) {
+        for (int i = 0; i < 3; i++) {
+            int v = hex(s[1 + i]);
+            if (v < 0) return false;
+            rgb[i] = (unsigned char)((v << 4) | v);  /* 0xF → 0xFF */
+        }
+        return true;
+    }
+    return false;
+}
+
 /* 1 文字ごとのハイライト色配列を組み立てる (移植元: draw_expr_highlighted)。
- * 範囲外は Color::Default. palette.active なら GUI 色を RGB で再現。 */
-std::vector<ftxui::Color> build_char_colors(const std::string &expr,
-                                             const TuiPalette &palette) {
+ * 範囲外は Color::Default. palette.active なら GUI 色を RGB で再現。
+ * fg / bg を別管理にするのは web color リテラル (`#RRGGBB`) の背景色を
+ * リテラル色そのもの、 前景色を輝度に応じた白 or 黒、 で描画する GUI 仕様
+ * を踏襲するため。 */
+std::vector<TokenStyle> build_char_styles(const std::string &expr,
+                                          const TuiPalette &palette) {
     using ftxui::Color;
-    std::vector<Color> out(expr.size(), Color::Default);
+    std::vector<TokenStyle> out(expr.size(), TokenStyle{});
     if (expr.empty()) return out;
 
     tok_queue_t q;
@@ -92,7 +135,13 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr,
         int n = (int)expr.size();
         if (p < 0) p = 0;
         if (end > n) end = n;
-        for (int i = p; i < end; ++i) out[i] = c;
+        for (int i = p; i < end; ++i) out[i].fg = c;
+    };
+    auto paint_with_bg = [&](int p, int end, Color fg, Color bg) {
+        int n = (int)expr.size();
+        if (p < 0) p = 0;
+        if (end > n) end = n;
+        for (int i = p; i < end; ++i) { out[i].fg = fg; out[i].bg = bg; }
     };
 
     for (;;) {
@@ -120,8 +169,25 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr,
                         if (end - 1 >= p) paint(end - 1, end, c_si_pfx);
                     } else if (vfmt == FMT_BIN_PREFIX) {
                         if (end - 2 >= p) paint(end - 2, end, c_si_pfx);
+                    } else if (vfmt == FMT_WEB_COLOR) {
+                        /* GUI 仕様準拠 (sheet_highlight.cpp): 背景色をリテラル
+                         * 色そのもの、 前景色は輝度から白 or 黒。 #RRGGBB /
+                         * #RGB 両方の表記を受け付ける。 mirror_gui は常に塗る、
+                         * semantic は tui_sem_color_literal トグルで制御。 */
+                        bool draw_literal = palette.active
+                                          || palette.sem_color_literal_enabled;
+                        unsigned char rgb[3];
+                        if (draw_literal && parse_web_color_literal(tok.text, rgb)) {
+                            int lum = ((int)rgb[0] * 299 + (int)rgb[1] * 587
+                                       + (int)rgb[2] * 114) / 1000;
+                            Color bg = Color::RGB(rgb[0], rgb[1], rgb[2]);
+                            Color fg = (lum < 128) ? Color::White : Color::Black;
+                            paint_with_bg(p, end, fg, bg);
+                        } else {
+                            paint(p, end, c_special);
+                        }
                     } else if (vfmt == FMT_CHAR || vfmt == FMT_STRING ||
-                               vfmt == FMT_DATETIME || vfmt == FMT_WEB_COLOR) {
+                               vfmt == FMT_DATETIME) {
                         paint(p, end, c_special);
                     } else {
                         /* 数値リテラル本体は既定色のまま。指数 (e/E 以降) だけ
@@ -782,18 +848,19 @@ void TuiSheet::action_format(const char *fmt_func) {
 Element TuiSheet::render_highlighted(const std::string &expr,
                                       size_t cursor_byte_pos,
                                       bool   dim_style) const {
-    auto colors = build_char_colors(expr, palette_);
+    auto styles = build_char_styles(expr, palette_);
     int  n      = (int)expr.size();
 
     Elements els;
     els.reserve(n + 2);
 
     std::string buf;
-    Color buf_color = Color::Default;
+    TokenStyle buf_style;
     auto flush = [&] {
         if (buf.empty()) return;
         Element e = text(buf);
-        if (!(buf_color == Color::Default)) e = e | color(buf_color);
+        if (!(buf_style.fg == Color::Default)) e = e | color(buf_style.fg);
+        if (!(buf_style.bg == Color::Default)) e = e | bgcolor(buf_style.bg);
         if (dim_style) e = e | dim;
         els.push_back(e);
         buf.clear();
@@ -803,19 +870,20 @@ Element TuiSheet::render_highlighted(const std::string &expr,
         if ((size_t)i == cursor_byte_pos) {
             flush();
             Element e = text(std::string(1, expr[i]));
-            if (!(colors[i] == Color::Default)) e = e | color(colors[i]);
+            if (!(styles[i].fg == Color::Default)) e = e | color(styles[i].fg);
+            if (!(styles[i].bg == Color::Default)) e = e | bgcolor(styles[i].bg);
             e = e | inverted;
             els.push_back(e);
             continue;
         }
         if (buf.empty()) {
-            buf_color = colors[i];
+            buf_style = styles[i];
             buf.push_back(expr[i]);
-        } else if (colors[i] == buf_color) {
+        } else if (styles[i] == buf_style) {
             buf.push_back(expr[i]);
         } else {
             flush();
-            buf_color = colors[i];
+            buf_style = styles[i];
             buf.push_back(expr[i]);
         }
     }

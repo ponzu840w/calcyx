@@ -28,6 +28,7 @@ enum Tab { TAB_GENERAL = 0, TAB_NUMBER = 1, TAB_INPUT = 2, TAB_COLORS = 3 };
 enum PrefsAction {
     ACT_NONE = 0,
     ACT_EXTERNAL_EDITOR,
+    ACT_RESET_ALL,
     ACT_PREV_PAGE,
     ACT_NEXT_PAGE,
 };
@@ -58,6 +59,8 @@ constexpr PrefsItem kItems[] = {
     { TAB_GENERAL, "TUI only",        "tui_clear_after_overlay", "Clear after overlay", VIS_ALWAYS, ACT_NONE },
     { TAB_GENERAL, nullptr,           nullptr,                   "Edit preferences in text editor",
                                                                                         VIS_ALWAYS, ACT_EXTERNAL_EDITOR },
+    { TAB_GENERAL, nullptr,           nullptr,                   "Reset all settings to defaults",
+                                                                                        VIS_ALWAYS, ACT_RESET_ALL },
     { TAB_GENERAL, nullptr,           nullptr,                   "<- Prev page",        VIS_ALWAYS, ACT_PREV_PAGE },
     { TAB_GENERAL, nullptr,           nullptr,                   "Next page ->",        VIS_ALWAYS, ACT_NEXT_PAGE },
 
@@ -76,10 +79,11 @@ constexpr PrefsItem kItems[] = {
     { TAB_INPUT,   nullptr,           nullptr,                   "<- Prev page",        VIS_ALWAYS, ACT_PREV_PAGE },
     { TAB_INPUT,   nullptr,           nullptr,                   "Next page ->",        VIS_ALWAYS, ACT_NEXT_PAGE },
 
-    /* Colors (= tui_color_source の現在値で下の項目セットが切替) */
-    { TAB_COLORS,  "TUI only",        "tui_color_source",        "Color source",        VIS_ALWAYS, ACT_NONE },
-
-    /* === semantic モード: ANSI 色名で 8 項目を編集 === */
+    /* Colors タブの先頭は描画の振る舞い系設定を「Rendering」 セクションに
+     * まとめ、 続く Syntax / Sheet / UI Chrome / Popup を純粋な色項目にする。 */
+    { TAB_COLORS,  "Rendering",       "tui_color_source",        "Color source",        VIS_ALWAYS, ACT_NONE },
+    { TAB_COLORS,  "Rendering",       "tui_sem_color_literal",   "Color literal in actual color",
+                                                                                        VIS_SEMANTIC_ONLY, ACT_NONE },
     { TAB_COLORS,  "Syntax",          "tui_sem_ident",           "Identifiers",         VIS_SEMANTIC_ONLY, ACT_NONE },
     { TAB_COLORS,  "Syntax",          "tui_sem_special",         "Literals",            VIS_SEMANTIC_ONLY, ACT_NONE },
     { TAB_COLORS,  "Syntax",          "tui_sem_si_pfx",          "SI Prefix",           VIS_SEMANTIC_ONLY, ACT_NONE },
@@ -344,16 +348,86 @@ void PrefsScreen::commit_current(const std::string &new_val) {
     /* メモリ反映: 全 schema 項目を再読込 (= 桁数 / パレット / 制限すべて反映)。 */
     app_->apply_settings_public();
 
-    /* tui_color_source が変わると Colors タブの可視項目セットが切替わる。 */
+    /* tui_color_source が変わると Colors タブの可視項目セットが大きく
+     * 入れ替わるため、 端末ゴミ対策の画面消去をここでも発火する。 */
     if (strcmp(it.key, "tui_color_source") == 0) {
         refresh_visible_items();
         if (item_ >= (int)visible_items_.size())
             item_ = std::max(0, (int)visible_items_.size() - 1);
+        app_->overlay_closed_public();
     }
+}
+
+/* GUI の reset_to_defaults と同等。 conf 全 key を schema default に戻し、
+ * COLOR は preset 依存なので touch しない (= writer が preset に応じて出力)。 */
+void PrefsScreen::do_reset_all() {
+    auto cb = +[](const char *key, char *buf, size_t buflen,
+                  int *out_is_default, void *user) -> int {
+        (void)user;
+        const calcyx_setting_desc_t *d = calcyx_settings_find(key);
+        if (!d) return -1;
+        switch (d->kind) {
+        case CALCYX_SETTING_KIND_BOOL:
+            snprintf(buf, buflen, "%s", d->b_def ? "true" : "false");
+            break;
+        case CALCYX_SETTING_KIND_INT:
+            snprintf(buf, buflen, "%d", d->i_def);
+            break;
+        case CALCYX_SETTING_KIND_FONT:
+        case CALCYX_SETTING_KIND_HOTKEY:
+        case CALCYX_SETTING_KIND_COLOR_PRESET:
+        case CALCYX_SETTING_KIND_STRING:
+            if (!d->s_def) return -1;
+            snprintf(buf, buflen, "%s", d->s_def);
+            break;
+        case CALCYX_SETTING_KIND_COLOR:
+            return -1;  /* preset 依存。 writer に任せる */
+        default:
+            return -1;
+        }
+        if (out_is_default) *out_is_default = 1;
+        return 1;
+    };
+    std::string path = app_->preferences_conf_path_str();
+    calcyx_settings_write_preserving(path.c_str(), nullptr, cb, nullptr);
+
+    /* 書き戻し後、 values_ / locked_ を再読込して画面表示を更新。 */
+    std::string override_path = path + ".override";
+    load_conf_kv(&values_, &locked_, path, override_path);
+    for (int i = 0; i < kItemsCount; i++) {
+        const char *k = kItems[i].key;
+        if (!k) continue;
+        if (values_.find(k) == values_.end())
+            values_[k] = schema_default_string(k);
+    }
+    app_->apply_settings_public();
+    refresh_visible_items();
+    if (item_ >= (int)visible_items_.size())
+        item_ = std::max(0, (int)visible_items_.size() - 1);
+    app_->overlay_closed_public();
 }
 
 bool PrefsScreen::OnEvent(Event ev) {
     if (!visible_) return false;
+
+    /* --- Reset 確認モード: Y/Enter で実行、 N/Esc でキャンセル。 --- */
+    if (confirming_reset_) {
+        if (ev.is_mouse()) return true;  /* マウスは無視 */
+        if (ev == Event::Character('y') || ev == Event::Character('Y')
+                                        || ev == Event::Return) {
+            do_reset_all();
+            confirming_reset_ = false;
+            app_->flash_message_public(
+                std::string(_("Settings reset to defaults")));
+            return true;
+        }
+        if (ev == Event::Character('n') || ev == Event::Character('N')
+                                        || ev == Event::Escape) {
+            confirming_reset_ = false;
+            return true;
+        }
+        return true;
+    }
 
     /* --- 編集モード中 --- */
     if (editing_) {
@@ -517,6 +591,9 @@ void PrefsScreen::activate_current() {
             close();
             app_->do_preferences_public();
             break;
+        case ACT_RESET_ALL:
+            confirming_reset_ = true;
+            break;
         case ACT_PREV_PAGE:
             set_tab((tab_ + kTabCount - 1) % kTabCount);
             break;
@@ -591,6 +668,12 @@ bool PrefsScreen::handle_mouse(const ftxui::Mouse &m) {
     if (editing_) {
         editing_ = false;
         edit_buf_.clear();
+        return true;
+    }
+
+    /* タイトルバーの [X] クリック → close。 */
+    if (inside(close_box_)) {
+        close();
         return true;
     }
 
@@ -801,7 +884,10 @@ Element PrefsScreen::Render() const {
 
     /* status hint: モードに応じて切替 */
     std::string hint_text;
-    if (editing_) {
+    if (confirming_reset_) {
+        hint_text = _(" Reset all settings to defaults? "
+                      "(Y to confirm / N or Esc to cancel) ");
+    } else if (editing_) {
         const calcyx_setting_desc_t *d =
             PrefsScreen_current_desc(visible_items_, item_);
         if (d && d->kind == CALCYX_SETTING_KIND_INT)
@@ -814,8 +900,17 @@ Element PrefsScreen::Render() const {
     }
     Element hint = text(hint_text) | dim;
 
+    /* タイトルバー: 左寄せのアプリ名 + 右寄せの閉じるボタン [X] (= マウス
+     * クリックで close)。 reflect で Box を取って handle_mouse で hit-test。 */
+    Element close_btn = text(" [X] ") | bold | reflect(close_box_);
+    Element title_bar = hbox({
+        text(_(" calcyx Preferences ")) | bold,
+        filler(),
+        close_btn,
+    });
+
     Element body = vbox({
-        hbox({ text(_(" Preferences ")) | bold, filler() }),
+        title_bar,
         separator(),
         tab_row,
         separator(),

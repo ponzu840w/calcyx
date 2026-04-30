@@ -35,6 +35,10 @@ struct TuiPalette {
      *   ui_text=本文色、 ui_label=ラベル色 */
     calcyx_rgb_t ui_menu{}, ui_bg{}, ui_text{}, ui_label{};
 
+    /* semantic モード時に web color リテラル (`#RRGGBB`) を実色で塗るか。
+     * mirror_gui は常に塗る (= GUI と同じ)。 false なら sem_special に倒す。 */
+    bool sem_color_literal_enabled = true;
+
     /* tui_color_source=semantic のとき使う構文ハイライト色。 conf の
      * tui_sem_* 値を SemanticColors.h の名前→Color マップで解決して入れる。
      * デフォルトは従来のハードコード値と同じ。 */

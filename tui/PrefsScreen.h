@@ -46,6 +46,9 @@ private:
     std::string edit_buf_;
     size_t      edit_cur_ = 0;
 
+    /* Reset all settings の Y/N 確認モード (= 破壊的なので 1 段挟む)。 */
+    bool        confirming_reset_ = false;
+
     std::map<std::string, std::string> values_;   /* open 時に conf から load */
     std::set<std::string>              locked_;   /* override 由来 */
 
@@ -64,6 +67,10 @@ private:
     /* 現項目に値を確定 + conf 書き戻し + apply_settings_from_conf 再呼出し。 */
     void commit_current(const std::string &new_val);
 
+    /* 全 schema key を default 値で書き戻し、 values_ を再読込する。
+     * Y/N 確認後に activate_current から呼ぶ。 */
+    void do_reset_all();
+
     /* Enter/Space で発火する選択項目の動作。 マウスクリックからも呼ぶ。 */
     void activate_current();
     /* ←/→ で値を ±1 ステップ進める動作 (BOOL toggle / Choice 循環 / INT ±1)。 */
@@ -77,6 +84,7 @@ private:
     /* マウス hit-test 用 Box (= Render で reflect で更新)。 */
     mutable std::vector<ftxui::Box> tab_boxes_;
     mutable std::vector<ftxui::Box> row_boxes_;     /* visible_items_ と同 index */
+    mutable ftxui::Box              close_box_;     /* タイトルバー右の [X] */
 };
 
 } // namespace calcyx::tui

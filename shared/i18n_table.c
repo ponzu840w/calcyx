@@ -617,11 +617,13 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "BS deletes empty row",   "空行で BackSpace で行削除" },
     /* Colors タブ */
     { "Color preset",           "カラープリセット" },
+    { "Color literal in actual color", "色リテラルを実色で表示" },
     /* セクションヘッダ (各タブ内のサブジャンル名) */
     { "Shared with GUI",        "GUI と共通" },
     { "TUI only",               "TUI 専用" },
     { "Scientific",             "科学的記数法" },
     { "Preset",                 "プリセット" },
+    { "Rendering",              "描画" },
     { "Sheet",                  "シート" },
     { "Syntax",                 "構文ハイライト" },
     { "UI Chrome",              "UI 部品" },
@@ -674,7 +676,14 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
       "Tab: 次のページ  /  Shift+Tab: 前のページ" },
     /* タイトル / バリデーションエラー */
     { " Preferences ",          " 設定 " },
-    { "Invalid color (expected #RRGGBB)", "色指定が不正です (#RRGGBB 形式)" }
+    { " calcyx Preferences ",   " calcyx 設定 " },
+    { "Invalid color (expected #RRGGBB)", "色指定が不正です (#RRGGBB 形式)" },
+    /* Reset 確認 */
+    { " Reset all settings to defaults? "
+      "(Y to confirm / N or Esc to cancel) ",
+      " すべての設定を既定値に戻しますか? "
+      "(Y で実行 / N または Esc で取消) " },
+    { "Settings reset to defaults", "設定を既定値に戻しました" }
 };
 
 const int CALCYX_TR_TABLE_JA_N =
