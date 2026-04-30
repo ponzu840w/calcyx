@@ -109,12 +109,12 @@ private:
     // コンパクトモード状態
     bool compact_mode_   = false;
     bool saved_topmost_  = false;  // compact 突入前の topmost_ を保持
-    int  saved_x_ = 0, saved_y_ = 0, saved_w_ = 0, saved_h_ = 0;
+    int  saved_w_ = 0, saved_h_ = 0;  // compact 突入前の通常モード w/h
 
-    // コンパクトモードのジオメトリは通常モードと別枠で永続化する。
-    // 初回は未設定 (compact_geometry_valid_ = false) で、一度 compact に
-    // 切替えると以降はその位置・サイズを覚える。
+    // コンパクトモードの w/h は通常モードと別枠で永続化する。 x/y は両モード
+    // 共通 (モード切替時に動かさない)。 初回は未設定で、一度 compact に
+    // 切替えると以降はそのサイズを覚える。
     bool compact_geometry_valid_ = false;
-    int  compact_x_ = 0, compact_y_ = 0, compact_w_ = 0, compact_h_ = 0;
+    int  compact_w_ = 0, compact_h_ = 0;
     void load_compact_geometry();
 };
