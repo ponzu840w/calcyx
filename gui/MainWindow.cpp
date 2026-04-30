@@ -159,6 +159,50 @@ private:
     int start_w_ = 0, start_h_ = 0, start_mx_ = 0, start_my_ = 0;
 };
 
+// 「常に手前に」(Always on Top) ボタン用のアイコン描画 (画鋲)。
+// Fl_Button 継承で、 頭 (円) + 針 (縦線) をプリミティブで描く。
+// pinned=true なら頭を塗りつぶし、 false なら輪郭だけにして
+// ON/OFF を視覚的に区別する。 色は labelcolor() に従う
+// (MainWindow 側で active 色 / fl_inactive 色を使い分け)。
+class PinIconButton : public Fl_Button {
+public:
+    PinIconButton(int x, int y, int w, int h)
+        : Fl_Button(x, y, w, h), pinned_(false) {
+        visible_focus(0);
+    }
+    void set_pinned(bool b) {
+        if (pinned_ != b) { pinned_ = b; redraw(); }
+    }
+    void draw() override {
+        Fl_Button::draw();
+        fl_color(labelcolor());
+        int cx = x() + w() / 2;
+        int cy = y() + h() / 2;
+        // 頭: 横長矩形を 3 段重ね (上から 中・小・大)。
+        // pinned=true は塗り (fl_rectf)、 false は輪郭 (fl_rect)。
+        const int rh = 2;          // 各段の高さ
+        const int w_top = 8;       // 中
+        const int w_mid = 6;       // 小
+        const int w_bot = 10;      // 大
+        int bot_y = cy - 3;        // 大の上端 (= 中央 cy より少し上)
+        int mid_y = bot_y - rh;
+        int top_y = mid_y - rh;
+        auto rect = [&](int rx, int ry, int rw, int rh_) {
+            if (pinned_) fl_rectf(rx, ry, rw, rh_);
+            else         fl_rect (rx, ry, rw, rh_);
+        };
+        rect(cx - w_top / 2, top_y, w_top, rh);
+        rect(cx - w_mid / 2, mid_y, w_mid, rh);
+        rect(cx - w_bot / 2, bot_y, w_bot, rh);
+        // 針 (大の下端 → cy+5、 太さ 2px)
+        int nd_y0 = bot_y + rh;
+        int nd_y1 = cy + 5;
+        fl_rectf(cx - 1, nd_y0, 2, nd_y1 - nd_y0);
+    }
+private:
+    bool pinned_;
+};
+
 // コンパクトモード開始/解除ボタン用のアイコン描画 (PiP 風)。
 // Fl_Button を継承して、ラベル代わりに外枠 + 右下インナー矩形を描く。
 class CompactIconButton : public Fl_Button {
@@ -292,9 +336,20 @@ MainWindow::MainWindow(int w, int h, const char *title)
     // 右端から: [Format▼] PAD [📌] [▣] [→] [←]
     int rx = w - CHOICE_W;                              // Format▼
     rx -= PAD + PIN_W;                                  // 📌
-    btn_topmost_ = make_btn(rx, PIN_W, "@menu", "topmost");
-    btn_topmost_->labelsize(10);
-    btn_topmost_->tooltip(TT_TOPMOST);
+    {
+        /* 初期色は topmost_ (= false) に合わせて薄色 + 抜き頭で生成。
+         * start_topmost=true なら main.cpp:158 で後から toggle_always_on_top()
+         * が呼ばれて濃色 + 塗り頭に切替わる。 ここで C_MENU_FG (濃色) のまま
+         * 出してしまうと、 AoT OFF なのに「ON っぽい」見た目になる。 */
+        auto *p = new PinIconButton(rx, 0, PIN_W, MENU_H);
+        p->box(FL_FLAT_BOX);
+        p->color(C_MENU_BG);
+        p->labelcolor(fl_inactive(C_MENU_FG));
+        p->set_pinned(false);
+        p->callback(menu_cb, (void*)"topmost");
+        p->tooltip(TT_TOPMOST);
+        btn_topmost_ = p;
+    }
     rx -= COMPACT_W;                                    // ▣ (コンパクトモード開始)
     btn_compact_ = new CompactIconButton(rx, 0, COMPACT_W, MENU_H);
     // ツールバー内のボタンは半透明ではなく不透明にする (周囲のメニューと色を合わせる)
@@ -423,6 +478,7 @@ void MainWindow::apply_ui_colors() {
     btn_compact_->labelcolor(C_MENU_FG);
     btn_topmost_->color(C_MENU_BG);
     btn_topmost_->labelcolor(topmost_ ? C_MENU_FG : fl_inactive(C_MENU_FG));
+    static_cast<PinIconButton *>(btn_topmost_)->set_pinned(topmost_);
     fmt_choice_->color(C_MENU_BG);
     fmt_choice_->textcolor(C_MENU_FG);
     if (drag_grip_)    { drag_grip_->color(C_MENU_BG);    drag_grip_->labelcolor(C_MENU_FG); }
@@ -932,8 +988,9 @@ void MainWindow::toggle_always_on_top() {
                SubstructureNotifyMask | SubstructureRedirectMask, &ev);
     XFlush(dpy);
 #endif
-    // ボタンの見た目を更新 (ON: 通常色、 OFF: 薄色)
+    // ボタンの見た目を更新 (ON: 通常色 + 塗り頭、 OFF: 薄色 + 輪郭頭)
     btn_topmost_->labelcolor(topmost_ ? C_MENU_FG : fl_inactive(C_MENU_FG));
+    static_cast<PinIconButton *>(btn_topmost_)->set_pinned(topmost_);
     btn_topmost_->redraw();
     // メニュー側のチェックも同期 (ピンボタンから呼ばれた場合)
     sync_view_menu_toggles();

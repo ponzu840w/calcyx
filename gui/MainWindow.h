@@ -52,7 +52,7 @@ private:
     Fl_Button       *btn_undo_;   // ← ツールバー Undo
     Fl_Button       *btn_redo_;   // → ツールバー Redo
     Fl_Button       *btn_compact_; // ▣ コンパクトモード開始トグル
-    Fl_Button       *btn_topmost_; // 📌 Always on Top トグル
+    Fl_Button       *btn_topmost_; // 画鋲 Always on Top トグル (実体は PinIconButton)
     Fl_Choice       *fmt_choice_;
     SheetView       *sheet_;
     CompletionPopupBase *popup_;
