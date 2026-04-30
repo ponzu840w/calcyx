@@ -44,3 +44,11 @@ color_preset = otaku-black
 # ---- TUI ----
 tui_color_source = semantic
 tui_clear_after_overlay = auto
+tui_sem_ident = cyan-light
+tui_sem_special = magenta-light
+tui_sem_si_pfx = yellow-light
+tui_sem_symbol = red-light
+tui_sem_paren0 = yellow-light
+tui_sem_paren1 = magenta-light
+tui_sem_paren2 = cyan-light
+tui_sem_paren3 = green-light

@@ -15,6 +15,7 @@ set(TUI_LIB_SRC
     TuiSheet.cpp
     TuiCompletion.cpp
     PrefsScreen.cpp
+    SemanticColors.cpp
     keymap.cpp
     clipboard.cpp
 )

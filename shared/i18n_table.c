@@ -626,6 +626,38 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Syntax",                 "構文ハイライト" },
     { "UI Chrome",              "UI 部品" },
     { "Popup",                  "ポップアップ" },
+    /* Choice 値の翻訳 (= conf 値そのまま; 表示時のみ訳す)。 */
+    { "semantic",               "セマンティック" },
+    { "mirror_gui",             "GUI と同期" },
+    { "auto",                   "自動" },
+    { "true",                   "有効" },
+    { "false",                  "無効" },
+    { "en",                     "英語" },
+    { "ja",                     "日本語" },
+    /* color_preset の値 */
+    { "otaku-black",            "オタクブラック" },
+    { "gyakubari-white",        "逆張りホワイト" },
+    { "saboten-grey",           "サボテングレー" },
+    { "saboten-white",          "サボテンホワイト" },
+    { "user-defined",           "ユーザー定義" },
+    /* semantic 色名 (= ANSI 17 色) */
+    { "default",                "既定" },
+    { "black",                  "黒" },
+    { "red",                    "赤" },
+    { "green",                  "緑" },
+    { "yellow",                 "黄" },
+    { "blue",                   "青" },
+    { "magenta",                "マゼンタ" },
+    { "cyan",                   "シアン" },
+    { "white",                  "白" },
+    { "black-light",            "黒 (明)" },
+    { "red-light",              "赤 (明)" },
+    { "green-light",            "緑 (明)" },
+    { "yellow-light",           "黄 (明)" },
+    { "blue-light",             "青 (明)" },
+    { "magenta-light",          "マゼンタ (明)" },
+    { "cyan-light",             "シアン (明)" },
+    { "white-light",            "白 (明)" },
     /* ステータスヒント (前後スペース込みでキー一致させる) */
     { " Tab/Shift+Tab tab  \xe2\x86\x91\xe2\x86\x93 item  "
       "\xe2\x86\x90\xe2\x86\x92 change  Enter edit/run  "

@@ -1,6 +1,7 @@
 #include "TuiApp.h"
 
 #include "PrefsScreen.h"
+#include "SemanticColors.h"
 #include "TuiSheet.h"
 
 #include <algorithm>
@@ -543,6 +544,23 @@ void TuiApp::apply_settings_from_conf() {
             tp.ui_bg    = pal.ui_bg;
             tp.ui_text  = pal.ui_text;
             tp.ui_label = pal.ui_label;
+        } else {
+            /* semantic 経路: 構文ハイライト各種を conf の tui_sem_* で上書き。
+             * 未設定キーは TuiPalette のデフォルト (= 従来のハードコード値)
+             * のまま。 */
+            auto resolve = [&](const char *key, ftxui::Color &target) {
+                auto it = kv.find(key);
+                if (it == kv.end()) return;
+                target = parse_semantic_color(it->second, target);
+            };
+            resolve("tui_sem_ident",   tp.sem_ident);
+            resolve("tui_sem_special", tp.sem_special);
+            resolve("tui_sem_si_pfx",  tp.sem_si_pfx);
+            resolve("tui_sem_symbol",  tp.sem_symbol);
+            resolve("tui_sem_paren0",  tp.sem_paren[0]);
+            resolve("tui_sem_paren1",  tp.sem_paren[1]);
+            resolve("tui_sem_paren2",  tp.sem_paren[2]);
+            resolve("tui_sem_paren3",  tp.sem_paren[3]);
         }
         sheet_->set_palette(tp);
     }

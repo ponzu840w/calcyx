@@ -66,13 +66,11 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr,
     tok_queue_init(&q);
     lexer_tokenize(expr.c_str(), &q);
 
-    /* 括弧ネスト色は GUI の g_colors.paren 4 色を FTXUI 色に置換。
-     * ネストごとに色を変えて対応関係を目で追いやすくする。
-     * palette.active=true なら GUI のパレット paren[0..3] を直接利用。 */
-    static const Color semantic_paren_colors[4] = {
-        Color::YellowLight, Color::MagentaLight,
-        Color::CyanLight,   Color::GreenLight,
-    };
+    /* 括弧ネスト色: ネストごとに色を変えて対応関係を目で追いやすくする。
+     * palette.active=true (= mirror_gui) なら GUI のパレット paren[0..3] を
+     * RGB で直接利用、 そうでなければ palette.sem_paren[] (= conf の
+     * tui_sem_paren* で設定された ANSI 色) を利用。 構文ハイライト各種も
+     * 同様。 */
     Color paren_colors[4];
     Color c_ident, c_special, c_si_pfx, c_symbol;
     if (palette.active) {
@@ -82,11 +80,11 @@ std::vector<ftxui::Color> build_char_colors(const std::string &expr,
         c_si_pfx  = rgb_to_ftxui(palette.si_pfx);
         c_symbol  = rgb_to_ftxui(palette.symbol);
     } else {
-        for (int i = 0; i < 4; ++i) paren_colors[i] = semantic_paren_colors[i];
-        c_ident   = Color::CyanLight;
-        c_special = Color::MagentaLight;
-        c_si_pfx  = Color::YellowLight;
-        c_symbol  = Color::RedLight;
+        for (int i = 0; i < 4; ++i) paren_colors[i] = palette.sem_paren[i];
+        c_ident   = palette.sem_ident;
+        c_special = palette.sem_special;
+        c_si_pfx  = palette.sem_si_pfx;
+        c_symbol  = palette.sem_symbol;
     }
     int paren_depth = 0;
 

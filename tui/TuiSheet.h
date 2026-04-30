@@ -22,11 +22,11 @@ extern "C" {
 namespace calcyx::tui {
 
 /* GUI 色を再現するときに参照するパレット。active=false の場合は
- * 従来のセマンティック (端末色 + 16 色基調) で描画する。
+ * セマンティック (端末色 + 16 色基調) で描画する。
  * 各メンバは calcyx_color_palette_t の一部。 */
 struct TuiPalette {
     bool active = false;
-    /* シート描画用 */
+    /* シート描画用 (active=true のとき使う) */
     calcyx_rgb_t bg{}, sel_bg{}, text{}, accent{};
     calcyx_rgb_t symbol{}, ident{}, special{}, si_pfx{}, error{};
     calcyx_rgb_t paren[4]{};
@@ -34,6 +34,18 @@ struct TuiPalette {
      *   ui_menu=メニュー背景、 ui_bg=ダイアログ背景、
      *   ui_text=本文色、 ui_label=ラベル色 */
     calcyx_rgb_t ui_menu{}, ui_bg{}, ui_text{}, ui_label{};
+
+    /* tui_color_source=semantic のとき使う構文ハイライト色。 conf の
+     * tui_sem_* 値を SemanticColors.h の名前→Color マップで解決して入れる。
+     * デフォルトは従来のハードコード値と同じ。 */
+    ftxui::Color sem_ident   = ftxui::Color::CyanLight;
+    ftxui::Color sem_special = ftxui::Color::MagentaLight;
+    ftxui::Color sem_si_pfx  = ftxui::Color::YellowLight;
+    ftxui::Color sem_symbol  = ftxui::Color::RedLight;
+    ftxui::Color sem_paren[4] = {
+        ftxui::Color::YellowLight, ftxui::Color::MagentaLight,
+        ftxui::Color::CyanLight,   ftxui::Color::GreenLight,
+    };
 };
 
 /* sheet_model を FTXUI Component としてラップ。 フォーカス行のみ編集、

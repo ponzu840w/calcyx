@@ -146,7 +146,20 @@ static const calcyx_setting_desc_t TABLE[] = {
     STR("tui_color_source", T, "semantic",
         "Color rendering mode: 'semantic' (terminal palette + accent) or 'mirror_gui' (use color_*)."),
     STR("tui_clear_after_overlay", T, "auto",
-        "Force full screen clear after closing overlays (workaround for macOS Terminal + tmux + CJK ghosting). 'auto' = on for macOS, off elsewhere; 'true' / 'false' force the choice.")
+        "Force full screen clear after closing overlays (workaround for macOS Terminal + tmux + CJK ghosting). 'auto' = on for macOS, off elsewhere; 'true' / 'false' force the choice."),
+
+    /* tui_color_source = semantic のとき、 構文ハイライトをハードコード値ではなく
+     * 端末 ANSI 17 色 (default + 通常 8 + light 8) から選んで描画する。
+     * 値は 'cyan-light' / 'red' などのキー名 (PrefsScreen / TuiSheet 側の
+     * kSemanticColors テーブルで FTXUI Color enum に変換)。 */
+    STR("tui_sem_ident",   T, "cyan-light",    "Semantic color: identifiers."),
+    STR("tui_sem_special", T, "magenta-light", "Semantic color: literals."),
+    STR("tui_sem_si_pfx",  T, "yellow-light",  "Semantic color: SI prefix / exponent."),
+    STR("tui_sem_symbol",  T, "red-light",     "Semantic color: operators / keywords."),
+    STR("tui_sem_paren0",  T, "yellow-light",  "Semantic color: paren depth 1."),
+    STR("tui_sem_paren1",  T, "magenta-light", "Semantic color: paren depth 2."),
+    STR("tui_sem_paren2",  T, "cyan-light",    "Semantic color: paren depth 3."),
+    STR("tui_sem_paren3",  T, "green-light",   "Semantic color: paren depth 4.")
 };
 
 static const int TABLE_N = (int)(sizeof(TABLE) / sizeof(TABLE[0]));
