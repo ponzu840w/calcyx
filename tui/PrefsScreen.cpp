@@ -1,5 +1,6 @@
 /* TUI Preferences 画面 phase 1 実装 (read-only スケルトン)。 */
 
+#include <cstring>
 #include "PrefsScreen.h"
 #include "SemanticColors.h"
 #include "TuiApp.h"
