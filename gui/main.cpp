@@ -18,6 +18,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <clocale>
 
 #if defined(_WIN32)
 #  include <windows.h>
@@ -63,6 +64,11 @@ static void show_crash_dialog(const std::string &content) {
 }
 
 int main(int argc, char **argv) {
+    /* LC_NUMERIC を "C" に固定。 strtod / atof の小数点解釈を locale 依存
+     * させない (de_DE.UTF-8 等で "1.5" が "1" になり mpdecimal 経路が
+     * 壊れるのを防ぐ)。 LC_MESSAGES 等は触らない。 */
+    std::setlocale(LC_NUMERIC, "C");
+
     // --show-crash <path> : クラッシュ直後に別プロセスとして起動された場合
     if (argc >= 3 && strcmp(argv[1], "--show-crash") == 0) {
         FILE *fp = fopen(argv[2], "r");

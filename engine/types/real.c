@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <locale.h>
 
 mpd_context_t real_ctx;
 
@@ -58,7 +59,17 @@ int real_to_str(const real_t *r, char *buf, size_t buflen) {
 double real_to_double(const real_t *r) {
     char *s = mpd_to_sci((mpd_t *)&r->mpd, 0);
     if (!s) return 0.0;
+    /* strtod は LC_NUMERIC 依存 — de_DE.UTF-8 等で小数点が "," になり
+     * "1.5" → 1 になってしまう。 一時的に "C" に切替えて確実に "."
+     * 解釈にする (engine は singlethread なので setlocale で OK)。 */
+    char *saved = setlocale(LC_NUMERIC, NULL);
+    char *saved_copy = saved ? strdup(saved) : NULL;
+    setlocale(LC_NUMERIC, "C");
     double v = strtod(s, NULL);
+    if (saved_copy) {
+        setlocale(LC_NUMERIC, saved_copy);
+        free(saved_copy);
+    }
     mpd_free(s);
     return v;
 }

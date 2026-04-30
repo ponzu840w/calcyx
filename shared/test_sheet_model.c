@@ -4,10 +4,12 @@
 
 #include "sheet_model.h"
 #include "path_utf8.h"
+#include "types/real.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <locale.h>
 
 #ifdef _WIN32
 #  include <process.h>  /* _getpid */
@@ -446,6 +448,50 @@ static void test_load_save_utf8_path(void) {
     calcyx_remove(path);
 }
 
+/* LC_NUMERIC が "," 系ロケールに切替わった状態でも real_to_double が
+ * 正しく "." 解釈で値を返すことを確認する。 real.c の局所ガードが効いて
+ * いるかの回帰テスト。 de_DE.UTF-8 がシステムに install されていない
+ * 環境では skip する (setlocale が NULL を返す)。 */
+static void test_real_to_double_locale_safe(void) {
+    printf("[test_real_to_double_locale_safe]\n");
+    real_ctx_init();
+
+    /* 現在の locale を保存. */
+    char *prev = setlocale(LC_NUMERIC, NULL);
+    char *prev_copy = prev ? strdup(prev) : NULL;
+
+    /* "," 系ロケールに切替を試行。 失敗しても本テスト自体の意味はあるので
+     * (= "C" で常に 1.5 になることだけは確認) 続ける。 */
+    const char *comma_locales[] = {
+        "de_DE.UTF-8", "fr_FR.UTF-8", "de_DE", "fr_FR", NULL
+    };
+    int locale_set = 0;
+    for (int i = 0; comma_locales[i]; ++i) {
+        if (setlocale(LC_NUMERIC, comma_locales[i])) {
+            printf("  using locale: %s\n", comma_locales[i]);
+            locale_set = 1;
+            break;
+        }
+    }
+    if (!locale_set) {
+        printf("  SKIP: comma-decimal locale not installed, "
+               "verifying default behavior only\n");
+    }
+
+    real_t r;
+    real_init(&r);
+    real_from_str(&r, "1.5");
+    double v = real_to_double(&r);
+    check("real_to_double('1.5') ~= 1.5 under non-C locale",
+          v > 1.4 && v < 1.6);
+
+    /* 復元. */
+    if (prev_copy) {
+        setlocale(LC_NUMERIC, prev_copy);
+        free(prev_copy);
+    }
+}
+
 int main(void) {
     test_basic_commit_undo_redo();
     test_multiple_commits();
@@ -459,6 +505,7 @@ int main(void) {
     test_build_candidates();
     test_fmt_helpers();
     test_load_save_utf8_path();
+    test_real_to_double_locale_safe();
 
     printf("\n=== %d passed, %d failed ===\n", g_pass, g_fail);
     return g_fail > 0 ? 1 : 0;

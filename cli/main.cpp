@@ -22,6 +22,8 @@
 #  include <unistd.h>
 #endif
 
+#include <clocale>
+
 extern "C" {
 #include "eval/eval.h"
 #include "eval/eval_ctx.h"
@@ -403,6 +405,12 @@ int main(int argc, char *argv[]) {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
 #endif
+
+    /* LC_NUMERIC を "C" に固定。 strtod / atof の小数点解釈を locale 依存
+     * させない (例: de_DE.UTF-8 で "1.5" が "1" にされて real_to_double 等が
+     * 壊れるのを防ぐ)。 LC_MESSAGES 等は OS のまま使うので setlocale("")
+     * とは分けて LC_NUMERIC だけ固定する. */
+    std::setlocale(LC_NUMERIC, "C");
 
     /* 早期 i18n_init: conf を読む前に OS ロケールで仮決定しておくことで、
      * --help / --version の出力も翻訳される。 conf の language キーで明示
