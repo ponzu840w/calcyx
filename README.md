@@ -1,8 +1,8 @@
 # calcyx
 
-calcyx（カルキクス、カルシクス、カルサイクス、カルキシー）は、[Calctus](https://github.com/shapoco/calctus) (C# / .NET) のマルチプラットフォーム再実装プロジェクト。
+calcyx（カルキクス、カルシクス、カルサイクス、カルキシー）は、[Calctus](https://github.com/shapoco/calctus) (C# / .NET) のマルチプラットフォーム勝手移植プロジェクト。
 
-計算エンジンをCで再実装し、UIは柔軟に各言語で実装。現在のリリースはPC版（Windows, macOS, Linux）（GUI（FLTK）, CLI）および[Web版](https://ponzu840w.jp/app/calcyx/)（emscripten）。今後はTUI版やスマフォ版を実装予定。
+Cで再実装した計算エンジンを各プラットフォームのUIから使用。現在のリリースはPC版（Windows, macOS, Linux）（GUI（FLTK）/ CLI / TUI（FTXUI））および[Web版](https://ponzu840w.jp/app/calcyx/)（emscripten）。
 
 （ほぼ全てClaudeCodeによる作業。）
 
@@ -14,15 +14,18 @@ calcyx（カルキクス、カルシクス、カルサイクス、カルキシ�
 
 バイナリ配布版は [Releases](../../releases) から入手可能。
 
-| プラットフォーム | GUI | CLI |
+| プラットフォーム | GUI | CLI / TUI |
 |---|---|---|
 | macOS | `calcyx.app` を `/Applications` へ | `bin/calcyx` を PATH の通った場所にコピー |
 | Linux | `sudo dpkg -i calcyx_*.deb`（ランチャーに自動配置） | 同左（`/usr/bin/calcyx` に自動配置） |
 | Windows | `calcyx-gui.exe` を任意の場所に配置 | `calcyx.exe` を任意の場所に配置（PATH 設定は任意） |
 
+`calcyx` バイナリは CLI と TUI を統合しており、TTY で引数なし起動なら TUI、`-e`
+/ `-o` / `-b` / `-r` 等の指定や非対話端末経由なら CLI として動作する。
+
 ## ソースからビルド
 
-開発機： macOS または Linux。
+macOS または Linux の開発機が必要。
 
 ### 依存パッケージ
 
@@ -126,12 +129,14 @@ ctest --preset win-headless
 
 ```
 engine/   C99 計算エンジン（types / parser / eval）
-gui/       FLTK GUI（macOS / Linux / Windows）
-cli/      CLI フロントエンド
+shared/   フロントエンド共有層（sheet_model / settings / i18n / path_utf8 等）
+gui/      FLTK GUI（macOS / Linux / Windows）
+cli/      CLI エントリポイント（calcyx バイナリの本体）
+tui/      TUI フロントエンド（FTXUI、calcyx バイナリに静的リンク）
 web/      Web フロントエンド（Vanilla JS + WebAssembly）
 ```
 
-エンジンは C99 のみで実装されており、複数のフロントエンドから共有する設計。
+エンジンと共有層は C99 のみで実装されており、複数のフロントエンドから共有する設計。
 
 ### 実行ファイル
 

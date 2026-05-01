@@ -16,7 +16,7 @@ ctest には 42 本のテストが 4 系統 (engine 29 / gui 2 / cli 9 / tui 2) 
 | `unix` | 29 | 2 | 9 | 2 | 42 | ネイティブ Linux / macOS |
 | `win` | 29 | 2 | 9 | 2 | 42 | Windows クロスビルド全テスト |
 | `win-headless` | 29 | (除外) | 9 | 2 | 40 | gui ラベルを filter 除外 |
-| `web` | 2 | (なし) | (なし) | (なし) | 2 | `engine/types` と `engine/parser` のみ |
+| `web` | 4 | (なし) | (なし) | (なし) | 4 | `Test_*` (sample 評価) を除く 4 件 |
 
 `win` / `win-headless` は WSL であれば `.exe` をネイティブ実行、非 WSL では `wine`
 を検出してラップする (`cmake/test_runners.cmake`)。どちらも無ければ登録をまるごと
@@ -25,8 +25,9 @@ ctest には 42 本のテストが 4 系統 (engine 29 / gui 2 / cli 9 / tui 2) 
 
 `web` プリセットは `engine/Test_*` (test_eval が sample ファイルを 1 本ずつ評価)
 をスキップする — mpdecimal の計算が WASM 下で極端に遅く、1 ファイル 数分以上
-かかるため。型システムと lexer/parser の回帰は `engine/types` と `engine/parser`
-でカバーする。
+かかるため。 残る `engine/types` / `engine/parser` / `engine/sheet_model` /
+`engine/settings_writer` の 4 件で型・lexer/parser・SheetModel・conf ライタの
+回帰を一通りカバーする。
 
 **テスト追加時の原則:**
 
@@ -95,7 +96,8 @@ stdout / stderr / 終了コードを改行 LF 正規化のうえ完全一致で�
 
 テスト対象は統合バイナリ `calcyx`。ctest 配下では stdin が tty でないため、
 `-e` / `-o` / 位置引数ファイルはそのまま CLI モードに落ちる。TUI モードに
-分岐する心配はない。
+分岐する心配はない (現在 9 本登録: 評価 / バッチ / `--print-config` /
+`--check-config` 等)。
 
 ### TUI (`tui`, 2 本)
 
@@ -155,7 +157,60 @@ stdin の状態を見てディスパッチする (`tui/` は静的ライブラ�
 
 判定は `-e` / `-o` / `-b` / `-r` / `!isatty(stdin)` のいずれかあれば CLI、
 それ以外は TUI。非対話端末 (ctest, pipe) では必ず CLI に落ちるので、
-既存 CLI ゴールデンテスト 6 本は無改変で通る。
+既存 CLI ゴールデンテストは無改変で通る。
+
+## コード方針
+
+ここに書かれたルールはコードベース全体に適用される。 新規コードを書く前に
+読み、 既存コードを編集する場合も逸脱がないか確認すること。
+
+### i18n (多言語化)
+
+- ユーザー可視文字列は `_()` マクロでラップする (`#include "i18n.h"`)。
+  例: `_("Open file")`、 `fl_alert("%s", _("Cannot open"))`。
+- キーは英語のまま。 翻訳テーブルは `shared/i18n_table.c` で管理 (現状 ja のみ)。
+- 固有名詞 (`otaku-black` 等のカラープリセット名) は翻訳しない。 翻訳テーブルに
+  載せず、 翻訳呼び出しを通さないこと。
+- ソースリテラルは英語で書く。 ja は i18n_table.c の追加でのみ提供する
+  (リテラルを直接日本語にしない)。
+- 言語選択は conf の `language` キー (`auto` / `en` / `ja`)。
+  `auto` は `LANG` / `LC_*` から推論。
+- macOS のショートカット表記 (例: `\xe2\x8c\x98Z` = ⌘Z) や mac-only ボタンの
+  ラベルは ja でも対応エントリを置く。
+
+### Settings スキーマ
+
+- スキーマは `shared/settings_schema.{h,c}` に集約。 GUI / TUI / CLI が共有。
+- 各エントリは scope bitmask (`G` / `T` / `C` / `CORE` = 全部) で
+  どのフロントエンドが読み書きするか制御。 新キー追加時は適切な scope を選ぶ。
+- `lookup` コールバックは 2 値返却 (`PROVIDED=1` 値あり / `LEAVE=-1` 値なし →
+  conf 上ではコメント化されたまま既定値維持)。 例えば `g_color_*` は preset !=
+  user-defined のとき LEAVE を返し conf 行が `#color_…` のまま残る (preset 切替で
+  user 値が消えない)。 user 用バックアップは `g_user_colors[]` に保持。
+- conf 保存は `shared/settings_writer.c` 経由。 既存コメント・並び順・未知キーを
+  保持する (差分最小)。
+- `calcyx.conf.override` を conf と同じディレクトリに置けば conf より優先 (環境
+  単位の強制設定。 例: ホスト管理者がフォントを固定したい)。
+- 起動時は `shared/settings_io.c` の reader が conf を schema と同期 (新キーが
+  conf に無ければデフォルトを `#key=value` 形式でコメント挿入)。
+
+### Windows パスと API (path_utf8 経由)
+
+- パス・環境変数を扱うとき、 `fopen` / `getenv` / `mkdir` / `rename` / `remove`
+  等を直接呼んではならない。 必ず `shared/path_utf8.{h,c}` のラッパ経由で扱う
+  (`calcyx_fopen` / `calcyx_getenv_utf8` / `calcyx_mkdir` 等)。
+- 理由: mingw / Windows CRT は ANSI (CP932 等) 動作で、 日本語ユーザー名
+  (例: `ポン酢`) を含むパスを直接 `fopen` すると失敗する。 ラッパは UTF-8 →
+  UTF-16 変換して `_wfopen` 系を呼ぶ。 mac/Linux ではただの `fopen` 等にデリゲート。
+- Win32 API も A 系 (`ShellExecuteA` / `MessageBoxA` / `GetModuleFileNameA` 等)
+  ではなく W 系を使い、 引数は UTF-8 → UTF-16 変換 (`MultiByteToWideChar(CP_UTF8…)`)
+  で渡す。
+- `<windows.h>` を include する .cpp では `#undef RGB` を付けることでマクロ汚染を
+  避ける (FTXUI の `Color::RGB` などと衝突する)。
+- ロケール依存 API (`strtod` / `atof` / `sscanf("%f")`) は `LC_NUMERIC` の影響を
+  受けるので、 ライブラリ内では `setlocale(LC_NUMERIC, NULL)` で保存 → `"C"` に
+  切替 → 復帰、 のローカルガードを使う (例: `engine/types/real.c` の
+  `real_to_double`)。
 
 ## ビルド
 
