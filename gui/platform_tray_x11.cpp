@@ -49,6 +49,13 @@ static bool s_window_withdrawn = false;  // XWithdrawWindow で隠した状態
  * パネル高さによって動的に変わる (Ubuntu MATE = 1px に縮められたり、
  * Ubuntu 26 = 40px に拡げられたりする) ので、 描画は常にこの値で行う。 */
 static int s_tray_w = 24, s_tray_h = 24;
+/* tray manager が _NET_SYSTEM_TRAY_VISUAL で 32-bit ARGB visual を
+ * 公告していれば、 そちらで window を作ることで真の透過が出せる。
+ * 24-bit (default) フォールバックでは parent backing_pixel と
+ * alpha-blend する旧来の動作になる (compositor 非対応 panel 用)。 */
+static Visual *s_tray_visual = nullptr;
+static int     s_tray_depth = 24;
+static Colormap s_tray_colormap = 0;
 
 // ---- 右クリックメニュー ----
 
@@ -228,33 +235,43 @@ static int tray_x11_handler(void *event, void *) {
         Display *dpy = fl_display;
         int W = s_tray_w, H = s_tray_h;
         if (W <= 0 || H <= 0) return 1;
+
+        bool argb = (s_tray_depth == 32);
+        /* ARGB 経路: 真の透過 (alpha チャンネル保持)。
+         * 24-bit fallback: 親 panel の backing_pixel と alpha-blend。 */
+        unsigned char bg_r = 0xD0, bg_g = 0xD0, bg_b = 0xD0;
+        if (!argb) {
+            XWindowAttributes wa;
+            Window parent = 0, root = 0, *children = nullptr;
+            unsigned int nchildren = 0;
+            if (XQueryTree(dpy, s_tray_win, &root, &parent, &children, &nchildren)) {
+                if (children) XFree(children);
+                if (parent && XGetWindowAttributes(dpy, parent, &wa) && wa.backing_pixel) {
+                    bg_r = (wa.backing_pixel >> 16) & 0xFF;
+                    bg_g = (wa.backing_pixel >> 8) & 0xFF;
+                    bg_b = wa.backing_pixel & 0xFF;
+                }
+            }
+            // 余白を panel 風グレーで先に塗っておく
+            XSetForeground(dpy, s_tray_gc,
+                           ((unsigned long)bg_r << 16) |
+                           ((unsigned long)bg_g << 8) |
+                           bg_b);
+            XFillRectangle(dpy, s_tray_win, s_tray_gc, 0, 0, W, H);
+        } else {
+            // ARGB: 透過のままクリア
+            XClearWindow(dpy, s_tray_win);
+        }
+
         if (s_icon_img && s_icon_img->w() > 0) {
-            // Fl_PNG_Image のデータを X11 に描画 (現在の窓サイズに合わせて)
-            XImage *xi = XCreateImage(dpy, DefaultVisual(dpy, DefaultScreen(dpy)),
-                                       DefaultDepth(dpy, DefaultScreen(dpy)),
+            XImage *xi = XCreateImage(dpy, s_tray_visual, s_tray_depth,
                                        ZPixmap, 0, nullptr, W, H, 32, 0);
             if (xi) {
                 xi->data = (char *)malloc(xi->bytes_per_line * H);
-                // FLTK Image → XImage ピクセル変換
                 const unsigned char *src = (const unsigned char *)s_icon_img->data()[0];
                 int src_w = s_icon_img->w();
                 int src_h = s_icon_img->h();
                 int src_d = s_icon_img->d();
-                // トレイパネルの背景色を取得 (失敗時はグレー)
-                unsigned char bg_r = 0xD0, bg_g = 0xD0, bg_b = 0xD0;
-                {
-                    XWindowAttributes wa;
-                    Window parent = 0, root = 0, *children = nullptr;
-                    unsigned int nchildren = 0;
-                    if (XQueryTree(dpy, s_tray_win, &root, &parent, &children, &nchildren)) {
-                        if (children) XFree(children);
-                        if (parent && XGetWindowAttributes(dpy, parent, &wa) && wa.backing_pixel) {
-                            bg_r = (wa.backing_pixel >> 16) & 0xFF;
-                            bg_g = (wa.backing_pixel >> 8) & 0xFF;
-                            bg_b = wa.backing_pixel & 0xFF;
-                        }
-                    }
-                }
                 /* アイコンを正方形に保ったまま中央に置く (パネルが
                  * 横長/縦長の場合に歪まないように)。 */
                 int side = W < H ? W : H;
@@ -262,27 +279,42 @@ static int tray_x11_handler(void *event, void *) {
                 int oy = (H - side) / 2;
                 for (int y = 0; y < H; y++) {
                     for (int x = 0; x < W; x++) {
-                        unsigned char r = bg_r, g = bg_g, b = bg_b;
+                        unsigned char r, g, b, a = 0;
                         int lx = x - ox, ly = y - oy;
                         if (lx >= 0 && lx < side && ly >= 0 && ly < side) {
-                            // ソース座標 (最近傍補間)
                             int sx = lx * src_w / side;
                             int sy = ly * src_h / side;
                             const unsigned char *p = src + (sy * src_w + sx) * src_d;
-                            unsigned char pr, pg, pb;
-                            if (src_d >= 3) { pr = p[0]; pg = p[1]; pb = p[2]; }
-                            else            { pr = pg = pb = p[0]; }
-                            // アルファブレンド
-                            if (src_d == 4) {
-                                unsigned char a = p[3];
-                                r = (pr * a + bg_r * (255 - a)) / 255;
-                                g = (pg * a + bg_g * (255 - a)) / 255;
-                                b = (pb * a + bg_b * (255 - a)) / 255;
-                            } else {
-                                r = pr; g = pg; b = pb;
-                            }
+                            if (src_d >= 3) { r = p[0]; g = p[1]; b = p[2]; }
+                            else            { r = g = b = p[0]; }
+                            a = (src_d == 4) ? p[3] : 0xFF;
+                        } else {
+                            r = bg_r; g = bg_g; b = bg_b; a = 0;
                         }
-                        XPutPixel(xi, x, y, ((unsigned long)r << 16) | ((unsigned long)g << 8) | b);
+                        unsigned long px;
+                        if (argb) {
+                            // 真の ARGB: alpha 保持 (premultiplied)
+                            unsigned char pr = (r * a) / 255;
+                            unsigned char pg = (g * a) / 255;
+                            unsigned char pb = (b * a) / 255;
+                            px = ((unsigned long)a  << 24)
+                               | ((unsigned long)pr << 16)
+                               | ((unsigned long)pg << 8)
+                               |  (unsigned long)pb;
+                        } else if (lx >= 0 && lx < side && ly >= 0 && ly < side) {
+                            // 24-bit: backing_pixel と alpha-blend
+                            unsigned char br = (r * a + bg_r * (255 - a)) / 255;
+                            unsigned char bg2= (g * a + bg_g * (255 - a)) / 255;
+                            unsigned char bb = (b * a + bg_b * (255 - a)) / 255;
+                            px = ((unsigned long)br  << 16)
+                               | ((unsigned long)bg2 << 8)
+                               |  (unsigned long)bb;
+                        } else {
+                            px = ((unsigned long)bg_r << 16)
+                               | ((unsigned long)bg_g << 8)
+                               |  (unsigned long)bg_b;
+                        }
+                        XPutPixel(xi, x, y, px);
                     }
                 }
                 XPutImage(dpy, s_tray_win, s_tray_gc, xi, 0, 0, 0, 0, W, H);
@@ -290,10 +322,6 @@ static int tray_x11_handler(void *event, void *) {
                 xi->data = nullptr;
                 XDestroyImage(xi);
             }
-        } else {
-            // アイコンなし: 単色で塗りつぶし
-            XSetForeground(dpy, s_tray_gc, BlackPixel(dpy, DefaultScreen(dpy)));
-            XFillRectangle(dpy, s_tray_win, s_tray_gc, 0, 0, W, H);
         }
         return 1;
     }
@@ -335,14 +363,50 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
 
     load_icon();
 
+    /* tray manager が _NET_SYSTEM_TRAY_VISUAL を公告していれば、 その visual
+     * (典型的には 32-bit ARGB) で window を作る。 これで合成型 panel で
+     * 真の透過が出せる。 公告無しなら DefaultVisual (24-bit) で fallback。 */
+    s_tray_visual   = DefaultVisual(dpy, screen);
+    s_tray_depth    = DefaultDepth(dpy, screen);
+    s_tray_colormap = DefaultColormap(dpy, screen);
+    {
+        Atom xa_visual = XInternAtom(dpy, "_NET_SYSTEM_TRAY_VISUAL", False);
+        Atom actual_type = 0;
+        int  actual_format = 0;
+        unsigned long nitems = 0, bytes_after = 0;
+        unsigned char *prop = nullptr;
+        if (XGetWindowProperty(dpy, manager, xa_visual, 0, 1, False,
+                               XA_VISUALID, &actual_type, &actual_format,
+                               &nitems, &bytes_after, &prop) == Success
+            && prop && nitems == 1) {
+            VisualID vid = *(VisualID *)prop;
+            XVisualInfo tmpl; tmpl.visualid = vid;
+            int n = 0;
+            XVisualInfo *vi = XGetVisualInfo(dpy, VisualIDMask, &tmpl, &n);
+            if (vi && n > 0) {
+                s_tray_visual   = vi[0].visual;
+                s_tray_depth    = vi[0].depth;
+                s_tray_colormap = XCreateColormap(dpy, DefaultRootWindow(dpy),
+                                                  s_tray_visual, AllocNone);
+                XFree(vi);
+            }
+        }
+        if (prop) XFree(prop);
+    }
+
     // 24x24 のウィンドウを作成 (実サイズは tray manager が ConfigureNotify で
     // 通知してくる。 描画は s_tray_w/s_tray_h ベースで行う)
     s_tray_w = 24;
     s_tray_h = 24;
-    s_tray_win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
-                                      0, 0, s_tray_w, s_tray_h, 0,
-                                      BlackPixel(dpy, screen),
-                                      BlackPixel(dpy, screen));
+    XSetWindowAttributes swa = {};
+    swa.colormap         = s_tray_colormap;
+    swa.background_pixel = 0;     // ARGB 経路では完全透過
+    swa.border_pixel     = 0;
+    s_tray_win = XCreateWindow(dpy, DefaultRootWindow(dpy),
+                                0, 0, s_tray_w, s_tray_h, 0,
+                                s_tray_depth, InputOutput,
+                                s_tray_visual,
+                                CWColormap | CWBackPixel | CWBorderPixel, &swa);
     /* WM_NORMAL_HINTS でサイズ範囲を伝える。 一部の tray (Ubuntu MATE 24)
      * はヒント無しだと最小サイズ (1px) に縮めてくる。 */
     {
