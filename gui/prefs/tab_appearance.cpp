@@ -440,9 +440,8 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         btn->callback(swatch_cb, &st.colours.swatch_data[i]);
         st.colours.swatches[i] = btn;
         st.colours.entries[i] = { entries[i].label, entries[i].color, entries[i].key };
-        /* user_data に schema key 埋め込み (= debug + lock 判定の慣例)。
-         * deactivate は update_swatch_state が preset と locked を見て決める。 */
-        btn->user_data((void *)entries[i].key);
+        /* lock 判定は entries[i].schema_key を直接読むので、
+         * ここで btn->user_data() を上書きしてはいけない (callback 引数を潰す)。 */
     }
     ly = grid_y0 + SWATCH_ROWS * SWATCH_ROW_H + SWATCH_AFTER_GAP;
 
