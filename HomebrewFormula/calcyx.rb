@@ -14,8 +14,8 @@
 class Calcyx < Formula
   desc "Engineer's calculator (CLI/TUI + GUI). Scratchpad-style with hex/bin/ECC ops"
   homepage "https://github.com/ponzu840w/calcyx"
-  url "https://github.com/ponzu840w/calcyx/archive/refs/tags/v0.5.0-beta.tar.gz"
-  sha256 "a253bb483102ae26cde4693ca1a39b72e239af289d3861460dad9961cdf91aa6"
+  url "https://github.com/ponzu840w/calcyx/archive/refs/tags/v1.0.0.tar.gz"
+  sha256 "e67d638d7dd1ffe8c418660c048dca12414cf2d9f6d23cb6f2756683c090f816"
   license "MIT"
   head "https://github.com/ponzu840w/calcyx.git", branch: "master"
 
