@@ -5,6 +5,7 @@
 #include "TuiSheet.h"
 
 #include <algorithm>
+#include <climits>      // PATH_MAX
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -1522,6 +1523,13 @@ std::string TuiApp::samples_dir() const {
 #if defined(__APPLE__)
     uint32_t size = sizeof(buf);
     if (_NSGetExecutablePath(buf, &size) == 0) {
+        /* _NSGetExecutablePath は symlink を解決しないため、 dmg 経由で
+         * `.app` を /Applications に置き、 Contents/MacOS/calcyx-cli を
+         * /usr/local/bin/calcyx に symlink してきた場合 exe_dir が
+         * /usr/local/bin になり Resources/samples を見つけられない。
+         * realpath() で実バイナリの bundle 内 path に解決する。 */
+        char real[PATH_MAX];
+        if (realpath(buf, real)) std::snprintf(buf, sizeof(buf), "%s", real);
         char *sep = std::strrchr(buf, '/');
         if (sep) { *sep = '\0'; exe_dir = buf; }
     }
@@ -1549,7 +1557,14 @@ std::string TuiApp::samples_dir() const {
 
     const char *suffixes[] = {
 #if defined(__APPLE__)
+        /* .app バンドル内の Contents/MacOS から見た Resources/samples
+         * (= dmg 配布で /Applications/calcyx.app から起動 + symlink を
+         * realpath で解決した場合)。 */
         "/../Resources/samples",
+        /* Homebrew Cellar 配下: <prefix>/bin から見た sibling の
+         * `calcyx.app/Contents/Resources/samples`。 brew では `.app` が
+         * Cellar 直下に置かれ、 bin/calcyx は同階層から symlink される。 */
+        "/../calcyx.app/Contents/Resources/samples",
 #endif
         "/samples",
         "/../samples",
