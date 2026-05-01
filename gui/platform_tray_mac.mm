@@ -211,16 +211,20 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
                          statusItemWithLength:NSVariableStatusItemLength];
         [s_status_item retain];
 
-        // アイコン設定。 元の calcyx icon (緑のべた塗り計算機) を
-        // luminance Sobel でアウトライン化してテンプレート画像にすると、
-        // システムが light/dark mode で適切に tint してくれて、
-        // 他のステータスバー項目と調和する。
-        NSImage *icon = [NSApp applicationIconImage];
+        // アイコン設定。 [NSApp applicationIconImage] を使うと macOS Sonoma+
+        // が rounded-square フレームを自動付加してしまい (canonical app icon
+        // 化)、 Sobel が四角い枠を拾ってしまうので、 bundle の icon.icns を
+        // 直接ロードして frame 化される前の生アイコンを使う。
+        NSString *iconPath = [[NSBundle mainBundle] pathForResource:@"icon"
+                                                             ofType:@"icns"];
+        NSImage *icon = iconPath
+            ? [[NSImage alloc] initWithContentsOfFile:iconPath]
+            : [NSApp applicationIconImage];
         NSImage *tmpl = make_template_from_color(icon, 18.0);
         if (tmpl) {
             s_status_item.button.image = tmpl;
         } else if (icon) {
-            // フォールバック: 元のカラーアイコン (Sobel 失敗時のみ)
+            // フォールバック: カラーアイコン (Sobel 失敗時のみ)
             NSImage *small = [[NSImage alloc] initWithSize:NSMakeSize(18, 18)];
             [small lockFocus];
             [icon drawInRect:NSMakeRect(0, 0, 18, 18)
