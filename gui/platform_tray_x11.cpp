@@ -45,6 +45,10 @@ static Atom s_tray_opcode = 0;
 static GC s_tray_gc = 0;
 static Fl_PNG_Image *s_icon_img = nullptr;
 static bool s_window_withdrawn = false;  // XWithdrawWindow で隠した状態
+/* tray manager が ConfigureNotify で割り当てた現在のウィンドウサイズ。
+ * パネル高さによって動的に変わる (Ubuntu MATE = 1px に縮められたり、
+ * Ubuntu 26 = 40px に拡げられたりする) ので、 描画は常にこの値で行う。 */
+static int s_tray_w = 24, s_tray_h = 24;
 
 // ---- 右クリックメニュー ----
 
@@ -208,15 +212,29 @@ static int tray_x11_handler(void *event, void *) {
     XEvent *xev = (XEvent *)fl_xevent;
     if (!xev) return 0;
 
+    /* tray manager がウィンドウサイズを変更したら追従する。 描画は次の
+     * Expose で実行されるが、 一部の panel は resize 後に Expose を
+     * 発行しないので XClearArea(..., True) で再露光要求を出す。 */
+    if (xev->type == ConfigureNotify && xev->xconfigure.window == s_tray_win) {
+        s_tray_w = xev->xconfigure.width;
+        s_tray_h = xev->xconfigure.height;
+        if (s_tray_w > 0 && s_tray_h > 0) {
+            XClearArea(fl_display, s_tray_win, 0, 0, 0, 0, True);
+        }
+        return 1;
+    }
+
     if (xev->type == Expose && xev->xexpose.window == s_tray_win) {
         Display *dpy = fl_display;
+        int W = s_tray_w, H = s_tray_h;
+        if (W <= 0 || H <= 0) return 1;
         if (s_icon_img && s_icon_img->w() > 0) {
-            // Fl_PNG_Image のデータを X11 に描画
+            // Fl_PNG_Image のデータを X11 に描画 (現在の窓サイズに合わせて)
             XImage *xi = XCreateImage(dpy, DefaultVisual(dpy, DefaultScreen(dpy)),
                                        DefaultDepth(dpy, DefaultScreen(dpy)),
-                                       ZPixmap, 0, nullptr, 24, 24, 32, 0);
+                                       ZPixmap, 0, nullptr, W, H, 32, 0);
             if (xi) {
-                xi->data = (char *)malloc(xi->bytes_per_line * 24);
+                xi->data = (char *)malloc(xi->bytes_per_line * H);
                 // FLTK Image → XImage ピクセル変換
                 const unsigned char *src = (const unsigned char *)s_icon_img->data()[0];
                 int src_w = s_icon_img->w();
@@ -237,26 +255,37 @@ static int tray_x11_handler(void *event, void *) {
                         }
                     }
                 }
-                for (int y = 0; y < 24; y++) {
-                    for (int x = 0; x < 24; x++) {
-                        // ソース座標 (最近傍補間)
-                        int sx = x * src_w / 24;
-                        int sy = y * src_h / 24;
-                        const unsigned char *p = src + (sy * src_w + sx) * src_d;
-                        unsigned char r, g, b;
-                        if (src_d >= 3) { r = p[0]; g = p[1]; b = p[2]; }
-                        else            { r = g = b = p[0]; }
-                        // アルファブレンド
-                        if (src_d == 4) {
-                            unsigned char a = p[3];
-                            r = (r * a + bg_r * (255 - a)) / 255;
-                            g = (g * a + bg_g * (255 - a)) / 255;
-                            b = (b * a + bg_b * (255 - a)) / 255;
+                /* アイコンを正方形に保ったまま中央に置く (パネルが
+                 * 横長/縦長の場合に歪まないように)。 */
+                int side = W < H ? W : H;
+                int ox = (W - side) / 2;
+                int oy = (H - side) / 2;
+                for (int y = 0; y < H; y++) {
+                    for (int x = 0; x < W; x++) {
+                        unsigned char r = bg_r, g = bg_g, b = bg_b;
+                        int lx = x - ox, ly = y - oy;
+                        if (lx >= 0 && lx < side && ly >= 0 && ly < side) {
+                            // ソース座標 (最近傍補間)
+                            int sx = lx * src_w / side;
+                            int sy = ly * src_h / side;
+                            const unsigned char *p = src + (sy * src_w + sx) * src_d;
+                            unsigned char pr, pg, pb;
+                            if (src_d >= 3) { pr = p[0]; pg = p[1]; pb = p[2]; }
+                            else            { pr = pg = pb = p[0]; }
+                            // アルファブレンド
+                            if (src_d == 4) {
+                                unsigned char a = p[3];
+                                r = (pr * a + bg_r * (255 - a)) / 255;
+                                g = (pg * a + bg_g * (255 - a)) / 255;
+                                b = (pb * a + bg_b * (255 - a)) / 255;
+                            } else {
+                                r = pr; g = pg; b = pb;
+                            }
                         }
                         XPutPixel(xi, x, y, ((unsigned long)r << 16) | ((unsigned long)g << 8) | b);
                     }
                 }
-                XPutImage(dpy, s_tray_win, s_tray_gc, xi, 0, 0, 0, 0, 24, 24);
+                XPutImage(dpy, s_tray_win, s_tray_gc, xi, 0, 0, 0, 0, W, H);
                 free(xi->data);
                 xi->data = nullptr;
                 XDestroyImage(xi);
@@ -264,7 +293,7 @@ static int tray_x11_handler(void *event, void *) {
         } else {
             // アイコンなし: 単色で塗りつぶし
             XSetForeground(dpy, s_tray_gc, BlackPixel(dpy, DefaultScreen(dpy)));
-            XFillRectangle(dpy, s_tray_win, s_tray_gc, 0, 0, 24, 24);
+            XFillRectangle(dpy, s_tray_win, s_tray_gc, 0, 0, W, H);
         }
         return 1;
     }
@@ -306,12 +335,31 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
 
     load_icon();
 
-    // 24x24 のウィンドウを作成
+    // 24x24 のウィンドウを作成 (実サイズは tray manager が ConfigureNotify で
+    // 通知してくる。 描画は s_tray_w/s_tray_h ベースで行う)
+    s_tray_w = 24;
+    s_tray_h = 24;
     s_tray_win = XCreateSimpleWindow(dpy, DefaultRootWindow(dpy),
-                                      0, 0, 24, 24, 0,
+                                      0, 0, s_tray_w, s_tray_h, 0,
                                       BlackPixel(dpy, screen),
                                       BlackPixel(dpy, screen));
-    // イベントマスク
+    /* WM_NORMAL_HINTS でサイズ範囲を伝える。 一部の tray (Ubuntu MATE 24)
+     * はヒント無しだと最小サイズ (1px) に縮めてくる。 */
+    {
+        XSizeHints *hints = XAllocSizeHints();
+        if (hints) {
+            hints->flags = PMinSize | PBaseSize | PSize;
+            hints->min_width  = 16;
+            hints->min_height = 16;
+            hints->base_width  = 24;
+            hints->base_height = 24;
+            hints->width  = 24;
+            hints->height = 24;
+            XSetWMNormalHints(dpy, s_tray_win, hints);
+            XFree(hints);
+        }
+    }
+    // イベントマスク (ConfigureNotify で resize 追従)
     XSelectInput(dpy, s_tray_win, ExposureMask | ButtonPressMask | StructureNotifyMask);
 
     // GC 作成
