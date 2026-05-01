@@ -17,3 +17,7 @@ Makefile
 debug.sh
 gui/icon.iconset/
 claude-hand.sh
+
+# Claude Code local state (settings.local.json, scheduled_tasks.lock など)。
+# 個人環境固有なのでリポジトリには含めない。
+.claude/
