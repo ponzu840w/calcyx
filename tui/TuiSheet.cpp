@@ -429,6 +429,20 @@ void TuiSheet::action_row_down() {
         load_editor_from_row();
     }
 }
+void TuiSheet::action_row_first() {
+    if (focused_row_ <= 0) return;
+    commit_if_changed();
+    focused_row_ = 0;
+    load_editor_from_row();
+}
+void TuiSheet::action_row_last() {
+    int n = sheet_model_row_count(model_);
+    int last = std::max(0, n - 1);
+    if (focused_row_ >= last) return;
+    commit_if_changed();
+    focused_row_ = last;
+    load_editor_from_row();
+}
 void TuiSheet::action_page(int dir) {
     commit_if_changed();
     int n    = sheet_model_row_count(model_);
@@ -1301,6 +1315,10 @@ bool TuiSheet::OnEvent(Event ev) {
         case Action::RowUp:            action_row_up();
                                        completion_.hide();          break;
         case Action::RowDown:          action_row_down();
+                                       completion_.hide();          break;
+        case Action::RowFirst:         action_row_first();
+                                       completion_.hide();          break;
+        case Action::RowLast:          action_row_last();
                                        completion_.hide();          break;
         case Action::RowPageUp:        action_page(-1);
                                        completion_.hide();          break;

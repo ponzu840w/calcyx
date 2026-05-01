@@ -172,6 +172,8 @@ private:
     void action_cursor_word_right();
     void action_row_up();
     void action_row_down();
+    void action_row_first();    /* Ctrl+Home: 先頭行へ */
+    void action_row_last();     /* Ctrl+End:  末尾行へ */
     void action_page(int dir);  /* -1 / +1 */
     void action_insert_char(const std::string &s);
     void action_backspace();
