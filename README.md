@@ -67,25 +67,25 @@ cmake --preset web
 cmake --build --preset web
 ```
 
-デバッグビルドは `unix-debug` / `win-debug` プリセットを使用。
+(デバッグビルドは `unix-debug` / `win-debug` プリセットを使用。)
 
-### インストール
+### cmakeによるインストール
 
-ビルドディレクトリは `unix` なら `build/`、`unix-debug` なら `build-debug/`、`win` なら `build-win/`。
+開発機へのネイティブなインストールにはビルド後に `cmake --install` を用いることができる。
 
 ```sh
 # [GUI]
 # macOS
 sudo cmake --install build/ --component gui --prefix /Applications
 # Linux
-sudo cmake --install build/ --component gui --prefix /usr/local
+sudo cmake --install build/ --component gui --prefix ~/.local
 
 # [CLI / TUI]
 # macOS / Linux
 cmake --install build/ --component cli --prefix ~/.local
 ```
 
-Windows は `cmake --install` 非対応。.exeを任意の場所に配置すること。
+Windows は `cmake --install` 非対応のため、以下の方法で生成した.zipを展開し任意の場所に配置すること。
 
 ### 配布用パッケージ生成
 
@@ -128,7 +128,7 @@ tui/      TUI フロントエンド（FTXUI、calcyx バイナリに静的リン
 web/      Web フロントエンド（Vanilla JS + WebAssembly）
 ```
 
-エンジンと共有層は C99 のみで実装されており、複数のフロントエンドから共有する設計。
+エンジンと共有層は C99 のみで実装されており、複数のフロントエンドから共有。
 
 ### 実行ファイル
 
