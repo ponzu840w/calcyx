@@ -4,42 +4,49 @@ cmake_minimum_required(VERSION 3.25)
 # リリースタグの形式: v1.2.3
 # タグ上: v0.2.0-alpha → 0.2.0-alpha
 # タグなし: v0.2.0-alpha の 3 コミット後 → 0.2.0-alpha-dev-3-gabcdef1
-execute_process(
-    COMMAND git describe --tags --match "v*" --long --dirty
-    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-    OUTPUT_VARIABLE _git_describe
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET
-    RESULT_VARIABLE _git_result
-)
-if(_git_result EQUAL 0 AND _git_describe MATCHES "^v[0-9]")
-    # _git_describe の形式: v0.2.0-alpha-3-gabcdef1[-dirty]
-    # 末尾の -dirty を分離
-    set(_dirty "")
-    if(_git_describe MATCHES "-dirty$")
-        set(_dirty "-dirty")
-        string(REGEX REPLACE "-dirty$" "" _git_describe "${_git_describe}")
-    endif()
-    # 末尾の -<n>-g<hash> を分離する
-    string(REGEX MATCH "^(v.+)-([0-9]+)-g([0-9a-f]+)$" _m "${_git_describe}")
-    set(_base_tag  "${CMAKE_MATCH_1}")   # v0.2.0-alpha
-    set(_n_commits "${CMAKE_MATCH_2}")   # 3
-    set(_hash      "${CMAKE_MATCH_3}")   # abcdef1
+#
+# 外部 (例: Homebrew Formula) から CALCYX_VERSION_FULL / CALCYX_VERSION が
+# -D で渡された場合は git describe をスキップする。 GitHub の source
+# tarball には .git/ が含まれず git describe が失敗するため、 brew で
+# ビルドすると 0.0.0-dev に落ちてしまう問題への対処。
+if(NOT DEFINED CALCYX_VERSION_FULL OR NOT DEFINED CALCYX_VERSION)
+    execute_process(
+        COMMAND git describe --tags --match "v*" --long --dirty
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        OUTPUT_VARIABLE _git_describe
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+        RESULT_VARIABLE _git_result
+    )
+    if(_git_result EQUAL 0 AND _git_describe MATCHES "^v[0-9]")
+        # _git_describe の形式: v0.2.0-alpha-3-gabcdef1[-dirty]
+        # 末尾の -dirty を分離
+        set(_dirty "")
+        if(_git_describe MATCHES "-dirty$")
+            set(_dirty "-dirty")
+            string(REGEX REPLACE "-dirty$" "" _git_describe "${_git_describe}")
+        endif()
+        # 末尾の -<n>-g<hash> を分離する
+        string(REGEX MATCH "^(v.+)-([0-9]+)-g([0-9a-f]+)$" _m "${_git_describe}")
+        set(_base_tag  "${CMAKE_MATCH_1}")   # v0.2.0-alpha
+        set(_n_commits "${CMAKE_MATCH_2}")   # 3
+        set(_hash      "${CMAKE_MATCH_3}")   # abcdef1
 
-    string(REGEX REPLACE "^v" "" _tag_no_v "${_base_tag}")
-    # project(VERSION) は数値のみ受け付けるので major.minor.patch を抽出
-    string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" CALCYX_VERSION "${_tag_no_v}")
+        string(REGEX REPLACE "^v" "" _tag_no_v "${_base_tag}")
+        # project(VERSION) は数値のみ受け付けるので major.minor.patch を抽出
+        string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" CALCYX_VERSION "${_tag_no_v}")
 
-    if(_n_commits EQUAL 0)
-        # HEAD がタグ上: リリースビルド
-        set(CALCYX_VERSION_FULL "${_tag_no_v}${_dirty}")
+        if(_n_commits EQUAL 0)
+            # HEAD がタグ上: リリースビルド
+            set(CALCYX_VERSION_FULL "${_tag_no_v}${_dirty}")
+        else()
+            # タグからコミットが進んでいる: 開発中
+            set(CALCYX_VERSION_FULL "${_tag_no_v}-dev-${_n_commits}-g${_hash}${_dirty}")
+        endif()
     else()
-        # タグからコミットが進んでいる: 開発中
-        set(CALCYX_VERSION_FULL "${_tag_no_v}-dev-${_n_commits}-g${_hash}${_dirty}")
+        set(CALCYX_VERSION      "0.0.0")
+        set(CALCYX_VERSION_FULL "0.0.0-dev")
     endif()
-else()
-    set(CALCYX_VERSION      "0.0.0")
-    set(CALCYX_VERSION_FULL "0.0.0-dev")
 endif()
 
 project(calcyx VERSION "${CALCYX_VERSION}" LANGUAGES C CXX)
