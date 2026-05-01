@@ -119,10 +119,12 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
                          statusItemWithLength:NSVariableStatusItemLength];
         [s_status_item retain];
 
-        // アイコン設定。 template image (= モノクロ silhouette) として登録すると
-        // システムが light/dark mode に合わせて tint してくれて、 他のステータス
-        // バーアイコンと色味が揃う。 setTemplate:YES は alpha だけを使い色は
-        // 無視するので、 元のフルカラー icon でもシルエットになる。
+        // アイコン設定。 setTemplate:YES (alpha のみを使う方法) を試したが、
+        // 計算機のシルエット部分が ほぼ全面 alpha=1 で塗られているため
+        // 黒い四角になってしまう。 まずカラーアイコンを描画して使用する。
+        // 本格的に他のステータスバー項目と調和させたい場合は、
+        // モノクロ outline 用のテンプレートアイコンファイルを別途作って
+        // [small setTemplate:YES] でロードする必要がある。
         NSImage *icon = [NSApp applicationIconImage];
         if (icon) {
             NSImage *small = [[NSImage alloc] initWithSize:NSMakeSize(18, 18)];
@@ -132,7 +134,6 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
                    operation:NSCompositingOperationSourceOver
                     fraction:1.0];
             [small unlockFocus];
-            [small setTemplate:YES];
             s_status_item.button.image = small;
         }
 
