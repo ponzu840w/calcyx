@@ -133,27 +133,33 @@ else()
     add_subdirectory(tui)
 
     # ---- samples / LICENSE / THIRD_PARTY_LICENSES のインストール ----
-    if(APPLE)
-        # macOS: .app バンドル内に Resources/samples として埋め込み済み (gui/CMakeLists.txt)
-        # LICENSE は zip のルートに置く
-        install(FILES "${CMAKE_SOURCE_DIR}/LICENSE"
-                      "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"
-            DESTINATION . COMPONENT gui)
-    elseif(WIN32)
-        # Windows: zip 用
-        install(DIRECTORY "${CMAKE_SOURCE_DIR}/samples/"
-            DESTINATION samples COMPONENT gui)
-        install(FILES "${CMAKE_SOURCE_DIR}/LICENSE"
-                      "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"
-            DESTINATION . COMPONENT gui)
-    else()
-        # Linux: /usr/share/doc/calcyx/ 以下に配置
-        install(DIRECTORY "${CMAKE_SOURCE_DIR}/samples/"
-            DESTINATION share/calcyx/samples COMPONENT gui)
-        install(FILES "${CMAKE_SOURCE_DIR}/LICENSE"
-                      "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"
-            DESTINATION share/doc/calcyx COMPONENT gui)
-    endif()
+    # gui / cli いずれの component で `cmake --install --component <name>` され
+    # ても samples とライセンスが入るよう、 同じ install を両方に紐付ける。
+    # cpack 単体パッケージ (deb / zip) では全 component が単一アーカイブに
+    # 統合されるので物理的な重複は生じない。
+    foreach(_comp gui cli)
+        if(APPLE)
+            # macOS: .app バンドル内に Resources/samples として埋め込み済み
+            # (gui/CMakeLists.txt)。 LICENSE は zip のルートに置く。
+            install(FILES "${CMAKE_SOURCE_DIR}/LICENSE"
+                          "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"
+                DESTINATION . COMPONENT ${_comp})
+        elseif(WIN32)
+            # Windows: zip 用
+            install(DIRECTORY "${CMAKE_SOURCE_DIR}/samples/"
+                DESTINATION samples COMPONENT ${_comp})
+            install(FILES "${CMAKE_SOURCE_DIR}/LICENSE"
+                          "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"
+                DESTINATION . COMPONENT ${_comp})
+        else()
+            # Linux: /usr/share/calcyx/samples/ + /usr/share/doc/calcyx/
+            install(DIRECTORY "${CMAKE_SOURCE_DIR}/samples/"
+                DESTINATION share/calcyx/samples COMPONENT ${_comp})
+            install(FILES "${CMAKE_SOURCE_DIR}/LICENSE"
+                          "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"
+                DESTINATION share/doc/calcyx COMPONENT ${_comp})
+        endif()
+    endforeach()
 
     # ---- CPack ----
     set(CPACK_PACKAGE_NAME                "calcyx")
