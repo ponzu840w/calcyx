@@ -59,7 +59,13 @@ if(TARGET dep_ftxui)
     add_dependencies(calcyx_cli dep_ftxui)
 endif()
 
-install(TARGETS calcyx_cli RUNTIME DESTINATION bin COMPONENT cli)
+if(WIN32)
+    # Windows zip は bin/ の階層を作らずフラットに展開する (samples/ も
+    # zip ルートに置いてあるので exe と同階層から見える)。
+    install(TARGETS calcyx_cli RUNTIME DESTINATION . COMPONENT cli)
+else()
+    install(TARGETS calcyx_cli RUNTIME DESTINATION bin COMPONENT cli)
+endif()
 
 # manpage (calcyx --help と同等内容を groff 化したもの)。 日本語版は
 # LANG=ja_JP.UTF-8 環境で `man calcyx` が自動選択する位置に置く。
