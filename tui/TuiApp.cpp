@@ -5,6 +5,7 @@
 #include "TuiSheet.h"
 
 #include <algorithm>
+#include <climits>      // PATH_MAX
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -1522,6 +1523,13 @@ std::string TuiApp::samples_dir() const {
 #if defined(__APPLE__)
     uint32_t size = sizeof(buf);
     if (_NSGetExecutablePath(buf, &size) == 0) {
+        /* _NSGetExecutablePath は symlink を解決しないため、 dmg 経由で
+         * `.app` を /Applications に置き、 Contents/MacOS/calcyx-cli を
+         * /usr/local/bin/calcyx に symlink してきた場合 exe_dir が
+         * /usr/local/bin になり Resources/samples を見つけられない。
+         * realpath() で実バイナリの bundle 内 path に解決する。 */
+        char real[PATH_MAX];
+        if (realpath(buf, real)) std::snprintf(buf, sizeof(buf), "%s", real);
         char *sep = std::strrchr(buf, '/');
         if (sep) { *sep = '\0'; exe_dir = buf; }
     }
