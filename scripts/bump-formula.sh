@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/bump-formula.sh — Homebrew Formula の url と sha256 を更新する。
+# scripts/bump-formula.sh — Homebrew Formula を新タグに合わせて生成する。
 #
 # 使い方:
 #   scripts/bump-formula.sh v0.5.0-beta   # 明示
@@ -8,16 +8,22 @@
 # 動作:
 #   1. タグ名から GitHub の source tarball URL を組み立てる
 #   2. tarball を curl でフェッチして sha256 を計算
-#   3. HomebrewFormula/calcyx.rb の url / sha256 行を sed で書き換える
-#   4. git diff を表示する (commit / push は手動)
+#   3. main repo の HomebrewFormula/calcyx.rb (= テンプレート) を読み込み、
+#      url / sha256 行を実値に置換した結果を $TAP_DIR/Formula/calcyx.rb に
+#      書き出す。 main repo のテンプレート自体は変更しない (= リリース毎に
+#      main repo へコミットが入らない)。
+#   4. tap repo の git diff を表示する (commit / push は手動)
 #
 # 前提:
-#   - 該当タグが GitHub に push 済みであること (= GitHub が tarball を生成
-#     できる状態)。 ローカルでタグだけ切って未 push の場合は 404。
+#   - 該当タグが GitHub に push 済みであること (= 404 にならない)
+#   - $TAP_DIR (default ../homebrew-calcyx) が <user>/homebrew-calcyx を
+#     clone した git repo であること
 set -euo pipefail
 
 REPO="ponzu840w/calcyx"
-FORMULA="HomebrewFormula/calcyx.rb"
+TEMPLATE="HomebrewFormula/calcyx.rb"
+TAP_DIR="${TAP_DIR:-../homebrew-calcyx}"
+TAP_FORMULA="$TAP_DIR/Formula/calcyx.rb"
 
 # --- タグ取得 ---
 if [ $# -ge 1 ]; then
@@ -38,8 +44,14 @@ esac
 
 URL="https://github.com/${REPO}/archive/refs/tags/${TAG}.tar.gz"
 
-if [ ! -f "$FORMULA" ]; then
-    echo "error: $FORMULA がありません (リポジトリ root から実行してください)" >&2
+if [ ! -f "$TEMPLATE" ]; then
+    echo "error: $TEMPLATE がありません (リポジトリ root から実行してください)" >&2
+    exit 1
+fi
+if [ ! -d "$TAP_DIR/.git" ]; then
+    echo "error: tap repo が見つかりません: $TAP_DIR" >&2
+    echo "       \$TAP_DIR で別 path を指定するか、 ../homebrew-calcyx に" >&2
+    echo "       <user>/homebrew-calcyx を clone してください。" >&2
     exit 1
 fi
 
@@ -65,58 +77,35 @@ echo "    tag    : $TAG"
 echo "    url    : $URL"
 echo "    sha256 : $SHA"
 
-# --- formula 書き換え (url 1 行 + sha256 1 行) ---
-# sed は macOS BSD と Linux GNU で挙動が違うので、 -i に "" を付けて両対応。
-SED_INPLACE=(-i)
-if sed --version >/dev/null 2>&1; then
-    : # GNU sed: -i 単独で OK
-else
-    SED_INPLACE=(-i "")  # BSD sed (macOS): -i '' (空 backup suffix) が必要
-fi
-
-# url 行: archive/refs/tags/<old>.tar.gz → archive/refs/tags/$TAG.tar.gz
-sed "${SED_INPLACE[@]}" -E \
+# --- template から tap repo の rb を生成 ---
+# main repo の rb は読むだけ (= テンプレート、 placeholder url/sha256 のまま)、
+# 結果は tap repo の Formula/calcyx.rb に書き出す。
+mkdir -p "$TAP_DIR/Formula"
+sed -E \
     -e "s|(archive/refs/tags/)[^\"]+(\\.tar\\.gz)|\\1${TAG}\\2|" \
     -e "s|(sha256 \")[0-9a-f]{64}(\")|\\1${SHA}\\2|" \
-    "$FORMULA"
+    "$TEMPLATE" > "$TAP_FORMULA"
 
-echo
-echo "==> diff (main repo):"
-git --no-pager diff --no-color "$FORMULA" || true
-
-# --- tap repo へのミラー ---
-# brew は <user>/homebrew-<name> 命名のリポジトリしか tap として認識しない
-# ため、 別 repo `../homebrew-calcyx` (or $TAP_DIR で上書き) へ
-# Formula/calcyx.rb をコピーしてミラーする。 この repo が存在しない場合は
-# スキップして main repo の更新だけで終わる。
-TAP_DIR="${TAP_DIR:-../homebrew-calcyx}"
-TAP_FORMULA="$TAP_DIR/Formula/calcyx.rb"
-
-if [ -d "$TAP_DIR/.git" ]; then
+# --- tap repo に commit + push (= brew tap が新タグを参照可能になる) ---
+if (cd "$TAP_DIR" && git diff --quiet --no-color -- Formula/calcyx.rb); then
     echo
-    echo "==> mirroring to $TAP_FORMULA"
-    mkdir -p "$TAP_DIR/Formula"
-    cp "$FORMULA" "$TAP_FORMULA"
-    if (cd "$TAP_DIR" && git diff --quiet --no-color -- Formula/calcyx.rb); then
-        echo "    (no change)"
-    else
-        echo
-        echo "==> diff (tap repo):"
-        (cd "$TAP_DIR" && git --no-pager diff --no-color -- Formula/calcyx.rb) || true
-    fi
+    echo "==> tap repo: no change (already up to date for $TAG)"
+    exit 0
 fi
 
 echo
-echo "==> 次の手順:"
-echo "    # 1. main repo に formula 更新を commit & push"
-echo "    git add $FORMULA"
-echo "    git commit -m 'formula: bump to $TAG'"
-echo "    git push"
-if [ -d "$TAP_DIR/.git" ]; then
-    echo
-    echo "    # 2. tap repo にミラーを commit & push (= brew tap で配布)"
-    echo "    cd $TAP_DIR"
-    echo "    git add Formula/calcyx.rb"
-    echo "    git commit -m 'calcyx: bump to $TAG'"
-    echo "    git push"
-fi
+echo "==> diff (tap repo):"
+(cd "$TAP_DIR" && git --no-pager diff --no-color -- Formula/calcyx.rb)
+
+echo
+echo "==> committing & pushing tap repo..."
+(
+    cd "$TAP_DIR"
+    git add Formula/calcyx.rb
+    git commit -m "calcyx: bump to $TAG"
+    git push
+)
+echo
+echo "==> done."
+echo "    brew update && brew upgrade calcyx   # 既存ユーザ"
+echo "    brew tap ${REPO%/*}/calcyx && brew install calcyx   # 新規ユーザ"

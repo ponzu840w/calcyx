@@ -1,21 +1,31 @@
-# Homebrew formula for calcyx (CLI/TUI + GUI).
+# Homebrew formula template for calcyx (CLI/TUI + GUI).
 #
-# Usage:
+# This file is the source-of-truth template kept in the main calcyx
+# repository. It is NOT consumed directly by `brew tap`; instead
+# `scripts/bump-formula.sh <tag>` resolves the placeholder url/sha256
+# below into concrete values for the given release tag and writes the
+# result to `../homebrew-calcyx/Formula/calcyx.rb` (the actual tap
+# repository that `brew tap ponzu840w/calcyx` reads).
+#
+# Edit this file when you want to change install steps, dependencies,
+# caveats, etc. Don't bother updating the placeholder url/sha256 by
+# hand: bump-formula.sh substitutes them on every release.
+#
+# Usage (end users, after the tap is published):
 #   brew tap ponzu840w/calcyx
 #   brew install calcyx
 #
-# This formula builds both the integrated CLI/TUI binary (`calcyx`) and
-# the FLTK-based GUI bundle (`calcyx.app`). The bundle ends up under
-# the keg prefix (#{prefix}/calcyx.app); see `def caveats` for how to
-# expose it under /Applications.
-#
-# url + sha256 lines must be updated for each new release.
+# Builds both the integrated CLI/TUI binary (`calcyx`) and the FLTK-based
+# GUI bundle (`calcyx.app`). The bundle ends up under the keg prefix
+# (#{prefix}/calcyx.app); see `def caveats` for how to expose it under
+# /Applications.
 
 class Calcyx < Formula
   desc "Engineer's calculator (CLI/TUI + GUI). Scratchpad-style with hex/bin/ECC ops"
   homepage "https://github.com/ponzu840w/calcyx"
-  url "https://github.com/ponzu840w/calcyx/archive/refs/tags/v1.0.0.tar.gz"
-  sha256 "e67d638d7dd1ffe8c418660c048dca12414cf2d9f6d23cb6f2756683c090f816"
+  # Placeholders. bump-formula.sh substitutes these per release tag.
+  url "https://github.com/ponzu840w/calcyx/archive/refs/tags/v0.0.0.tar.gz"
+  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
   license "MIT"
   head "https://github.com/ponzu840w/calcyx.git", branch: "master"
 
