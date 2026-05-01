@@ -119,7 +119,10 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
                          statusItemWithLength:NSVariableStatusItemLength];
         [s_status_item retain];
 
-        // アイコン設定
+        // アイコン設定。 template image (= モノクロ silhouette) として登録すると
+        // システムが light/dark mode に合わせて tint してくれて、 他のステータス
+        // バーアイコンと色味が揃う。 setTemplate:YES は alpha だけを使い色は
+        // 無視するので、 元のフルカラー icon でもシルエットになる。
         NSImage *icon = [NSApp applicationIconImage];
         if (icon) {
             NSImage *small = [[NSImage alloc] initWithSize:NSMakeSize(18, 18)];
@@ -129,6 +132,7 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
                    operation:NSCompositingOperationSourceOver
                     fraction:1.0];
             [small unlockFocus];
+            [small setTemplate:YES];
             s_status_item.button.image = small;
         }
 
