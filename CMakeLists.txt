@@ -128,16 +128,21 @@ if(EMSCRIPTEN)
     set(CPACK_ARCHIVE_COMPONENT_INSTALL   OFF)
     include(CPack)
 else()
-    add_subdirectory(gui)
-    add_subdirectory(cli)
+    # tui / cli を gui より先に追加: macOS で gui/ が POST_BUILD で
+    # calcyx_cli を .app バンドル内に埋め込む際、 calcyx_cli が同じ
+    # ディレクトリスコープで作成済みである必要があるため (CMake 3.29+ は
+    # 別ディレクトリのターゲットへの add_custom_command を拒否する)。
     add_subdirectory(tui)
+    add_subdirectory(cli)
+    add_subdirectory(gui)
 
     # ---- samples / LICENSE / THIRD_PARTY_LICENSES のインストール ----
     if(APPLE)
         # macOS: .app バンドル内に Resources/samples として埋め込み済み (gui/CMakeLists.txt)
-        # LICENSE は zip のルートに置く
+        # LICENSE と README_MAC は dmg のルートに置く (= drag-and-drop の前にユーザに見せる)。
         install(FILES "${CMAKE_SOURCE_DIR}/LICENSE"
                       "${CMAKE_SOURCE_DIR}/THIRD_PARTY_LICENSES.txt"
+                      "${CMAKE_SOURCE_DIR}/README_MAC.txt"
             DESTINATION . COMPONENT gui)
     elseif(WIN32)
         # Windows: zip 用
@@ -167,9 +172,15 @@ else()
     if(APPLE)
         # macOS: .dmg を mount image として配布。 ユーザーが Applications
         # にドラッグするだけで使えるよう DragNDrop ジェネレータを使う。
+        # CLI 統合バイナリは .app バンドル内 (Contents/MacOS/calcyx-cli)
+        # に埋め込み済みなので CPACK_COMPONENTS_ALL=gui で gui コンポー
+        # ネントのみに絞り、 dmg ルートに `bin/` や `share/` が裸で並ば
+        # ないようにする。 cli を取り出したい人向けの案内は README_MAC.txt。
         set(CPACK_GENERATOR         "DragNDrop")
         set(CPACK_PACKAGE_FILE_NAME "calcyx-mac-${CALCYX_VERSION_FULL}")
         set(CPACK_DMG_VOLUME_NAME   "calcyx ${CALCYX_VERSION_FULL}")
+        set(CPACK_COMPONENTS_ALL    gui)
+        set(CPACK_COMPONENTS_GROUPING ALL_COMPONENTS_IN_ONE)
     elseif(WIN32)
         set(CPACK_GENERATOR         "ZIP")
         set(CPACK_PACKAGE_FILE_NAME "calcyx-win-${CALCYX_VERSION_FULL}")

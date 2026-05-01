@@ -61,6 +61,18 @@ endif()
 
 install(TARGETS calcyx_cli RUNTIME DESTINATION bin COMPONENT cli)
 
+# manpage (calcyx --help と同等内容を groff 化したもの)。 日本語版は
+# LANG=ja_JP.UTF-8 環境で `man calcyx` が自動選択する位置に置く。
+# UNIX 系全般 (macOS と Linux) で install。 Windows では man が読まれない
+# ので除外。 dmg / brew / deb のどれでも cli component に乗って配布される。
+if(UNIX)
+    install(FILES "${CMAKE_SOURCE_DIR}/cli/calcyx.1"
+        DESTINATION share/man/man1 COMPONENT cli)
+    install(FILES "${CMAKE_SOURCE_DIR}/cli/calcyx.ja.1"
+        DESTINATION share/man/ja/man1
+        RENAME calcyx.1 COMPONENT cli)
+endif()
+
 # ===== ctest 登録 =====
 #
 # CLI 出力は `testdata/expected/*.out`, `testdata/expected/*.err` の

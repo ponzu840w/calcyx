@@ -177,6 +177,20 @@ target_link_libraries(calcyx_ui PRIVATE
     ${PLATFORM_LIBS}
 )
 
+# macOS: CLI 統合バイナリを .app バンドル内 (Contents/MacOS/calcyx-cli)
+# に埋め込む。 dmg ルートに `bin/` や `share/` を裸で並べたくないので、
+# bundle が自己完結するよう CLI もここに同梱する。 path 通し方は
+# README_MAC.txt で案内。 POST_BUILD なので build ツリー時点で同梱され、
+# install 時の bundle まるごとコピーで dmg / brew どちらにも乗る。
+if(APPLE AND TARGET calcyx_cli)
+    add_dependencies(calcyx_ui calcyx_cli)
+    add_custom_command(TARGET calcyx_ui POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+            "$<TARGET_FILE:calcyx_cli>"
+            "$<TARGET_BUNDLE_CONTENT_DIR:calcyx_ui>/MacOS/calcyx-cli"
+        VERBATIM)
+endif()
+
 if(APPLE)
     install(TARGETS calcyx_ui BUNDLE DESTINATION . COMPONENT gui)
 elseif(WIN32)
@@ -195,14 +209,10 @@ elseif(UNIX)
             DESTINATION share/icons/hicolor/${_sz}x${_sz}/apps
             RENAME calcyx.png COMPONENT gui)
     endforeach()
-    # manpage (calcyx --help と同じ内容を groff 化したもの)。
-    # 日本語版は LANG=ja_JP.UTF-8 環境で `man calcyx` が自動選択する位置に置く。
-    install(FILES "${CMAKE_SOURCE_DIR}/cli/calcyx.1"
-        DESTINATION share/man/man1 COMPONENT cli)
-    install(FILES "${CMAKE_SOURCE_DIR}/cli/calcyx.ja.1"
-        DESTINATION share/man/ja/man1
-        RENAME calcyx.1 COMPONENT cli)
 endif()
+# manpage (cli/calcyx.1 / cli/calcyx.ja.1) の install は cli/CMakeLists.txt
+# に移動 (= ファイル所有元の cli component に集約)。 dmg / brew / deb の
+# どれでも cli が build されれば man が入る。
 
 # ---- test_completion ----
 # shared/completion_match.c の pure function テスト。FLTK に依存しない。
