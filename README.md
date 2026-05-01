@@ -8,9 +8,9 @@ Cで再実装した計算エンジンを各プラットフォームのUIから�
 
 ## 概要
 
-式を複数行並べて逐次評価できるスクラッチパッド型の計算機。前の行の結果を後の行で参照でき、行を編集するとその場でリアルタイム再評価される。
+式を複数行並べて逐次評価できるスクラッチパッド型の計算機。前の行の結果を後の行で参照でき、行を編集するとその場でリアルタイム再評価される。SI接頭語や各種関数に対応しエンジニアリングに便利。
 
-## インストール
+## A. バイナリ配布からインストール
 
 バイナリ配布版は [Releases](../../releases) から入手可能。
 
@@ -20,10 +20,10 @@ Cで再実装した計算エンジンを各プラットフォームのUIから�
 | Linux | `sudo dpkg -i calcyx_*.deb`（ランチャーに自動配置） | 同左（`/usr/bin/calcyx` に自動配置） |
 | Windows | `calcyx-gui.exe` を任意の場所に配置 | `calcyx.exe` を任意の場所に配置（PATH 設定は任意） |
 
-`calcyx` バイナリは CLI と TUI を統合しており、TTY で引数なし起動なら TUI、`-e`
+`calcyx(.exe)` バイナリは CLI と TUI を統合しており、TTY で引数なし起動なら TUI、`-e`
 / `-o` / `-b` / `-r` 等の指定や非対話端末経由なら CLI として動作する。
 
-## ソースからビルド
+## B. ソースからビルド & インストール
 
 macOS または Linux の開発機が必要。
 
@@ -48,7 +48,7 @@ FLTK・mpdecimal はビルド時に自動取得される。
 | `web` (WebAssembly) | macOS | `brew install emscripten` |
 | `web` (WebAssembly) | Linux | [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) を参照 |
 
-### ビルドコマンド
+### ビルド
 
 ```sh
 git clone https://github.com/ponzu840w/calcyx.git
@@ -67,27 +67,27 @@ cmake --preset web
 cmake --build --preset web
 ```
 
-デバッグビルドは `unix-debug` / `win-debug` プリセットを使用。
+(デバッグビルドは `unix-debug` / `win-debug` プリセットを使用。)
 
-### インストール
+### cmakeによるインストール
 
-ビルドディレクトリは `unix` なら `build/`、`unix-debug` なら `build-debug/`、`win` なら `build-win/`。
+開発機へのネイティブなインストールにはビルド後に `cmake --install` を用いることができる。
 
 ```sh
 # [GUI]
 # macOS
-sudo cmake --install build --component gui --prefix /Applications
+sudo cmake --install build/ --component gui --prefix /Applications
 # Linux
-sudo cmake --install build --component gui --prefix /usr/local
+sudo cmake --install build/ --component gui --prefix ~/.local
 
-# [CLI]
+# [CLI / TUI]
 # macOS / Linux
-cmake --install build --component cli --prefix ~/.local
+cmake --install build/ --component cli --prefix ~/.local
 ```
 
-Windows は `cmake --install` 非対応。ZIP を展開して任意の場所に配置すること。
+Windows は `cmake --install` 非対応のため、以下の方法で生成した.zipを展開し任意の場所に配置すること。
 
-### パッケージ生成
+### 配布用パッケージ生成
 
 ```sh
 # macOS, Linux
@@ -102,17 +102,9 @@ cpack --preset web    # -> calcyx-web-<version>.zip
 バージョンは git tag から自動取得（形式: `v1.2.3`）。
 タグ上にない場合はファイル名に `-dev` が付く。
 
-### Web 版の開発サーバー
-
-```sh
-cmake --build --preset web
-cd build-web/web && python3 -m http.server 8080
-# → http://localhost:8080
-```
-
 ## テスト
 
-ビルドに使った preset と同名で実行する。
+ビルドのときと同名の preset で実行する。
 
 ```sh
 ctest --preset unix          # 全テスト (macOS / Linux)
@@ -136,7 +128,7 @@ tui/      TUI フロントエンド（FTXUI、calcyx バイナリに静的リン
 web/      Web フロントエンド（Vanilla JS + WebAssembly）
 ```
 
-エンジンと共有層は C99 のみで実装されており、複数のフロントエンドから共有する設計。
+エンジンと共有層は C99 のみで実装されており、複数のフロントエンドから共有。
 
 ### 実行ファイル
 
@@ -150,20 +142,20 @@ web/      Web フロントエンド（Vanilla JS + WebAssembly）
 
 ## Calctus からの変更点
 
-calcyx は Calctus の移植版ですが、以下の点で文法・動作が異なります。
+calcyx は Calctus の移植版だが、以下の点で文法・動作に非互換性がある。
 
-### v0.3.0
+### v0.3.0 以降
 
-- **文字列スライスが両端インクルーシブ** Calctus では `s[2:4]` が末尾エクスクルーシブ（2文字）でしたが、calcyx では配列・ビットフィールドと統一して両端インクルーシブ（3文字）です。
-- **`;` による行コメント** `;` 以降は無視されます。
+- **文字列スライスが両端インクルーシブ** Calctus では `s[2:4]` が末尾エクスクルーシブ（2文字）だったが、calcyx では配列・ビットフィールドと同様にして両端インクルーシブ（3文字）。
+- **`;` による行コメント** `;` 以降は無視される。
 
 ## 移植元
 
-このソフトウェアは [Calctus](https://github.com/shapoco/calctus) (Copyright (c) 2022 shapoco, MIT License) をもとに開発されています。
+このソフトウェアは [Calctus](https://github.com/shapoco/calctus) (Copyright (c) 2022 shapoco, MIT License) をもとに開発されておる。
 
 ## Third-party licenses
 
-このソフトウェアは以下のオープンソースライブラリを使用しています。
+このソフトウェアは以下のオープンソースライブラリを使用している。
 
 ### FLTK 1.4.4
 
