@@ -81,10 +81,42 @@ sed "${SED_INPLACE[@]}" -E \
     "$FORMULA"
 
 echo
-echo "==> diff:"
+echo "==> diff (main repo):"
 git --no-pager diff --no-color "$FORMULA" || true
+
+# --- tap repo へのミラー ---
+# brew は <user>/homebrew-<name> 命名のリポジトリしか tap として認識しない
+# ため、 別 repo `../homebrew-calcyx` (or $TAP_DIR で上書き) へ
+# Formula/calcyx.rb をコピーしてミラーする。 この repo が存在しない場合は
+# スキップして main repo の更新だけで終わる。
+TAP_DIR="${TAP_DIR:-../homebrew-calcyx}"
+TAP_FORMULA="$TAP_DIR/Formula/calcyx.rb"
+
+if [ -d "$TAP_DIR/.git" ]; then
+    echo
+    echo "==> mirroring to $TAP_FORMULA"
+    mkdir -p "$TAP_DIR/Formula"
+    cp "$FORMULA" "$TAP_FORMULA"
+    if (cd "$TAP_DIR" && git diff --quiet --no-color -- Formula/calcyx.rb); then
+        echo "    (no change)"
+    else
+        echo
+        echo "==> diff (tap repo):"
+        (cd "$TAP_DIR" && git --no-pager diff --no-color -- Formula/calcyx.rb) || true
+    fi
+fi
+
 echo
 echo "==> 次の手順:"
+echo "    # 1. main repo に formula 更新を commit & push"
 echo "    git add $FORMULA"
 echo "    git commit -m 'formula: bump to $TAG'"
 echo "    git push"
+if [ -d "$TAP_DIR/.git" ]; then
+    echo
+    echo "    # 2. tap repo にミラーを commit & push (= brew tap で配布)"
+    echo "    cd $TAP_DIR"
+    echo "    git add Formula/calcyx.rb"
+    echo "    git commit -m 'calcyx: bump to $TAG'"
+    echo "    git push"
+fi
