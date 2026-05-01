@@ -36,7 +36,7 @@ constexpr bool DEFAULT_FMT_E_NOTATION       = true;
 constexpr int  DEFAULT_FMT_E_POSITIVE_MIN   = 15;
 constexpr int  DEFAULT_FMT_E_NEGATIVE_MAX   = -5;
 constexpr bool DEFAULT_FMT_E_ALIGNMENT      = false;
-constexpr int  DEFAULT_COLOR_PRESET         = 0;  // COLOR_PRESET_OTAKU_BLACK
+constexpr int  DEFAULT_COLOR_PRESET         = 0;  // COLOUR_PRESET_OTAKU_BLACK
 
 // 実体は g_settings (AppSettings.h)。 後方互換で g_<name> を参照公開。
 

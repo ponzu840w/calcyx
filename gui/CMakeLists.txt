@@ -54,15 +54,16 @@ endif()
 # platform_tray_common.cpp はキー名テーブルのみを提供し、stub/x11/win/mac の
 # どれとでも共存できるので common に置く。
 add_library(calcyx_ui_common STATIC
-    colors.cpp
+    colours.cpp
     SheetView.cpp
     SheetLineInput.cpp
     sheet_highlight.cpp
     CompletionPopup.cpp
     PasteOptionForm.cpp
-    PrefsDialog.cpp
+    PrefsDialogue.cpp
     prefs/prefs_common.cpp
     prefs/tab_general.cpp
+    prefs/tab_window.cpp
     prefs/tab_appearance.cpp
     prefs/tab_input.cpp
     prefs/tab_number_format.cpp

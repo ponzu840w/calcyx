@@ -318,18 +318,24 @@ int calcyx_settings_write_preserving(const char            *path,
                 int was_commented = 0;
                 key = line_extract_key(line_buf, &was_commented);
                 if (key) {
+                    /* 旧キーを現行キーに正規化。 一致した場合 normalized は
+                     * 静的リテラル、 一致しない場合は key と同じポインタ。 */
+                    const char *normalized = calcyx_settings_alias_key(key);
                     for (i = 0; i < n_table; i++) {
-                        if (table[i].key && strcmp(table[i].key, key) == 0) {
+                        if (table[i].key && strcmp(table[i].key, normalized) == 0) {
                             char val[256];
                             int  is_default = 0;
-                            int  ret = lookup(key, val, sizeof(val),
+                            int  ret = lookup(table[i].key, val, sizeof(val),
                                               &is_default, user);
                             seen[i] = 1;
                             if (ret > 0) {
                                 /* PROVIDED: 値で書き換え。 is_default なら
-                                 * '#key = value' 形式 (commented) で書く。 */
+                                 * '#key = value' 形式 (commented) で書く。
+                                 * 出力キーは schema の現行表記を使うので、
+                                 * 旧キー名行はここで自動的に新表記へ移行。 */
                                 int comment_now = is_default;
-                                buf_append_kv_form(&out, key, val, comment_now);
+                                buf_append_kv_form(&out, table[i].key, val,
+                                                   comment_now);
                                 matched = 1;
                             }
                             /* LEAVE: matched=0 のままで元行を転写。 seen[i]=1

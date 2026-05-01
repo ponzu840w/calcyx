@@ -173,7 +173,7 @@ std::vector<TokenStyle> build_char_styles(const std::string &expr,
                         /* GUI 仕様準拠 (sheet_highlight.cpp): 背景色をリテラル
                          * 色そのもの、 前景色は輝度から白 or 黒。 #RRGGBB /
                          * #RGB 両方の表記を受け付ける。 mirror_gui は常に塗る、
-                         * semantic は tui_sem_color_literal トグルで制御。 */
+                         * semantic は tui_sem_colour_literal トグルで制御。 */
                         bool draw_literal = palette.active
                                           || palette.sem_color_literal_enabled;
                         unsigned char rgb[3];

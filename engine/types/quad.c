@@ -12,13 +12,13 @@ bool quad_is_zero(cx_quad_t q) {
     return (q.exp == 0) && ufixed113_eq(q.coe, UFIXED113_ZERO);
 }
 
-bool quad_is_normalized(cx_quad_t q) {
+bool quad_is_normalised(cx_quad_t q) {
     return q.exp != 0 && q.exp != 0x7fff;
 }
 
 /* --- 正規化 ---
  * quad.cs: public static quad Normalize(bool neg, int exp, ufixed113 coe) */
-cx_quad_t quad_normalize(bool neg, int exp, ufixed113_t coe) {
+cx_quad_t quad_normalise(bool neg, int exp, ufixed113_t coe) {
     if (exp >= 0x7fff)
         return (cx_quad_t){ neg, 0x7ffe, UFIXED113_ONE };
 
@@ -107,7 +107,7 @@ cx_quad_t quad_truncate(cx_quad_t q) {
     ufixed113_t coe = q.coe;
     if (trunc_bits > 0)
         coe = ufixed113_truncate_right(coe, (uint32_t)trunc_bits);
-    return quad_normalize(q.neg, q.exp, coe);
+    return quad_normalise(q.neg, q.exp, coe);
 }
 
 /* quad.cs: public static explicit operator decimal(quad q) */
@@ -197,7 +197,7 @@ cx_quad_t quad_add(cx_quad_t a, cx_quad_t b) {
         }
     }
 
-    return quad_normalize(q_neg, q_exp, q_coe);
+    return quad_normalise(q_neg, q_exp, q_coe);
 }
 
 cx_quad_t quad_sub(cx_quad_t a, cx_quad_t b) { return quad_add(a, quad_neg(b)); }
@@ -219,7 +219,7 @@ cx_quad_t quad_mul(cx_quad_t a, cx_quad_t b) {
     uint32_t carry;
     ufixed113_t coe = ufixed113_mul(a.coe, b.coe, &carry);
     if (carry == 1) { coe = ufixed113_ssr(coe, 1); exp++; }
-    return quad_normalize(neg, exp, coe);
+    return quad_normalise(neg, exp, coe);
 }
 
 /* quad.cs: public static quad operator /(quad a, quad b) */
@@ -228,7 +228,7 @@ cx_quad_t quad_div(cx_quad_t a, cx_quad_t b) {
     int  exp = (int)a.exp - (int)b.exp + (int)QUAD_EXP_BIAS;
     ufixed113_t q, r;
     ufixed113_div_rem(a.coe, b.coe, &q, &r);
-    return quad_normalize(neg, exp, q);
+    return quad_normalise(neg, exp, q);
 }
 
 /* --- 比較 --- */

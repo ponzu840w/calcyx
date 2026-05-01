@@ -55,7 +55,7 @@ public:
     // 現在選択されている候補（なければ nullptr）
     const Candidate *selected() const;
 
-    void apply_colors();   // g_colors からポップアップ色を再適用
+    void apply_colors();   // g_colours からポップアップ色を再適用
 
 protected:
     // 派生コンストラクタは自ウィジェットを FLTK の current group にしてから

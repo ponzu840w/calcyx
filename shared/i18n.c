@@ -17,7 +17,7 @@ extern const int               CALCYX_TR_TABLE_JA_N;
 
 /* 状態。 グローバルだが i18n_init を 1 回呼んだあとは const とみなして OK. */
 static calcyx_lang_t  s_lang        = CALCYX_LANG_EN;
-static int            s_initialized = 0;
+static int            s_initialised = 0;
 static calcyx_tr_entry_t *s_sorted_ja = NULL;  /* sort 済みコピー (lazy) */
 
 static int cmp_entry_en(const void *a, const void *b) {
@@ -56,15 +56,15 @@ void calcyx_i18n_init(const char *lang_id) {
     }
     s_lang = (strcmp(resolved, "ja") == 0) ? CALCYX_LANG_JA : CALCYX_LANG_EN;
     if (s_lang == CALCYX_LANG_JA) ensure_sorted();
-    s_initialized = 1;
+    s_initialised = 1;
 }
 
 calcyx_lang_t calcyx_i18n_current(void) {
     return s_lang;
 }
 
-int calcyx_i18n_is_initialized(void) {
-    return s_initialized;
+int calcyx_i18n_is_initialised(void) {
+    return s_initialised;
 }
 
 const char *calcyx_tr(const char *en) {
@@ -72,7 +72,7 @@ const char *calcyx_tr(const char *en) {
     calcyx_tr_entry_t *hit;
     if (!en) return en;
     /* init 前 / en モード / テーブル空 → identity */
-    if (!s_initialized || s_lang != CALCYX_LANG_JA
+    if (!s_initialised || s_lang != CALCYX_LANG_JA
             || !s_sorted_ja || CALCYX_TR_TABLE_JA_N == 0) {
         return en;
     }

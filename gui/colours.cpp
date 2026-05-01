@@ -1,19 +1,19 @@
-// CalcyxColors プリセット (shared/color_presets の RGB → Fl_Color 変換)。
+// CalcyxColours プリセット (shared/color_presets の RGB → Fl_Color 変換)。
 
-#include "colors.h"
+#include "colours.h"
 #include "AppSettings.h"
 #include <FL/fl_draw.H>
 
 extern "C" {
-#include "color_presets.h"
+#include "colour_presets.h"
 }
 
 /* 実体は g_settings 内。 既存コードのため参照で再公開している。 */
-CalcyxColors &g_colors       = g_settings.colors;
-CalcyxColors &g_user_colors  = g_settings.user_colors;
-int          &g_color_preset = g_settings.color_preset;
+CalcyxColours &g_colours       = g_settings.colours;
+CalcyxColours &g_user_colours  = g_settings.user_colours;
+int          &g_colour_preset = g_settings.colour_preset;
 
-const ColorPresetInfo COLOR_PRESET_INFO[COLOR_PRESET_COUNT] = {
+const ColourPresetInfo COLOUR_PRESET_INFO[COLOUR_PRESET_COUNT] = {
     { "otaku-black",     "otaku-black"     },
     { "gyakubari-white", "gyakubari-white" },
     { "saboten-grey",    "saboten-grey"    },
@@ -25,10 +25,10 @@ static Fl_Color rgb_to_fl(const calcyx_rgb_t &c) {
     return fl_rgb_color(c.r, c.g, c.b);
 }
 
-void colors_init_preset(CalcyxColors *c, int preset) {
-    calcyx_color_palette_t pal;
-    /* enum 値は ui/colors.h と shared/color_presets.h で一致しているのでそのまま渡す */
-    calcyx_color_preset_get(preset == COLOR_PRESET_USER_DEFINED
+void colours_init_preset(CalcyxColours *c, int preset) {
+    calcyx_colour_palette_t pal;
+    /* enum 値は ui/colours.h と shared/color_presets.h で一致しているのでそのまま渡す */
+    calcyx_colour_preset_get(preset == COLOUR_PRESET_USER_DEFINED
                                 ? CALCYX_COLOR_PRESET_OTAKU_BLACK
                                 : preset,
                             &pal);
@@ -61,43 +61,43 @@ void colors_init_preset(CalcyxColors *c, int preset) {
     c->ui_dim = fl_color_average(c->ui_text, c->ui_menu, 0.5f);
 }
 
-void colors_init_defaults(CalcyxColors *c) {
-    colors_init_preset(c, COLOR_PRESET_OTAKU_BLACK);
+void colours_init_defaults(CalcyxColours *c) {
+    colours_init_preset(c, COLOUR_PRESET_OTAKU_BLACK);
 }
 
-void colors_apply_preset(int preset) {
-    g_color_preset = preset;
-    if (preset == COLOR_PRESET_USER_DEFINED) {
-        g_colors = g_user_colors;
+void colours_apply_preset(int preset) {
+    g_colour_preset = preset;
+    if (preset == COLOUR_PRESET_USER_DEFINED) {
+        g_colours = g_user_colours;
     } else {
-        colors_init_preset(&g_colors, preset);
+        colours_init_preset(&g_colours, preset);
     }
 }
 
-void colors_apply_fl_scheme() {
+void colours_apply_fl_scheme() {
     uchar r, g, b;
     // ウィジェット背景 → FL_BACKGROUND_COLOR → FL_DARK1..3, FL_LIGHT1..3 を派生
-    Fl::get_color(g_colors.ui_bg, r, g, b);
+    Fl::get_color(g_colours.ui_bg, r, g, b);
     Fl::background(r, g, b);
 
     // FLTK のデフォルト派生はダークテーマで FL_LIGHT が明るすぎるため手動補正
     int avg = ((int)r + g + b) / 3;
     if (avg < 100) {
         // ダークテーマ: セパレータやフレームが自然になるよう控えめに派生
-        Fl::set_color(FL_DARK1,  fl_color_average(g_colors.ui_bg, FL_BLACK, 0.75f));
-        Fl::set_color(FL_DARK2,  fl_color_average(g_colors.ui_bg, FL_BLACK, 0.55f));
-        Fl::set_color(FL_DARK3,  fl_color_average(g_colors.ui_bg, FL_BLACK, 0.35f));
-        Fl::set_color(FL_LIGHT1, fl_color_average(g_colors.ui_bg, FL_WHITE, 0.90f));
-        Fl::set_color(FL_LIGHT2, fl_color_average(g_colors.ui_bg, FL_WHITE, 0.80f));
-        Fl::set_color(FL_LIGHT3, fl_color_average(g_colors.ui_bg, FL_WHITE, 0.65f));
+        Fl::set_color(FL_DARK1,  fl_color_average(g_colours.ui_bg, FL_BLACK, 0.75f));
+        Fl::set_color(FL_DARK2,  fl_color_average(g_colours.ui_bg, FL_BLACK, 0.55f));
+        Fl::set_color(FL_DARK3,  fl_color_average(g_colours.ui_bg, FL_BLACK, 0.35f));
+        Fl::set_color(FL_LIGHT1, fl_color_average(g_colours.ui_bg, FL_WHITE, 0.90f));
+        Fl::set_color(FL_LIGHT2, fl_color_average(g_colours.ui_bg, FL_WHITE, 0.80f));
+        Fl::set_color(FL_LIGHT3, fl_color_average(g_colours.ui_bg, FL_WHITE, 0.65f));
     }
 
     // テキスト → FL_FOREGROUND_COLOR
-    Fl::get_color(g_colors.ui_text, r, g, b);
+    Fl::get_color(g_colours.ui_text, r, g, b);
     Fl::foreground(r, g, b);
     // 入力欄背景 → FL_BACKGROUND2_COLOR
-    Fl::get_color(g_colors.ui_input, r, g, b);
+    Fl::get_color(g_colours.ui_input, r, g, b);
     Fl::background2(r, g, b);
     // 選択色
-    Fl::set_color(FL_SELECTION_COLOR, g_colors.accent);
+    Fl::set_color(FL_SELECTION_COLOR, g_colours.accent);
 }

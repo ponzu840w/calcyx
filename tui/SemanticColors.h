@@ -1,4 +1,4 @@
-/* tui_color_source = semantic 用の色名 ↔ FTXUI Color enum マッピング。
+/* tui_colour_source = semantic 用の色名 ↔ FTXUI Color enum マッピング。
  * PrefsScreen (= 編集 UI) と TuiSheet (= 描画) で共有する。 */
 
 #ifndef CALCYX_TUI_SEMANTIC_COLORS_H
@@ -15,7 +15,7 @@ struct SemanticColorChoice {
 };
 
 /* default + ANSI 16 の合計 17 色。 entries 順は PrefsScreen の Choice 循環順。 */
-extern const SemanticColorChoice kSemanticColors[];
+extern const SemanticColorChoice kSemanticColours[];
 extern const int                 kSemanticColorCount;
 
 /* 名前から FTXUI Color を引く。 未知ならば fallback を返す。 */

@@ -1,4 +1,4 @@
-// PrefsDialog タブ間で共有されるロジック (style_* / write_dlg_to_globals /
+// PrefsDialogue タブ間で共有されるロジック (style_* / write_dlg_to_globals /
 // refresh_previews / refresh_dlg_colors / swatch / apply_settings / reset).
 
 #include "prefs_common.h"
@@ -49,7 +49,7 @@ void style_check(Fl_Check_Button *chk) {
     chk->color(DLG_BG);
     chk->labelcolor(DLG_TEXT);
     chk->labelsize(12);
-    chk->selection_color(g_colors.accent);
+    chk->selection_color(g_colours.accent);
 }
 
 void style_spinner(Fl_Spinner *sp) {
@@ -58,7 +58,7 @@ void style_spinner(Fl_Spinner *sp) {
     sp->labelcolor(DLG_LABEL);
     sp->labelsize(12);
     sp->textsize(12);
-    sp->selection_color(g_colors.accent);
+    sp->selection_color(g_colours.accent);
 }
 
 // セクション枠を作る: 太字タイトル + 枠付き Fl_Group。呼び出し側で end() すること。
@@ -97,22 +97,22 @@ void write_dlg_to_globals(DlgState *st) {
     g_start_topmost           = st->start_topmost_chk->value() != 0;
     if (st->menubar_in_window_chk)
         g_gui_menubar_in_window = st->menubar_in_window_chk->value() != 0;
-    g_color_preset = st->preset_choice->value();
+    g_colour_preset = st->preset_choice->value();
 }
 
 // ---- プレビュー更新 ----
 void refresh_previews(DlgState *st) {
     write_dlg_to_globals(st);
     if (st->font_preview_sv) {
-        st->font_preview_sv->color(g_colors.bg);
+        st->font_preview_sv->color(g_colours.bg);
         st->font_preview_sv->preview_set_exprs(PREVIEW_EXPRS);
     }
-    if (st->color_preview_sv) {
-        st->color_preview_sv->color(g_colors.bg);
-        st->color_preview_sv->preview_set_exprs(COLOR_PREVIEW_EXPRS);
+    if (st->colour_preview_sv) {
+        st->colour_preview_sv->color(g_colours.bg);
+        st->colour_preview_sv->preview_set_exprs(COLOR_PREVIEW_EXPRS);
     }
     if (st->fmt_preview_sv) {
-        st->fmt_preview_sv->color(g_colors.bg);
+        st->fmt_preview_sv->color(g_colours.bg);
         st->fmt_preview_sv->preview_set_exprs(FMT_PREVIEW_EXPRS);
     }
 }
@@ -126,16 +126,16 @@ static Fl_Color contrast_label_color(Fl_Color c) {
 }
 
 void update_swatch_labels(DlgState *st) {
-    for (int i = 0; i < st->colors.count; i++) {
-        Fl_Color c = *st->colors.entries[i].target;
+    for (int i = 0; i < st->colours.count; i++) {
+        Fl_Color c = *st->colours.entries[i].target;
         uchar r, g, b;
         Fl::get_color(c, r, g, b);
         char buf[8];
         snprintf(buf, sizeof(buf), "#%02X%02X%02X", r, g, b);
-        st->colors.swatches[i]->copy_label(buf);
-        st->colors.swatches[i]->labelcolor(contrast_label_color(c));
-        st->colors.swatches[i]->color(c);
-        st->colors.swatches[i]->redraw();
+        st->colours.swatches[i]->copy_label(buf);
+        st->colours.swatches[i]->labelcolor(contrast_label_color(c));
+        st->colours.swatches[i]->color(c);
+        st->colours.swatches[i]->redraw();
     }
 }
 
@@ -144,12 +144,12 @@ void update_swatch_state(DlgState *st) {
     /* preset = USER_DEFINED のときだけ swatch をクリック可能にする (元設計)。
      * さらに override で特定 color_* が固定されている場合はその swatch を
      * preset によらず deactivate + tooltip。 */
-    bool user_def = (g_color_preset == COLOR_PRESET_USER_DEFINED);
+    bool user_def = (g_colour_preset == COLOUR_PRESET_USER_DEFINED);
     const auto &locked = settings_locked_keys();
-    for (int i = 0; i < st->colors.count; i++) {
-        const char *key = st->colors.entries[i].schema_key;
+    for (int i = 0; i < st->colours.count; i++) {
+        const char *key = st->colours.entries[i].schema_key;
         bool is_locked = key && locked.count(key) > 0;
-        Fl_Button *btn = st->colors.swatches[i];
+        Fl_Button *btn = st->colours.swatches[i];
         if (is_locked) {
             btn->deactivate();
             btn->tooltip(_("Locked by calcyx.conf.override"));
@@ -163,18 +163,18 @@ void update_swatch_state(DlgState *st) {
     }
 }
 
-// ---- ダイアログ自身のウィジェットカラーを現在の g_colors.ui_* で更新 ----
+// ---- ダイアログ自身のウィジェットカラーを現在の g_colours.ui_* で更新 ----
 static void refresh_dlg_colors_recurse(Fl_Group *grp, DlgState *st) {
     for (int i = 0; i < grp->children(); i++) {
         Fl_Widget *w = grp->child(i);
         // スウォッチ (色見本ボタン) はスキップ
         bool is_swatch = false;
-        for (int j = 0; j < st->colors.count; j++) {
-            if (w == st->colors.swatches[j]) { is_swatch = true; break; }
+        for (int j = 0; j < st->colours.count; j++) {
+            if (w == st->colours.swatches[j]) { is_swatch = true; break; }
         }
         if (is_swatch) continue;
         // プレビュー SheetView はスキップ (独自の色管理)
-        if (w == st->color_preview_sv || w == st->font_preview_sv || w == st->fmt_preview_sv)
+        if (w == st->colour_preview_sv || w == st->font_preview_sv || w == st->fmt_preview_sv)
             continue;
 
         if (auto *chk = dynamic_cast<Fl_Check_Button *>(w)) {
@@ -194,7 +194,7 @@ static void refresh_dlg_colors_recurse(Fl_Group *grp, DlgState *st) {
             cho->color(DLG_INPUT);
             cho->textcolor(DLG_TEXT);
             cho->labelcolor(DLG_LABEL);
-            cho->selection_color(g_colors.accent);
+            cho->selection_color(g_colours.accent);
         } else if (auto *btn = dynamic_cast<Fl_Button *>(w)) {
             if (btn->box() == FL_DOWN_BOX) {
                 btn->color(DLG_INPUT);
@@ -222,7 +222,7 @@ static void refresh_dlg_colors_recurse(Fl_Group *grp, DlgState *st) {
 
 void refresh_dlg_colors(DlgState *st) {
     if (!st->dlg_win) return;
-    colors_apply_fl_scheme();
+    colours_apply_fl_scheme();
     st->dlg_win->color(DLG_BG);
     if (st->tabs) {
         st->tabs->color(DLG_BG);
@@ -265,8 +265,8 @@ void apply_settings(DlgState *st) {
             g_language = kLangIds[li];
     }
 
-    /* user_colors は g_user_colors (グローバル) に一本化されたので
-     * st->user_colors への同期は不要。 */
+    /* user_colours は g_user_colours (グローバル) に一本化されたので
+     * st->user_colours への同期は不要。 */
 
     /* Apply 後の状態を新たなスナップショットに。 これ以降 Cancel すれば
      * Apply 直後の値に戻る。 */
@@ -298,10 +298,10 @@ void reset_to_defaults(DlgState *st) {
 
     // Colors
     st->preset_choice->value(DEFAULT_COLOR_PRESET);
-    colors_apply_preset(DEFAULT_COLOR_PRESET);
-    for (int i = 0; i < st->colors.count; i++) {
-        st->colors.swatches[i]->color(*st->colors.entries[i].target);
-        st->colors.swatches[i]->redraw();
+    colours_apply_preset(DEFAULT_COLOR_PRESET);
+    for (int i = 0; i < st->colours.count; i++) {
+        st->colours.swatches[i]->color(*st->colours.entries[i].target);
+        st->colours.swatches[i]->redraw();
     }
     update_swatch_state(st);
 

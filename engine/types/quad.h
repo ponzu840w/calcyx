@@ -21,8 +21,8 @@ extern const cx_quad_t QUAD_POS_ZERO;
 extern const cx_quad_t QUAD_NEG_ZERO;
 
 bool    quad_is_zero      (cx_quad_t q);
-bool    quad_is_normalized(cx_quad_t q);
-cx_quad_t  quad_normalize    (bool neg, int exp, ufixed113_t coe);
+bool    quad_is_normalised(cx_quad_t q);
+cx_quad_t  quad_normalise    (bool neg, int exp, ufixed113_t coe);
 
 /* 変換 */
 cx_quad_t   quad_from_real(const real_t *d);

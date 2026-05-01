@@ -5,7 +5,7 @@
 #include "PasteOptionForm.h"
 #include "sheet_highlight.h"
 #include "sheet_text.hpp"
-#include "colors.h"
+#include "colours.h"
 #include "settings_globals.h"
 #include "crash_handler.h"
 #include <FL/Fl.H>
@@ -26,7 +26,7 @@ SheetView::SheetView(int x, int y, int w, int h, bool preview)
     : Fl_Group(x, y, w, h), preview_mode_(preview)
 {
     box(FL_FLAT_BOX);
-    color(g_colors.bg);
+    color(g_colours.bg);
 
     model_ = sheet_model_new();
     apply_limits();
@@ -72,21 +72,21 @@ SheetView::SheetView(int x, int y, int w, int h, bool preview)
     // フォーカス行の式エディタ
     editor_ = new SheetLineInput(x, y, expr_w(), ROW_H);
     editor_->box(FL_FLAT_BOX);
-    editor_->color(g_colors.sel_bg);
-    editor_->textcolor(g_colors.accent);
+    editor_->color(g_colours.sel_bg);
+    editor_->textcolor(g_colours.accent);
     editor_->textfont(g_font_id);
     editor_->textsize(g_font_size);
-    editor_->cursor_color(g_colors.accent);
+    editor_->cursor_color(g_colours.accent);
     editor_->when(0);
 
     // フォーカス行の結果表示（右辺: 読み取り専用 SheetLineInput、左辺と同じスタイル）
     auto *rd = new SheetLineInput(result_x(), y, result_w(), ROW_H, false);
     rd->box(FL_FLAT_BOX);
-    rd->color(g_colors.sel_bg);
-    rd->textcolor(g_colors.accent);
+    rd->color(g_colours.sel_bg);
+    rd->textcolor(g_colours.accent);
     rd->textfont(g_font_id);
     rd->textsize(g_font_size);
-    rd->cursor_color(g_colors.accent);
+    rd->cursor_color(g_colours.accent);
     rd->when(0);
     result_display_ = rd;
 
@@ -240,8 +240,8 @@ void SheetView::update_result_display() {
 
     if (error) {
         // エラーは単色描画
-        rd->color(g_colors.sel_bg);
-        rd->set_override_color(g_colors.error);
+        rd->color(g_colours.sel_bg);
+        rd->set_override_color(g_colours.error);
     } else if (fmt == FMT_WEB_COLOR && rlen == 7 && result[0] == '#') {
         // WebColor: 背景をその色に、シンタックスハイライトは無効化してテキスト色を調整
         unsigned int rgb = 0;
@@ -255,7 +255,7 @@ void SheetView::update_result_display() {
         }
     } else {
         // 通常: シンタックスハイライト (draw_expr_highlighted が自動判定)
-        rd->color(g_colors.sel_bg);
+        rd->color(g_colours.sel_bg);
         rd->set_override_color((Fl_Color)0);
         rd->set_result_fmt(fmt);
     }
@@ -523,7 +523,7 @@ void SheetView::draw() {
     fl_push_no_clip();
     fl_push_clip(x(), y(), w(), h());
 
-    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colors.bg);
+    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colours.bg);
 
     const int ew  = expr_w();
     const int eqx = eq_col_x();
@@ -540,7 +540,7 @@ void SheetView::draw() {
         if (error) {
             fl_push_clip(rx, ary, rw, ROW_H);
             fl_font(g_font_id, g_font_size);
-            fl_color(g_colors.error);
+            fl_color(g_colours.error);
             fl_draw(result, rx + PAD, abaseline);
             fl_pop_clip();
         } else if (rfmt == FMT_WEB_COLOR && rlen == 7 && result[0] == '#') {
@@ -582,26 +582,26 @@ void SheetView::draw() {
             int bl_bot = ry2 + (ROW_H + fl_height() - fl_descent() * 2) / 2;
 
             if (i == focused_row_)
-                fl_draw_box(FL_FLAT_BOX, x(), ry, sheet_w(), rh, g_colors.sel_bg);
+                fl_draw_box(FL_FLAT_BOX, x(), ry, sheet_w(), rh, g_colours.sel_bg);
 
             if (expr[0])
                 draw_expr_highlighted(expr, x() + PAD, x(), ry, sheet_w(), ROW_H);
 
             if (g_show_rowlines) {
-                fl_color(g_colors.rowline);
+                fl_color(g_colours.rowline);
                 fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
             }
 
             if (result[0] && !error && visible) {
                 fl_font(g_font_id, g_font_size);
-                fl_color(g_colors.symbol);
+                fl_color(g_colours.symbol);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, bl_bot);
             }
 
             draw_result_at(result, rfmt, error, visible, ry2, bl_bot);
 
             if (g_show_rowlines) {
-                fl_color(g_colors.rowline);
+                fl_color(g_colours.rowline);
                 fl_line(x(), ry2 + ROW_H - 1, x() + sheet_w(), ry2 + ROW_H - 1);
             }
 
@@ -610,7 +610,7 @@ void SheetView::draw() {
             bool has_result = result[0] && visible;
 
             if (i == focused_row_)
-                fl_draw_box(FL_FLAT_BOX, x(), ry, has_result ? ew + eq_w_ : sheet_w(), ROW_H, g_colors.sel_bg);
+                fl_draw_box(FL_FLAT_BOX, x(), ry, has_result ? ew + eq_w_ : sheet_w(), ROW_H, g_colours.sel_bg);
 
             if (expr[0]) {
                 if (has_result)
@@ -621,14 +621,14 @@ void SheetView::draw() {
 
             if (has_result && !error) {
                 fl_font(g_font_id, g_font_size);
-                fl_color(g_colors.symbol);
+                fl_color(g_colours.symbol);
                 fl_draw("=", eqx + (eq_w_ - (int)fl_width("=")) / 2, baseline);
             }
 
             draw_result_at(result, rfmt, error, visible, ry, baseline);
 
             if (g_show_rowlines) {
-                fl_color(g_colors.rowline);
+                fl_color(g_colours.rowline);
                 fl_line(x(), ry + ROW_H - 1, x() + sheet_w(), ry + ROW_H - 1);
             }
         }

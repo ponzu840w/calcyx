@@ -1,6 +1,7 @@
 /* see settings_io.h. パスと環境変数は UTF-8 (path_utf8 / getenv_utf8 経由)。 */
 
 #include "settings_io.h"
+#include "settings_schema.h"
 #include "path_utf8.h"
 
 #include <stdio.h>
@@ -97,7 +98,8 @@ int calcyx_conf_each(const char *path, calcyx_conf_kv_fn cb, void *user) {
         if (vlen >= sizeof(val)) vlen = sizeof(val) - 1;
         memcpy(val, vs, vlen);
         val[vlen] = '\0';
-        cb(key, val, line_no, user);
+        /* 旧キーを現行キー名に正規化してから cb を呼ぶ。 */
+        cb(calcyx_settings_alias_key(key), val, line_no, user);
     }
     fclose(fp);
     return 0;

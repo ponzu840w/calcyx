@@ -53,6 +53,10 @@ const calcyx_setting_desc_t *calcyx_settings_table(int *out_count);
 /* キー名検索。 見つからなければ NULL. */
 const calcyx_setting_desc_t *calcyx_settings_find(const char *key);
 
+/* 旧キー名 → 現行キー名の alias 解決 (conf 互換層)。 一致するエイリアスが
+ * あれば現行名 (静的リテラル) を返し、 無ければ入力をそのまま返す。 NULL 安全。 */
+const char *calcyx_settings_alias_key(const char *key);
+
 /* COLOR エントリのプリセット依存デフォルトを #RRGGBB で返す。
  * preset_id は "otaku-black" / "gyakubari-white" / "saboten-grey" /
  * "saboten-white" / "user". 未知 preset / 未知 key は NULL. */

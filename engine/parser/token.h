@@ -9,7 +9,7 @@
 #define TOK_TEXT_MAX 256
 
 typedef enum {
-    TOK_NUM_LIT,     /* 数値リテラル (hex/oct/bin/int/real/char/si/bin-pfx/color) */
+    TOK_NUM_LIT,     /* 数値リテラル (hex/oct/bin/int/real/char/si/bin-pfx/colour) */
     TOK_BOOL_LIT,    /* true / false */
     TOK_OP,          /* 演算子記号 */
     TOK_SYMBOL,      /* 一般記号: ( ) [ ] , : ? */

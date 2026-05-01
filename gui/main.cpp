@@ -10,7 +10,7 @@
 #include <FL/Fl_PNG_Image.H>
 #include "MainWindow.h"
 #include "app_prefs.h"
-#include "colors.h"
+#include "colours.h"
 #include "settings_globals.h"
 #include "crash_handler.h"
 #include "i18n.h"
@@ -87,11 +87,11 @@ int main(int argc, char **argv) {
 
     crash_handler_install();
 
-    colors_init_defaults(&g_colors);
-    /* g_user_colors は preset = USER_DEFINED に切替えた瞬間に g_colors へコピー
+    colours_init_defaults(&g_colours);
+    /* g_user_colours は preset = USER_DEFINED に切替えた瞬間に g_colours へコピー
      * される。 settings_load() が conf から値を読んで上書きするのでデフォルト
      * 値は何でも良いが、 念のため otaku-black で初期化しておく。 */
-    colors_init_defaults(&g_user_colors);
+    colours_init_defaults(&g_user_colours);
     settings_init_defaults();
 
     Fl::scheme("gtk+");
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
     settings_load();
     /* 言語を確定。 g_language は "auto"/"en"/"ja" のいずれか。 */
     calcyx_i18n_init(g_language.c_str());
-    colors_apply_fl_scheme();
+    colours_apply_fl_scheme();
 
     if (g_remember_position) {
         AppPrefs prefs;

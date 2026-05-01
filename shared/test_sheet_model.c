@@ -475,7 +475,7 @@ static void test_real_to_double_locale_safe(void) {
     }
     if (!locale_set) {
         printf("  SKIP: comma-decimal locale not installed, "
-               "verifying default behavior only\n");
+               "verifying default behaviour only\n");
     }
 
     real_t r;

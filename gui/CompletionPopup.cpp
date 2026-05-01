@@ -2,7 +2,7 @@
 
 #include "CompletionPopup.h"
 #include "completion_match.h"
-#include "colors.h"
+#include "colours.h"
 #include "MainWindow.h"
 #include "settings_globals.h"
 #include <FL/Fl.H>
@@ -35,11 +35,11 @@ void CompletionPopupBase::init_widgets(int w) {
 
 void CompletionPopupBase::apply_colors() {
     if (!list_ || !desc_) return;
-    list_->color(g_colors.pop_bg);
-    list_->selection_color(g_colors.pop_sel);
-    list_->textcolor(g_colors.pop_text);
-    desc_->color(g_colors.pop_desc_bg);
-    desc_->labelcolor(g_colors.pop_desc);
+    list_->color(g_colours.pop_bg);
+    list_->selection_color(g_colours.pop_sel);
+    list_->textcolor(g_colours.pop_text);
+    desc_->color(g_colours.pop_desc_bg);
+    desc_->labelcolor(g_colours.pop_desc);
 }
 
 void CompletionPopupBase::set_all(std::vector<Candidate> all) {
@@ -111,9 +111,9 @@ CompletionPopup::CompletionPopup()
 }
 
 void CompletionPopup::draw() {
-    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colors.pop_bg);
+    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colours.pop_bg);
     draw_children();
-    fl_color(g_colors.pop_border);
+    fl_color(g_colours.pop_border);
     fl_rect(x(), y(), w(), h());
 }
 
@@ -203,10 +203,10 @@ CompletionPopupWindow::CompletionPopupWindow(MainWindow *main)
 
 void CompletionPopupWindow::draw() {
     // 背景を自前で塗ってから子を描画し、最後に枠線を重ねる。
-    fl_draw_box(FL_FLAT_BOX, 0, 0, w(), h(), g_colors.pop_bg);
+    fl_draw_box(FL_FLAT_BOX, 0, 0, w(), h(), g_colours.pop_bg);
     draw_child(*list_);
     draw_child(*desc_);
-    fl_color(g_colors.pop_border);
+    fl_color(g_colours.pop_border);
     fl_rect(0, 0, w(), h());
 }
 

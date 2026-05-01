@@ -1,8 +1,9 @@
-// PrefsDialog — 設定ダイアログの枠組み (5 タブ: General / Appearance /
-// Input / Number Format / Calculation)。タブ本体は prefs/tab_*.cpp、
-// 共有ロジックは prefs/prefs_common.{h,cpp} に分割してある。
+// PrefsDialogue — 設定ダイアログの枠組み (6 タブ: General / Window /
+// Appearance / Input / Number Format / Calculation)。 タブ本体は
+// prefs/tab_*.cpp、 共有ロジックは prefs/prefs_common.{h,cpp} に
+// 分割してある。
 
-#include "PrefsDialog.h"
+#include "PrefsDialogue.h"
 #include "SheetView.h"
 #include "prefs/prefs_common.h"
 #include "i18n.h"
@@ -12,7 +13,7 @@
 #include <FL/Fl_Button.H>
 #include <FL/fl_ask.H>
 
-void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
+void PrefsDialogue::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     DlgState st{};
     st.sheet = sheet;
     st.ui_cb = ui_cb;
@@ -34,6 +35,7 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     st.tabs = &tabs;
 
     build_general_tab(st, TAB_H);
+    build_window_tab(st, TAB_H);
     build_appearance_tab(st, TAB_H);
     build_input_tab(st, TAB_H);
     build_number_format_tab(st, TAB_H);
@@ -44,18 +46,18 @@ void PrefsDialog::run(SheetView *sheet, PrefsApplyUiCb ui_cb, void *ui_data) {
     refresh_previews(&st);
     update_swatch_state(&st);
 
-    // --- OK / Cancel / Apply / Reset ---
+    // --- OK / Cancel / Apply / Restore ---
     int by = DH - 38;
     int bw = 80, bh = 28;
 
-    Fl_Button reset_btn(8, by, 60, bh, _("Reset"));
+    Fl_Button reset_btn(8, by, 70, bh, _("Restore"));
     reset_btn.color(DLG_BTN);
     reset_btn.labelcolor(DLG_TEXT);
     reset_btn.labelsize(12);
-    reset_btn.tooltip(_("Reset all settings to defaults"));
+    reset_btn.tooltip(_("Restore all settings to their defaults"));
     reset_btn.callback([](Fl_Widget *, void *data) {
-        if (fl_choice("%s", _("Cancel"), _("Reset"), nullptr,
-                      _("Reset all settings to defaults?")) == 1)
+        if (fl_choice("%s", _("Cancel"), _("Restore"), nullptr,
+                      _("Restore all settings to their defaults?")) == 1)
             reset_to_defaults(static_cast<DlgState *>(data));
     }, &st);
 

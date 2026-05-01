@@ -1,4 +1,4 @@
-/* tui_color_source = semantic 用の色名 ↔ FTXUI Color enum マッピング。 */
+/* tui_colour_source = semantic 用の色名 ↔ FTXUI Color enum マッピング。 */
 
 #include "SemanticColors.h"
 
@@ -11,7 +11,7 @@ using ftxui::Color;
 /* ANSI 0-7 = 通常 8 色 (`white` は ftxui::Color::GrayLight = ANSI 7)、
  * ANSI 8-15 = light 8 色 (`white-light` = ftxui::Color::White = ANSI 15)。
  * `default` は端末既定色 (前景色 / 背景色は描画コンテキスト次第)。 */
-const SemanticColorChoice kSemanticColors[] = {
+const SemanticColorChoice kSemanticColours[] = {
     { "default",       Color::Default      },
     { "black",         Color::Black        },
     { "red",           Color::Red          },
@@ -31,13 +31,13 @@ const SemanticColorChoice kSemanticColors[] = {
     { "white-light",   Color::White        },
 };
 const int kSemanticColorCount =
-    (int)(sizeof(kSemanticColors) / sizeof(kSemanticColors[0]));
+    (int)(sizeof(kSemanticColours) / sizeof(kSemanticColours[0]));
 
 ftxui::Color parse_semantic_color(const std::string &name,
                                   ftxui::Color       fallback) {
     for (int i = 0; i < kSemanticColorCount; i++) {
-        if (name == kSemanticColors[i].name)
-            return kSemanticColors[i].color;
+        if (name == kSemanticColours[i].name)
+            return kSemanticColours[i].color;
     }
     return fallback;
 }

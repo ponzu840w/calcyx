@@ -1,11 +1,11 @@
 // 移植元: Calctus/UI/MainForm.cs (簡略版)
 
 #include "MainWindow.h"
-#include "PrefsDialog.h"
+#include "PrefsDialogue.h"
 #include "settings_globals.h"
 #include "i18n.h"
 #include "platform_tray.h"
-#include "colors.h"
+#include "colours.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Native_File_Chooser.H>
 #include "app_prefs.h"
@@ -53,15 +53,15 @@ static const int FMT_COUNT = 8;
 
 static std::string find_icon_svg();
 
-// UI クロームカラーは g_colors.ui_* から取得
-#define C_WIN_BG   g_colors.ui_win_bg
-#define C_MENU_BG  g_colors.ui_menu
-#define C_MENU_FG  g_colors.ui_text
+// UI クロームカラーは g_colours.ui_* から取得
+#define C_WIN_BG   g_colours.ui_win_bg
+#define C_MENU_BG  g_colours.ui_menu
+#define C_MENU_FG  g_colours.ui_text
 
 // コンパクトモードのアイコン色: labelcolor と背景の 50:50 ブレンド。
 // FLTK 1.x は widget α を持たないので「薄めた色」で擬似透過にする。
 static Fl_Color compact_overlay_color(Fl_Color fg) {
-    return fl_color_average(fg, g_colors.bg, 0.5f);
+    return fl_color_average(fg, g_colours.bg, 0.5f);
 }
 
 // コンパクトモードのドラッグハンドル。3x3 ドット柄を描画し、
@@ -312,13 +312,13 @@ MainWindow::MainWindow(int w, int h, const char *title)
                FL_MENU_TOGGLE | FL_MENU_DIVIDER);
     // Color Scheme サブメニュー (FL_MENU_RADIO)
     // USER_DEFINED は Prefs で編集する扱い。メニューには名前付きプリセットのみ出す。
-    scheme_cmds_.reserve(COLOR_PRESET_COUNT);
-    for (int i = 0; i < COLOR_PRESET_COUNT; i++) {
+    scheme_cmds_.reserve(COLOUR_PRESET_COUNT);
+    for (int i = 0; i < COLOUR_PRESET_COUNT; i++) {
         char buf[24]; snprintf(buf, sizeof(buf), "scheme_%d", i);
         scheme_cmds_.push_back(buf);
-        if (i == COLOR_PRESET_USER_DEFINED) continue;
+        if (i == COLOUR_PRESET_USER_DEFINED) continue;
         /* parent path だけ翻訳。 preset 名 (otaku-black 等) は固定。 */
-        std::string path = std::string(_("&View/Color &Scheme")) + "/" + COLOR_PRESET_INFO[i].label;
+        std::string path = std::string(_("&View/Colour &Scheme")) + "/" + COLOUR_PRESET_INFO[i].label;
         add_menu(path.c_str(), 0, menu_cb, (void*)scheme_cmds_[i].c_str(), FL_MENU_RADIO);
     }
     add_menu(_("&View/Show &Row Lines"),           0, menu_cb, (void*)"toggle_rowlines",
@@ -501,7 +501,7 @@ void MainWindow::resize(int nx, int ny, int nw, int nh) {
 }
 
 void MainWindow::apply_ui_colors() {
-    colors_apply_fl_scheme();
+    colours_apply_fl_scheme();
     color(C_WIN_BG);
     menu_->color(C_MENU_BG);
     menu_->textcolor(C_MENU_FG);
@@ -527,7 +527,7 @@ void MainWindow::update_toolbar() {
 
     // ← → ボタン: deactivate() は白っぽくなるので labelcolor だけ変更
     // (undo/redo は内部でガードしているので、無効時にクリックしても安全)
-    Fl_Color C_DIM = g_colors.ui_dim;
+    Fl_Color C_DIM = g_colours.ui_dim;
     btn_undo_->labelcolor(u ? C_MENU_FG : C_DIM);
     btn_redo_->labelcolor(r ? C_MENU_FG : C_DIM);
     btn_undo_->redraw();
@@ -682,7 +682,7 @@ static void show_about(MainWindow *win) {
     const int DW = 420, DH = 380;
     Fl_Double_Window dlg(DW, DH, _("About calcyx"));
     dlg.set_modal();
-    dlg.color(g_colors.ui_bg);
+    dlg.color(g_colours.ui_bg);
 
     // アイコン
     Fl_Box icon_box(DW / 2 - 32, 10, 64, 64);
@@ -691,8 +691,8 @@ static void show_about(MainWindow *win) {
 
     // HTML コンテンツ
     Fl_Help_View hv(10, 80, DW - 20, DH - 120);
-    hv.color(g_colors.ui_bg);
-    hv.textcolor(g_colors.ui_text);
+    hv.color(g_colours.ui_bg);
+    hv.textcolor(g_colours.ui_text);
     hv.textfont(FL_HELVETICA);
     hv.textsize(12);
     hv.link(about_link_cb);
@@ -757,7 +757,7 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
     static const CmdEntry COMMANDS[] = {
         {"open",      cmd_open},
         {"prefs", [](MainWindow *win) {
-            PrefsDialog::run(win->sheet_, [](void *d) {
+            PrefsDialogue::run(win->sheet_, [](void *d) {
                 auto *mw = static_cast<MainWindow *>(d);
                 mw->apply_ui_colors();
                 mw->apply_tray_settings();
@@ -852,11 +852,11 @@ void MainWindow::menu_cb(Fl_Widget *w, void *data) {
         if (strcmp(cmd, c.id) == 0) { c.fn(win); return; }
     }
 
-    /* 動的コマンド: scheme_N (N = 0..COLOR_PRESET_COUNT-1) */
+    /* 動的コマンド: scheme_N (N = 0..COLOUR_PRESET_COUNT-1) */
     if (strncmp(cmd, "scheme_", 7) == 0) {
         int idx = atoi(cmd + 7);
-        if (idx >= 0 && idx < COLOR_PRESET_COUNT) {
-            colors_apply_preset(idx);
+        if (idx >= 0 && idx < COLOUR_PRESET_COUNT) {
+            colours_apply_preset(idx);
             win->apply_ui_colors();
             win->sync_view_menu_toggles();
         }
@@ -1233,8 +1233,8 @@ void MainWindow::sync_view_menu_toggles() {
     set_check("toggle_tray",          g_tray_icon);
     set_check("topmost",              topmost_);
     set_check("toggle_compact",       compact_mode_);
-    for (int i = 0; i < COLOR_PRESET_COUNT; i++)
-        set_check(scheme_cmds_[i].c_str(), i == g_color_preset);
+    for (int i = 0; i < COLOUR_PRESET_COUNT; i++)
+        set_check(scheme_cmds_[i].c_str(), i == g_colour_preset);
     menu_->redraw();
 #ifdef __APPLE__
     if (sys_menu_) sys_menu_->redraw();

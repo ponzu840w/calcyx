@@ -111,7 +111,7 @@ static EventHandlerRef s_handler_ref = nullptr;
 
 /* カラーアイコン → テンプレート用モノクロアウトライン生成。
  *
- * 入力 NSImage を 2x 解像度の RGBA に rasterize し、 luminance の
+ * 入力 NSImage を 2x 解像度の RGBA に rasterise し、 luminance の
  * Sobel エッジ強度を新しい alpha とした NSImage を返す。 RGB は 0
  * (system tint で塗られるので不要)。 setTemplate:YES 済み。
  *

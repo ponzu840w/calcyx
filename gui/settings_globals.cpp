@@ -5,7 +5,7 @@
 #include "settings_globals.h"
 #include "AppSettings.h"
 #include "app_prefs.h"
-#include "colors.h"
+#include "colours.h"
 #include "platform_tray.h"
 #include "crash_handler.h"
 #include <FL/Fl.H>
@@ -82,7 +82,7 @@ static Fl_Font font_name_to_id(const std::string &name) {
 }
 
 // ---- Fl_Color <-> hex string 変換 ----
-static std::string color_to_hex(Fl_Color c) {
+static std::string colour_to_hex(Fl_Color c) {
     uchar r, g, b;
     Fl::get_color(c, r, g, b);
     char buf[8];
@@ -171,35 +171,35 @@ const GuiTarget GUI_TARGETS[] = {
     {"hotkey_shift",   &g_hotkey_shift},
     {"hotkey_key",     &g_hotkey_keycode},
     // Colors
-    {"color_preset",    &g_color_preset},
-    {"color_bg",        &g_colors.bg},
-    {"color_sel_bg",    &g_colors.sel_bg},
-    {"color_rowline",   &g_colors.rowline},
-    {"color_text",      &g_colors.text},
-    {"color_accent",    &g_colors.accent},
-    {"color_symbol",    &g_colors.symbol},
-    {"color_ident",     &g_colors.ident},
-    {"color_special",   &g_colors.special},
-    {"color_si_pfx",    &g_colors.si_pfx},
-    {"color_paren0",    &g_colors.paren[0]},
-    {"color_paren1",    &g_colors.paren[1]},
-    {"color_paren2",    &g_colors.paren[2]},
-    {"color_paren3",    &g_colors.paren[3]},
-    {"color_error",     &g_colors.error},
-    {"color_ui_win_bg", &g_colors.ui_win_bg},
-    {"color_ui_bg",     &g_colors.ui_bg},
-    {"color_ui_input",  &g_colors.ui_input},
-    {"color_ui_btn",    &g_colors.ui_btn},
-    {"color_ui_menu",   &g_colors.ui_menu},
-    {"color_ui_text",   &g_colors.ui_text},
-    {"color_ui_label",  &g_colors.ui_label},
-    {"color_ui_dim",    &g_colors.ui_dim},
-    {"color_pop_bg",    &g_colors.pop_bg},
-    {"color_pop_sel",   &g_colors.pop_sel},
-    {"color_pop_text",  &g_colors.pop_text},
-    {"color_pop_desc",  &g_colors.pop_desc},
-    {"color_pop_desc_bg", &g_colors.pop_desc_bg},
-    {"color_pop_border",  &g_colors.pop_border},
+    {"colour_preset",    &g_colour_preset},
+    {"colour_bg",        &g_colours.bg},
+    {"colour_sel_bg",    &g_colours.sel_bg},
+    {"colour_rowline",   &g_colours.rowline},
+    {"colour_text",      &g_colours.text},
+    {"colour_accent",    &g_colours.accent},
+    {"colour_symbol",    &g_colours.symbol},
+    {"colour_ident",     &g_colours.ident},
+    {"colour_special",   &g_colours.special},
+    {"colour_si_pfx",    &g_colours.si_pfx},
+    {"colour_paren0",    &g_colours.paren[0]},
+    {"colour_paren1",    &g_colours.paren[1]},
+    {"colour_paren2",    &g_colours.paren[2]},
+    {"colour_paren3",    &g_colours.paren[3]},
+    {"colour_error",     &g_colours.error},
+    {"colour_ui_win_bg", &g_colours.ui_win_bg},
+    {"colour_ui_bg",     &g_colours.ui_bg},
+    {"colour_ui_input",  &g_colours.ui_input},
+    {"colour_ui_btn",    &g_colours.ui_btn},
+    {"colour_ui_menu",   &g_colours.ui_menu},
+    {"colour_ui_text",   &g_colours.ui_text},
+    {"colour_ui_label",  &g_colours.ui_label},
+    {"colour_ui_dim",    &g_colours.ui_dim},
+    {"colour_pop_bg",    &g_colours.pop_bg},
+    {"colour_pop_sel",   &g_colours.pop_sel},
+    {"colour_pop_text",  &g_colours.pop_text},
+    {"colour_pop_desc",  &g_colours.pop_desc},
+    {"colour_pop_desc_bg", &g_colours.pop_desc_bg},
+    {"colour_pop_border",  &g_colours.pop_border},
 };
 
 void *gui_target(const char *key) {
@@ -209,41 +209,41 @@ void *gui_target(const char *key) {
     return nullptr;
 }
 
-// K_COLOR エントリに対応する CalcyxColors のデフォルトメンバ値を返す。
-Fl_Color color_default(const char *key, const CalcyxColors &def) {
-    struct { const char *k; Fl_Color CalcyxColors::*m; } simple[] = {
-        {"color_bg",       &CalcyxColors::bg},
-        {"color_sel_bg",   &CalcyxColors::sel_bg},
-        {"color_rowline",  &CalcyxColors::rowline},
-        {"color_text",     &CalcyxColors::text},
-        {"color_accent",   &CalcyxColors::accent},
-        {"color_symbol",   &CalcyxColors::symbol},
-        {"color_ident",    &CalcyxColors::ident},
-        {"color_special",  &CalcyxColors::special},
-        {"color_si_pfx",   &CalcyxColors::si_pfx},
-        {"color_error",    &CalcyxColors::error},
-        {"color_ui_win_bg",&CalcyxColors::ui_win_bg},
-        {"color_ui_bg",    &CalcyxColors::ui_bg},
-        {"color_ui_input", &CalcyxColors::ui_input},
-        {"color_ui_btn",   &CalcyxColors::ui_btn},
-        {"color_ui_menu",  &CalcyxColors::ui_menu},
-        {"color_ui_text",  &CalcyxColors::ui_text},
-        {"color_ui_label", &CalcyxColors::ui_label},
-        {"color_ui_dim",   &CalcyxColors::ui_dim},
-        {"color_pop_bg",   &CalcyxColors::pop_bg},
-        {"color_pop_sel",  &CalcyxColors::pop_sel},
-        {"color_pop_text", &CalcyxColors::pop_text},
-        {"color_pop_desc", &CalcyxColors::pop_desc},
-        {"color_pop_desc_bg", &CalcyxColors::pop_desc_bg},
-        {"color_pop_border",  &CalcyxColors::pop_border},
+// K_COLOR エントリに対応する CalcyxColours のデフォルトメンバ値を返す。
+Fl_Color colour_default(const char *key, const CalcyxColours &def) {
+    struct { const char *k; Fl_Color CalcyxColours::*m; } simple[] = {
+        {"colour_bg",       &CalcyxColours::bg},
+        {"colour_sel_bg",   &CalcyxColours::sel_bg},
+        {"colour_rowline",  &CalcyxColours::rowline},
+        {"colour_text",     &CalcyxColours::text},
+        {"colour_accent",   &CalcyxColours::accent},
+        {"colour_symbol",   &CalcyxColours::symbol},
+        {"colour_ident",    &CalcyxColours::ident},
+        {"colour_special",  &CalcyxColours::special},
+        {"colour_si_pfx",   &CalcyxColours::si_pfx},
+        {"colour_error",    &CalcyxColours::error},
+        {"colour_ui_win_bg",&CalcyxColours::ui_win_bg},
+        {"colour_ui_bg",    &CalcyxColours::ui_bg},
+        {"colour_ui_input", &CalcyxColours::ui_input},
+        {"colour_ui_btn",   &CalcyxColours::ui_btn},
+        {"colour_ui_menu",  &CalcyxColours::ui_menu},
+        {"colour_ui_text",  &CalcyxColours::ui_text},
+        {"colour_ui_label", &CalcyxColours::ui_label},
+        {"colour_ui_dim",   &CalcyxColours::ui_dim},
+        {"colour_pop_bg",   &CalcyxColours::pop_bg},
+        {"colour_pop_sel",  &CalcyxColours::pop_sel},
+        {"colour_pop_text", &CalcyxColours::pop_text},
+        {"colour_pop_desc", &CalcyxColours::pop_desc},
+        {"colour_pop_desc_bg", &CalcyxColours::pop_desc_bg},
+        {"colour_pop_border",  &CalcyxColours::pop_border},
     };
     for (auto &e : simple) {
         if (strcmp(e.k, key) == 0) return def.*(e.m);
     }
-    if (strcmp(key, "color_paren0") == 0) return def.paren[0];
-    if (strcmp(key, "color_paren1") == 0) return def.paren[1];
-    if (strcmp(key, "color_paren2") == 0) return def.paren[2];
-    if (strcmp(key, "color_paren3") == 0) return def.paren[3];
+    if (strcmp(key, "colour_paren0") == 0) return def.paren[0];
+    if (strcmp(key, "colour_paren1") == 0) return def.paren[1];
+    if (strcmp(key, "colour_paren2") == 0) return def.paren[2];
+    if (strcmp(key, "colour_paren3") == 0) return def.paren[3];
     return FL_BLACK;
 }
 
@@ -416,10 +416,10 @@ static void apply_kv_to_globals(const std::map<std::string, std::string> &kv) {
         }
         case CALCYX_SETTING_KIND_COLOR_PRESET: {
             std::string ps = map_get(kv, d.key,
-                COLOR_PRESET_INFO[d.i_def].id);
+                COLOUR_PRESET_INFO[d.i_def].id);
             int idx = d.i_def;
-            for (int j = 0; j < COLOR_PRESET_COUNT; j++) {
-                if (ps == COLOR_PRESET_INFO[j].id) { idx = j; break; }
+            for (int j = 0; j < COLOUR_PRESET_COUNT; j++) {
+                if (ps == COLOUR_PRESET_INFO[j].id) { idx = j; break; }
             }
             *(int *)target = idx;
             break;
@@ -433,11 +433,11 @@ static void apply_kv_to_globals(const std::map<std::string, std::string> &kv) {
         }
     }
 
-    /* color_* は preset によらず常に g_user_colors に読み込む。
+    /* color_* は preset によらず常に g_user_colours に読み込む。
      * '#key=value' (commented) 形式も settings_io が値として返すので、
      * preset != USER のセッション越しの色設定が round-trip する。 */
-    CalcyxColors def;
-    colors_init_defaults(&def);
+    CalcyxColours def;
+    colours_init_defaults(&def);
     for (int i = 0; i < n; i++) {
         const calcyx_setting_desc_t &d = table[i];
         if (d.kind != CALCYX_SETTING_KIND_COLOR) continue;
@@ -445,15 +445,15 @@ static void apply_kv_to_globals(const std::map<std::string, std::string> &kv) {
         if (kv.find(d.key) == kv.end()) continue;
         void *target = gui_target(d.key);
         if (!target) continue;
-        size_t offset = (char *)target - (char *)&g_colors;
+        size_t offset = (char *)target - (char *)&g_colours;
         Fl_Color *user_target =
-            (Fl_Color *)((char *)&g_user_colors + offset);
-        Fl_Color fallback = color_default(d.key, def);
+            (Fl_Color *)((char *)&g_user_colours + offset);
+        Fl_Color fallback = colour_default(d.key, def);
         *user_target = hex_to_color(map_get(kv, d.key, ""), fallback);
     }
-    /* g_colors は preset に応じて: USER_DEFINED なら g_user_colors のコピー、
+    /* g_colours は preset に応じて: USER_DEFINED なら g_user_colours のコピー、
      * そうでなければ preset 由来の色値で上書き。 */
-    colors_apply_preset(g_color_preset);
+    colours_apply_preset(g_colour_preset);
 }
 
 void settings_load() {
@@ -530,7 +530,7 @@ int gui_value_lookup(const char *key, char *buf, size_t buflen,
         return 1;
     }
     case CALCYX_SETTING_KIND_COLOR_PRESET: {
-        const char *id = COLOR_PRESET_INFO[*(int *)target].id;
+        const char *id = COLOUR_PRESET_INFO[*(int *)target].id;
         snprintf(buf, buflen, "%s", id);
         if (out_is_default)
             *out_is_default = (d->s_def && strcmp(id, d->s_def) == 0);
@@ -544,16 +544,16 @@ int gui_value_lookup(const char *key, char *buf, size_t buflen,
         return 1;
     }
     case CALCYX_SETTING_KIND_COLOR: {
-        /* COLOR キーは g_user_colors (preset 切替で温存される) の値を返す。
+        /* COLOR キーは g_user_colours (preset 切替で温存される) の値を返す。
          * is_default = (preset == USER_DEFINED ? 0 : 1).
          * 全 COLOR キーが conf に常駐し preset 切替で commented⇔uncommented
          * の round-trip が成立する。 */
-        size_t offset = (char *)target - (char *)&g_colors;
-        Fl_Color *user_target = (Fl_Color *)((char *)&g_user_colors + offset);
-        std::string hex = color_to_hex(*user_target);
+        size_t offset = (char *)target - (char *)&g_colours;
+        Fl_Color *user_target = (Fl_Color *)((char *)&g_user_colours + offset);
+        std::string hex = colour_to_hex(*user_target);
         snprintf(buf, buflen, "%s", hex.c_str());
         if (out_is_default) {
-            *out_is_default = (g_color_preset != COLOR_PRESET_USER_DEFINED);
+            *out_is_default = (g_colour_preset != COLOUR_PRESET_USER_DEFINED);
         }
         return 1;
     }

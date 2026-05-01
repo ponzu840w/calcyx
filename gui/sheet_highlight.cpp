@@ -1,7 +1,7 @@
 // see sheet_highlight.h. SheetView と SheetLineInput の両方から呼ばれる。
 
 #include "sheet_highlight.h"
-#include "colors.h"
+#include "colours.h"
 #include "settings_globals.h"
 #include <FL/fl_draw.H>
 #include <algorithm>
@@ -205,7 +205,7 @@ void draw_expr_highlighted(const char *expr,
     int len = (int)strlen(expr);
     if (len == 0) return;
 
-    std::vector<Fl_Color> fg(len, g_colors.text);
+    std::vector<Fl_Color> fg(len, g_colours.text);
     std::vector<Fl_Color> bg(len, (Fl_Color)0);
 
     tok_queue_t q;
@@ -225,21 +225,21 @@ void draw_expr_highlighted(const char *expr,
 
         switch (tok.type) {
             case TOK_WORD:
-                for (int i = p; i < end; i++) fg[i] = g_colors.ident;
+                for (int i = p; i < end; i++) fg[i] = g_colours.ident;
                 break;
 
             case TOK_BOOL_LIT:
-                for (int i = p; i < end; i++) fg[i] = g_colors.special;
+                for (int i = p; i < end; i++) fg[i] = g_colours.special;
                 break;
 
             case TOK_NUM_LIT:
                 if (tok.val) {
                     val_fmt_t vfmt = tok.val->fmt;
                     if (vfmt == FMT_SI_PREFIX) {
-                        if (end - 1 >= p) fg[end - 1] = g_colors.si_pfx;
+                        if (end - 1 >= p) fg[end - 1] = g_colours.si_pfx;
                     } else if (vfmt == FMT_BIN_PREFIX) {
-                        if (end - 2 >= p) fg[end - 2] = g_colors.si_pfx;
-                        if (end - 1 >= p) fg[end - 1] = g_colors.si_pfx;
+                        if (end - 2 >= p) fg[end - 2] = g_colours.si_pfx;
+                        if (end - 1 >= p) fg[end - 1] = g_colours.si_pfx;
                     } else if (vfmt == FMT_WEB_COLOR) {
                         unsigned int rgb = 0;
                         const char *hex = tok.text + 1;
@@ -258,12 +258,12 @@ void draw_expr_highlighted(const char *expr,
                         Fl_Color fc = lum < 128 ? FL_WHITE : FL_BLACK;
                         for (int i = p; i < end; i++) { bg[i] = bc; fg[i] = fc; }
                     } else if (vfmt == FMT_CHAR || vfmt == FMT_STRING || vfmt == FMT_DATETIME) {
-                        for (int i = p; i < end; i++) fg[i] = g_colors.special;
+                        for (int i = p; i < end; i++) fg[i] = g_colours.special;
                     } else {
                         for (int i = p + 1; i < end; i++) {
                             if ((expr[i] == 'e' || expr[i] == 'E') &&
                                 isdigit((unsigned char)expr[i-1])) {
-                                for (int k = i; k < end; k++) fg[k] = g_colors.si_pfx;
+                                for (int k = i; k < end; k++) fg[k] = g_colours.si_pfx;
                                 break;
                             }
                         }
@@ -273,18 +273,18 @@ void draw_expr_highlighted(const char *expr,
 
             case TOK_OP:
             case TOK_KEYWORD:
-                for (int i = p; i < end; i++) fg[i] = g_colors.symbol;
+                for (int i = p; i < end; i++) fg[i] = g_colours.symbol;
                 break;
 
             case TOK_SYMBOL:
                 if (tl == 1 && (tok.text[0] == '(' || tok.text[0] == ')')) {
                     int d = paren_depth;
                     if (tok.text[0] == ')' && d > 0) d--;
-                    fg[p] = g_colors.paren[d % 4];
+                    fg[p] = g_colours.paren[d % 4];
                     if (tok.text[0] == '(') paren_depth++;
                     else if (paren_depth > 0) paren_depth--;
                 } else {
-                    for (int i = p; i < end; i++) fg[i] = g_colors.symbol;
+                    for (int i = p; i < end; i++) fg[i] = g_colours.symbol;
                 }
                 break;
 

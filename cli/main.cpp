@@ -161,16 +161,16 @@ struct ConfMap {
 
 /* effective preset: conf にあればそれ、 なければ schema の s_def. */
 std::string effective_preset(const std::map<std::string, std::string> &kv) {
-    auto it = kv.find("color_preset");
+    auto it = kv.find("colour_preset");
     if (it != kv.end()) return it->second;
-    const calcyx_setting_desc_t *d = calcyx_settings_find("color_preset");
+    const calcyx_setting_desc_t *d = calcyx_settings_find("colour_preset");
     return d && d->s_def ? d->s_def : "otaku-black";
 }
 
 int run_print_config(const char *path) {
     ConfMap cm;
     calcyx_conf_each(path, ConfMap::cb, &cm);   /* 失敗しても空 conf として続行 */
-    bool user_colors = (effective_preset(cm.kv) == "user-defined");
+    bool user_colours = (effective_preset(cm.kv) == "user-defined");
 
     int n = 0;
     const calcyx_setting_desc_t *table = calcyx_settings_table(&n);
@@ -211,7 +211,7 @@ int run_print_config(const char *path) {
         }
         case CALCYX_SETTING_KIND_COLOR: {
             /* preset != user-defined のときは color_* を出力しない (settings_save の挙動と一致)。 */
-            if (!user_colors) break;
+            if (!user_colours) break;
             const char *v = raw ? raw : "#000000";
             std::printf("%s = %s\n", d.key, v);
             break;
@@ -300,7 +300,7 @@ void check_cb(const char *key, const char *value, int line_no, void *user) {
             std::fprintf(stderr,
                 "warning: line %d: '%s' is empty\n", line_no, key);
             cx->warnings++;
-        } else if (std::strcmp(key, "tui_color_source") == 0) {
+        } else if (std::strcmp(key, "tui_colour_source") == 0) {
             if (std::strcmp(value, "semantic") != 0 &&
                 std::strcmp(value, "mirror_gui") != 0) {
                 std::fprintf(stderr,

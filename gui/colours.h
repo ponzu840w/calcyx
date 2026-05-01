@@ -1,11 +1,11 @@
-// colors.h — calcyx UI カラーテーマ定義
+// colours.h — calcyx UI カラーテーマ定義
 // calctus Settings.Appearance_Color_* に準拠した論理名で管理する。
-// 将来の設定ダイアログで g_colors を書き換えることで全 UI に反映できる。
+// 将来の設定ダイアログで g_colours を書き換えることで全 UI に反映できる。
 
 #pragma once
 #include <FL/Fl.H>
 
-/* ---- CalcyxColors ---- */
+/* ---- CalcyxColours ---- */
 
 typedef struct {
     /* 背景 / フレーム */
@@ -43,40 +43,40 @@ typedef struct {
     Fl_Color pop_desc;   /* 説明文テキスト */
     Fl_Color pop_desc_bg;/* 説明文背景 */
     Fl_Color pop_border; /* 枠線 */
-} CalcyxColors;
+} CalcyxColours;
 
 /* ---- カラープリセット ---- */
 
-enum ColorPreset {
-    COLOR_PRESET_OTAKU_BLACK = 0,
-    COLOR_PRESET_GYAKUBARI_WHITE,
-    COLOR_PRESET_SABOTEN_GREY,
-    COLOR_PRESET_SABOTEN_WHITE,
-    COLOR_PRESET_USER_DEFINED,
-    COLOR_PRESET_COUNT,
+enum ColourPreset {
+    COLOUR_PRESET_OTAKU_BLACK = 0,
+    COLOUR_PRESET_GYAKUBARI_WHITE,
+    COLOUR_PRESET_SABOTEN_GREY,
+    COLOUR_PRESET_SABOTEN_WHITE,
+    COLOUR_PRESET_USER_DEFINED,
+    COLOUR_PRESET_COUNT,
 };
 
-struct ColorPresetInfo {
+struct ColourPresetInfo {
     const char *id;
     const char *label;
 };
 
-extern const ColorPresetInfo COLOR_PRESET_INFO[COLOR_PRESET_COUNT];
+extern const ColourPresetInfo COLOUR_PRESET_INFO[COLOUR_PRESET_COUNT];
 
-/* g_colors      : 描画に使う現在色 (preset 切替で上書き)。
- * g_user_colors : USER_DEFINED 用のバックアップ (preset 切替では触らない)。 */
+/* g_colours      : 描画に使う現在色 (preset 切替で上書き)。
+ * g_user_colours : USER_DEFINED 用のバックアップ (preset 切替では触らない)。 */
 
 /* 実体は AppSettings (gui/AppSettings.h) の g_settings に統合済み。
  * 既存コードのため `g_<name>` の名前で参照を再公開している。 */
-extern CalcyxColors &g_colors;
-extern CalcyxColors &g_user_colors;
-extern int          &g_color_preset;
+extern CalcyxColours &g_colours;
+extern CalcyxColours &g_user_colours;
+extern int          &g_colour_preset;
 
-void colors_init_defaults(CalcyxColors *c);
-void colors_init_preset(CalcyxColors *c, int preset);
-void colors_apply_fl_scheme();
+void colours_init_defaults(CalcyxColours *c);
+void colours_init_preset(CalcyxColours *c, int preset);
+void colours_apply_fl_scheme();
 
-/* preset を g_color_preset に設定し、 g_colors を更新する。
- *  - preset == USER_DEFINED → g_colors = g_user_colors (バックアップから復元)
- *  - それ以外               → g_colors を preset 値で上書き。 g_user_colors は触らない。 */
-void colors_apply_preset(int preset);
+/* preset を g_colour_preset に設定し、 g_colours を更新する。
+ *  - preset == USER_DEFINED → g_colours = g_user_colours (バックアップから復元)
+ *  - それ以外               → g_colours を preset 値で上書き。 g_user_colours は触らない。 */
+void colours_apply_preset(int preset);

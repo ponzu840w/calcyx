@@ -2,7 +2,7 @@
 #include "SheetView.h"
 #include "CompletionPopup.h"
 #include "sheet_highlight.h"
-#include "colors.h"
+#include "colours.h"
 #include "settings_globals.h"
 #include <FL/Fl.H>
 #include <FL/fl_draw.H>
@@ -34,7 +34,7 @@ void SheetLineInput::draw() {
         calc_separator_shifts(txt, len, result_fmt_, shifts);
 
     // 背景
-    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colors.sel_bg);
+    fl_draw_box(FL_FLAT_BOX, x(), y(), w(), h(), g_colours.sel_bg);
 
     // 選択ハイライト背景 (フォーカスがある時のみ)
     if (p1 != p2 && Fl::focus() == this) {

@@ -23,7 +23,7 @@ struct TrayCallbacks {
 
 // ---- トレイアイコン ----
 // owner: トレイメッセージを受け取る Fl_Window* (MainWindow)
-// Fl::first_window() は PrefsDialog 等に化ける場合があるので明示指定が必要
+// Fl::first_window() は PrefsDialogue 等に化ける場合があるので明示指定が必要
 bool  plat_tray_create(void *owner, const TrayCallbacks &cb);
 void  plat_tray_destroy();
 bool  plat_tray_is_active();

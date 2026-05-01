@@ -75,19 +75,19 @@ static int lookup_basic(const char *key, char *buf, size_t buflen,
     if (strcmp(key, "max_array_length") == 0)    { snprintf(buf, buflen, "256"); return 1; }
     if (strcmp(key, "max_string_length") == 0)   { snprintf(buf, buflen, "256"); return 1; }
     if (strcmp(key, "max_call_depth") == 0)      { snprintf(buf, buflen, "64"); return 1; }
-    if (strcmp(key, "color_preset") == 0)        { snprintf(buf, buflen, "otaku-black"); return 1; }
+    if (strcmp(key, "colour_preset") == 0)        { snprintf(buf, buflen, "otaku-black"); return 1; }
     /* 該当しないキーは管轄外 (LEAVE) */
     return -1;
 }
 
-/* user-defined preset 想定: color_preset = user-defined, 一部 color_* を提供。 */
+/* user-defined preset 想定: colour_preset = user-defined, 一部 color_* を提供。 */
 static int lookup_user_colors(const char *key, char *buf, size_t buflen,
                               int *out_is_default, void *user) {
     (void)user;
     if (out_is_default) *out_is_default = 0;
-    if (strcmp(key, "color_preset") == 0) { snprintf(buf, buflen, "user-defined"); return 1; }
-    if (strcmp(key, "color_bg") == 0)     { snprintf(buf, buflen, "#102030"); return 1; }
-    if (strcmp(key, "color_text") == 0)   { snprintf(buf, buflen, "#ffffff"); return 1; }
+    if (strcmp(key, "colour_preset") == 0) { snprintf(buf, buflen, "user-defined"); return 1; }
+    if (strcmp(key, "colour_bg") == 0)     { snprintf(buf, buflen, "#102030"); return 1; }
+    if (strcmp(key, "colour_text") == 0)   { snprintf(buf, buflen, "#ffffff"); return 1; }
     return -1;
 }
 
@@ -182,13 +182,13 @@ static void test_default_marker_comments_line(void) {
     remove(path);
 }
 
-/* T3b: 既に commented な行 (#color_bg = ...) で lookup が is_default=0 を返す場合、
+/* T3b: 既に commented な行 (#colour_bg = ...) で lookup が is_default=0 を返す場合、
  * uncomment されて key = value 形式になる (再度 user-defined に切替えるシナリオ)。 */
 static void test_commented_uncomments_when_value_returned(void) {
     char path[256];
     mkpath(path, sizeof(path), "calcyx_test_writer_T3b.conf");
     const char *body =
-        "#color_bg = #ababab\n"
+        "#colour_bg = #ababab\n"
         "decimal_digits = 6\n";
     write_all(path, body);
 
@@ -197,10 +197,10 @@ static void test_commented_uncomments_when_value_returned(void) {
     check("T3b rc", rc == 0);
 
     char *out = read_all(path);
-    check("T3b color_bg uncommented with new value",
-          contains_at_line_start(out, "color_bg = #102030\n"));
+    check("T3b colour_bg uncommented with new value",
+          contains_at_line_start(out, "colour_bg = #102030\n"));
     check("T3b old commented form gone",
-          !contains(out, "#color_bg = #ababab"));
+          !contains(out, "#colour_bg = #ababab"));
     free(out);
     remove(path);
 }
@@ -215,9 +215,9 @@ static void test_user_preset_emits_colors(void) {
     check("T4 rc", rc == 0);
 
     char *out = read_all(path);
-    check("T4 color_preset emitted", contains(out, "color_preset = user-defined\n"));
-    check("T4 color_bg emitted", contains(out, "color_bg = #102030\n"));
-    check("T4 color_text emitted", contains(out, "color_text = #ffffff\n"));
+    check("T4 colour_preset emitted", contains(out, "colour_preset = user-defined\n"));
+    check("T4 colour_bg emitted", contains(out, "colour_bg = #102030\n"));
+    check("T4 colour_text emitted", contains(out, "colour_text = #ffffff\n"));
     /* lookup が 0 を返したキー (color_link 等) は出力されない */
     check("T4 unset color_* not emitted", !contains(out, "color_link"));
     free(out);
@@ -226,7 +226,7 @@ static void test_user_preset_emits_colors(void) {
 
 /* T4b: lookup が -1 (LEAVE) を返したキーは元の行をそのまま転写し、
  * 上書きも commenting も追記もされない。 GUI 保存で TUI 専用キー
- * (tui_color_source 等) が破壊されないことを担保する重要なシナリオ。 */
+ * (tui_colour_source 等) が破壊されないことを担保する重要なシナリオ。 */
 static int lookup_leave_decimal(const char *key, char *buf, size_t buflen,
                                  int *out_is_default, void *user) {
     (void)buf; (void)buflen; (void)user;

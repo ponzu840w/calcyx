@@ -124,7 +124,7 @@ static void open_font_picker(FontTab *ft, Fl_Window *parent) {
     browser.color(DLG_INPUT);
     browser.textcolor(DLG_TEXT);
     browser.textsize(13);
-    browser.selection_color(g_colors.accent);
+    browser.selection_color(g_colours.accent);
 
     Fl_Check_Button sys_chk(10, PH - 82, 180, 22, _("Use system fonts"));
     sys_chk.labelcolor(DLG_LABEL);
@@ -201,14 +201,14 @@ static void size_change_cb(Fl_Widget *, void *data) {
 
 static void swatch_cb(Fl_Widget *, void *data) {
     auto *sd = static_cast<SwatchData *>(data);
-    if (sd->dlg->preset_choice->value() != COLOR_PRESET_USER_DEFINED)
+    if (sd->dlg->preset_choice->value() != COLOUR_PRESET_USER_DEFINED)
         return;
     uchar r, g, b;
     Fl::get_color(*sd->target, r, g, b);
-    if (fl_color_chooser(_("Color"), r, g, b)) {
+    if (fl_color_chooser(_("Colour"), r, g, b)) {
         *sd->target = fl_rgb_color(r, g, b);
-        /* g_colors と g_user_colors を同期 — グローバルバックアップを更新。 */
-        g_user_colors = g_colors;
+        /* g_colours と g_user_colours を同期 — グローバルバックアップを更新。 */
+        g_user_colours = g_colours;
         update_swatch_labels(sd->dlg);
         refresh_previews(sd->dlg);
     }
@@ -216,20 +216,20 @@ static void swatch_cb(Fl_Widget *, void *data) {
 
 static void preset_change_cb(Fl_Widget *, void *data) {
     auto *st = static_cast<DlgState *>(data);
-    colors_apply_preset(st->preset_choice->value());
+    colours_apply_preset(st->preset_choice->value());
     update_swatch_state(st);
     refresh_dlg_colors(st);
     refresh_previews(st);
 }
 
-/* 現在のプリセット色を g_user_colors にコピーし、 user-defined に切替えて
+/* 現在のプリセット色を g_user_colours にコピーし、 user-defined に切替えて
  * 編集可能状態に入る。 ユーザーが「近いプリセットをベースに微調整したい」
  * というシナリオを 1 クリックで行えるようにする。 */
 static void copy_to_user_cb(Fl_Widget *, void *data) {
     auto *st = static_cast<DlgState *>(data);
-    g_user_colors = g_colors;
-    st->preset_choice->value(COLOR_PRESET_USER_DEFINED);
-    colors_apply_preset(COLOR_PRESET_USER_DEFINED);
+    g_user_colours = g_colours;
+    st->preset_choice->value(COLOUR_PRESET_USER_DEFINED);
+    colours_apply_preset(COLOUR_PRESET_USER_DEFINED);
     update_swatch_state(st);
     refresh_dlg_colors(st);
     refresh_previews(st);
@@ -266,8 +266,8 @@ constexpr int GAP_INPUT_INPUT  = 5;    // 隣り合う入力欄の間 (Choice �
 
 /* 色 swatch グリッド (col_w = W_LABEL_SWATCH + SWATCH_BTN_W + SWATCH_COL_GAP)。
  * ラベル幅 / ボタン幅 / カラム余白を独立に調整可能。 */
-constexpr int SWATCH_COLS    = 3;
-constexpr int SWATCH_ROWS    = 10;
+constexpr int SWATCH_COLS    = 4;
+constexpr int SWATCH_ROWS    = 8;
 constexpr int SWATCH_BTN_W   = 65;
 constexpr int SWATCH_BTN_H   = 18;     // 色ボタンの高さ
 constexpr int SWATCH_ROW_H   = 24;     // 色ボタン行のピッチ (BTN_H + 行間)
@@ -353,7 +353,7 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     ly += H_SIZE_ROW;
 
     // --- Colors ---
-    make_section_header(lx, ly, "Colors");
+    make_section_header(lx, ly, "Colours");
     ly += H_SECTION_HEAD;
 
     {
@@ -364,15 +364,15 @@ void build_appearance_tab(DlgState &st, int tab_h) {
 
         x += W_LABEL_PRESET + GAP_LABEL_INPUT;
         st.preset_choice = make_lockable(
-            new Fl_Choice(x, ly, W_PRESET_CHOICE, H_CONTROL), "color_preset");
+            new Fl_Choice(x, ly, W_PRESET_CHOICE, H_CONTROL), "colour_preset");
         st.preset_choice->color(DLG_INPUT);
         st.preset_choice->textcolor(DLG_TEXT);
         st.preset_choice->labelsize(12);
         st.preset_choice->textsize(12);
-        st.preset_choice->selection_color(g_colors.accent);
-        for (int i = 0; i < COLOR_PRESET_COUNT; i++)
-            st.preset_choice->add(COLOR_PRESET_INFO[i].label);
-        st.preset_choice->value(g_color_preset);
+        st.preset_choice->selection_color(g_colours.accent);
+        for (int i = 0; i < COLOUR_PRESET_COUNT; i++)
+            st.preset_choice->add(COLOUR_PRESET_INFO[i].label);
+        st.preset_choice->value(g_colour_preset);
         st.preset_choice->callback(preset_change_cb, &st);
 
         x += W_PRESET_CHOICE + GAP_INPUT_INPUT;
@@ -380,44 +380,44 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         copy_btn->color(DLG_BTN);
         copy_btn->labelcolor(DLG_TEXT);
         copy_btn->labelsize(12);
-        copy_btn->tooltip(_("Copy current preset colors to user-defined and switch to it for editing"));
+        copy_btn->tooltip(_("Copy current preset colours to user-defined and switch to it for editing"));
         copy_btn->callback(copy_to_user_cb, &st);
     }
     ly += H_INPUT_ROW;
 
     /* --- 色 swatch グリッド --- */
     struct { const char *label; Fl_Color *color; const char *key; } entries[] = {
-        { "Background",   &g_colors.bg,          "color_bg"          },
-        { "Selection",    &g_colors.sel_bg,      "color_sel_bg"      },
-        { "Row Line",     &g_colors.rowline,     "color_rowline"     },
-        { "Text",         &g_colors.text,        "color_text"        },
-        { "Accent",       &g_colors.accent,      "color_accent"      },
-        { "Symbols",      &g_colors.symbol,      "color_symbol"      },
-        { "Identifiers",  &g_colors.ident,       "color_ident"       },
-        { "Literals",     &g_colors.special,     "color_special"     },
-        { "SI Prefix",    &g_colors.si_pfx,      "color_si_pfx"      },
-        { "Error",        &g_colors.error,       "color_error"       },
-        { "Paren 1",      &g_colors.paren[0],    "color_paren0"      },
-        { "Paren 2",      &g_colors.paren[1],    "color_paren1"      },
-        { "Paren 3",      &g_colors.paren[2],    "color_paren2"      },
-        { "Paren 4",      &g_colors.paren[3],    "color_paren3"      },
-        { "Win BG",       &g_colors.ui_win_bg,   "color_ui_win_bg"   },
-        { "Dlg BG",       &g_colors.ui_bg,       "color_ui_bg"       },
-        { "UI Input",     &g_colors.ui_input,    "color_ui_input"    },
-        { "UI Button",    &g_colors.ui_btn,      "color_ui_btn"      },
-        { "Menu BG",      &g_colors.ui_menu,     "color_ui_menu"     },
-        { "UI Text",      &g_colors.ui_text,     "color_ui_text"     },
-        { "UI Label",     &g_colors.ui_label,    "color_ui_label"    },
-        { "UI Dim",       &g_colors.ui_dim,      "color_ui_dim"      },
-        { "Popup BG",     &g_colors.pop_bg,      "color_pop_bg"      },
-        { "Popup Sel",    &g_colors.pop_sel,     "color_pop_sel"     },
-        { "Popup Text",   &g_colors.pop_text,    "color_pop_text"    },
-        { "Popup Desc",   &g_colors.pop_desc,    "color_pop_desc"    },
-        { "Popup DescBG", &g_colors.pop_desc_bg, "color_pop_desc_bg" },
-        { "Popup Border", &g_colors.pop_border,  "color_pop_border"  },
+        { "Background",   &g_colours.bg,          "colour_bg"          },
+        { "Selection",    &g_colours.sel_bg,      "colour_sel_bg"      },
+        { "Row Line",     &g_colours.rowline,     "colour_rowline"     },
+        { "Text",         &g_colours.text,        "colour_text"        },
+        { "Accent",       &g_colours.accent,      "colour_accent"      },
+        { "Symbols",      &g_colours.symbol,      "colour_symbol"      },
+        { "Identifiers",  &g_colours.ident,       "colour_ident"       },
+        { "Literals",     &g_colours.special,     "colour_special"     },
+        { "SI Prefix",    &g_colours.si_pfx,      "colour_si_pfx"      },
+        { "Error",        &g_colours.error,       "colour_error"       },
+        { "Paren 1",      &g_colours.paren[0],    "colour_paren0"      },
+        { "Paren 2",      &g_colours.paren[1],    "colour_paren1"      },
+        { "Paren 3",      &g_colours.paren[2],    "colour_paren2"      },
+        { "Paren 4",      &g_colours.paren[3],    "colour_paren3"      },
+        { "Win BG",       &g_colours.ui_win_bg,   "colour_ui_win_bg"   },
+        { "Dlg BG",       &g_colours.ui_bg,       "colour_ui_bg"       },
+        { "UI Input",     &g_colours.ui_input,    "colour_ui_input"    },
+        { "UI Button",    &g_colours.ui_btn,      "colour_ui_btn"      },
+        { "Menu BG",      &g_colours.ui_menu,     "colour_ui_menu"     },
+        { "UI Text",      &g_colours.ui_text,     "colour_ui_text"     },
+        { "UI Label",     &g_colours.ui_label,    "colour_ui_label"    },
+        { "UI Dim",       &g_colours.ui_dim,      "colour_ui_dim"      },
+        { "Popup BG",     &g_colours.pop_bg,      "colour_pop_bg"      },
+        { "Popup Sel",    &g_colours.pop_sel,     "colour_pop_sel"     },
+        { "Popup Text",   &g_colours.pop_text,    "colour_pop_text"    },
+        { "Popup Desc",   &g_colours.pop_desc,    "colour_pop_desc"    },
+        { "Popup DescBG", &g_colours.pop_desc_bg, "colour_pop_desc_bg" },
+        { "Popup Border", &g_colours.pop_border,  "colour_pop_border"  },
     };
     const int n_entries = (int)(sizeof(entries) / sizeof(entries[0]));
-    st.colors.count = n_entries;
+    st.colours.count = n_entries;
 
     const int col_w = W_LABEL_SWATCH + SWATCH_BTN_W + SWATCH_COL_GAP;
     const int grid_y0 = ly;
@@ -436,10 +436,10 @@ void build_appearance_tab(DlgState &st, int tab_h) {
         btn->color(*entries[i].color);
         btn->labelsize(SWATCH_BTN_FONT_SZ);
         btn->align(FL_ALIGN_INSIDE);
-        st.colors.swatch_data[i] = { entries[i].color, &st };
-        btn->callback(swatch_cb, &st.colors.swatch_data[i]);
-        st.colors.swatches[i] = btn;
-        st.colors.entries[i] = { entries[i].label, entries[i].color, entries[i].key };
+        st.colours.swatch_data[i] = { entries[i].color, &st };
+        btn->callback(swatch_cb, &st.colours.swatch_data[i]);
+        st.colours.swatches[i] = btn;
+        st.colours.entries[i] = { entries[i].label, entries[i].color, entries[i].key };
         /* user_data に schema key 埋め込み (= debug + lock 判定の慣例)。
          * deactivate は update_swatch_state が preset と locked を見て決める。 */
         btn->user_data((void *)entries[i].key);
@@ -466,7 +466,7 @@ void build_appearance_tab(DlgState &st, int tab_h) {
     ly += H_PREVIEW_MARGIN;
     const int preview_h = group_bottom - ly - H_PREVIEW_MARGIN;
     st.font_preview_sv = nullptr;
-    st.color_preview_sv = new SheetView(lx, ly, DW - W_PREVIEW_RPAD, preview_h, true);
+    st.colour_preview_sv = new SheetView(lx, ly, DW - W_PREVIEW_RPAD, preview_h, true);
     st.font.preview = nullptr;
 
     g->end();

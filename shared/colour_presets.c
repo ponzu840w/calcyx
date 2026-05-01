@@ -1,13 +1,13 @@
 /* color_presets.c — see color_presets.h */
 
-#include "color_presets.h"
+#include "colour_presets.h"
 
 #include <stddef.h>
 #include <string.h>
 
 #define RGB(R,G,B) { (unsigned char)(R), (unsigned char)(G), (unsigned char)(B) }
 
-static const calcyx_color_palette_t OTAKU_BLACK = {
+static const calcyx_colour_palette_t OTAKU_BLACK = {
     /* bg/sel_bg/rowline */
     RGB( 22,  22,  22), RGB( 38,  42,  55), RGB( 32,  32,  36),
     /* text/accent */
@@ -26,7 +26,7 @@ static const calcyx_color_palette_t OTAKU_BLACK = {
     RGB( 20,  20,  28), RGB( 80,  80, 100),
 };
 
-static const calcyx_color_palette_t GYAKUBARI_WHITE = {
+static const calcyx_colour_palette_t GYAKUBARI_WHITE = {
     RGB(250, 250, 250), RGB(210, 220, 240), RGB(230, 230, 232),
     RGB(  0,   0,   0), RGB( 0x92,  0xC1, 0xFF),
     RGB(  0, 100, 200), RGB( 40, 130,   0), RGB(180, 100,   0), RGB(140,  60, 200),
@@ -38,7 +38,7 @@ static const calcyx_color_palette_t GYAKUBARI_WHITE = {
     RGB(242, 242, 248), RGB(180, 180, 200),
 };
 
-static const calcyx_color_palette_t SABOTEN_GREY = {
+static const calcyx_colour_palette_t SABOTEN_GREY = {
     RGB( 32,  32,  32), RGB(  0,   0,   0), RGB( 40,  40,  40),
     RGB(255, 255, 255), RGB(  0, 128, 255),
     RGB( 64, 192, 255), RGB(192, 255, 128), RGB(255, 192,  64), RGB(224, 160, 255),
@@ -50,7 +50,7 @@ static const calcyx_color_palette_t SABOTEN_GREY = {
     RGB( 28,  28,  32), RGB( 90,  90,  96),
 };
 
-static const calcyx_color_palette_t SABOTEN_WHITE = {
+static const calcyx_colour_palette_t SABOTEN_WHITE = {
     RGB(224, 224, 224), RGB(255, 255, 255), RGB(216, 216, 216),
     RGB(  0,   0,   0), RGB(  0,  80, 160),
     RGB(  0, 120, 192), RGB( 64, 160,   0), RGB(192, 120,   0), RGB(144,  80, 224),
@@ -65,7 +65,7 @@ static const calcyx_color_palette_t SABOTEN_WHITE = {
 static const struct {
     int         id;
     const char *name;
-    const calcyx_color_palette_t *pal;
+    const calcyx_colour_palette_t *pal;
 } PRESETS[] = {
     { CALCYX_COLOR_PRESET_OTAKU_BLACK,     "otaku-black",     &OTAKU_BLACK     },
     { CALCYX_COLOR_PRESET_GYAKUBARI_WHITE, "gyakubari-white", &GYAKUBARI_WHITE },
@@ -76,7 +76,7 @@ static const struct {
 
 #define N_PRESETS ((int)(sizeof(PRESETS) / sizeof(PRESETS[0])))
 
-int calcyx_color_preset_lookup(const char *id) {
+int calcyx_colour_preset_lookup(const char *id) {
     int i;
     if (!id) return -1;
     for (i = 0; i < N_PRESETS; i++) {
@@ -85,7 +85,7 @@ int calcyx_color_preset_lookup(const char *id) {
     return -1;
 }
 
-const char *calcyx_color_preset_id(int preset) {
+const char *calcyx_colour_preset_id(int preset) {
     int i;
     for (i = 0; i < N_PRESETS; i++) {
         if (PRESETS[i].id == preset) return PRESETS[i].name;
@@ -93,7 +93,7 @@ const char *calcyx_color_preset_id(int preset) {
     return NULL;
 }
 
-void calcyx_color_preset_get(int preset, calcyx_color_palette_t *out) {
+void calcyx_colour_preset_get(int preset, calcyx_colour_palette_t *out) {
     int i;
     if (!out) return;
     for (i = 0; i < N_PRESETS; i++) {

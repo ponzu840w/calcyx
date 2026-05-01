@@ -15,7 +15,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "OK", "OK" },
     { "Cancel", "キャンセル" },
     { "Apply", "適用" },
-    { "Reset", "リセット" },
+    { "Restore", "リセット" },
 
     /* === GUI: メニューバー (FLTK menu_->add の path) ===
      * "&X" の & は次の文字をアクセラレータにする FLTK の慣例。
@@ -41,7 +41,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "&View/Always on &Top",            "表示(&V)/常に手前に表示(&T)" },
     { "&View/&Compact Mode",             "表示(&V)/コンパクトモード(&C)" },
     { "&View/Sys&tem Tray",              "表示(&V)/システムトレイ(&T)" },
-    { "&View/Color &Scheme",             "表示(&V)/カラースキーム(&S)" },
+    { "&View/Colour &Scheme",             "表示(&V)/カラースキーム(&S)" },
     { "&View/Show &Row Lines",           "表示(&V)/罫線を表示(&R)" },
     { "&View/Zoom &In",                  "表示(&V)/拡大(&I)" },
     { "&View/Zoom &Out",                 "表示(&V)/縮小(&O)" },
@@ -70,11 +70,12 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
 
     /* === GUI: Preferences ダイアログ === */
     { "Preferences",                "設定" },
-    { "Reset all settings to defaults", "すべての設定をデフォルトに戻す" },
-    { "Reset all settings to defaults?", "すべての設定をデフォルトに戻しますか?" },
+    { "Restore all settings to their defaults", "すべての設定をデフォルトに戻す" },
+    { "Restore all settings to their defaults?", "すべての設定をデフォルトに戻しますか?" },
 
     /* タブ名 (FLTK タブの内側マージン用に前後スペース) */
     { " General ",         " 一般 " },
+    { " Window ",          " ウィンドウ " },
     { " Appearance ",      " 外観 " },
     { " Input ",           " 入力 " },
     { " Number Format ",   " 数値書式 " },
@@ -83,22 +84,26 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     /* General タブ */
     { "Language",                              "言語" },
     { "Language:",                             "言語:" },
-    { "Restart calcyx after changing language.",
+    { "A restart is required after changing the language.",
       "言語を変更したら calcyx を再起動してください。" },
     { "Window",                                "ウィンドウ" },
     { "System Tray",                           "システムトレイ" },
     { "Global Hotkey",                         "グローバルホットキー" },
     { "Configuration",                         "設定ファイル" },
     { "Open folder",                           "フォルダを開く" },
+    { "Records changes made in this Preferences dialogue. May also be edited directly in a text editor.",
+      "この設定画面での変更が保存される。 テキストエディタで直接編集することも可能。" },
+    { "Settings here take precedence over calcyx.conf. Not editable from this dialogue; intended for users who prefer textual configuration.",
+      "ここに書かれた設定項目は calcyx.conf より優先して適用される。 この設定画面からは編集されない。 テキストベースの設定を好むユーザ向け。" },
 
     /* Appearance タブ */
     { "Font",                                  "フォント" },
     { "Font:",                                 "フォント:" },
     { "Size:",                                 "サイズ:" },
-    { "Colors",                                "色" },
+    { "Colours",                                "色" },
     { "Preset:",                               "プリセット:" },
     { "Copy to user-defined",                  "ユーザー定義にコピー" },
-    { "Copy current preset colors to user-defined and switch to it for editing",
+    { "Copy current preset colours to user-defined and switch to it for editing",
       "現在のプリセット色をユーザー定義にコピーして編集可能にします" },
 
     /* Input タブ */
@@ -119,14 +124,14 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     /* General タブ詳細 */
     { "Remember window position on exit",      "終了時のウィンドウ位置を記憶" },
     { "Start with Always on Top",              "常に手前に表示で起動" },
-    { "Sets the initial state at launch. Toggle anytime from View menu or pin button.",
+    { "Sets the initial state at launch. May be toggled at any time from the View menu or the pin button.",
       "起動時の初期状態を設定。表示メニューやピンボタンでいつでも切替可能。" },
     { "Show menu items in window menu bar",
       "ウィンドウ内のメニューバーにも項目を表示" },
-    { "Items always appear in the global menu bar. Restart to apply.",
+    { "Items always appear in the global menu bar. A restart is required to apply.",
       "項目はグローバルメニューには常に表示されます。再起動後に反映。" },
     { "Enable system tray icon",               "システムトレイアイコンを有効化" },
-    { "When enabled, closing the window minimizes to tray.",
+    { "When enabled, closing the window minimises to the tray.",
       "有効時。ウィンドウを閉じるとトレイに最小化されます。" },
     { "Enable global hotkey",                  "グローバルホットキーを有効化" },
     { "Modifiers:",                            "修飾キー:" },
@@ -207,7 +212,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Use system fonts",   "システムフォントを表示" },
     { "Show proportional fonts (not recommended)",
       "プロポーショナルフォントを表示 (非推奨)" },
-    { "Color",              "色" },
+    { "Colour",              "色" },
 
     /* === 補完ポップアップ: 組み込み定数 / キーワードの説明 (= calctus の Description) === */
     { "circle ratio",                                  "円周率" },
@@ -333,7 +338,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Clear all rows",                      "全行を削除" },
     { "Open / Save file",                    "ファイルを開く / 保存" },
     { "Quit",                                "終了" },
-    { "This About dialog",                   "この About ダイアログ" },
+    { "This About dialogue",                   "この About ダイアログ" },
 
     /* === TUI: コンテキストメニュー === */
     { "Copy row",            "行をコピー" },
@@ -536,8 +541,8 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Joins array elements into a string with separator.", "配列要素を区切り文字で連結して文字列に" },
 
     /* グレイコード */
-    { "Converts the value from binary to gray-code.", "2 進数からグレイコードに変換" },
-    { "Converts the value from gray-code to binary.", "グレイコードから 2 進数に変換" },
+    { "Converts the value from binary to Gray code.", "2 進数からグレイコードに変換" },
+    { "Converts the value from Gray code to binary.", "グレイコードから 2 進数に変換" },
 
     /* ビット・バイト操作 */
     { "Number of bits of `x` that have the value 1.",        "`x` のうち値が 1 のビット数 (popcount)" },
@@ -554,17 +559,17 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Swaps the nibble of each byte of `x`.",               "`x` の各バイトのニブルを入れ替え" },
 
     /* 色変換 */
-    { "Generates 24 bit color value from R, G, B.",      "R, G, B から 24bit カラー値を生成" },
-    { "Converts from H, S, V to 24 bit RGB color value.", "H, S, V から 24bit RGB カラー値に変換" },
-    { "Converts the 24 bit RGB color value to HSV.",      "24bit RGB カラー値を HSV に変換" },
-    { "Converts from H, S, L to 24 bit color RGB value.", "H, S, L から 24bit RGB カラー値に変換" },
-    { "Converts the 24 bit RGB color value to HSL.",      "24bit RGB カラー値を HSL に変換" },
-    { "Converts 24bit RGB color to 24 bit YUV.",         "24bit RGB カラーを 24bit YUV に変換" },
-    { "Converts the 24 bit YUV color to 24 bit RGB.",    "24bit YUV カラーを 24bit RGB に変換" },
-    { "Downconverts RGB888 color to RGB565.",            "RGB888 カラーを RGB565 にダウンコンバート" },
-    { "Upconverts RGB565 color to RGB888.",              "RGB565 カラーを RGB888 にアップコンバート" },
-    { "Packs the 3 values to an RGB565 color.",          "3 つの値を RGB565 カラーにパック" },
-    { "Unpacks the RGB565 color to 3 values.",           "RGB565 カラーを 3 つの値にアンパック" },
+    { "Generates 24 bit colour value from R, G, B.",      "R, G, B から 24bit カラー値を生成" },
+    { "Converts from H, S, V to 24 bit RGB colour value.", "H, S, V から 24bit RGB カラー値に変換" },
+    { "Converts the 24 bit RGB colour value to HSV.",      "24bit RGB カラー値を HSV に変換" },
+    { "Converts from H, S, L to 24 bit colour RGB value.", "H, S, L から 24bit RGB カラー値に変換" },
+    { "Converts the 24 bit RGB colour value to HSL.",      "24bit RGB カラー値を HSL に変換" },
+    { "Converts 24bit RGB colour to 24 bit YUV.",         "24bit RGB カラーを 24bit YUV に変換" },
+    { "Converts the 24 bit YUV colour to 24 bit RGB.",    "24bit YUV カラーを 24bit RGB に変換" },
+    { "Downconverts RGB888 colour to RGB565.",            "RGB888 カラーを RGB565 にダウンコンバート" },
+    { "Upconverts RGB565 colour to RGB888.",              "RGB565 カラーを RGB888 にアップコンバート" },
+    { "Packs the 3 values to an RGB565 colour.",          "3 つの値を RGB565 カラーにパック" },
+    { "Unpacks the RGB565 colour to 3 values.",           "RGB565 カラーを 3 つの値にアンパック" },
 
     /* ECC / パリティ */
     { "Reduction XOR of `x` (same as even parity).",                   "`x` のリダクション XOR (偶パリティと同じ)" },
@@ -606,7 +611,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "Max array length",       "配列の最大長" },
     { "Max string length",      "文字列の最大長" },
     { "Max call depth",         "関数呼び出しの最大ネスト数" },
-    { "Color source",           "色設定の参照元" },
+    { "Colour source",           "色設定の参照元" },
     { "Clear after overlay",    "画面切替時に画面消去" },
     { "Edit preferences in text editor", "設定をテキストエディタで編集" },
     { "<- Prev page",           "<- 前のページ" },
@@ -620,9 +625,9 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     /* Input タブ */
     { "Auto completion",        "自動入力補完" },
     { "BS deletes empty row",   "空行で BackSpace で行削除" },
-    /* Colors タブ */
-    { "Color preset",           "カラープリセット" },
-    { "Color literal in actual color", "色リテラルを実色で表示" },
+    /* Colours タブ */
+    { "Colour preset",           "カラープリセット" },
+    { "Colour literal in actual colour", "色リテラルを実色で表示" },
     /* セクションヘッダ (各タブ内のサブジャンル名) */
     { "Shared with GUI",        "GUI と共通" },
     { "TUI only",               "TUI 専用" },
@@ -641,7 +646,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "false",                  "無効" },
     { "en",                     "英語" },
     { "ja",                     "日本語" },
-    /* color_preset の値 (otaku-black 等) は固有名詞なので翻訳しない. */
+    /* カラープリセットの値 (otaku-black 等) は固有名詞なので翻訳しない. */
     /* semantic 色名 (= ANSI 17 色) */
     { "default",                "既定" },
     { "black",                  "黒" },
@@ -677,13 +682,13 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     /* タイトル / バリデーションエラー */
     { " Preferences ",          " 設定 " },
     { " calcyx Preferences ",   " calcyx 設定 " },
-    { "Invalid color (expected #RRGGBB)", "色指定が不正です (#RRGGBB 形式)" },
+    { "Invalid colour (expected #RRGGBB)", "色指定が不正です (#RRGGBB 形式)" },
     /* Reset 確認 */
-    { " Reset all settings to defaults? "
+    { " Restore all settings to their defaults? "
       "(Y to confirm / N or Esc to cancel) ",
       " すべての設定を既定値に戻しますか? "
       "(Y で実行 / N または Esc で取消) " },
-    { "Settings reset to defaults", "設定を既定値に戻しました" }
+    { "Settings restored to defaults", "設定を既定値に戻しました" }
 };
 
 const int CALCYX_TR_TABLE_JA_N =

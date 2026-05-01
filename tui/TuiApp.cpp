@@ -16,7 +16,7 @@
 
 #include "types/val.h"
 #include "settings_schema.h"
-#include "color_presets.h"
+#include "colour_presets.h"
 #include "settings_io.h"
 #include "settings_writer.h"
 #include "path_utf8.h"
@@ -400,7 +400,7 @@ void TuiApp::apply_settings_from_conf() {
 
     /* 言語: 起動時 1 回だけ反映。 ホットリロードはしない。
      * 既に i18n_init 済み (テストや上位レイヤで先行設定された場合) はスキップ。 */
-    if (!calcyx_i18n_is_initialized()) {
+    if (!calcyx_i18n_is_initialised()) {
         auto it = kv.find("language");
         calcyx_i18n_init(it != kv.end() ? it->second.c_str() : "auto");
     }
@@ -472,7 +472,7 @@ void TuiApp::apply_settings_from_conf() {
                 /* "auto" or 不明値は OS デフォルトのまま。 */
             }
         }
-        /* color_preset / color_* は tui_color_source=mirror_gui のときだけ
+        /* colour_preset / color_* は tui_colour_source=mirror_gui のときだけ
          * 下のパレット構築フェーズで読む。 */
     }
 
@@ -489,20 +489,20 @@ void TuiApp::apply_settings_from_conf() {
         sheet_->set_auto_complete(auto_completion);
         sheet_->set_bs_delete_empty_row(bs_delete_empty_row);
 
-        /* tui_color_source: semantic (default) | mirror_gui
-         * mirror_gui のとき color_preset を読み、 user-defined なら
+        /* tui_colour_source: semantic (default) | mirror_gui
+         * mirror_gui のとき colour_preset を読み、 user-defined なら
          * 個別 color_* キーで上書きしてから TuiPalette を sheet に渡す。 */
         TuiPalette tp;
-        auto src_it = kv.find("tui_color_source");
+        auto src_it = kv.find("tui_colour_source");
         std::string src = (src_it != kv.end()) ? src_it->second : "semantic";
         if (src == "mirror_gui") {
             std::string preset_id = "otaku-black";
-            auto pit = kv.find("color_preset");
+            auto pit = kv.find("colour_preset");
             if (pit != kv.end()) preset_id = pit->second;
-            int pid = calcyx_color_preset_lookup(preset_id.c_str());
+            int pid = calcyx_colour_preset_lookup(preset_id.c_str());
             if (pid < 0) pid = CALCYX_COLOR_PRESET_OTAKU_BLACK;
-            calcyx_color_palette_t pal;
-            calcyx_color_preset_get(pid, &pal);
+            calcyx_colour_palette_t pal;
+            calcyx_colour_preset_get(pid, &pal);
 
             /* color_* の上書き規則:
              *  - preset == user-defined: conf の color_* (= 通常ユーザ編集) を反映
@@ -510,23 +510,23 @@ void TuiApp::apply_settings_from_conf() {
              * これで「preset を otaku-black にしたまま、 calcyx.conf.override で
              * 個別色だけ強制差替え」 が可能になる。 */
             struct { const char *key; calcyx_rgb_t *dst; } color_keys[] = {
-                { "color_bg",       &pal.bg },
-                { "color_sel_bg",   &pal.sel_bg },
-                { "color_text",     &pal.text },
-                { "color_accent",   &pal.accent },
-                { "color_symbol",   &pal.symbol },
-                { "color_ident",    &pal.ident },
-                { "color_special",  &pal.special },
-                { "color_si_pfx",   &pal.si_pfx },
-                { "color_error",    &pal.error },
-                { "color_paren0",   &pal.paren[0] },
-                { "color_paren1",   &pal.paren[1] },
-                { "color_paren2",   &pal.paren[2] },
-                { "color_paren3",   &pal.paren[3] },
-                { "color_ui_menu",  &pal.ui_menu },
-                { "color_ui_bg",    &pal.ui_bg },
-                { "color_ui_text",  &pal.ui_text },
-                { "color_ui_label", &pal.ui_label },
+                { "colour_bg",       &pal.bg },
+                { "colour_sel_bg",   &pal.sel_bg },
+                { "colour_text",     &pal.text },
+                { "colour_accent",   &pal.accent },
+                { "colour_symbol",   &pal.symbol },
+                { "colour_ident",    &pal.ident },
+                { "colour_special",  &pal.special },
+                { "colour_si_pfx",   &pal.si_pfx },
+                { "colour_error",    &pal.error },
+                { "colour_paren0",   &pal.paren[0] },
+                { "colour_paren1",   &pal.paren[1] },
+                { "colour_paren2",   &pal.paren[2] },
+                { "colour_paren3",   &pal.paren[3] },
+                { "colour_ui_menu",  &pal.ui_menu },
+                { "colour_ui_bg",    &pal.ui_bg },
+                { "colour_ui_text",  &pal.ui_text },
+                { "colour_ui_label", &pal.ui_label },
             };
             for (const auto &o : color_keys) {
                 const std::string *val = nullptr;
@@ -578,7 +578,7 @@ void TuiApp::apply_settings_from_conf() {
             resolve("tui_sem_paren3",  tp.sem_paren[3]);
 
             /* 色リテラル実色描画のトグル (= デフォルト ON)。 */
-            auto lit_it = kv.find("tui_sem_color_literal");
+            auto lit_it = kv.find("tui_sem_colour_literal");
             if (lit_it != kv.end()) {
                 const std::string &v = lit_it->second;
                 tp.sem_color_literal_enabled =
@@ -628,7 +628,7 @@ const Shortcut kShortcuts[] = {
     { "Ctrl+Shift+Del",   "Clear all rows" },
     { "Ctrl+O / Ctrl+S",  "Open / Save file" },
     { "Ctrl+Q",           "Quit" },
-    { "F1",               "This About dialog" },
+    { "F1",               "This About dialogue" },
 };
 constexpr int kShortcutCount     = (int)(sizeof(kShortcuts) / sizeof(kShortcuts[0]));
 constexpr int kAboutVisibleRows  = 10;
@@ -636,15 +636,15 @@ constexpr int kAboutMaxScroll    =
     (kShortcutCount > kAboutVisibleRows) ? kShortcutCount - kAboutVisibleRows : 0;
 
 /* mirror_gui のとき overlay 全体に GUI 色を当てるヘルパー。
- * which: ChromeColor::Menu (ドロップダウン / コンテキスト) → ui_menu
- *        ChromeColor::Dialog (About / Paste options 等)     → ui_bg */
-enum class ChromeColor { Menu, Dialog };
-ftxui::Element apply_chrome_color(ftxui::Element e,
+ * which: ChromeColour::Menu (ドロップダウン / コンテキスト) → ui_menu
+ *        ChromeColour::Dialogue (About / Paste options 等)     → ui_bg */
+enum class ChromeColour { Menu, Dialogue };
+ftxui::Element apply_chrome_colour(ftxui::Element e,
                                   const TuiPalette &p,
-                                  ChromeColor which) {
+                                  ChromeColour which) {
     if (!p.active) return e;
     using ftxui::Color;
-    const calcyx_rgb_t &bg = (which == ChromeColor::Dialog) ? p.ui_bg : p.ui_menu;
+    const calcyx_rgb_t &bg = (which == ChromeColour::Dialogue) ? p.ui_bg : p.ui_menu;
     return e | ftxui::color(Color::RGB(p.ui_text.r, p.ui_text.g, p.ui_text.b))
              | ftxui::bgcolor(Color::RGB(bg.r, bg.g, bg.b));
 }
@@ -764,7 +764,7 @@ Element TuiApp::about_overlay() const {
      * カーソルハイライト (inverted) が透けて見えないようにする。 */
     Element dlg = vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
                   size(HEIGHT, LESS_THAN, 24);
-    if (sheet_) dlg = apply_chrome_color(dlg, sheet_->palette(), ChromeColor::Dialog);
+    if (sheet_) dlg = apply_chrome_colour(dlg, sheet_->palette(), ChromeColour::Dialogue);
     return dlg | clear_under | reflect(about_box_) | center;
 }
 
@@ -945,7 +945,7 @@ Element TuiApp::paste_modal_overlay() const {
 
     Element dlg = vbox(std::move(body)) | border | size(WIDTH, LESS_THAN, 70) |
                   size(HEIGHT, LESS_THAN, 22);
-    if (sheet_) dlg = apply_chrome_color(dlg, sheet_->palette(), ChromeColor::Dialog);
+    if (sheet_) dlg = apply_chrome_colour(dlg, sheet_->palette(), ChromeColour::Dialogue);
     return dlg | clear_under | reflect(paste_modal_box_) | center;
 }
 
@@ -1110,7 +1110,7 @@ Element TuiApp::context_menu_overlay() const {
 
     Element menu = vbox(std::move(rows)) | border |
                    size(WIDTH, EQUAL, w + 2);
-    if (sheet_) menu = apply_chrome_color(menu, sheet_->palette(), ChromeColor::Menu);
+    if (sheet_) menu = apply_chrome_colour(menu, sheet_->palette(), ChromeColour::Menu);
     menu = menu | clear_under | reflect(context_menu_box_);
 
     /* x: anchor_x 列ぶん左に空白 + メニュー、y: anchor_y 行ぶん上に空白 + メニュー */
@@ -1319,7 +1319,7 @@ Element TuiApp::menu_overlay() const {
     }
 
     Element dd = vbox(std::move(rows)) | border;
-    if (sheet_) dd = apply_chrome_color(dd, sheet_->palette(), ChromeColor::Menu);
+    if (sheet_) dd = apply_chrome_colour(dd, sheet_->palette(), ChromeColour::Menu);
 
     /* clear_under: dropdown 自身の領域を不透明に塗り、下層シートの inverted
      * カーソルや色付き文字が透けないようにする。 */
@@ -1350,7 +1350,7 @@ Element TuiApp::menu_overlay() const {
             }
         }
         Element sdd = vbox(std::move(srows)) | border;
-        if (sheet_) sdd = apply_chrome_color(sdd, sheet_->palette(), ChromeColor::Menu);
+        if (sheet_) sdd = apply_chrome_colour(sdd, sheet_->palette(), ChromeColour::Menu);
         sdd = sdd | clear_under;
         dd = hbox({ dd, sdd });
     } else {

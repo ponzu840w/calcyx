@@ -15,7 +15,7 @@ add_library(calcyx_engine STATIC
     eval/builtin_array_stats.c
     eval/builtin_array_string.c
     eval/builtin_array_bits.c
-    eval/builtin_array_color.c
+    eval/builtin_array_colour.c
     eval/builtin_array_encode.c
     ${CMAKE_SOURCE_DIR}/shared/completion_match.c
     ${CMAKE_SOURCE_DIR}/shared/builtin_docs.c
@@ -23,7 +23,7 @@ add_library(calcyx_engine STATIC
     ${CMAKE_SOURCE_DIR}/shared/settings_schema.c
     ${CMAKE_SOURCE_DIR}/shared/settings_writer.c
     ${CMAKE_SOURCE_DIR}/shared/settings_io.c
-    ${CMAKE_SOURCE_DIR}/shared/color_presets.c
+    ${CMAKE_SOURCE_DIR}/shared/colour_presets.c
     ${CMAKE_SOURCE_DIR}/shared/path_utf8.c
     ${CMAKE_SOURCE_DIR}/shared/i18n.c
     ${CMAKE_SOURCE_DIR}/shared/i18n_locale.c

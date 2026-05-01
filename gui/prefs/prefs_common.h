@@ -1,10 +1,10 @@
-// PrefsDialog タブ間で共有する DlgState とスタイル/プレビュー/swatch 補助。
+// PrefsDialogue タブ間で共有する DlgState とスタイル/プレビュー/swatch 補助。
 // 各タブは tab_*.cpp の build_<tab>_tab() として独立。
 
 #pragma once
 
 #include "settings_globals.h"
-#include "colors.h"
+#include "colours.h"
 #include "AppSettings.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Tabs.H>
@@ -21,14 +21,14 @@
 class SheetView;
 
 // ---- ダイアログ全体のサイズ / スタイル定数 ----
-inline constexpr int DW = 580;
-inline constexpr int DH = 680;
+inline constexpr int DW = 720;
+inline constexpr int DH = 600;
 
-#define DLG_BG     g_colors.ui_bg
-#define DLG_INPUT  g_colors.ui_input
-#define DLG_BTN    g_colors.ui_btn
-#define DLG_TEXT   g_colors.ui_text
-#define DLG_LABEL  g_colors.ui_label
+#define DLG_BG     g_colours.ui_bg
+#define DLG_INPUT  g_colours.ui_input
+#define DLG_BTN    g_colours.ui_btn
+#define DLG_TEXT   g_colours.ui_text
+#define DLG_LABEL  g_colours.ui_label
 
 // ---- Font tab 用構造体 ----
 struct SysFont {
@@ -48,7 +48,7 @@ struct FontTab {
 };
 
 // ---- Colors tab 用構造体 ----
-struct ColorEntry {
+struct ColourEntry {
     const char *label;
     Fl_Color   *target;
     const char *schema_key;  /* calcyx.conf.override の lock 判定用 */
@@ -61,17 +61,17 @@ struct SwatchData {
 
 static constexpr int MAX_SWATCHES = 30;
 
-struct ColorsTab {
+struct ColoursTab {
     Fl_Button *swatches[MAX_SWATCHES];
-    ColorEntry entries[MAX_SWATCHES];
+    ColourEntry entries[MAX_SWATCHES];
     SwatchData swatch_data[MAX_SWATCHES];
     int count;
 };
 
-// ---- PrefsDialog::run() が保持する全タブの共有状態 ----
+// ---- PrefsDialogue::run() が保持する全タブの共有状態 ----
 struct DlgState {
     FontTab     font;
-    ColorsTab   colors;
+    ColoursTab   colours;
     Fl_Spinner *fmt_decimal_spin;
     Fl_Check_Button *fmt_exp_chk;
     Fl_Spinner *fmt_exp_pos_spin;
@@ -104,7 +104,7 @@ struct DlgState {
     Fl_Choice  *preset_choice;
     SheetView  *sheet;
     SheetView  *font_preview_sv;
-    SheetView  *color_preview_sv;
+    SheetView  *colour_preview_sv;
     SheetView  *fmt_preview_sv;
     /* Cancel ボタンで全設定を戻すための単一スナップショット */
     AppSettings::Snapshot saved;
@@ -139,12 +139,13 @@ void reset_to_defaults(DlgState *st);
 
 // ---- 各タブの構築 (親 Fl_Tabs の子として Fl_Group を追加) ----
 void build_general_tab(DlgState &st, int tab_h);
+void build_window_tab(DlgState &st, int tab_h);
 void build_appearance_tab(DlgState &st, int tab_h);
 void build_input_tab(DlgState &st, int tab_h);
 void build_number_format_tab(DlgState &st, int tab_h);
 void build_calculation_tab(DlgState &st, int tab_h);
 
-// ---- Appearance tab 内部で使う (フォントボタンが main dialog 経由で呼ぶ) ----
+// ---- Appearance tab 内部で使う (フォントボタンが main dialogue 経由で呼ぶ) ----
 std::string font_id_to_display_name(Fl_Font id);
 void update_font_btn(FontTab *ft);
 void update_preview(FontTab *ft);

@@ -1,10 +1,10 @@
 // AppSettings — GUI 設定値の単一所有構造体 (旧 g_* 25 個を集約)。
-// settings_globals.h / colors.h の g_<name> は g_settings.<name> 参照として
+// settings_globals.h / colours.h の g_<name> は g_settings.<name> 参照として
 // 再公開 (後方互換)。 g_fmt_settings は engine 側に残し Snapshot だけが扱う。
 
 #pragma once
 
-#include "colors.h"
+#include "colours.h"
 #include <string>
 
 extern "C" {
@@ -56,11 +56,11 @@ struct AppSettings {
     int  hotkey_keycode;
 
     /* 色 (preset / current / user-defined backup) */
-    int          color_preset;
-    CalcyxColors colors;
-    CalcyxColors user_colors;
+    int          colour_preset;
+    CalcyxColours colours;
+    CalcyxColours user_colours;
 
-    /* PrefsDialog Cancel 用スナップショット (g_settings + g_fmt_settings)。
+    /* PrefsDialogue Cancel 用スナップショット (g_settings + g_fmt_settings)。
      * 前方宣言だけ持って外で定義する (nested struct は自分自身を value
      * member に持てない)。 */
     struct Snapshot;

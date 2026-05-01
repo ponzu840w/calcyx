@@ -23,7 +23,7 @@ namespace calcyx::tui {
 /* ---- 編集対象項目テーブル (= 「TUI に効くもの限定」) ---- */
 namespace {
 
-enum Tab { TAB_GENERAL = 0, TAB_NUMBER = 1, TAB_INPUT = 2, TAB_COLORS = 3 };
+enum Tab { TAB_GENERAL = 0, TAB_NUMBER = 1, TAB_INPUT = 2, TAB_COLOURS = 3 };
 
 /* schema 値の編集ではなく専用アクション行を表現するための識別子。 */
 enum PrefsAction {
@@ -34,11 +34,11 @@ enum PrefsAction {
     ACT_NEXT_PAGE,
 };
 
-/* tui_color_source の現在値で表示/非表示を切替えるためのフラグ。 */
+/* tui_colour_source の現在値で表示/非表示を切替えるためのフラグ。 */
 enum PrefsVisibility {
     VIS_ALWAYS         = 0,
-    VIS_MIRROR_ONLY    = 1,  /* tui_color_source = mirror_gui のときだけ */
-    VIS_SEMANTIC_ONLY  = 2,  /* tui_color_source = semantic のときだけ */
+    VIS_MIRROR_ONLY    = 1,  /* tui_colour_source = mirror_gui のときだけ */
+    VIS_SEMANTIC_ONLY  = 2,  /* tui_colour_source = semantic のときだけ */
 };
 
 struct PrefsItem {
@@ -60,7 +60,7 @@ constexpr PrefsItem kItems[] = {
     { TAB_GENERAL, "TUI only",        "tui_clear_after_overlay", "Clear after overlay", VIS_ALWAYS, ACT_NONE },
     { TAB_GENERAL, nullptr,           nullptr,                   "Edit preferences in text editor",
                                                                                         VIS_ALWAYS, ACT_EXTERNAL_EDITOR },
-    { TAB_GENERAL, nullptr,           nullptr,                   "Reset all settings to defaults",
+    { TAB_GENERAL, nullptr,           nullptr,                   "Restore all settings to their defaults",
                                                                                         VIS_ALWAYS, ACT_RESET_ALL },
     { TAB_GENERAL, nullptr,           nullptr,                   "<- Prev page",        VIS_ALWAYS, ACT_PREV_PAGE },
     { TAB_GENERAL, nullptr,           nullptr,                   "Next page ->",        VIS_ALWAYS, ACT_NEXT_PAGE },
@@ -82,56 +82,56 @@ constexpr PrefsItem kItems[] = {
 
     /* Colors タブの先頭は描画の振る舞い系設定を「Rendering」 セクションに
      * まとめ、 続く Syntax / Sheet / UI Chrome / Popup を純粋な色項目にする。 */
-    { TAB_COLORS,  "Rendering",       "tui_color_source",        "Color source",        VIS_ALWAYS, ACT_NONE },
-    { TAB_COLORS,  "Rendering",       "tui_sem_color_literal",   "Color literal in actual color",
+    { TAB_COLOURS,  "Rendering",       "tui_colour_source",        "Colour source",       VIS_ALWAYS, ACT_NONE },
+    { TAB_COLOURS,  "Rendering",       "tui_sem_colour_literal",   "Colour literal in actual colour",
                                                                                         VIS_SEMANTIC_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "tui_sem_ident",           "Identifiers",         VIS_SEMANTIC_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "tui_sem_special",         "Literals",            VIS_SEMANTIC_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "tui_sem_si_pfx",          "SI Prefix",           VIS_SEMANTIC_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "tui_sem_symbol",          "Symbols",             VIS_SEMANTIC_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "tui_sem_paren0",          "Paren 1",             VIS_SEMANTIC_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "tui_sem_paren1",          "Paren 2",             VIS_SEMANTIC_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "tui_sem_paren2",          "Paren 3",             VIS_SEMANTIC_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "tui_sem_paren3",          "Paren 4",             VIS_SEMANTIC_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "tui_sem_ident",           "Identifiers",         VIS_SEMANTIC_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "tui_sem_special",         "Literals",            VIS_SEMANTIC_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "tui_sem_si_pfx",          "SI Prefix",           VIS_SEMANTIC_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "tui_sem_symbol",          "Symbols",             VIS_SEMANTIC_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "tui_sem_paren0",          "Paren 1",             VIS_SEMANTIC_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "tui_sem_paren1",          "Paren 2",             VIS_SEMANTIC_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "tui_sem_paren2",          "Paren 3",             VIS_SEMANTIC_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "tui_sem_paren3",          "Paren 4",             VIS_SEMANTIC_ONLY, ACT_NONE },
 
     /* === mirror_gui モード: GUI と共通の RGB hex 色 === */
-    { TAB_COLORS,  "Preset",          "color_preset",            "Color preset",        VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Sheet",           "color_bg",                "Background",          VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Sheet",           "color_sel_bg",            "Selection",           VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Sheet",           "color_rowline",           "Row Line",            VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Sheet",           "color_text",              "Text",                VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Sheet",           "color_accent",            "Accent",              VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_symbol",            "Symbols",             VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_ident",             "Identifiers",         VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_special",           "Literals",            VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_si_pfx",            "SI Prefix",           VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_paren0",            "Paren 1",             VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_paren1",            "Paren 2",             VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_paren2",            "Paren 3",             VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_paren3",            "Paren 4",             VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Syntax",          "color_error",             "Error",               VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "UI Chrome",       "color_ui_win_bg",         "Win BG",              VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "UI Chrome",       "color_ui_bg",             "Dlg BG",              VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "UI Chrome",       "color_ui_input",          "UI Input",            VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "UI Chrome",       "color_ui_btn",            "UI Button",           VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "UI Chrome",       "color_ui_menu",           "Menu BG",             VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "UI Chrome",       "color_ui_text",           "UI Text",             VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "UI Chrome",       "color_ui_label",          "UI Label",            VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "UI Chrome",       "color_ui_dim",            "UI Dim",              VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Popup",           "color_pop_bg",            "Popup BG",            VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Popup",           "color_pop_sel",           "Popup Sel",           VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Popup",           "color_pop_text",          "Popup Text",          VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Popup",           "color_pop_desc",          "Popup Desc",          VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Popup",           "color_pop_desc_bg",       "Popup DescBG",        VIS_MIRROR_ONLY, ACT_NONE },
-    { TAB_COLORS,  "Popup",           "color_pop_border",        "Popup Border",        VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Preset",          "colour_preset",            "Colour preset",       VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Sheet",           "colour_bg",                "Background",          VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Sheet",           "colour_sel_bg",            "Selection",           VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Sheet",           "colour_rowline",           "Row Line",            VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Sheet",           "colour_text",              "Text",                VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Sheet",           "colour_accent",            "Accent",              VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_symbol",            "Symbols",             VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_ident",             "Identifiers",         VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_special",           "Literals",            VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_si_pfx",            "SI Prefix",           VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_paren0",            "Paren 1",             VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_paren1",            "Paren 2",             VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_paren2",            "Paren 3",             VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_paren3",            "Paren 4",             VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Syntax",          "colour_error",             "Error",               VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "UI Chrome",       "colour_ui_win_bg",         "Win BG",              VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "UI Chrome",       "colour_ui_bg",             "Dlg BG",              VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "UI Chrome",       "colour_ui_input",          "UI Input",            VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "UI Chrome",       "colour_ui_btn",            "UI Button",           VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "UI Chrome",       "colour_ui_menu",           "Menu BG",             VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "UI Chrome",       "colour_ui_text",           "UI Text",             VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "UI Chrome",       "colour_ui_label",          "UI Label",            VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "UI Chrome",       "colour_ui_dim",            "UI Dim",              VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Popup",           "colour_pop_bg",            "Popup BG",            VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Popup",           "colour_pop_sel",           "Popup Sel",           VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Popup",           "colour_pop_text",          "Popup Text",          VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Popup",           "colour_pop_desc",          "Popup Desc",          VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Popup",           "colour_pop_desc_bg",       "Popup DescBG",        VIS_MIRROR_ONLY, ACT_NONE },
+    { TAB_COLOURS,  "Popup",           "colour_pop_border",        "Popup Border",        VIS_MIRROR_ONLY, ACT_NONE },
 
-    { TAB_COLORS,  nullptr,           nullptr,                   "<- Prev page",        VIS_ALWAYS, ACT_PREV_PAGE },
-    { TAB_COLORS,  nullptr,           nullptr,                   "Next page ->",        VIS_ALWAYS, ACT_NEXT_PAGE },
+    { TAB_COLOURS,  nullptr,           nullptr,                   "<- Prev page",        VIS_ALWAYS, ACT_PREV_PAGE },
+    { TAB_COLOURS,  nullptr,           nullptr,                   "Next page ->",        VIS_ALWAYS, ACT_NEXT_PAGE },
 };
 constexpr int kItemsCount = (int)(sizeof(kItems) / sizeof(kItems[0]));
 
 constexpr const char *kTabLabels[] = {
-    "General", "Number-Format", "Input", "Colors"
+    "General", "Number-Format", "Input", "Colours"
 };
 constexpr int kTabCount = 4;
 
@@ -175,19 +175,19 @@ ChoiceList choices_for(const char *key) {
     if (!key) return { nullptr, 0 };
     if (strcmp(key, "language") == 0)
         return { kLanguageChoices, 3 };
-    if (strcmp(key, "tui_color_source") == 0)
+    if (strcmp(key, "tui_colour_source") == 0)
         return { kColorSourceChoices, 2 };
     if (strcmp(key, "tui_clear_after_overlay") == 0)
         return { kClearOverlayChoices, 3 };
-    if (strcmp(key, "color_preset") == 0)
+    if (strcmp(key, "colour_preset") == 0)
         return { kColorPresetChoices, 5 };
-    /* semantic syntax color: tui_sem_* は kSemanticColors の名前一覧から選ぶ。 */
+    /* semantic syntax color: tui_sem_* は kSemanticColours の名前一覧から選ぶ。 */
     if (strncmp(key, "tui_sem_", 8) == 0) {
         static const char *names[64];
         static int n = 0;
         if (n == 0) {
             for (int i = 0; i < kSemanticColorCount && i < 64; i++)
-                names[i] = kSemanticColors[i].name;
+                names[i] = kSemanticColours[i].name;
             n = kSemanticColorCount;
         }
         return { names, n };
@@ -303,8 +303,8 @@ void PrefsScreen::close() {
 
 void PrefsScreen::refresh_visible_items() const {
     visible_items_.clear();
-    /* tui_color_source の現在値で MIRROR_ONLY / SEMANTIC_ONLY 行を filter。 */
-    auto src_it = values_.find("tui_color_source");
+    /* tui_colour_source の現在値で MIRROR_ONLY / SEMANTIC_ONLY 行を filter。 */
+    auto src_it = values_.find("tui_colour_source");
     bool is_semantic = (src_it == values_.end() || src_it->second == "semantic");
     for (int i = 0; i < kItemsCount; i++) {
         if (kItems[i].tab != tab_) continue;
@@ -349,9 +349,9 @@ void PrefsScreen::commit_current(const std::string &new_val) {
     /* メモリ反映: 全 schema 項目を再読込 (= 桁数 / パレット / 制限すべて反映)。 */
     app_->apply_settings_public();
 
-    /* tui_color_source が変わると Colors タブの可視項目セットが大きく
+    /* tui_colour_source が変わると Colors タブの可視項目セットが大きく
      * 入れ替わるため、 端末ゴミ対策の画面消去をここでも発火する。 */
-    if (strcmp(it.key, "tui_color_source") == 0) {
+    if (strcmp(it.key, "tui_colour_source") == 0) {
         refresh_visible_items();
         if (item_ >= (int)visible_items_.size())
             item_ = std::max(0, (int)visible_items_.size() - 1);
@@ -419,7 +419,7 @@ bool PrefsScreen::OnEvent(Event ev) {
             do_reset_all();
             confirming_reset_ = false;
             app_->flash_message_public(
-                std::string(_("Settings reset to defaults")));
+                std::string(_("Settings restored to defaults")));
             return true;
         }
         if (ev == Event::Character('n') || ev == Event::Character('N')
@@ -486,7 +486,7 @@ bool PrefsScreen::OnEvent(Event ev) {
                 if (d->kind == CALCYX_SETTING_KIND_COLOR) {
                     unsigned char rgb[3];
                     if (!calcyx_conf_parse_hex_color(edit_buf_.c_str(), rgb)) {
-                        app_->flash_message_public("Invalid color (expected #RRGGBB)");
+                        app_->flash_message_public(_("Invalid colour (expected #RRGGBB)"));
                         return true;
                     }
                 }
@@ -889,7 +889,7 @@ Element PrefsScreen::Render() const {
     /* status hint: モードに応じて切替 */
     std::string hint_text;
     if (confirming_reset_) {
-        hint_text = _(" Reset all settings to defaults? "
+        hint_text = _(" Restore all settings to their defaults? "
                       "(Y to confirm / N or Esc to cancel) ");
     } else if (editing_) {
         const calcyx_setting_desc_t *d =

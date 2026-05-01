@@ -16,21 +16,21 @@
 #include "sheet_model.h"
 
 extern "C" {
-#include "color_presets.h"
+#include "colour_presets.h"
 }
 
 namespace calcyx::tui {
 
 /* GUI 色を再現するときに参照するパレット。active=false の場合は
  * セマンティック (端末色 + 16 色基調) で描画する。
- * 各メンバは calcyx_color_palette_t の一部。 */
+ * 各メンバは calcyx_colour_palette_t の一部。 */
 struct TuiPalette {
     bool active = false;
     /* シート描画用 (active=true のとき使う) */
     calcyx_rgb_t bg{}, sel_bg{}, text{}, accent{};
     calcyx_rgb_t symbol{}, ident{}, special{}, si_pfx{}, error{};
     calcyx_rgb_t paren[4]{};
-    /* UI クローム (GUI の calcyx_color_palette_t.ui_* に対応):
+    /* UI クローム (GUI の calcyx_colour_palette_t.ui_* に対応):
      *   ui_menu=メニュー背景、 ui_bg=ダイアログ背景、
      *   ui_text=本文色、 ui_label=ラベル色 */
     calcyx_rgb_t ui_menu{}, ui_bg{}, ui_text{}, ui_label{};
@@ -39,7 +39,7 @@ struct TuiPalette {
      * mirror_gui は常に塗る (= GUI と同じ)。 false なら sem_special に倒す。 */
     bool sem_color_literal_enabled = true;
 
-    /* tui_color_source=semantic のとき使う構文ハイライト色。 conf の
+    /* tui_colour_source=semantic のとき使う構文ハイライト色。 conf の
      * tui_sem_* 値を SemanticColors.h の名前→Color マップで解決して入れる。
      * デフォルトは従来のハードコード値と同じ。 */
     ftxui::Color sem_ident   = ftxui::Color::CyanLight;
@@ -132,7 +132,7 @@ public:
     bool  auto_complete() const { return auto_complete_; }
     void  set_auto_complete(bool v) { auto_complete_ = v; }
 
-    /* tui_color_source = mirror_gui のときのパレット。active=true で描画が
+    /* tui_colour_source = mirror_gui のときのパレット。active=true で描画が
      * GUI と同じ RGB に切り替わる。デフォルトは inactive (= 従来挙動)。 */
     void set_palette(const TuiPalette &p) { palette_ = p; }
     const TuiPalette& palette() const { return palette_; }

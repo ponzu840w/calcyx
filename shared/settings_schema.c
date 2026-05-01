@@ -1,7 +1,7 @@
 /* 設定項目スキーマ実装。 エントリ定義順 = conf の canonical 出力順。 */
 
 #include "settings_schema.h"
-#include "color_presets.h"
+#include "colour_presets.h"
 
 #include <stddef.h>
 #include <stdio.h>
@@ -109,61 +109,61 @@ static const calcyx_setting_desc_t TABLE[] = {
           "Hotkey base key in FLTK form (e.g. Space, F1, A)."),
 
     SEC("# ---- Colors ----\n"),
-    /* color_preset / color_* は Phase C で TUI も読むようになるので scope=GT.
-     * TUI 側は tui_color_source=mirror_gui のときだけ参照する条件付きアクセス。 */
-    PRESET("color_preset", GT, 0, "otaku-black",
-           "Color theme preset. color_* keys below take effect only when set to 'user'."),
+    /* colour_preset / color_* は Phase C で TUI も読むようになるので scope=GT.
+     * TUI 側は tui_colour_source=mirror_gui のときだけ参照する条件付きアクセス。 */
+    PRESET("colour_preset", GT, 0, "otaku-black",
+           "Colour theme preset. color_* keys below take effect only when set to 'user'."),
 
     /* color_* は preset != user-defined のとき commented で書かれる。 */
-    COLOR("color_bg",          GT),
-    COLOR("color_sel_bg",      GT),
-    COLOR("color_rowline",     GT),
-    COLOR("color_text",        GT),
-    COLOR("color_accent",      GT),
-    COLOR("color_symbol",      GT),
-    COLOR("color_ident",       GT),
-    COLOR("color_special",     GT),
-    COLOR("color_si_pfx",      GT),
-    COLOR("color_paren0",      GT),
-    COLOR("color_paren1",      GT),
-    COLOR("color_paren2",      GT),
-    COLOR("color_paren3",      GT),
-    COLOR("color_error",       GT),
-    COLOR("color_ui_win_bg",   GT),
-    COLOR("color_ui_bg",       GT),
-    COLOR("color_ui_input",    GT),
-    COLOR("color_ui_btn",      GT),
-    COLOR("color_ui_menu",     GT),
-    COLOR("color_ui_text",     GT),
-    COLOR("color_ui_label",    GT),
-    COLOR("color_ui_dim",      GT),
-    COLOR("color_pop_bg",      GT),
-    COLOR("color_pop_sel",     GT),
-    COLOR("color_pop_text",    GT),
-    COLOR("color_pop_desc",    GT),
-    COLOR("color_pop_desc_bg", GT),
-    COLOR("color_pop_border",  GT),
+    COLOR("colour_bg",          GT),
+    COLOR("colour_sel_bg",      GT),
+    COLOR("colour_rowline",     GT),
+    COLOR("colour_text",        GT),
+    COLOR("colour_accent",      GT),
+    COLOR("colour_symbol",      GT),
+    COLOR("colour_ident",       GT),
+    COLOR("colour_special",     GT),
+    COLOR("colour_si_pfx",      GT),
+    COLOR("colour_paren0",      GT),
+    COLOR("colour_paren1",      GT),
+    COLOR("colour_paren2",      GT),
+    COLOR("colour_paren3",      GT),
+    COLOR("colour_error",       GT),
+    COLOR("colour_ui_win_bg",   GT),
+    COLOR("colour_ui_bg",       GT),
+    COLOR("colour_ui_input",    GT),
+    COLOR("colour_ui_btn",      GT),
+    COLOR("colour_ui_menu",     GT),
+    COLOR("colour_ui_text",     GT),
+    COLOR("colour_ui_label",    GT),
+    COLOR("colour_ui_dim",      GT),
+    COLOR("colour_pop_bg",      GT),
+    COLOR("colour_pop_sel",     GT),
+    COLOR("colour_pop_text",    GT),
+    COLOR("colour_pop_desc",    GT),
+    COLOR("colour_pop_desc_bg", GT),
+    COLOR("colour_pop_border",  GT),
 
     SEC("# ---- TUI ----\n"),
-    STR("tui_color_source", T, "semantic",
-        "Color rendering mode: 'semantic' (terminal palette + accent) or 'mirror_gui' (use color_*)."),
+    STR("tui_colour_source", T, "semantic",
+        "Colour rendering mode: 'semantic' (terminal palette + accent) or 'mirror_gui' (use color_*)."),
     STR("tui_clear_after_overlay", T, "auto",
         "Force full screen clear after closing overlays (workaround for macOS Terminal + tmux + CJK ghosting). 'auto' = on for macOS, off elsewhere; 'true' / 'false' force the choice."),
 
-    /* tui_color_source = semantic のとき、 構文ハイライトをハードコード値ではなく
+    /* tui_colour_source = semantic のとき、 構文ハイライトをハードコード値ではなく
      * 端末 ANSI 17 色 (default + 通常 8 + light 8) から選んで描画する。
      * 値は 'cyan-light' / 'red' などのキー名 (PrefsScreen / TuiSheet 側の
-     * kSemanticColors テーブルで FTXUI Color enum に変換)。 */
-    BOOLE("tui_sem_color_literal", T, 1,
-          "Render `#RRGGBB` literals with their actual color (background = literal, foreground = white/black by luminance). When false, fall back to the literal/string color."),
-    STR("tui_sem_ident",   T, "cyan-light",    "Semantic color: identifiers."),
-    STR("tui_sem_special", T, "magenta-light", "Semantic color: literals."),
-    STR("tui_sem_si_pfx",  T, "yellow-light",  "Semantic color: SI prefix / exponent."),
-    STR("tui_sem_symbol",  T, "red-light",     "Semantic color: operators / keywords."),
-    STR("tui_sem_paren0",  T, "yellow-light",  "Semantic color: paren depth 1."),
-    STR("tui_sem_paren1",  T, "magenta-light", "Semantic color: paren depth 2."),
-    STR("tui_sem_paren2",  T, "cyan-light",    "Semantic color: paren depth 3."),
-    STR("tui_sem_paren3",  T, "green-light",   "Semantic color: paren depth 4.")
+     * kSemanticColours テーブルで FTXUI Color enum に変換)。 */
+    BOOLE("tui_sem_colour_literal", T, 1,
+          "Render `#RRGGBB` literals with their actual colour (background = literal, foreground = white/black by luminance). When false, fall back to the literal/string colour."),
+    STR("tui_sem_ident",   T, "cyan-light",    "Semantic colour: identifiers."),
+    STR("tui_sem_special", T, "magenta-light", "Semantic colour: literals."),
+    STR("tui_sem_si_pfx",  T, "yellow-light",  "Semantic colour: SI prefix / exponent."),
+    STR("tui_sem_symbol",  T, "red-light",     "Semantic colour: operators / keywords."),
+    STR("tui_sem_paren0",  T, "yellow-light",  "Semantic colour: paren depth 1."),
+    STR("tui_sem_paren1",  T, "magenta-light", "Semantic colour: paren depth 2."),
+    STR("tui_sem_paren2",  T, "cyan-light",    "Semantic colour: paren depth 3."),
+    STR("tui_sem_paren3",  T, "green-light",   "Semantic colour: paren depth 4.")
 };
 
 static const int TABLE_N = (int)(sizeof(TABLE) / sizeof(TABLE[0]));
@@ -184,53 +184,97 @@ const calcyx_setting_desc_t *calcyx_settings_find(const char *key) {
     return NULL;
 }
 
-/* COLOR キー名と calcyx_color_palette_t のフィールドオフセットの対応表。
+const char *calcyx_settings_alias_key(const char *key) {
+    /* 旧キー → 現行キー。 conf 読込時にこのテーブルで正規化することで、
+     * 過去のリリースで書かれた conf がそのまま読める。 writer はこの結果を
+     * 使って書き戻すので、 一度上書き保存すれば conf 自体も新キー名へ移行する。 */
+    static const struct { const char *legacy; const char *current; } aliases[] = {
+        { "color_preset",      "colour_preset" },
+        { "color_bg",          "colour_bg" },
+        { "color_sel_bg",      "colour_sel_bg" },
+        { "color_rowline",     "colour_rowline" },
+        { "color_text",        "colour_text" },
+        { "color_accent",      "colour_accent" },
+        { "color_symbol",      "colour_symbol" },
+        { "color_ident",       "colour_ident" },
+        { "color_special",     "colour_special" },
+        { "color_si_pfx",      "colour_si_pfx" },
+        { "color_paren0",      "colour_paren0" },
+        { "color_paren1",      "colour_paren1" },
+        { "color_paren2",      "colour_paren2" },
+        { "color_paren3",      "colour_paren3" },
+        { "color_error",       "colour_error" },
+        { "color_ui_win_bg",   "colour_ui_win_bg" },
+        { "color_ui_bg",       "colour_ui_bg" },
+        { "color_ui_input",    "colour_ui_input" },
+        { "color_ui_btn",      "colour_ui_btn" },
+        { "color_ui_menu",     "colour_ui_menu" },
+        { "color_ui_text",     "colour_ui_text" },
+        { "color_ui_label",    "colour_ui_label" },
+        { "color_ui_dim",      "colour_ui_dim" },
+        { "color_pop_bg",      "colour_pop_bg" },
+        { "color_pop_sel",     "colour_pop_sel" },
+        { "color_pop_text",    "colour_pop_text" },
+        { "color_pop_desc",    "colour_pop_desc" },
+        { "color_pop_desc_bg", "colour_pop_desc_bg" },
+        { "color_pop_border",  "colour_pop_border" }
+    };
+    int i;
+    int n = (int)(sizeof(aliases) / sizeof(aliases[0]));
+    if (!key) return NULL;
+    for (i = 0; i < n; i++) {
+        if (strcmp(key, aliases[i].legacy) == 0) return aliases[i].current;
+    }
+    return key;
+}
+
+/* COLOR キー名と calcyx_colour_palette_t のフィールドオフセットの対応表。
  * シンプルに strcmp で線形検索する (件数 28)。 */
 static const struct {
     const char *key;
     size_t      offset;
 } COLOR_KEY_OFFSETS[] = {
-    { "color_bg",          offsetof(calcyx_color_palette_t, bg) },
-    { "color_sel_bg",      offsetof(calcyx_color_palette_t, sel_bg) },
-    { "color_rowline",     offsetof(calcyx_color_palette_t, rowline) },
-    { "color_text",        offsetof(calcyx_color_palette_t, text) },
-    { "color_accent",      offsetof(calcyx_color_palette_t, accent) },
-    { "color_symbol",      offsetof(calcyx_color_palette_t, symbol) },
-    { "color_ident",       offsetof(calcyx_color_palette_t, ident) },
-    { "color_special",     offsetof(calcyx_color_palette_t, special) },
-    { "color_si_pfx",      offsetof(calcyx_color_palette_t, si_pfx) },
-    { "color_paren0",      offsetof(calcyx_color_palette_t, paren[0]) },
-    { "color_paren1",      offsetof(calcyx_color_palette_t, paren[1]) },
-    { "color_paren2",      offsetof(calcyx_color_palette_t, paren[2]) },
-    { "color_paren3",      offsetof(calcyx_color_palette_t, paren[3]) },
-    { "color_error",       offsetof(calcyx_color_palette_t, error) },
-    { "color_ui_win_bg",   offsetof(calcyx_color_palette_t, ui_win_bg) },
-    { "color_ui_bg",       offsetof(calcyx_color_palette_t, ui_bg) },
-    { "color_ui_input",    offsetof(calcyx_color_palette_t, ui_input) },
-    { "color_ui_btn",      offsetof(calcyx_color_palette_t, ui_btn) },
-    { "color_ui_menu",     offsetof(calcyx_color_palette_t, ui_menu) },
-    { "color_ui_text",     offsetof(calcyx_color_palette_t, ui_text) },
-    { "color_ui_label",    offsetof(calcyx_color_palette_t, ui_label) },
-    /* color_ui_dim はプリセット由来 (ui_text と ui_menu の中間色) なので
-     * テーブル外。COLOR_PRESET_INFO 経由でデフォルトを返さない。 */
-    { "color_pop_bg",      offsetof(calcyx_color_palette_t, pop_bg) },
-    { "color_pop_sel",     offsetof(calcyx_color_palette_t, pop_sel) },
-    { "color_pop_text",    offsetof(calcyx_color_palette_t, pop_text) },
-    { "color_pop_desc",    offsetof(calcyx_color_palette_t, pop_desc) },
-    { "color_pop_desc_bg", offsetof(calcyx_color_palette_t, pop_desc_bg) },
-    { "color_pop_border",  offsetof(calcyx_color_palette_t, pop_border) }
+    { "colour_bg",          offsetof(calcyx_colour_palette_t, bg) },
+    { "colour_sel_bg",      offsetof(calcyx_colour_palette_t, sel_bg) },
+    { "colour_rowline",     offsetof(calcyx_colour_palette_t, rowline) },
+    { "colour_text",        offsetof(calcyx_colour_palette_t, text) },
+    { "colour_accent",      offsetof(calcyx_colour_palette_t, accent) },
+    { "colour_symbol",      offsetof(calcyx_colour_palette_t, symbol) },
+    { "colour_ident",       offsetof(calcyx_colour_palette_t, ident) },
+    { "colour_special",     offsetof(calcyx_colour_palette_t, special) },
+    { "colour_si_pfx",      offsetof(calcyx_colour_palette_t, si_pfx) },
+    { "colour_paren0",      offsetof(calcyx_colour_palette_t, paren[0]) },
+    { "colour_paren1",      offsetof(calcyx_colour_palette_t, paren[1]) },
+    { "colour_paren2",      offsetof(calcyx_colour_palette_t, paren[2]) },
+    { "colour_paren3",      offsetof(calcyx_colour_palette_t, paren[3]) },
+    { "colour_error",       offsetof(calcyx_colour_palette_t, error) },
+    { "colour_ui_win_bg",   offsetof(calcyx_colour_palette_t, ui_win_bg) },
+    { "colour_ui_bg",       offsetof(calcyx_colour_palette_t, ui_bg) },
+    { "colour_ui_input",    offsetof(calcyx_colour_palette_t, ui_input) },
+    { "colour_ui_btn",      offsetof(calcyx_colour_palette_t, ui_btn) },
+    { "colour_ui_menu",     offsetof(calcyx_colour_palette_t, ui_menu) },
+    { "colour_ui_text",     offsetof(calcyx_colour_palette_t, ui_text) },
+    { "colour_ui_label",    offsetof(calcyx_colour_palette_t, ui_label) },
+    /* colour_ui_dim はプリセット由来 (ui_text と ui_menu の中間色) なので
+     * テーブル外。COLOUR_PRESET_INFO 経由でデフォルトを返さない。 */
+    { "colour_pop_bg",      offsetof(calcyx_colour_palette_t, pop_bg) },
+    { "colour_pop_sel",     offsetof(calcyx_colour_palette_t, pop_sel) },
+    { "colour_pop_text",    offsetof(calcyx_colour_palette_t, pop_text) },
+    { "colour_pop_desc",    offsetof(calcyx_colour_palette_t, pop_desc) },
+    { "colour_pop_desc_bg", offsetof(calcyx_colour_palette_t, pop_desc_bg) },
+    { "colour_pop_border",  offsetof(calcyx_colour_palette_t, pop_border) }
 };
 
 const char *calcyx_settings_color_default(const char *key,
                                           const char *preset_id) {
     static char buf[8];
     int preset;
-    calcyx_color_palette_t pal;
+    calcyx_colour_palette_t pal;
     size_t i;
     if (!key || !preset_id) return NULL;
-    preset = calcyx_color_preset_lookup(preset_id);
+    preset = calcyx_colour_preset_lookup(preset_id);
     if (preset < 0) return NULL;
-    calcyx_color_preset_get(preset, &pal);
+    calcyx_colour_preset_get(preset, &pal);
     for (i = 0; i < sizeof(COLOR_KEY_OFFSETS)/sizeof(COLOR_KEY_OFFSETS[0]); i++) {
         if (strcmp(COLOR_KEY_OFFSETS[i].key, key) == 0) {
             const calcyx_rgb_t *rgb =

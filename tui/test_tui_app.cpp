@@ -198,7 +198,7 @@ static void test_about_dialog() {
     app.test_dispatch(Event::Character("q"));
     EXPECT("about: hidden after q", !app.test_about_visible());
 
-    dump_render("6c. about dialog closed", app);
+    dump_render("6c. about dialogue closed", app);
 }
 
 /* シナリオ 6d: メニューバー基本動作。
@@ -480,11 +480,11 @@ static void test_prefs_tab_cycle() {
     app.test_dispatch(Event::Tab);
     EXPECT("7b.2 → Input", prefs->test_tab() == 2);
     app.test_dispatch(Event::Tab);
-    EXPECT("7b.3 → Colors", prefs->test_tab() == 3);
+    EXPECT("7b.3 → Colours", prefs->test_tab() == 3);
     app.test_dispatch(Event::Tab);
     EXPECT("7b.4 wrap → General", prefs->test_tab() == 0);
     app.test_dispatch(Event::TabReverse);
-    EXPECT("7b.5 ← Colors", prefs->test_tab() == 3);
+    EXPECT("7b.5 ← Colours", prefs->test_tab() == 3);
     app.test_dispatch(Event::Escape);
 }
 
@@ -509,18 +509,18 @@ static void test_prefs_color_source_visibility() {
     TuiApp app;
     app.test_open_prefs();
     auto *prefs = app.test_prefs();
-    /* Tab to Colors */
+    /* Tab to Colours */
     app.test_dispatch(Event::Tab);
     app.test_dispatch(Event::Tab);
     app.test_dispatch(Event::Tab);
-    EXPECT("7d.0 tab=Colors", prefs->test_tab() == 3);
+    EXPECT("7d.0 tab=Colours", prefs->test_tab() == 3);
     EXPECT("7d.1 default semantic",
-           prefs->test_value("tui_color_source") == "semantic");
+           prefs->test_value("tui_colour_source") == "semantic");
     int semantic_count = prefs->test_visible_count();
-    /* tui_color_source は最上段 (item 0)。 → で mirror_gui へ循環。 */
+    /* tui_colour_source は最上段 (item 0)。 → で mirror_gui へ循環。 */
     app.test_dispatch(Event::ArrowRight);
     EXPECT("7d.2 switched",
-           prefs->test_value("tui_color_source") == "mirror_gui");
+           prefs->test_value("tui_colour_source") == "mirror_gui");
     int mirror_count = prefs->test_visible_count();
     /* mirror_gui は color_* 28 項目 + preset で semantic 8 項目より多い。 */
     EXPECT("7d.3 mirror has more items", mirror_count > semantic_count);
