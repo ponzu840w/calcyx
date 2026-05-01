@@ -1,0 +1,152 @@
+.TH CALCYX 1 "2026" "calcyx" "User Commands"
+.SH NAME
+calcyx \- engineer's calculator (CLI / TUI / GUI)
+.SH SYNOPSIS
+.B calcyx
+.RI [ OPTIONS ]
+.RI [ FILE ...]
+.br
+.B calcyx-gui
+.RI [ FILE ...]
+.SH DESCRIPTION
+.B calcyx
+is a multi-platform engineer's calculator.  Expressions may be entered
+one per line; the result of a previous line is available as a value to
+later lines.  The program runs as a TUI (default in a terminal), as a
+CLI batch evaluator (with
+.BR \-e ,
+.BR \-o ,
+.BR \-b ,
+or via a pipe), or as an FLTK GUI when invoked as
+.BR calcyx-gui .
+.PP
+A single binary,
+.BR calcyx ,
+provides both the CLI and the TUI; the mode is selected automatically
+from the command-line arguments and from whether standard input is a
+terminal.
+.SH OPTIONS
+.TP
+.BI \-e " EXPR"
+Evaluate
+.I EXPR
+directly (CLI mode).  May be repeated.
+.TP
+.BR \-o ", " \-\-output " " \fIFORMAT\fR
+Output format for CLI evaluation:
+.B result
+(default) prints only the result;
+.B both
+prints "expr = result".
+.TP
+.BR \-b ", " \-\-batch
+Force CLI batch evaluation of positional files or standard input.
+.TP
+.BR \-r ", " \-\-repl
+Start the legacy line-based REPL.
+.TP
+.B \-\-print\-config
+Print the resolved configuration in canonical form on stdout.
+.TP
+.B \-\-check\-config
+Syntax-check the configuration file; exit 1 if warnings are produced.
+.TP
+.B \-\-init\-config
+Generate a default configuration file if one does not yet exist.
+.TP
+.BI \-\-config " PATH"
+Use
+.I PATH
+instead of the platform-default configuration file for
+.BR \-\-print\-config ,
+.BR \-\-check\-config ,
+and
+.BR \-\-init\-config .
+.TP
+.BR \-V ", " \-\-version
+Show the version and exit.
+.TP
+.BR \-h ", " \-\-help
+Show a short help message and exit.
+.SH MODES
+The mode is selected as follows:
+.IP \(bu 2
+If
+.BR \-e ,
+.BR \-o ,
+.BR \-b ,
+or
+.B \-r
+is given, CLI mode is used.
+.IP \(bu 2
+If standard input is not a terminal (pipe or redirection), CLI mode is used.
+.IP \(bu 2
+Otherwise (interactive terminal, optionally with a positional file),
+TUI mode is used and any positional file is loaded.
+.SH COMMENTS
+A semicolon (\(oq;\(cq) introduces a line comment.  Everything after
+the first semicolon outside of a string or character literal is ignored.
+.SH FILES
+.TP
+.I ~/.config/calcyx/calcyx.conf
+User configuration (Linux).  See
+.B \-\-print\-config
+for the canonical form.
+.TP
+.I ~/.config/calcyx/calcyx.conf.override
+Optional override file whose entries take precedence over the user
+configuration; intended for users who prefer textual configuration.
+.TP
+.I /usr/share/calcyx/samples/
+Bundled sample files (Linux package layout).
+.SH EXAMPLES
+.PP
+Start the TUI:
+.PP
+.RS 4
+.B calcyx
+.RE
+.PP
+Open a file in the TUI:
+.PP
+.RS 4
+.B calcyx file.txt
+.RE
+.PP
+Evaluate a single expression from the shell:
+.PP
+.RS 4
+.B calcyx -e '1+1' -e 'x=42'
+.RE
+.PP
+Batch-evaluate a file:
+.PP
+.RS 4
+.B calcyx --batch file.txt
+.RE
+.PP
+Pipe an expression in:
+.PP
+.RS 4
+.B echo 'hex(255)' | calcyx
+.RE
+.SH EXIT STATUS
+.TP
+.B 0
+Normal exit.
+.TP
+.B 1
+Evaluation error.
+.TP
+.B 2
+Argument or file-handling error.
+.SH SEE ALSO
+The bundled samples in
+.I /usr/share/calcyx/samples/
+illustrate the expression language.
+.SH AUTHOR
+ponzu840w <ponzu840w@yahoo.co.jp>.
+.PP
+calcyx is a re-implementation of
+.B Calctus
+(Copyright \(co 2022 shapoco, MIT Licensed).

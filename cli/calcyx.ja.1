@@ -1,0 +1,147 @@
+.TH CALCYX 1 "2026" "calcyx" "ユーザーコマンド"
+.SH 名前
+calcyx \- エンジニア向け電卓 (CLI / TUI / GUI)
+.SH 書式
+.B calcyx
+.RI [ オプション ]
+.RI [ ファイル ...]
+.br
+.B calcyx-gui
+.RI [ ファイル ...]
+.SH 説明
+.B calcyx
+は、 マルチプラットフォームのエンジニア向け電卓です。 1 行ごとに式を入力
+すると逐次評価され、 前の行の結果は後の行から値として参照できます。 端末
+内で起動すれば既定で TUI、
+.BR \-e ,
+.BR \-o ,
+.B \-b
+や標準入力からのパイプで起動すれば CLI バッチ評価器、
+.B calcyx-gui
+として呼び出せば FLTK 製の GUI として動作します。
+.PP
+単一バイナリ
+.B calcyx
+が CLI と TUI を兼ね、 引数と標準入力が端末かどうかによってモードを
+自動判定します。
+.SH オプション
+.TP
+.BI \-e " 式"
+.I 式
+を直接評価します (CLI モード)。 複数指定可。
+.TP
+.BR \-o ", " \-\-output " " \fI形式\fR
+CLI 評価時の出力形式:
+.B result
+(既定) は結果のみ、
+.B both
+は "式 = 結果" を出力します。
+.TP
+.BR \-b ", " \-\-batch
+位置引数のファイルまたは標準入力に対する CLI バッチ評価を強制します。
+.TP
+.BR \-r ", " \-\-repl
+旧来の行ベース対話 REPL を起動します。
+.TP
+.B \-\-print\-config
+解釈済みの設定値を canonical 形式で標準出力に書き出します。
+.TP
+.B \-\-check\-config
+設定ファイルを syntax check し、 警告があれば終了コード 1 で終わります。
+.TP
+.B \-\-init\-config
+設定ファイルが存在しなければ既定値で生成します (既存ファイルは上書きしません)。
+.TP
+.BI \-\-config " パス"
+.BR \-\-print\-config ,
+.BR \-\-check\-config ,
+.B \-\-init\-config
+の対象設定ファイルを
+.I パス
+で明示します。 省略時はプラットフォーム既定の calcyx.conf。
+.TP
+.BR \-V ", " \-\-version
+バージョンを表示して終了します。
+.TP
+.BR \-h ", " \-\-help
+簡易ヘルプを表示して終了します。
+.SH モード判定
+モードは次のように決まります:
+.IP \(bu 2
+.BR \-e ,
+.BR \-o ,
+.BR \-b ,
+.B \-r
+のいずれかが指定されていれば CLI モード。
+.IP \(bu 2
+標準入力が端末でなければ (パイプ・リダイレクト)、 CLI モード。
+.IP \(bu 2
+それ以外 (対話端末で引数なし、 または位置引数ファイルのみ) は TUI モード。
+位置引数ファイルは TUI 起動時にロードされます。
+.SH コメント
+セミコロン (\(oq;\(cq) 以降は行末コメントとして無視されます。 文字列
+リテラル・文字リテラル内のセミコロンは対象外。
+.SH ファイル
+.TP
+.I ~/.config/calcyx/calcyx.conf
+ユーザー設定ファイル (Linux)。 canonical 形式は
+.B \-\-print\-config
+で確認できます。
+.TP
+.I ~/.config/calcyx/calcyx.conf.override
+任意の優先設定ファイル。 ここに書かれた項目は calcyx.conf より優先
+されます。 テキストベースの設定を好むユーザー向け。
+.TP
+.I /usr/share/calcyx/samples/
+同梱のサンプル式ファイル (Linux パッケージレイアウト)。
+.SH 例
+.PP
+TUI を起動:
+.PP
+.RS 4
+.B calcyx
+.RE
+.PP
+ファイルを TUI で開く:
+.PP
+.RS 4
+.B calcyx file.txt
+.RE
+.PP
+シェルから式を直接評価:
+.PP
+.RS 4
+.B calcyx -e '1+1' -e 'x=42'
+.RE
+.PP
+ファイルをバッチ評価:
+.PP
+.RS 4
+.B calcyx --batch file.txt
+.RE
+.PP
+パイプで式を渡す:
+.PP
+.RS 4
+.B echo 'hex(255)' | calcyx
+.RE
+.SH 終了コード
+.TP
+.B 0
+正常終了。
+.TP
+.B 1
+評価エラー。
+.TP
+.B 2
+引数またはファイル取り扱いのエラー。
+.SH 関連
+同梱の
+.I /usr/share/calcyx/samples/
+配下のサンプル式ファイルが、 calcyx の式言語の使い方を示します。
+.SH 著者
+ponzu840w <ponzu840w@yahoo.co.jp>。
+.PP
+calcyx は
+.B Calctus
+(Copyright \(co 2022 shapoco, MIT Licensed) の再実装です。

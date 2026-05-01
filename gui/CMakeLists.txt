@@ -185,9 +185,23 @@ elseif(UNIX)
     install(TARGETS calcyx_ui RUNTIME DESTINATION bin COMPONENT gui)
     install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/com.ponzu840w.calcyx.desktop"
         DESTINATION share/applications COMPONENT gui)
+    # アイコン: scalable SVG + PNG ラスタ各サイズ。 アイコンキャッシュは
+    # PNG を優先する DE が多いため、 主要サイズを揃えて配置しておく。
     install(FILES "${CMAKE_SOURCE_DIR}/gui/icon.svg"
         DESTINATION share/icons/hicolor/scalable/apps
         RENAME calcyx.svg COMPONENT gui)
+    foreach(_sz 16 32 48 128 256)
+        install(FILES "${CMAKE_SOURCE_DIR}/gui/icon_${_sz}.png"
+            DESTINATION share/icons/hicolor/${_sz}x${_sz}/apps
+            RENAME calcyx.png COMPONENT gui)
+    endforeach()
+    # manpage (calcyx --help と同じ内容を groff 化したもの)。
+    # 日本語版は LANG=ja_JP.UTF-8 環境で `man calcyx` が自動選択する位置に置く。
+    install(FILES "${CMAKE_SOURCE_DIR}/cli/calcyx.1"
+        DESTINATION share/man/man1 COMPONENT cli)
+    install(FILES "${CMAKE_SOURCE_DIR}/cli/calcyx.ja.1"
+        DESTINATION share/man/ja/man1
+        RENAME calcyx.1 COMPONENT cli)
 endif()
 
 # ---- test_completion ----

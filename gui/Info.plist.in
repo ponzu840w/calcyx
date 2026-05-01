@@ -25,7 +25,11 @@
     <key>CSResourcesFileMapped</key>
     <true/>
     <key>LSMinimumSystemVersion</key>
-    <string>10.13</string>
+    <string>11.0</string>
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.utilities</string>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2026 ponzu840w. MIT Licensed.</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSPrincipalClass</key>

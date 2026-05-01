@@ -1,9 +1,14 @@
 [Desktop Entry]
 Version=1.0
+Type=Application
 Name=calcyx
-Comment=Programmers' calculator
+GenericName=Calculator
+GenericName[ja]=電卓
+Comment=Engineer's calculator
+Comment[ja]=エンジニア向け電卓
+Keywords=calc;calculator;math;programmer;engineer;hex;binary;octal;
 Exec=calcyx-gui
 Icon=calcyx
-Type=Application
-Categories=Utility;Calculator;
+Categories=Utility;Calculator;Education;Science;
+StartupNotify=true
 StartupWMClass=calcyx
