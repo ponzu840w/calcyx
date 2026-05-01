@@ -51,6 +51,15 @@ set(EXECUTE_OPTS
 if(WORKDIR)
     list(APPEND EXECUTE_OPTS WORKING_DIRECTORY "${WORKDIR}")
 endif()
+# stdin を /dev/null (Windows: NUL) に向けて isatty=false を保証する。
+# これがないと ctest をターミナルから直接起動したとき子プロセスが
+# 親の tty を継承してしまい、 calcyx が isatty(stdin)=true と判定して
+# 位置引数ファイル指定を TUI 起動とみなして端末入力待ちで hang する。
+if(WIN32)
+    list(APPEND EXECUTE_OPTS INPUT_FILE "NUL")
+else()
+    list(APPEND EXECUTE_OPTS INPUT_FILE "/dev/null")
+endif()
 execute_process(${EXECUTE_OPTS})
 
 # CRLF → LF 正規化 (Windows 実行時にも差分が出ないようにする)
