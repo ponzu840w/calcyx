@@ -2,7 +2,8 @@
 
 calcyx（カルキクス、カルシクス、カルサイクス、カルキシー）は、[Calctus](https://github.com/shapoco/calctus) (C# / .NET) のマルチプラットフォーム勝手移植プロジェクト。
 
-<img width="500" alt="スクリーンショット 0008-05-01 22 52 53" src="https://github.com/user-attachments/assets/d017deda-33fa-4723-8ccb-9698266a720d" />
+<img width="400" alt="screenshot-2026 5月01_230538" src="https://github.com/user-attachments/assets/0e448568-4759-4a52-834c-c0df72e66acc" />
+<img width="400" alt="スクリーンショット 0008-05-01 22 52 53" src="https://github.com/user-attachments/assets/d017deda-33fa-4723-8ccb-9698266a720d" />
 
 Cで再実装した計算エンジンを各プラットフォームのUIから使用。現在のリリースはPC版（Windows, macOS, Linux）（GUI（FLTK）/ CLI / TUI（FTXUI））および[Web版](https://ponzu840w.jp/app/calcyx/)（emscripten）。
 
