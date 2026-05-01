@@ -102,6 +102,16 @@ endif()
 enable_testing()
 include(cmake/test_runners.cmake)
 
+# ---- shared/i18n_table.c の完全性チェック (ja に未訳・死蔵が無いか) ----
+# WASM プリセットでは TUI/GUI を構築しないが、 翻訳辞書の整合性は
+# クロスターゲットで共通なので unix / win プリセットでのみ走らせる。
+if(CALCYX_TESTS_ENABLED AND NOT EMSCRIPTEN)
+    add_test(NAME i18n/coverage
+             COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/check_i18n.py
+             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_tests_properties(i18n/coverage PROPERTIES LABELS "i18n")
+endif()
+
 add_subdirectory(engine)
 
 if(EMSCRIPTEN)

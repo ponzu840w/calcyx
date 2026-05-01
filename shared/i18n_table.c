@@ -10,7 +10,6 @@ typedef struct {
 
 const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     /* === 共通 === */
-    { "Restart to apply this change", "再起動後に変更が反映されます" },
     { "Locked by calcyx.conf.override", "calcyx.conf.override で固定されています" },
     { "OK", "OK" },
     { "Cancel", "キャンセル" },
@@ -676,11 +675,7 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
       " \xe2\x86\x90\xe2\x86\x92 \xc2\xb1" "1  0-9 入力  Bksp  Enter 確定  Esc 取消 " },
     { " type chars  Bksp  Enter ok  Esc cancel ",
       " 入力  Bksp  Enter 確定  Esc 取消 " },
-    /* タブ末尾の next-page ヒント */
-    { "Tab: next page  /  Shift+Tab: prev page",
-      "Tab: 次のページ  /  Shift+Tab: 前のページ" },
     /* タイトル / バリデーションエラー */
-    { " Preferences ",          " 設定 " },
     { " calcyx Preferences ",   " calcyx 設定 " },
     { "Invalid colour (expected #RRGGBB)", "色指定が不正です (#RRGGBB 形式)" },
     /* Reset 確認 */
