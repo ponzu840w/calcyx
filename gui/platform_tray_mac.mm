@@ -8,6 +8,8 @@
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
 #include <cstring>
+#include <cmath>
+#include <vector>
 
 #import <Cocoa/Cocoa.h>
 #import <Carbon/Carbon.h>
@@ -107,6 +109,96 @@ static OSStatus hotkey_handler(EventHandlerCallRef, EventRef, void *) {
 
 static EventHandlerRef s_handler_ref = nullptr;
 
+/* カラーアイコン → テンプレート用モノクロアウトライン生成。
+ *
+ * 入力 NSImage を 2x 解像度の RGBA に rasterize し、 luminance の
+ * Sobel エッジ強度を新しい alpha とした NSImage を返す。 RGB は 0
+ * (system tint で塗られるので不要)。 setTemplate:YES 済み。
+ *
+ * calcyx の icon は緑のベタ塗り計算機なので alpha だけだと
+ * 黒い四角に潰れる。 luminance Sobel なら計算機の外周と display 枠
+ * など色境界部分が線として残り、 mac の他のステータスバー項目
+ * (細線アウトライン) と調和する。 */
+static NSImage *make_template_from_color(NSImage *src, CGFloat pt_size) {
+    if (!src) return nil;
+    CGFloat px = pt_size * 2;     // 2x for retina + sharper sobel input
+    NSInteger W = (NSInteger)px, H = (NSInteger)px;
+    if (W < 4 || H < 4) return nil;
+
+    NSBitmapImageRep *in = [[NSBitmapImageRep alloc]
+        initWithBitmapDataPlanes:NULL
+                      pixelsWide:W pixelsHigh:H
+                   bitsPerSample:8 samplesPerPixel:4
+                        hasAlpha:YES isPlanar:NO
+                  colorSpaceName:NSDeviceRGBColorSpace
+                     bytesPerRow:0 bitsPerPixel:32];
+    if (!in) return nil;
+    [NSGraphicsContext saveGraphicsState];
+    [NSGraphicsContext setCurrentContext:
+        [NSGraphicsContext graphicsContextWithBitmapImageRep:in]];
+    [src drawInRect:NSMakeRect(0, 0, W, H)
+           fromRect:NSZeroRect
+          operation:NSCompositingOperationCopy
+           fraction:1.0];
+    [NSGraphicsContext restoreGraphicsState];
+
+    unsigned char *sd = [in bitmapData];
+    NSInteger sBpr = [in bytesPerRow];
+
+    /* premultiplied luminance: 透明領域は 0、 不透明部分は luma 値。
+     * Sobel が外周 (透明 ↔ body) でも内側 (body ↔ display 枠) でも
+     * 反応するようにするための前処理。 */
+    std::vector<int> lum((size_t)(W * H));
+    for (NSInteger y = 0; y < H; y++) {
+        for (NSInteger x = 0; x < W; x++) {
+            unsigned char *p = sd + y * sBpr + x * 4;
+            int a = p[3];
+            int l = (299 * p[0] + 587 * p[1] + 114 * p[2]) / 1000;
+            lum[(size_t)(y * W + x)] = l * a / 255;
+        }
+    }
+
+    NSBitmapImageRep *out = [[NSBitmapImageRep alloc]
+        initWithBitmapDataPlanes:NULL
+                      pixelsWide:W pixelsHigh:H
+                   bitsPerSample:8 samplesPerPixel:4
+                        hasAlpha:YES isPlanar:NO
+                  colorSpaceName:NSDeviceRGBColorSpace
+                     bytesPerRow:0 bitsPerPixel:32];
+    if (!out) return nil;
+    unsigned char *od = [out bitmapData];
+    NSInteger dBpr = [out bytesPerRow];
+
+    static const int kx[3][3] = {{-1,0,1},{-2,0,2},{-1,0,1}};
+    static const int ky[3][3] = {{-1,-2,-1},{0,0,0},{1,2,1}};
+    for (NSInteger y = 0; y < H; y++) {
+        for (NSInteger x = 0; x < W; x++) {
+            int gx = 0, gy = 0;
+            for (int j = -1; j <= 1; j++) {
+                for (int i = -1; i <= 1; i++) {
+                    NSInteger nx = x + i, ny = y + j;
+                    if (nx < 0) nx = 0; if (nx >= W) nx = W - 1;
+                    if (ny < 0) ny = 0; if (ny >= H) ny = H - 1;
+                    int v = lum[(size_t)(ny * W + nx)];
+                    gx += kx[j+1][i+1] * v;
+                    gy += ky[j+1][i+1] * v;
+                }
+            }
+            int mag = (int)sqrt((double)(gx * gx + gy * gy));
+            if (mag > 255) mag = 255;
+            unsigned char *q = od + y * dBpr + x * 4;
+            q[0] = q[1] = q[2] = 0;
+            q[3] = (unsigned char)mag;
+        }
+    }
+
+    [out setSize:NSMakeSize(pt_size, pt_size)];
+    NSImage *tmpl = [[NSImage alloc] initWithSize:NSMakeSize(pt_size, pt_size)];
+    [tmpl addRepresentation:out];
+    [tmpl setTemplate:YES];
+    return tmpl;
+}
+
 // ---- トレイ作成/破棄 ----
 
 bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
@@ -119,14 +211,16 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
                          statusItemWithLength:NSVariableStatusItemLength];
         [s_status_item retain];
 
-        // アイコン設定。 setTemplate:YES (alpha のみを使う方法) を試したが、
-        // 計算機のシルエット部分が ほぼ全面 alpha=1 で塗られているため
-        // 黒い四角になってしまう。 まずカラーアイコンを描画して使用する。
-        // 本格的に他のステータスバー項目と調和させたい場合は、
-        // モノクロ outline 用のテンプレートアイコンファイルを別途作って
-        // [small setTemplate:YES] でロードする必要がある。
+        // アイコン設定。 元の calcyx icon (緑のべた塗り計算機) を
+        // luminance Sobel でアウトライン化してテンプレート画像にすると、
+        // システムが light/dark mode で適切に tint してくれて、
+        // 他のステータスバー項目と調和する。
         NSImage *icon = [NSApp applicationIconImage];
-        if (icon) {
+        NSImage *tmpl = make_template_from_color(icon, 18.0);
+        if (tmpl) {
+            s_status_item.button.image = tmpl;
+        } else if (icon) {
+            // フォールバック: 元のカラーアイコン (Sobel 失敗時のみ)
             NSImage *small = [[NSImage alloc] initWithSize:NSMakeSize(18, 18)];
             [small lockFocus];
             [icon drawInRect:NSMakeRect(0, 0, 18, 18)
