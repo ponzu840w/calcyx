@@ -86,11 +86,57 @@ int calcyx_getenv_utf8(const char *name, char *buf, size_t buflen) {
     return n > 0;
 }
 
+int calcyx_path_is_dir(const char *path_utf8) {
+    wchar_t *wp;
+    DWORD attr;
+    if (!path_utf8) return 0;
+    wp = u8_to_w(path_utf8);
+    if (!wp) return 0;
+    attr = GetFileAttributesW(wp);
+    free(wp);
+    if (attr == INVALID_FILE_ATTRIBUTES) return 0;
+    return (attr & FILE_ATTRIBUTE_DIRECTORY) ? 1 : 0;
+}
+
+int calcyx_dir_iter(const char *path_utf8, calcyx_dir_iter_fn cb, void *user) {
+    wchar_t *wp_dir;
+    size_t  dir_len, pat_len;
+    wchar_t *wpat;
+    WIN32_FIND_DATAW fd;
+    HANDLE h;
+    char namebuf[1024];
+    if (!path_utf8 || !cb) return -1;
+    wp_dir = u8_to_w(path_utf8);
+    if (!wp_dir) return -1;
+    dir_len = wcslen(wp_dir);
+    pat_len = dir_len + 3;  /* "\\*" + NUL */
+    wpat = (wchar_t *)malloc(pat_len * sizeof(wchar_t));
+    if (!wpat) { free(wp_dir); return -1; }
+    wcscpy(wpat, wp_dir);
+    /* セパレータが末尾に無ければ \ を足してから *  */
+    if (dir_len > 0 && wp_dir[dir_len - 1] != L'\\' && wp_dir[dir_len - 1] != L'/')
+        wcscat(wpat, L"\\");
+    wcscat(wpat, L"*");
+    free(wp_dir);
+    h = FindFirstFileW(wpat, &fd);
+    free(wpat);
+    if (h == INVALID_HANDLE_VALUE) return -1;
+    do {
+        if (wcscmp(fd.cFileName, L".") == 0 || wcscmp(fd.cFileName, L"..") == 0)
+            continue;
+        if (w_to_u8(fd.cFileName, namebuf, sizeof(namebuf)) > 0)
+            cb(namebuf, user);
+    } while (FindNextFileW(h, &fd));
+    FindClose(h);
+    return 0;
+}
+
 #else  /* !_WIN32 */
 
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <dirent.h>
 
 FILE *calcyx_fopen(const char *path_utf8, const char *mode) {
     return fopen(path_utf8, mode);
@@ -116,6 +162,28 @@ int calcyx_getenv_utf8(const char *name, char *buf, size_t buflen) {
     strncpy(buf, v, buflen - 1);
     buf[buflen - 1] = '\0';
     return 1;
+}
+
+int calcyx_path_is_dir(const char *path_utf8) {
+    struct stat st;
+    if (!path_utf8) return 0;
+    if (stat(path_utf8, &st) != 0) return 0;
+    return S_ISDIR(st.st_mode) ? 1 : 0;
+}
+
+int calcyx_dir_iter(const char *path_utf8, calcyx_dir_iter_fn cb, void *user) {
+    DIR *dp;
+    struct dirent *ent;
+    if (!path_utf8 || !cb) return -1;
+    dp = opendir(path_utf8);
+    if (!dp) return -1;
+    while ((ent = readdir(dp)) != NULL) {
+        if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+            continue;
+        cb(ent->d_name, user);
+    }
+    closedir(dp);
+    return 0;
 }
 
 #endif

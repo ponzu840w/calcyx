@@ -6,6 +6,9 @@
 #include "i18n.h"
 #include "platform_tray.h"
 #include "colours.h"
+extern "C" {
+#include "path_utf8.h"
+}
 #include <FL/Fl.H>
 #include <FL/Fl_Native_File_Chooser.H>
 #include "app_prefs.h"
@@ -922,10 +925,11 @@ static std::string find_exe_dir() {
 }
 
 // samples/ ディレクトリへの絶対パスを返す。見つからなければ空文字列。
+// 存在判定は path_utf8 経由 (Windows では GetFileAttributesW) を使うので、
+// 日本語ユーザー名の path や WSL UNC 経路でも正しく動作する。
 static std::string find_samples_dir() {
     std::string dir = find_exe_dir();
     if (dir.empty()) return "";
-    struct stat st;
     const char *suffixes[] = {
 #ifdef __APPLE__
         "/../Resources/samples",        // .app バンドル埋め込み
@@ -936,7 +940,7 @@ static std::string find_samples_dir() {
     };
     for (const char *suf : suffixes) {
         std::string candidate = dir + suf;
-        if (stat(candidate.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) return candidate;
+        if (calcyx_path_is_dir(candidate.c_str())) return candidate;
     }
     return "";
 }
@@ -945,17 +949,16 @@ void MainWindow::populate_samples_menu() {
     std::string dir = find_samples_dir();
     if (dir.empty()) return;
 
-    DIR *dp = opendir(dir.c_str());
-    if (!dp) return;
-
+    /* path_utf8 wrapper を使うことで Windows での UTF-8 path / UNC path /
+     * 区切り混在 (\ と /) や ".." 解決に依存せず一覧化できる。 */
     std::vector<std::string> files;
-    struct dirent *ent;
-    while ((ent = readdir(dp)) != nullptr) {
-        std::string name = ent->d_name;
-        if (name.size() > 4 && name.substr(name.size() - 4) == ".txt")
-            files.push_back(name);
-    }
-    closedir(dp);
+    auto cb = [](const char *name, void *user) {
+        auto *vec = static_cast<std::vector<std::string> *>(user);
+        std::string n = name;
+        if (n.size() > 4 && n.substr(n.size() - 4) == ".txt")
+            vec->push_back(std::move(n));
+    };
+    if (calcyx_dir_iter(dir.c_str(), cb, &files) != 0) return;
 
     std::sort(files.begin(), files.end());
     sample_files_ = std::move(files);

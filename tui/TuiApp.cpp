@@ -1555,10 +1555,11 @@ std::string TuiApp::samples_dir() const {
         "/../samples",
         "/../share/calcyx/samples",
     };
-    struct stat st;
+    /* path_utf8 wrapper を使うことで Windows での UTF-8 path / UNC path /
+     * 区切り混在 / ".." 解決の挙動差異に依存しなくなる。 */
     for (const char *suf : suffixes) {
         std::string cand = exe_dir + suf;
-        if (::stat(cand.c_str(), &st) == 0 && S_ISDIR(st.st_mode)) return cand;
+        if (calcyx_path_is_dir(cand.c_str())) return cand;
     }
     return "";
 }
@@ -1570,15 +1571,13 @@ void TuiApp::samples_populate() {
 
     std::string dir = samples_dir();
     if (dir.empty()) return;
-    DIR *dp = ::opendir(dir.c_str());
-    if (!dp) return;
-    struct dirent *ent;
-    while ((ent = ::readdir(dp)) != nullptr) {
-        std::string name = ent->d_name;
-        if (name.size() > 4 && name.substr(name.size() - 4) == ".txt")
-            samples_files_.push_back(name);
-    }
-    ::closedir(dp);
+    auto cb = [](const char *name, void *user) {
+        auto *vec = static_cast<std::vector<std::string> *>(user);
+        std::string n = name;
+        if (n.size() > 4 && n.substr(n.size() - 4) == ".txt")
+            vec->push_back(std::move(n));
+    };
+    calcyx_dir_iter(dir.c_str(), cb, &samples_files_);
     std::sort(samples_files_.begin(), samples_files_.end());
 }
 
