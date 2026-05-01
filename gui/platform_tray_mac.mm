@@ -4,6 +4,7 @@
 // ホットキー: Carbon RegisterEventHotKey
 
 #include "platform_tray.h"
+#include "i18n.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
 #include <cstring>
@@ -134,15 +135,17 @@ bool plat_tray_create(void *owner, const TrayCallbacks &cb) {
         // メニュー (右クリック用に保持、直接 menu に設定しない)
         s_delegate = [[CalcyxTrayDelegate alloc] init];
         s_tray_menu = [[NSMenu alloc] init];
-        NSMenuItem *openItem = [[NSMenuItem alloc] initWithTitle:@"Open"
-                                                          action:@selector(openAction:)
-                                                   keyEquivalent:@""];
+        NSMenuItem *openItem = [[NSMenuItem alloc]
+            initWithTitle:[NSString stringWithUTF8String:_("Open")]
+                   action:@selector(openAction:)
+            keyEquivalent:@""];
         openItem.target = s_delegate;
         [s_tray_menu addItem:openItem];
 
-        NSMenuItem *exitItem = [[NSMenuItem alloc] initWithTitle:@"Exit"
-                                                          action:@selector(exitAction:)
-                                                   keyEquivalent:@""];
+        NSMenuItem *exitItem = [[NSMenuItem alloc]
+            initWithTitle:[NSString stringWithUTF8String:_("Exit")]
+                   action:@selector(exitAction:)
+            keyEquivalent:@""];
         exitItem.target = s_delegate;
         [s_tray_menu addItem:exitItem];
 

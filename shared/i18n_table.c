@@ -53,8 +53,9 @@ const calcyx_tr_entry_t CALCYX_TR_TABLE_JA[] = {
     { "&View/Decimals &\xe2\x88\x92",    "表示(&V)/小数桁数 &\xe2\x88\x92" },
     { "&View/&Auto Completion",          "表示(&V)/自動補完(&A)" },
 
-    /* === GUI: ファイルダイアログ === */
+    /* === GUI: ファイルダイアログ + トレイメニュー === */
     { "Open",                  "開く" },
+    { "Exit",                  "終了" },
     { "Save As",               "名前を付けて保存" },
     { "Text files",            "テキストファイル" },
     { "All files",             "すべてのファイル" },

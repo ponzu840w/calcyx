@@ -1,6 +1,7 @@
 // Windows システムトレイ + ホットキー (Shell_NotifyIconW / RegisterHotKey)。
 
 #include "platform_tray.h"
+#include "i18n.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
 #include <FL/platform.H>
@@ -9,6 +10,7 @@
 #include <commctrl.h>
 #include <cstring>
 #include <cstdio>
+#include <string>
 
 // キー名テーブル・変換関数は platform_tray_common.cpp にある。
 
@@ -49,10 +51,19 @@ static LRESULT CALLBACK tray_subclass_proc(HWND hwnd, UINT msg, WPARAM wp, LPARA
             if (s_callbacks.on_open) s_callbacks.on_open();
             return 0;
         case WM_RBUTTONUP: {
-            // コンテキストメニュー
+            // コンテキストメニュー (項目は i18n 翻訳。 AppendMenuW は wide
+            // 文字列なので UTF-8 → UTF-16 変換が必要)
+            auto append_utf8 = [](HMENU m, UINT id, const char *utf8) {
+                int n = MultiByteToWideChar(CP_UTF8, 0, utf8, -1, nullptr, 0);
+                if (n <= 0) { AppendMenuW(m, MF_STRING, id, L"?"); return; }
+                std::wstring w(n, 0);
+                MultiByteToWideChar(CP_UTF8, 0, utf8, -1, &w[0], n);
+                while (!w.empty() && w.back() == 0) w.pop_back();
+                AppendMenuW(m, MF_STRING, id, w.c_str());
+            };
             HMENU menu = CreatePopupMenu();
-            AppendMenuW(menu, MF_STRING, 1, L"Open");
-            AppendMenuW(menu, MF_STRING, 2, L"Exit");
+            append_utf8(menu, 1, _("Open"));
+            append_utf8(menu, 2, _("Exit"));
             POINT pt;
             GetCursorPos(&pt);
             SetForegroundWindow(hwnd);

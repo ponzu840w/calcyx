@@ -4,6 +4,7 @@
 // ホットキー: XQueryKeymap ポーリング (Calctus LinuxX11HotKeyService 方式)
 
 #include "platform_tray.h"
+#include "i18n.h"
 #include <FL/Fl.H>
 #include <FL/Fl_Window.H>
 #include <FL/platform.H>
@@ -16,6 +17,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <string>
 
 // キー名テーブル・変換関数は platform_tray_common.cpp にある。
 
@@ -117,10 +119,14 @@ static void show_tray_menu_cb(void *) {
         s_popup_win->border(0);
         s_popup_win->set_override();
 
-        auto *b1 = new HoverButton(pad, 0, btn_w, btn_h, " Open");
+        /* ラベルは i18n 翻訳 + 左側にスペース 1 個分のパディング。
+         * copy_label() で内部コピーさせる (一時 std::string が短命なため)。 */
+        auto *b1 = new HoverButton(pad, 0, btn_w, btn_h);
+        b1->copy_label((std::string(" ") + _("Open")).c_str());
         b1->callback(popup_btn_cb, (void *)1);
 
-        auto *b2 = new HoverButton(pad, btn_h, btn_w, btn_h, " Exit");
+        auto *b2 = new HoverButton(pad, btn_h, btn_w, btn_h);
+        b2->copy_label((std::string(" ") + _("Exit")).c_str());
         b2->callback(popup_btn_cb, (void *)2);
 
         s_popup_win->end();
