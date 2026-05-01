@@ -16,8 +16,9 @@ Cで再実装した計算エンジンを各プラットフォームのUIから�
 
 | プラットフォーム | GUI | CLI / TUI |
 |---|---|---|
-| macOS | `calcyx.app` を `/Applications` へ | `bin/calcyx` を PATH の通った場所にコピー |
-| Linux | `sudo dpkg -i calcyx_*.deb`（ランチャーに自動配置） | 同左（`/usr/bin/calcyx` に自動配置） |
+| macOS (dmg) | `calcyx.app` を `/Applications` へ | `.app` 内のエントリポイントにPATHに通す ( `README_MAC.txt` 参照) |
+| macOS (Homebrew) | `brew tap ponzu840w/calcyx && brew install calcyx` | 同左で完了 |
+| Linux | `sudo dpkg -i calcyx_*.deb` | 同左で完了 |
 | Windows | `calcyx-gui.exe` を任意の場所に配置 | `calcyx.exe` を任意の場所に配置（PATH 設定は任意） |
 
 `calcyx(.exe)` バイナリは CLI と TUI を統合しており、TTY で引数なし起動なら TUI、`-e`
@@ -91,8 +92,8 @@ Windows は `cmake --install` 非対応のため、以下の方法で生成し�
 
 ```sh
 # macOS, Linux
-cpack --preset unix   # -> calcyx-mac-<version>.zip
-                      # or calcyx-linux-<version>.deb
+cpack --preset unix   # -> macOS: calcyx-mac-<version>.dmg
+                      #    linux: calcyx-linux-<version>.deb
 # Windows
 cpack --preset win    # -> calcyx-win-<version>.zip
 # Web (静的ホスティング用ファイル一式)

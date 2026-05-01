@@ -50,7 +50,7 @@ class Calcyx < Formula
   test do
     # 基本評価
     assert_equal "8", shell_output("#{bin}/calcyx -e 3+5").strip
-    # SI 接頭辞 (代表的な独自拡張)
+    # SI 接頭辞
     assert_match "1500", shell_output("#{bin}/calcyx -e 1.5k").strip
     # --version が落ちないこと
     system bin/"calcyx", "--version"
