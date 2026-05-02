@@ -23,7 +23,12 @@ cask "calcyx" do
   desc "Engineer's calculator (FLTK GUI)"
   homepage "https://github.com/ponzu840w/calcyx"
 
-  app "calcyx.app"
+  # `.app` は Apple Developer ID で署名・公証していないため、
+  # quarantine 属性が付いたままだと macOS が「壊れている」 と表示して
+  # 起動を拒否する。 quarantine: false で brew が install 時に
+  # `xattr -d com.apple.quarantine` を実行し、 起動可能にする。
+  # (= 「未確認の開発元」 警告には降格するが、 起動はできる)
+  app "calcyx.app", quarantine: false
 
   zap trash: [
     "~/Library/Application Support/calcyx",
