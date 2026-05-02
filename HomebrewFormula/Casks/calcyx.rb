@@ -23,12 +23,18 @@ cask "calcyx" do
   desc "Engineer's calculator (FLTK GUI)"
   homepage "https://github.com/ponzu840w/calcyx"
 
-  # `.app` は Apple Developer ID で署名・公証していないため、
-  # quarantine 属性が付いたままだと macOS が「壊れている」 と表示して
-  # 起動を拒否する。 quarantine: false で brew が install 時に
-  # `xattr -d com.apple.quarantine` を実行し、 起動可能にする。
-  # (= 「未確認の開発元」 警告には降格するが、 起動はできる)
-  app "calcyx.app", quarantine: false
+  # `.app` は CMake POST_BUILD で ad-hoc 再署名済み (= 「壊れている」
+  # 起動拒否は出ない)。 ただし Apple Developer ID 署名 + notarize は
+  # していないので、 初回起動時に Gatekeeper の「未確認の開発元」 警告が
+  # 出る。 Finder で右クリック → 開く → 開く で 1 度だけ承認すれば以降は
+  # 普通に起動できる。 caveats でも案内。
+  app "calcyx.app"
+
+  caveats <<~EOS
+    On first launch macOS may show "未確認の開発元 (unverified developer)".
+    Right-click calcyx.app in Finder → Open → Open to approve once.
+    Subsequent launches work normally.
+  EOS
 
   zap trash: [
     "~/Library/Application Support/calcyx",
