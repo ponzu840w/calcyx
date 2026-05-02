@@ -182,12 +182,21 @@ target_link_libraries(calcyx_ui PRIVATE
 # bundle が自己完結するよう CLI もここに同梱する。 path 通し方は
 # README_MAC.txt で案内。 POST_BUILD なので build ツリー時点で同梱され、
 # install 時の bundle まるごとコピーで dmg / brew どちらにも乗る。
+#
+# CLI を後付けで bundle に入れるとリンカが自動付与した ad-hoc 署名の
+# Sealed Resources と実体が食い違い、 Apple Silicon の Gatekeeper が
+# "damaged" 判定で起動拒否する。 そこでコピー後に bundle 全体を
+# `codesign --force --deep --sign -` で再 ad-hoc 署名して整合を回復する。
+# (Apple Developer ID 署名 + notarize までは未対応; この再署名は dmg /
+# brew どちらの配布物でも arm64 起動を通すための最低限の処置)
 if(APPLE AND TARGET calcyx_cli)
     add_dependencies(calcyx_ui calcyx_cli)
     add_custom_command(TARGET calcyx_ui POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
             "$<TARGET_FILE:calcyx_cli>"
             "$<TARGET_BUNDLE_CONTENT_DIR:calcyx_ui>/MacOS/calcyx-cli"
+        COMMAND codesign --force --deep --sign -
+            "$<TARGET_BUNDLE_DIR:calcyx_ui>"
         VERBATIM)
 endif()
 
