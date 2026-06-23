@@ -6,16 +6,16 @@ https://github.com/shapoco/calctus (C# / .NET)
 
 ## テストの方針
 
-ctest には 42 本のテストが 4 系統 (engine 29 / gui 2 / cli 9 / tui 2) で登録されています
+ctest には 43 本のテストが 4 系統 (engine 30 / gui 2 / cli 9 / tui 2) で登録されています
 (`ctest --preset unix` で全実行)。
 
 クロスターゲット別の登録件数は以下のとおり:
 
 | プリセット | engine | gui | cli | tui | 計 | 備考 |
 |---|---|---|---|---|---|---|
-| `unix` | 29 | 2 | 9 | 2 | 42 | ネイティブ Linux / macOS |
-| `win` | 29 | 2 | 9 | 2 | 42 | Windows クロスビルド全テスト |
-| `win-headless` | 29 | (除外) | 9 | 2 | 40 | gui ラベルを filter 除外 |
+| `unix` | 30 | 2 | 9 | 2 | 43 | ネイティブ Linux / macOS |
+| `win` | 30 | 2 | 9 | 2 | 43 | Windows クロスビルド全テスト |
+| `win-headless` | 30 | (除外) | 9 | 2 | 41 | gui ラベルを filter 除外 |
 | `web` | 4 | (なし) | (なし) | (なし) | 4 | `Test_*` (sample 評価) を除く 4 件 |
 
 `win` / `win-headless` は WSL であれば `.exe` をネイティブ実行、非 WSL では `wine`
@@ -37,7 +37,7 @@ ctest には 42 本のテストが 4 系統 (engine 29 / gui 2 / cli 9 / tui 2) 
   CLI 引数、UI 操作、プラットフォーム依存の挙動など) をカバーするために
   必要と判断した時点で、どんなテストをどう追加するかを提案する。
 
-### エンジン (`engine`, 29 本)
+### エンジン (`engine`, 30 本)
 
 **エンジンのテストコードは移植元リポジトリのものを使用する。**
 

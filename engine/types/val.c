@@ -645,6 +645,10 @@ val_t *val_logic_not(const val_t *a) {
 
 /* --- 文字列変換 --- */
 
+/* 後方で定義する内部ヘルパの前方宣言 (FMT_SI_PREFIX が利用) */
+static void format_plain(const real_t *r, int decimal_len, char *buf, size_t buflen);
+static void real_pow10_pos(real_t *out, int64_t n);
+
 /* 実数値を fmt に従ってフォーマット */
 static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t buflen) {
     int64_t iv;
@@ -689,21 +693,52 @@ static void real_to_str_fmt(const real_t *r, val_fmt_t fmt, char *buf, size_t bu
             } else { real_to_str(r, buf, buflen); }
             break;
         case FMT_SI_PREFIX: {
-            double d = real_to_double(r);
-            static const char *si_pfx[] = { "R","Y","Z","E","P","T","G","M","k","","m","u","n","p","f","a","z","y","r" };
-            static const int   si_exp[] = { 27,24,21,18,15,12, 9, 6, 3, 0,-3,-6,-9,-12,-15,-18,-21,-24,-27 };
-            double ad = d < 0 ? -d : d;
-            for (int i = 0; i < 19; i++) {
-                double base = 1.0; for (int j=0; j<(si_exp[i]<0?-si_exp[i]:si_exp[i]); j++) { if(si_exp[i]>0) base*=10; else base/=10; }
-                if (ad >= base * 0.999999 || i == 9) {
-                    double v = d / base;
-                    if (v == (int64_t)v) snprintf(buf, buflen, "%lld%s", (long long)(int64_t)v, si_pfx[i]);
-                    else                snprintf(buf, buflen, "%.6g%s", v, si_pfx[i]);
-                    /* 末尾の余分な0を除去 */
-                    break;
-                }
+            /* 移植元: Calctus/Model/Formats/SiPrefixFormatter.cs - OnFormat()
+             * prefixIndex = floor(log10(|value|) / 3) を [-9, 9] にクランプ。
+             * double の log10 は境界で誤差が出るため、10 進 adjusted exponent
+             * (= floor(log10|value|)) から整数演算だけで正確に求める。 */
+            if (real_is_special(r)) { real_to_str(r, buf, buflen); break; }
+            if (real_is_zero(r))    { snprintf(buf, buflen, "0"); break; }
+
+            int64_t exp = (int64_t)mpd_adjexp((mpd_t *)&r->mpd);
+            int64_t idx = exp / 3;
+            if (exp % 3 != 0 && exp < 0) idx--;   /* C の 0 方向除算を floor へ補正 */
+            if (idx < -9) idx = -9; else if (idx > 9) idx = 9;
+
+            /* frac = value / 10^(3*idx)。負指数側は乗算へ振り替え、10 のべきは
+             * 常に非負指数で構築する (real_pow10_pos が非負前提のため)。 */
+            real_t frac;
+            if (idx == 0) {
+                real_copy(&frac, r);
+            } else {
+                real_t pow_ten;
+                real_pow10_pos(&pow_ten, idx > 0 ? 3 * idx : -3 * idx);
+                if (idx > 0) real_div(&frac, r, &pow_ten);
+                else         real_mul(&frac, r, &pow_ten);
             }
-            if (!buf[0]) real_to_str(r, buf, buflen);
+
+            /* mpdecimal は .NET decimal より指数範囲が遥かに広く、SI 接頭辞
+             * r〜R (10^-27〜10^27) では仮数が読める範囲 [0.1, 1000) に収まらない
+             * 極端な値が来る (クランプ時のみ)。その場合は 0r のような誤表示を
+             * 避け、通常の数値表示へフォールバックする (calctus は値域外で
+             * そもそも decimal を生成できずエラーになるため、ここは calcyx 固有)。
+             * 下限 0.1 は calctus が表示できる最小 (1e-28 → 0.1r) と一致する。 */
+            double fd = fabs(real_to_double(&frac));
+            if (fd < 0.1 || fd >= 1000.0) {
+                real_to_str_with_settings(r, &g_fmt_settings, buf, buflen);
+                break;
+            }
+
+            /* 仮数は通常の小数表示と同一書式 (移植元: RealToString)。frac は
+             * [0.1, 1000) で e_notation 閾値に掛からない。 */
+            char num[512];
+            format_plain(&frac, g_fmt_settings.decimal_len, num, sizeof num);
+
+            /* "ryzafpnum_kMGTPEZYR" の index 9 ('_') は接頭辞なしを表す */
+            static const char SI_PREFIX_CHARS[] = "ryzafpnum_kMGTPEZYR";
+            char pc = SI_PREFIX_CHARS[idx + 9];
+            if (pc == '_') snprintf(buf, buflen, "%s", num);
+            else           snprintf(buf, buflen, "%s%c", num, pc);
             break;
         }
         case FMT_BIN_PREFIX: {
