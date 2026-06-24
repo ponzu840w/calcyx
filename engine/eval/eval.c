@@ -184,9 +184,10 @@ static val_t *call_func(func_def_t *fd, val_t **args, int n_args,
         }
         return wrap_and_free_array(res, len, arr->fmt);
     }
-    /* 組み込み */
+    /* 組み込み。結果が Inf/NaN なら check_overflow が一律にエラー化する
+     * (配列ブロードキャストは call_func 再帰で各要素が本経路を通る)。 */
     if (fd->builtin) {
-        return fd->builtin(args, n_args, ctx);
+        return check_overflow(fd->builtin(args, n_args, ctx), ctx);
     }
     /* ユーザ定義 */
     if (!fd->body) { EVAL_ERROR(ctx, 0, "Function has no body."); return NULL; }

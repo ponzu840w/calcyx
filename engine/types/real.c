@@ -238,6 +238,17 @@ void real_exp(real_t *out, const real_t *a) {
     real_add(&tmp, a, &half);
     real_floor(&s_real, &tmp);
 
+    /* |s| が int64 を超えると下の real_to_i64 が壊れ、exp(-1e20) が誤って
+     * Inf になる等。この領域では E^s が emax/emin を必ず外れるので、s の
+     * 符号で結果を確定する: 正なら Inf (呼び出し側 check_overflow がエラー化)、
+     * 負なら 0 (アンダーフロー)。 */
+    if (!real_fits_i64(&s_real)) {
+        real_init(out);
+        if (real_sign(&s_real) > 0) real_from_str(out, "Infinity");
+        else                        real_from_i64(out, 0);
+        return;
+    }
+
     /* t = a - s */
     real_sub(&t_real, a, &s_real);
 

@@ -150,6 +150,9 @@ if(CALCYX_TESTS_ENABLED)
     # エラー時の終了コード 1
     calcyx_cli_golden_test(error_exit STDERR error_exit.err EXIT 1)
 
+    # オーバーフロー (Inf/NaN) は全演算で一律エラー化される
+    calcyx_cli_golden_test(eval_overflow STDERR eval_overflow.err EXIT 1)
+
     # --print-config: 空 conf でデフォルト一覧を canonical 出力
     calcyx_cli_golden_test(print_config_default
         STDOUT print_config_default.out
