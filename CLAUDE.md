@@ -6,17 +6,17 @@ https://github.com/shapoco/calctus (C# / .NET)
 
 ## テストの方針
 
-ctest には 45 本のテストが 4 系統 (engine 31 / gui 2 / cli 10 / tui 2) で登録されています
+ctest には 46 本のテストが 5 系統 (engine 31 / gui 2 / cli 10 / tui 2 / i18n 1) で登録されています
 (`ctest --preset unix` で全実行)。
 
 クロスターゲット別の登録件数は以下のとおり:
 
-| プリセット | engine | gui | cli | tui | 計 | 備考 |
-|---|---|---|---|---|---|---|
-| `unix` | 31 | 2 | 10 | 2 | 45 | ネイティブ Linux / macOS |
-| `win` | 31 | 2 | 10 | 2 | 45 | Windows クロスビルド全テスト |
-| `win-headless` | 31 | (除外) | 10 | 2 | 43 | gui ラベルを filter 除外 |
-| `web` | 4 | (なし) | (なし) | (なし) | 4 | `Test_*` (sample 評価) を除く 4 件 |
+| プリセット | engine | gui | cli | tui | i18n | 計 | 備考 |
+|---|---|---|---|---|---|---|---|
+| `unix` | 31 | 2 | 10 | 2 | 1 | 46 | ネイティブ Linux / macOS |
+| `win` | 31 | 2 | 10 | 2 | 1 | 46 | Windows クロスビルド全テスト |
+| `win-headless` | 31 | (除外) | 10 | 2 | 1 | 44 | gui ラベルを filter 除外 |
+| `web` | 4 | (なし) | (なし) | (なし) | (除外) | 4 | `Test_*` (sample 評価) を除く 4 件 |
 
 `win` / `win-headless` は WSL であれば `.exe` をネイティブ実行、非 WSL では `wine`
 を検出してラップする (`cmake/test_runners.cmake`)。どちらも無ければ登録をまるごと
@@ -129,6 +129,21 @@ end-to-end テストできる** (CLI のゴールデンテストに近いスタ�
   - `TuiApp::test_dispatch(Event)` / `test_prompt_active()` /
     `test_prompt_buf()` / `test_prompt_label()` / `test_status_msg()` /
     `test_model()` / `test_sheet()`
+
+### i18n (`i18n`, 1 本)
+
+**翻訳辞書の完全性チェック (C/C++ バイナリではなく Python スクリプト)。**
+`i18n/coverage` はルート `CMakeLists.txt` が `scripts/check_i18n.py` を ctest に
+登録したもので、`shared/i18n_table.c` を 2 方向で検証する:
+
+- **missing** — ソース中の全 `_("...")` 呼び出しに対応する英語キーが
+  `i18n_table.c` に存在するか (無ければ失敗 = 訳抜け防止)。
+- **orphan** — `i18n_table.c` の全キーがソースに文字列リテラルとして出現するか
+  (無ければ「死蔵翻訳」警告)。動的ディスパッチ (`kTabLabels[t]` 等) 経由の翻訳も
+  リテラルとして残るので単純検査でカバーされる。
+
+`CALCYX_TESTS_ENABLED AND NOT EMSCRIPTEN` のとき登録 (unix / win)。翻訳辞書の
+整合はクロスターゲット共通なので web では走らせない。
 
 ## アーキテクチャ
 
